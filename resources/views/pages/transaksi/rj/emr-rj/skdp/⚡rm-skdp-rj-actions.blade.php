@@ -15,15 +15,24 @@ new class extends Component {
     public bool $isFormLocked = false;
     public ?int $rjNo = null;
 
-    // dataDaftarPoliRJ hanya sebagai reference — TIDAK di-bind ke form
-    public array $dataDaftarPoliRJ = [];
+    /**
+     * SKALAR penjaminan & dokter saja — dokumen `datadaftarpolirj_json` utuh tidak disimpan
+     * di properti publik (ikut snapshot Livewire tiap request). Isian formnya sudah
+     * terpisah di $formKontrol.
+     */
+    public string $drId = '';
+    public string $klaimStatus = '';
+    public string $klaimId = '';
+
+    /** Penanda kunjungan sudah dimuat lewat openSkdp(). */
+    public bool $dokumenTermuat = false;
 
     // renderVersions
     public array $renderVersions = [];
     protected array $renderAreas = ['modal-skdp-rj'];
 
     // Form entry terpisah — user hanya mengubah properti ini,
-    // aman dari re-fetch / overwrite dataDaftarPoliRJ
+    // aman dari re-fetch / overwrite dokumen EMR
     public array $formKontrol = [
         'noKontrolRS' => '',
         'noSKDPBPJS' => '',
@@ -48,34 +57,36 @@ new class extends Component {
         $this->openSkdp($this->rjNo);
     }
 
-    public function rendering(): void
-    {
-        $default = $this->getDefaultKontrol();
-        $current = $this->dataDaftarPoliRJ['kontrol'] ?? [];
-        $this->dataDaftarPoliRJ['kontrol'] = array_replace_recursive($default, $current);
-    }
-
     /* ═══════════════════════════════════════
      | OPEN
     ═══════════════════════════════════════ */
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya skalar ini yang disimpan. */
+    private function serapSkalar(array $data): void
+    {
+        $this->drId = (string) ($data['drId'] ?? '');
+        $this->klaimStatus = (string) ($data['klaimStatus'] ?? '');
+        $this->klaimId = (string) ($data['klaimId'] ?? '');
+        $this->dokumenTermuat = true;
+    }
+
     public function openSkdp(int $rjNo): void
     {
         $this->resetFormEntry();
         $this->rjNo = $rjNo;
         $this->resetValidation();
 
-        $dataDaftarPoliRJ = $this->findDataRJ($rjNo);
-        if (!$dataDaftarPoliRJ) {
+        $data = $this->findDataRJ($rjNo);
+        if (!$data) {
             $this->dispatch('toast', type: 'error', message: 'Data Rawat Jalan tidak ditemukan.');
             return;
         }
 
-        $this->dataDaftarPoliRJ = $dataDaftarPoliRJ;
+        $this->serapSkalar($data);
 
         // Isi formKontrol:
         // 1. Dari DB jika sudah ada → pakai
         // 2. Belum ada → pakai default
-        $this->formKontrol = !empty($dataDaftarPoliRJ['kontrol']) && is_array($dataDaftarPoliRJ['kontrol']) ? $dataDaftarPoliRJ['kontrol'] : $this->getDefaultKontrol();
+        $this->formKontrol = !empty($data['kontrol']) && is_array($data['kontrol']) ? $data['kontrol'] : $this->getDefaultKontrol();
 
         if ($this->checkEmrRJStatus($rjNo)) {
             $this->isFormLocked = true;
@@ -101,7 +112,7 @@ new class extends Component {
         $dokter = DB::table('rsmst_doctors')
             ->select('rsmst_doctors.dr_id', 'rsmst_doctors.dr_name', 'kd_dr_bpjs', 'rsmst_polis.poli_id', 'rsmst_polis.poli_desc', 'kd_poli_bpjs')
             ->join('rsmst_polis', 'rsmst_polis.poli_id', 'rsmst_doctors.poli_id')
-            ->where('rsmst_doctors.dr_id', $this->dataDaftarPoliRJ['drId'] ?? '')
+            ->where('rsmst_doctors.dr_id', $this->drId)
             ->first();
 
         return [
@@ -126,7 +137,7 @@ new class extends Component {
     #[On('lov.selected.skdpRjDokterKontrol')]
     public function onDokterKontrolSelected(string $target, array $payload): void
     {
-        // Update formKontrol — bukan dataDaftarPoliRJ
+        // Update formKontrol — bukan dokumen EMR
         $this->formKontrol['drKontrol'] = $payload['dr_id'] ?? '';
         $this->formKontrol['drKontrolDesc'] = $payload['dr_name'] ?? '';
         $this->formKontrol['drKontrolBPJS'] = $payload['kd_dr_bpjs'] ?? '';
@@ -192,7 +203,7 @@ new class extends Component {
     ═══════════════════════════════════════ */
     private function pushSuratKontrolBPJS(): void
     {
-        if (($this->dataDaftarPoliRJ['klaimStatus'] ?? '') !== 'BPJS' && ($this->dataDaftarPoliRJ['klaimId'] ?? '') !== 'JM') {
+        if ($this->klaimStatus !== 'BPJS' && $this->klaimId !== 'JM') {
             return;
         }
 
@@ -222,7 +233,7 @@ new class extends Component {
      | - Parent perencanaan setelah simpan tindak lanjut = 'Kontrol'
      |
      | Alur:
-     | 1. Guard isFormLocked + dataDaftarPoliRJ
+     | 1. Guard isFormLocked + dokumen termuat
      | 2. Re-fetch DB → cek tindakLanjut fresh (bisa berubah dari parent)
      | 3. Jika bukan 'Kontrol' → skip tanpa error
      | 4. setNoKontrolRS + validate
@@ -238,7 +249,7 @@ new class extends Component {
         }
 
         // 2. Guard: properti lokal belum ter-load
-        if (empty($this->dataDaftarPoliRJ)) {
+        if (!$this->dokumenTermuat) {
             $this->dispatch('toast', type: 'error', message: 'Data kunjungan tidak ditemukan, silakan buka ulang form.');
             return;
         }
@@ -261,13 +272,13 @@ new class extends Component {
 
         // 4. Sync klaimStatus/klaimId dari data fresh untuk pushSuratKontrolBPJS
         //    Hanya update field ini — formKontrol tetap aman
-        $this->dataDaftarPoliRJ['klaimStatus'] = $freshData['klaimStatus'] ?? '';
-        $this->dataDaftarPoliRJ['klaimId'] = $freshData['klaimId'] ?? '';
+        $this->klaimStatus = (string) ($freshData['klaimStatus'] ?? '');
+        $this->klaimId = (string) ($freshData['klaimId'] ?? '');
 
         // 5. Init formKontrol hanya jika child belum pernah di-mount
         //    (kasus: child mount tapi rjNo belum di-set)
         if (empty($this->formKontrol['tglKontrol'])) {
-            $this->dataDaftarPoliRJ = $freshData;
+            $this->serapSkalar($freshData);
             $this->formKontrol = !empty($freshData['kontrol']) ? $freshData['kontrol'] : $this->getDefaultKontrol();
         }
 
@@ -307,7 +318,6 @@ new class extends Component {
                 $data['perencanaan']['tindakLanjut']['tindakLanjut'] = 'Kontrol';
 
                 $this->updateJsonRJ($this->rjNo, $data);
-                $this->dataDaftarPoliRJ = $data;
                 $this->appendAdminLogRJ((int) $this->rjNo, ($isBaru ? 'Buat' : 'Update') . ' SKDP — kontrol ' . ($this->formKontrol['tglKontrol'] ?? '-'), 'MR');
             });
 
@@ -429,11 +439,7 @@ new class extends Component {
 
                     {{-- Tombol Simpan & Kirim BPJS + Cetak SKDP — sebaris --}}
                     @if (!empty($formKontrol['noSKDPBPJS']))
-                        @php
-                            $klaimStatus = $dataDaftarPoliRJ['klaimStatus'] ?? '';
-                            $klaimId = $dataDaftarPoliRJ['klaimId'] ?? '';
-                            $isBPJS = $klaimStatus === 'BPJS' || $klaimId === 'JM';
-                        @endphp
+                        @php $isBPJS = $klaimStatus === 'BPJS' || $klaimId === 'JM'; @endphp
                         <div class="flex flex-wrap items-center justify-end gap-2 pt-1">
                             @if ($isBPJS && !$isFormLocked)
                                 <x-success-button type="button" wire:click="save"
@@ -460,11 +466,7 @@ new class extends Component {
 
                     {{-- Tombol Save --}}
                     @if (!$isFormLocked)
-                        @php
-                            $klaimStatus = $dataDaftarPoliRJ['klaimStatus'] ?? '';
-                            $klaimId = $dataDaftarPoliRJ['klaimId'] ?? '';
-                            $isBPJS = $klaimStatus === 'BPJS' || $klaimId === 'JM';
-                        @endphp
+                        @php $isBPJS = $klaimStatus === 'BPJS' || $klaimId === 'JM'; @endphp
                         <div class="flex justify-end pt-2">
                             <x-success-button type="button" wire:click="save" wire:loading.attr="disabled"
                                 wire:target="save">

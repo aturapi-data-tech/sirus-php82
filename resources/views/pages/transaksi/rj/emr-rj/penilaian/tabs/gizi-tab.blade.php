@@ -122,7 +122,7 @@
         </x-border-form>
     @endif
 
-    @if (collect($dataDaftarPoliRJ['penilaian']['gizi'] ?? [])->filter(fn($r) => filled(data_get($r, 'tglPenilaian')))->isNotEmpty())
+    @if (collect($penilaian['gizi'] ?? [])->filter(fn($r) => filled(data_get($r, 'tglPenilaian')))->isNotEmpty())
         <x-border-form :title="__('Riwayat Penilaian Gizi')" :align="__('start')" :bgcolor="__('bg-canvas')">
             <div class="overflow-x-auto rounded-lg border border-hairline dark:border-gray-700">
                 <table class="w-full text-sm text-left text-muted dark:text-gray-300">
@@ -142,7 +142,7 @@
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-hairline-soft dark:divide-gray-700">
-                        @foreach (array_reverse(array_filter($dataDaftarPoliRJ['penilaian']['gizi'] ?? [], fn($r) => filled(data_get($r, 'tglPenilaian'))), true) as $i => $row)
+                        @foreach (array_reverse(array_filter($penilaian['gizi'] ?? [], fn($r) => filled(data_get($r, 'tglPenilaian'))), true) as $i => $row)
                             @php
                                 $kat = $row['gizi']['kategoriGizi'] ?? '-';
                                 $rowBg = match ($kat) {
