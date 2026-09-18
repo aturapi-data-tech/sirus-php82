@@ -22,7 +22,6 @@ new class extends Component {
     public ?string $riHdrNo = null;
     public ?string $regNo = null;
     public bool $disabled = false;
-    public array $dataDaftarRi = [];
 
     public array $renderVersions = [];
     protected array $renderAreas = ['modal-catatan-terapi-neonatal-ri'];
@@ -74,7 +73,6 @@ new class extends Component {
         if ($this->riHdrNo) {
             $data = $this->findDataRI($this->riHdrNo);
             if ($data) {
-                $this->dataDaftarRi = $data;
                 $this->regNo = $data['regNo'] ?? null;
                 $this->entriList = $data[$this->jsonKey] ?? [];
                 $this->isFormLocked = $this->checkEmrRIStatus($this->riHdrNo) || $disabled;
@@ -102,12 +100,8 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarRi = $data;
         $this->regNo = $data['regNo'] ?? null;
-        if (!isset($this->dataDaftarRi[$this->jsonKey]) || !is_array($this->dataDaftarRi[$this->jsonKey])) {
-            $this->dataDaftarRi[$this->jsonKey] = [];
-        }
-        $this->entriList = $this->dataDaftarRi[$this->jsonKey];
+        $this->entriList = is_array($data[$this->jsonKey] ?? null) ? $data[$this->jsonKey] : [];
         $this->isFormLocked = $this->checkEmrRIStatus($this->riHdrNo) || $this->disabled;
 
         $this->incrementVersion('modal-catatan-terapi-neonatal-ri');
@@ -192,7 +186,6 @@ new class extends Component {
             $fresh[$this->jsonKey] = array_values($list);
 
             $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-            $this->dataDaftarRi = $fresh;
             $this->entriList = $fresh[$this->jsonKey];
 
             $this->appendAdminLogRI((int) $this->riHdrNo, $logVerb . ' Catatan Terapi Neonatal — ' . (($entry['jenis'] ?? '') ?: '-') . ' — ' . (($entry['tglJam'] ?? '') ?: '-') . ' (' . $key . ')', 'MR');
@@ -307,7 +300,6 @@ new class extends Component {
                 $fresh[$this->jsonKey] = array_values($list);
 
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->dataDaftarRi = $fresh;
                 $this->entriList = $fresh[$this->jsonKey];
 
                 $pembukaKunci = auth()->user()->myuser_name ?? '-';
@@ -419,7 +411,6 @@ new class extends Component {
     {
         $this->resetVersion();
         $this->isFormLocked = false;
-        $this->dataDaftarRi = [];
         $this->entriList = [];
         $this->resetNewForm();
         $this->editingKey = null;
@@ -451,7 +442,6 @@ new class extends Component {
                     ->all();
 
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->dataDaftarRi = $fresh;
                 $this->entriList = $fresh[$this->jsonKey];
 
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Hapus Catatan Terapi Neonatal — ' . $createdAt, 'MR');
@@ -510,7 +500,7 @@ new class extends Component {
 
             $data = array_merge($pasien, [
                 'ttdPath'      => $ttdPath,
-                'dataRi'        => $this->dataDaftarRi,
+                'dataRi'        => $this->findDataRI($this->riHdrNo) ?: [],
                 'terapiDokter'  => $terapiDokter,
                 'perencanaan'   => $perencanaan,
                 'identitasRs'   => $identitasRs,

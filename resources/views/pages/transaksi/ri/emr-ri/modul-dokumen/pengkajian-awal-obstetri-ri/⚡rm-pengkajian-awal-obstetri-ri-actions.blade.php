@@ -23,7 +23,6 @@ new class extends Component {
     public ?string $riHdrNo = null;
     public ?string $regNo = null;
     public bool $disabled = false;
-    public array $dataDaftarRi = [];
 
     public array $renderVersions = [];
     protected array $renderAreas = ['modal-pengkajian-awal-obstetri-ri'];
@@ -172,7 +171,6 @@ new class extends Component {
         if ($this->riHdrNo) {
             $data = $this->findDataRI($this->riHdrNo);
             if ($data) {
-                $this->dataDaftarRi = $data;
                 $this->regNo = $data['regNo'] ?? null;
                 $this->entriList = $data[$this->jsonKey] ?? [];
                 $this->isFormLocked = $this->checkEmrRIStatus($this->riHdrNo) || $disabled;
@@ -200,12 +198,8 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarRi = $data;
         $this->regNo = $data['regNo'] ?? null;
-        if (!isset($this->dataDaftarRi[$this->jsonKey]) || !is_array($this->dataDaftarRi[$this->jsonKey])) {
-            $this->dataDaftarRi[$this->jsonKey] = [];
-        }
-        $this->entriList = $this->dataDaftarRi[$this->jsonKey];
+        $this->entriList = is_array($data[$this->jsonKey] ?? null) ? $data[$this->jsonKey] : [];
         $this->isFormLocked = $this->checkEmrRIStatus($this->riHdrNo) || $this->disabled;
 
         $this->incrementVersion('modal-pengkajian-awal-obstetri-ri');
@@ -307,7 +301,6 @@ new class extends Component {
             $fresh[$this->jsonKey] = array_values($list);
 
             $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-            $this->dataDaftarRi = $fresh;
             $this->entriList = $fresh[$this->jsonKey];
 
             $this->appendAdminLogRI((int) $this->riHdrNo, $logVerb . ' Pengkajian Awal Obstetri — ' . (($entry['diagnosa'] ?? '') ?: '-') . ' (' . $key . ')', 'MR');
@@ -421,7 +414,6 @@ new class extends Component {
                 $fresh[$this->jsonKey] = array_values($list);
 
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->dataDaftarRi = $fresh;
                 $this->entriList = $fresh[$this->jsonKey];
 
                 $pembukaKunci = auth()->user()->myuser_name ?? '-';
@@ -539,7 +531,6 @@ new class extends Component {
     {
         $this->resetVersion();
         $this->isFormLocked = false;
-        $this->dataDaftarRi = [];
         $this->entriList = [];
         $this->resetNewForm();
         $this->editingKey = null;
@@ -571,7 +562,6 @@ new class extends Component {
                     ->all();
 
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->dataDaftarRi = $fresh;
                 $this->entriList = $fresh[$this->jsonKey];
 
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Hapus Pengkajian Awal Obstetri — ' . $createdAt, 'MR');
@@ -627,7 +617,7 @@ new class extends Component {
 
             $data = array_merge($pasien, [
                 'ttdPath'      => $ttdPath,
-                'dataRi'       => $this->dataDaftarRi,
+                'dataRi'       => $this->findDataRI($this->riHdrNo) ?: [],
                 'form'         => $entry,
                 'identitasRs'  => $identitasRs,
                 'tglCetak'     => Carbon::now(config('app.timezone'))->translatedFormat('d F Y'),
