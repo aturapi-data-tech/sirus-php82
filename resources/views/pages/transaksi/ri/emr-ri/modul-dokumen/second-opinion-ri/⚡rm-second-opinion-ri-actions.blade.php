@@ -62,6 +62,14 @@ new class extends Component {
     // dikosongkan diam-diam sesudah tersimpan, dan petugas yang mengira itu masih formulir
     // yang tadi diisi mengetik ulang — tersimpan sebagai draft baru.
     public string $layar = 'daftar';
+
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan di bawah ini yang disimpan. */
+    private function muatDariDokumen(array $data): void
+    {
+        $this->regNo = $data['regNo'] ?? null;
+        $this->secondOpinionList = is_array($data['secondOpinionRI'] ?? null) ? $data['secondOpinionRI'] : [];
+        $this->regName = $data['regName'] ?? null;
+    }
     public bool $viewOnly = false;
 
     /* ===============================
@@ -76,8 +84,7 @@ new class extends Component {
         if ($this->riHdrNo) {
             $data = $this->findDataRI($this->riHdrNo);
             if ($data) {
-                $this->regNo = $data['regNo'] ?? null;
-                $this->secondOpinionList = $data['secondOpinionRI'] ?? [];
+                $this->muatDariDokumen($data);
                 $this->isFormLocked = $this->checkEmrRIStatus($this->riHdrNo) || $disabled;
             }
         }
@@ -104,9 +111,7 @@ new class extends Component {
             return;
         }
 
-        $this->regNo = $data['regNo'] ?? null;
-        $this->secondOpinionList = is_array($data['secondOpinionRI'] ?? null) ? $data['secondOpinionRI'] : [];
-        $this->regName = $data['regName'] ?? null;
+        $this->muatDariDokumen($data);
         $this->newForm['namaPenanda'] = $this->regName ?? '';
         $this->isFormLocked = $this->checkEmrRIStatus($this->riHdrNo) || $this->disabled;
         $this->incrementVersion('modal-second-opinion-ri');
@@ -284,7 +289,7 @@ new class extends Component {
             $data['secondOpinionRI'] = array_values($list);
 
             $this->updateJsonRI((int) $this->riHdrNo, $data);
-            $this->secondOpinionList = $data['secondOpinionRI'];
+            $this->muatDariDokumen($data);
 
             $this->appendAdminLogRI((int) $this->riHdrNo, $logVerb . ' Second Opinion RI — kategori "' . ($entry['kategori'] ?: '-') . '" (' . $key . ')', 'MR');
         });
@@ -489,7 +494,7 @@ new class extends Component {
                     ->toArray();
 
                 $this->updateJsonRI((int) $this->riHdrNo, $data);
-                $this->secondOpinionList = $data['secondOpinionRI'];
+                $this->muatDariDokumen($data);
 
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Hapus Second Opinion RI — TTD ' . $signatureDate, 'MR');
             });
@@ -536,7 +541,7 @@ new class extends Component {
                 $data['secondOpinionRI'] = $list;
 
                 $this->updateJsonRI((int) $this->riHdrNo, $data);
-                $this->secondOpinionList = $data['secondOpinionRI'];
+                $this->muatDariDokumen($data);
 
                 $pelaku = auth()->user()->myuser_name ?? auth()->user()->name ?? 'unknown';
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Buka Kunci Second Opinion RI — TTD ' . $signatureDate . ' oleh ' . $pelaku, 'MR');

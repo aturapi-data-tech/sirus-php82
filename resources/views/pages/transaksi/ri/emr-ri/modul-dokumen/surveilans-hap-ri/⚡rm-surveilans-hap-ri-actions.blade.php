@@ -56,6 +56,13 @@ new class extends Component {
     // dikosongkan diam-diam sesudah tersimpan, dan petugas yang mengira itu masih formulir
     // yang tadi diisi mengetik ulang — tersimpan sebagai draft baru.
     public string $layar = 'daftar';
+
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan di bawah ini yang disimpan. */
+    private function muatDariDokumen(array $data): void
+    {
+        $this->regNo = $data['regNo'] ?? null;
+        $this->entriList = is_array($data[$this->jsonKey] ?? null) ? $data[$this->jsonKey] : [];
+    }
     public bool $viewOnly = false;
 
     /* ===============================
@@ -106,8 +113,7 @@ new class extends Component {
         if ($this->riHdrNo) {
             $data = $this->findDataRI($this->riHdrNo);
             if ($data) {
-                $this->regNo = $data['regNo'] ?? null;
-                $this->entriList = $data[$this->jsonKey] ?? [];
+                $this->muatDariDokumen($data);
                 $this->isFormLocked = $this->checkEmrRIStatus($this->riHdrNo) || $disabled;
             }
         }
@@ -130,8 +136,7 @@ new class extends Component {
             return;
         }
 
-        $this->regNo = $data['regNo'] ?? null;
-        $this->entriList = is_array($data[$this->jsonKey] ?? null) ? $data[$this->jsonKey] : [];
+        $this->muatDariDokumen($data);
         $this->dpjpUtama = DpjpUtamaRI::nama($data);
         $this->isFormLocked = $this->checkEmrRIStatus($this->riHdrNo) || $this->disabled;
         $this->isiDpjpUtamaBilaKosong();
@@ -263,7 +268,7 @@ new class extends Component {
             $fresh[$this->jsonKey] = array_values($list);
 
             $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-            $this->entriList = $fresh[$this->jsonKey];
+            $this->muatDariDokumen($fresh);
 
             $this->appendAdminLogRI((int) $this->riHdrNo, $logVerb . ' Surveilans Pneumonia Non-Ventilator — ' . ($entry['tanggal'] ?: '-') . ' (' . $key . ')', 'MR');
         });
@@ -446,7 +451,7 @@ new class extends Component {
                 $fresh[$this->jsonKey] = array_values($list);
 
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->entriList = $fresh[$this->jsonKey];
+                $this->muatDariDokumen($fresh);
 
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Buka kunci Surveilans Pneumonia Non-Ventilator (' . $key . ') oleh ' . (auth()->user()->myuser_name ?? '-'), 'MR');
             });
@@ -480,7 +485,7 @@ new class extends Component {
                     ->toArray();
 
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->entriList = $fresh[$this->jsonKey];
+                $this->muatDariDokumen($fresh);
 
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Hapus Surveilans Pneumonia Non-Ventilator — ' . $key, 'MR');
             });

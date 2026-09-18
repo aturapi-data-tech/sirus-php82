@@ -36,7 +36,7 @@ new class extends Component {
     public array $renderVersions = [];
     protected array $renderAreas = ['modal-anamnesa-rj'];
     /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan + dua penanda yang disimpan. */
-    private function serapDokumen(array $data): void
+    private function muatDariDokumen(array $data): void
     {
         $this->anamnesa = $data['anamnesa'] ?? [];
         $this->regNoPasien = (string) ($data['regNo'] ?? '');
@@ -67,7 +67,7 @@ new class extends Component {
             return;
         }
 
-        $this->serapDokumen($data);
+        $this->muatDariDokumen($data);
 
         // Initialize anamnesa data if not exists
         if (!$this->anamnesa) {
@@ -400,7 +400,7 @@ new class extends Component {
 
                 // 8. Persist + sync properti lokal
                 $this->updateJsonRJ($this->rjNo, $data);
-                $this->serapDokumen($data);
+                $this->muatDariDokumen($data);
 
                 // 9. Side effect: sync alergi & riwayat penyakit ke master pasien
                 $this->updateRiwayatMedisPasien();
@@ -541,7 +541,7 @@ new class extends Component {
                 $data['anamnesa']['pengkajianPerawatan']['perawatPenerimaCode'] = '';
 
                 $this->updateJsonRJ((int) $this->rjNo, $data);
-                $this->serapDokumen($data);
+                $this->muatDariDokumen($data);
 
                 $this->appendAdminLogRJ((int) $this->rjNo, 'Buka Kunci TTD Perawat Penerima — stempel ' . $perawatSebelumnya . ' dicabut oleh ' . (auth()->user()->myuser_name ?? '-'), 'MR');
             });

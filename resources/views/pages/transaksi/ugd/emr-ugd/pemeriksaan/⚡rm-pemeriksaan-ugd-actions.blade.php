@@ -32,6 +32,12 @@ new class extends Component {
     public $suspekAkibatKerja;
 
     public array $renderVersions = [];
+
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan di bawah ini yang disimpan. */
+    private function muatDariDokumen(array $data): void
+    {
+        $this->pemeriksaan = $data['pemeriksaan'] ?? $this->getDefaultPemeriksaan();
+    }
     protected array $renderAreas = ['modal-pemeriksaan-ugd'];
 
     /* ===============================
@@ -77,7 +83,7 @@ new class extends Component {
             return;
         }
 
-        $this->pemeriksaan = $data['pemeriksaan'] ?? $this->getDefaultPemeriksaan();
+        $this->muatDariDokumen($data);
         $this->dokumenTermuat = true;
 
         // Default 'Tidak' jika belum diisi
@@ -223,7 +229,7 @@ new class extends Component {
                 $data['pemeriksaan'] = $this->pemeriksaan;
 
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->pemeriksaan = $data['pemeriksaan'] ?? [];
+                $this->muatDariDokumen($data);
 
                 // Audit log
                 $this->appendAdminLogUGD((int) $this->rjNo, ($isBaru ? 'Buat' : 'Update') . ' Pemeriksaan UGD — waktu pemeriksaan ' . ($data['pemeriksaan']['tandaVital']['waktuPemeriksaan'] ?? '-'), 'MR');
@@ -293,7 +299,7 @@ new class extends Component {
                 ];
 
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->pemeriksaan = $data['pemeriksaan'] ?? [];
+                $this->muatDariDokumen($data);
 
                 // Audit log
                 $this->appendAdminLogUGD((int) $this->rjNo, 'Upload Hasil Penunjang UGD — ' . $this->descPDF, 'MR');
@@ -356,7 +362,7 @@ new class extends Component {
                     ->toArray();
 
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->pemeriksaan = $data['pemeriksaan'] ?? [];
+                $this->muatDariDokumen($data);
 
                 // 5. Audit log
                 $this->appendAdminLogUGD((int) $this->rjNo, 'Hapus Hasil Penunjang UGD — ' . $ketLog, 'MR');
@@ -461,14 +467,14 @@ new class extends Component {
 
                 // Idempotency: skip kalau $text sudah ada di tail (handle double-fire)
                 if (str_ends_with(rtrim($existing), trim($text))) {
-                    $this->pemeriksaan = $data['pemeriksaan'] ?? [];
+                    $this->muatDariDokumen($data);
                     return;
                 }
 
                 $data['pemeriksaan']['penunjang'] = trim(($existing ? $existing . "\n" : '') . $text);
 
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->pemeriksaan = $data['pemeriksaan'] ?? [];
+                $this->muatDariDokumen($data);
 
                 // Audit log
                 $this->appendAdminLogUGD((int) $this->rjNo, 'Terima Hasil Laborat ke Penunjang UGD', 'MR');

@@ -16,7 +16,7 @@ new class extends Component {
     public bool $isFormLocked = false;
     public ?string $riHdrNo = null;
     /** IRISAN dokumen: hanya daftar `penilaian.resikoBunuhDiri`. */
-    public array $daftarEntri = [];
+    public array $daftarResikoBunuhDiri = [];
 
     public array $renderVersions = [];
     protected array $renderAreas = ['modal-penilaian-risiko-bunuh-diri-ri'];
@@ -81,6 +81,12 @@ new class extends Component {
 
     public array $tindakLanjutBunuhDiriOptions = ['Edukasi & monitoring', 'Safety plan', 'Observasi ketat', 'Konsul DPJP'];
 
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan di bawah ini yang disimpan. */
+    private function muatDariDokumen(array $data): void
+    {
+        $this->daftarResikoBunuhDiri = $data['penilaian']['resikoBunuhDiri'] ?? [];
+    }
+
     public function mount(): void
     {
         $this->registerAreas(['modal-penilaian-risiko-bunuh-diri-ri']);
@@ -103,7 +109,7 @@ new class extends Component {
             return;
         }
 
-        $this->daftarEntri = $data['penilaian']['resikoBunuhDiri'] ?? [];
+        $this->muatDariDokumen($data);
 
         $this->isFormLocked = $this->checkEmrRIStatus($riHdrNo);
 
@@ -282,7 +288,7 @@ new class extends Component {
                 $fresh['penilaian']['resikoBunuhDiri'][] = $this->formEntryResikoBunuhDiri;
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Tambah Skrining Risiko Bunuh Diri (C-SSRS) — kategori ' . ($this->formEntryResikoBunuhDiri['kategoriResiko'] ?? '-') . ', entri ' . ($this->formEntryResikoBunuhDiri['tglPenilaian'] ?? '-'), 'MR');
-                $this->daftarEntri = $fresh['penilaian']['resikoBunuhDiri'] ?? [];
+                $this->muatDariDokumen($fresh);
             });
             $this->reset(['formEntryResikoBunuhDiri']);
             $this->afterSave('Skrining Risiko Bunuh Diri berhasil disimpan.');
@@ -309,7 +315,7 @@ new class extends Component {
                 $fresh['penilaian']['resikoBunuhDiri'] = array_values($fresh['penilaian']['resikoBunuhDiri']);
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Hapus Skrining Risiko Bunuh Diri (C-SSRS) — entri ' . $tglHapus, 'MR');
-                $this->daftarEntri = $fresh['penilaian']['resikoBunuhDiri'] ?? [];
+                $this->muatDariDokumen($fresh);
             });
             $this->afterSave('Skrining Risiko Bunuh Diri dihapus.');
         } catch (\RuntimeException $e) {
@@ -465,7 +471,7 @@ new class extends Component {
         </div>
     @endif
 
-    @if (collect($daftarEntri)->filter(fn($entri) => filled(data_get($entri, 'tglPenilaian')))->isNotEmpty())
+    @if (collect($daftarResikoBunuhDiri)->filter(fn($entri) => filled(data_get($entri, 'tglPenilaian')))->isNotEmpty())
         <x-border-form title="Riwayat Skrining Risiko Bunuh Diri" align="start" bgcolor="bg-canvas">
             <div class="mt-3 overflow-x-auto rounded-lg border border-hairline dark:border-gray-700">
                 <table class="w-full text-sm text-left text-body dark:text-gray-300">
@@ -484,7 +490,7 @@ new class extends Component {
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-hairline-soft dark:divide-gray-700">
-                        @foreach (array_reverse(array_filter($daftarEntri, fn($entri) => filled(data_get($entri, 'tglPenilaian'))), true) as $i => $row)
+                        @foreach (array_reverse(array_filter($daftarResikoBunuhDiri, fn($entri) => filled(data_get($entri, 'tglPenilaian'))), true) as $i => $row)
                             @php
                                 $kat = $row['kategoriResiko'] ?? '-';
                                 $rowBg =

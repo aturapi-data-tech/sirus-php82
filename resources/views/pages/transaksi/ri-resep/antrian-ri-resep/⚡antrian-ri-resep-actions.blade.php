@@ -28,7 +28,7 @@ new class extends Component {
     public string $regNoPasien = '';
 
     /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan + regNo yang disimpan. */
-    private function serapIrisan(array $data): void
+    private function muatDariDokumen(array $data): void
     {
         $this->apotekHdr = $data['apotekHdr'] ?? [];
         $this->eresepHdr = $data['eresepHdr'] ?? [];
@@ -79,7 +79,7 @@ new class extends Component {
         }
 
         $this->riHdrNo = (int) $sls->rihdr_no;
-        $this->serapIrisan($this->findDataRI($this->riHdrNo) ?: []);
+        $this->muatDariDokumen($this->findDataRI($this->riHdrNo) ?: []);
 
         // Index ke eresepHdr (dokter) — untuk display obat di modal
         $this->eresepIndex = $this->findIndexInArr($this->eresepHdr ?? [], $slsNo);
@@ -402,7 +402,7 @@ new class extends Component {
     private function gantiStateDariDb(array $data, int $idx, string $nodeDipertahankan): void
     {
         $isianLayar = $this->apotekHdr[$this->apotekIndex][$nodeDipertahankan] ?? null;
-        $this->serapIrisan($data);
+        $this->muatDariDokumen($data);
         $this->apotekIndex = $idx;
         if (is_array($isianLayar)) {
             $this->apotekHdr[$idx][$nodeDipertahankan] = $isianLayar;

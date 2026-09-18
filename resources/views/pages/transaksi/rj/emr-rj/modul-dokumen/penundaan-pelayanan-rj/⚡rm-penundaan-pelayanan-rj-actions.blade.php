@@ -67,6 +67,13 @@ new class extends Component {
     // true = entri terkunci sedang ditampilkan di form dalam mode read-only (lihat saja, tak bisa edit).
     public bool $viewOnly = false;
 
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan di bawah ini yang disimpan. */
+    private function muatDariDokumen(array $data): void
+    {
+        $this->penundaanList = is_array($data['penundaanPelayananRJ'] ?? null) ? $data['penundaanPelayananRJ'] : [];
+        $this->regName = $data['regName'] ?? null;
+    }
+
     /* ===============================
      | MOUNT
      =============================== */
@@ -79,8 +86,7 @@ new class extends Component {
         if ($this->rjNo) {
             $data = $this->findDataRJ($this->rjNo);
             if ($data) {
-                $this->penundaanList = $data['penundaanPelayananRJ'] ?? [];
-                $this->regName = $data['regName'] ?? null;
+                $this->muatDariDokumen($data);
                 $this->isFormLocked = $this->checkEmrRJStatus($this->rjNo) || $disabled;
             }
         }
@@ -107,8 +113,7 @@ new class extends Component {
             return;
         }
 
-        $this->penundaanList = is_array($data['penundaanPelayananRJ'] ?? null) ? $data['penundaanPelayananRJ'] : [];
-        $this->regName = $data['regName'] ?? null;
+        $this->muatDariDokumen($data);
         $this->newForm['namaPenanda'] = $this->regName ?? '';
         $this->isFormLocked = $this->checkEmrRJStatus($this->rjNo) || $this->disabled;
         $this->incrementVersion('modal-penundaan-pelayanan-rj');
@@ -314,7 +319,7 @@ new class extends Component {
             $data['penundaanPelayananRJ'] = array_values($list);
 
             $this->updateJsonRJ($this->rjNo, $data);
-            $this->penundaanList = $data['penundaanPelayananRJ'];
+            $this->muatDariDokumen($data);
 
             $this->appendAdminLogRJ((int) $this->rjNo, $logVerb . ' Penundaan Pelayanan RJ — jenis "' . ($entry['jenis'] ?: ($entry['alasan'] ?: '-')) . '" (' . $key . ')', 'MR');
         });
@@ -491,7 +496,7 @@ new class extends Component {
                     ->toArray();
 
                 $this->updateJsonRJ($this->rjNo, $data);
-                $this->penundaanList = $data['penundaanPelayananRJ'];
+                $this->muatDariDokumen($data);
                 $this->appendAdminLogRJ((int) $this->rjNo, 'Hapus Pemberitahuan Penundaan/Kelambatan — TTD ' . $signatureDate, 'MR');
             });
 
@@ -533,7 +538,7 @@ new class extends Component {
                 $list[$index]['pemberiInfoDate'] = '';
                 $data['penundaanPelayananRJ'] = array_values($list);
                 $this->updateJsonRJ($this->rjNo, $data);
-                $this->penundaanList = $data['penundaanPelayananRJ'];
+                $this->muatDariDokumen($data);
                 $pembukaKunci = auth()->user()->myuser_name ?? '-';
                 $this->appendAdminLogRJ((int) $this->rjNo, 'Buka kunci Pemberitahuan Penundaan Pelayanan (' . $signatureDate . ') oleh ' . $pembukaKunci . ' — TTD petugas dicabut, entri kembali draft', 'MR');
             });

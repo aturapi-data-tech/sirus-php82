@@ -21,7 +21,7 @@ new class extends Component {
     public bool $dokumenTermuat = false;
 
     /** Dokumen dibaca sebagai variabel LOKAL; hanya jejak petugas yang disimpan. */
-    private function serapJejak(array $data): void
+    private function muatDariDokumen(array $data): void
     {
         $this->administrasiRj = $data['AdministrasiRj'] ?? [];
         $this->dokumenTermuat = true;
@@ -84,7 +84,7 @@ new class extends Component {
             return;
         }
 
-        $this->serapJejak($data);
+        $this->muatDariDokumen($data);
         $this->statusResep = [
             'status' => $data['statusResep']['status'] ?? 'DITUNGGU',
             'keterangan' => $data['statusResep']['keterangan'] ?? '',
@@ -301,7 +301,7 @@ new class extends Component {
                 ];
 
                 $this->updateJsonUGD($rjNo, $data);
-                $this->serapJejak($data);
+                $this->muatDariDokumen($data);
             });
 
             // 5. Notify + sumAll — di luar transaksi
@@ -355,7 +355,7 @@ new class extends Component {
                 ];
 
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->serapJejak($data);
+                $this->muatDariDokumen($data);
             });
 
             // findData() di dalam transaksi menimpa $this->statusResep dgn nilai DB LAMA

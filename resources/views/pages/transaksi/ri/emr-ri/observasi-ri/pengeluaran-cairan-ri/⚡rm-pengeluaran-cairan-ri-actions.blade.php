@@ -34,6 +34,12 @@ new class extends Component {
     ];
 
     public array $renderVersions = [];
+
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan di bawah ini yang disimpan. */
+    private function muatDariDokumen(array $data): void
+    {
+        $this->daftarPengeluaranCairan = $data['observasi']['pengeluaranCairan']['pengeluaranCairan'] ?? [];
+    }
     protected array $renderAreas = ['modal-pengeluaran-cairan-ri'];
 
     public function mount(): void
@@ -56,7 +62,7 @@ new class extends Component {
             return;
         }
 
-        $this->daftarPengeluaranCairan = $data['observasi']['pengeluaranCairan']['pengeluaranCairan'] ?? [];
+        $this->muatDariDokumen($data);
 
         $this->isFormLocked = $this->checkRIStatus($riHdrNo);
         $this->setWaktuPengeluaran(); // set default waktu
@@ -123,7 +129,7 @@ new class extends Component {
 
                 // 6. Simpan JSON
                 $this->updateJsonRI($this->riHdrNo, $data);
-                $this->daftarPengeluaranCairan = $data['observasi']['pengeluaranCairan']['pengeluaranCairan'];
+                $this->muatDariDokumen($data);
 
                 // 7. Audit log
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Tambah Pengeluaran Cairan — ' . ($this->formEntryPengeluaran['jenisOutput'] ?? '-') . ' @ ' . ($this->formEntryPengeluaran['waktuPengeluaran'] ?? '-'), 'MR');
@@ -165,7 +171,7 @@ new class extends Component {
                     ->all();
 
                 $this->updateJsonRI($this->riHdrNo, $data);
-                $this->daftarPengeluaranCairan = $data['observasi']['pengeluaranCairan']['pengeluaranCairan'];
+                $this->muatDariDokumen($data);
 
                 // Audit log
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Hapus Pengeluaran Cairan — ' . ($deletedRow['jenisOutput'] ?? '-') . ' @ ' . $waktuPengeluaran, 'MR');

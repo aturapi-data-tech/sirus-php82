@@ -89,6 +89,13 @@ new class extends Component {
     // true = entri terkunci sedang ditampilkan di form dalam mode read-only (lihat saja, tak bisa edit).
     public bool $viewOnly = false;
 
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan di bawah ini yang disimpan. */
+    private function muatDariDokumen(array $data): void
+    {
+        $this->consentList = is_array($data['informConsentPasienUGD'] ?? null) ? $data['informConsentPasienUGD'] : [];
+        $this->regName = $data['regName'] ?? null;
+    }
+
     /* ===============================
      | MOUNT
      =============================== */
@@ -101,8 +108,7 @@ new class extends Component {
         if ($this->rjNo) {
             $data = $this->findDataUGD($this->rjNo);
             if ($data) {
-                $this->consentList = $data['informConsentPasienUGD'] ?? [];
-                $this->regName = $data['regName'] ?? null;
+                $this->muatDariDokumen($data);
                 $this->isFormLocked = $this->checkEmrUGDStatus($this->rjNo) || $disabled;
             }
         }
@@ -130,8 +136,7 @@ new class extends Component {
             return;
         }
 
-        $this->consentList = is_array($data['informConsentPasienUGD'] ?? null) ? $data['informConsentPasienUGD'] : [];
-        $this->regName = $data['regName'] ?? null;
+        $this->muatDariDokumen($data);
         // Default nama Pasien/Wali = nama pasien & hubungan = Pasien Sendiri (pola penundaan)
         $this->newConsent['wali'] = $this->regName ?? '';
         $this->newConsent['waliHubungan'] = 'pasien';
@@ -371,7 +376,7 @@ new class extends Component {
                 $list[$index]['dokterDate'] = '';
                 $fresh['informConsentPasienUGD'] = array_values($list);
                 $this->updateJsonUGD($this->rjNo, $fresh);
-                $this->consentList = $fresh['informConsentPasienUGD'];
+                $this->muatDariDokumen($fresh);
                 $this->appendAdminLogUGD((int) $this->rjNo, 'Buka kunci Inform Consent — entri ' . $signatureDate . ' (oleh ' . (auth()->user()->myuser_name ?? auth()->user()->name ?? '-') . ')', 'MR');
             });
             $this->incrementVersion('modal-inform-consent-ugd');
@@ -491,7 +496,7 @@ new class extends Component {
             $data['informConsentPasienUGD'] = array_values($list);
 
             $this->updateJsonUGD($this->rjNo, $data);
-            $this->consentList = $data['informConsentPasienUGD'];
+            $this->muatDariDokumen($data);
 
             $this->appendAdminLogUGD((int) $this->rjNo, $logVerb . ' Inform Consent UGD — tindakan "' . ($entry['tindakan'] ?: '-') . '" (' . $key . ')', 'MR');
         });
@@ -686,7 +691,7 @@ new class extends Component {
                 $data['informConsentPasienUGD'] = collect($data['informConsentPasienUGD'])->reject(fn($item) => ($item['signatureDate'] ?? '') === $signatureDate)->values()->toArray();
 
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->consentList = $data['informConsentPasienUGD'];
+                $this->muatDariDokumen($data);
 
                 $this->appendAdminLogUGD((int) $this->rjNo, 'Hapus Inform Consent UGD — tindakan "' . ($removed['tindakan'] ?? '-') . '" TTD ' . $signatureDate, 'MR');
             });

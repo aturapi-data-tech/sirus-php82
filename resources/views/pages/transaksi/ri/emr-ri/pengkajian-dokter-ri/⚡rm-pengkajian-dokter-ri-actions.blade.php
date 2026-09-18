@@ -49,6 +49,14 @@ new class extends Component {
     public array $rekonsiliasiObatSaatDibuka = [];
 
     public array $renderVersions = [];
+
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan di bawah ini yang disimpan. */
+    private function muatDariDokumen(array $data): void
+    {
+        $this->pengkajianDokter = $data['pengkajianDokter'] ?? [];
+        $this->regNoPasien = (string) ($data['regNo'] ?? '');
+        $this->rekonsiliasiObatSaatDibuka = $data['pengkajianDokter']['anamnesa']['rekonsiliasiObat'];
+    }
     protected array $renderAreas = ['modal-pengkajian-dokter-ri'];
 
     /**
@@ -198,8 +206,7 @@ new class extends Component {
         // baris yang sengaja dihapus tidak boleh muncul lagi tiap buka form.
         $belumPernahIsiRekonsiliasi = !array_key_exists('rekonsiliasiObat', (array) data_get($data, 'pengkajianDokter.anamnesa', []));
 
-        $this->pengkajianDokter = $data['pengkajianDokter'] ?? [];
-        $this->regNoPasien = (string) ($data['regNo'] ?? '');
+        $this->muatDariDokumen($data);
         $this->dokumenTermuat = true;
 
         // JANGAN `??=`. Modal Rekonsiliasi Obat (titik-3 Daftar RI) bisa menulis
@@ -320,11 +327,11 @@ new class extends Component {
                 RekonsiliasiObat::pertahankanStatus($fresh['pengkajianDokter']['anamnesa'], $statusRekonsiliasiDb);
 
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->pengkajianDokter = $fresh['pengkajianDokter'] ?? [];
+                $this->muatDariDokumen($fresh);
 
                 // Basis digeser ke hasil tersimpan — Simpan berikutnya tidak boleh
                 // memakai titik cabang yang sudah usang.
-                $this->rekonsiliasiObatSaatDibuka = $fresh['pengkajianDokter']['anamnesa']['rekonsiliasiObat'];
+                $this->muatDariDokumen($fresh);
 
                 // Side effect: sync alergi + kode SNOMED ke master pasien (pola sama RJ/UGD)
                 // supaya kunjungan berikutnya — di modul mana pun — sudah terisi.
@@ -522,8 +529,7 @@ new class extends Component {
 
                 // Idempotency: skip kalau $text sudah ada di tail (handle double-fire)
                 if (str_ends_with(rtrim($existing), trim($text))) {
-                    $this->pengkajianDokter = $data['pengkajianDokter'] ?? [];
-                    $this->regNoPasien = (string) ($data['regNo'] ?? '');
+                    $this->muatDariDokumen($data);
                     $this->dokumenTermuat = true;
                     return;
                 }
@@ -531,8 +537,7 @@ new class extends Component {
                 $data['pengkajianDokter']['hasilPemeriksaanPenunjang']['laboratorium'] = trim(($existing ? $existing . "\n" : '') . $text);
 
                 $this->updateJsonRI($this->riHdrNo, $data);
-                $this->pengkajianDokter = $data['pengkajianDokter'] ?? [];
-                $this->regNoPasien = (string) ($data['regNo'] ?? '');
+                $this->muatDariDokumen($data);
                 $this->dokumenTermuat = true;
 
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Terima hasil laboratorium ke Pengkajian Dokter RI', 'MR');

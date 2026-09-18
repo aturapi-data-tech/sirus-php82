@@ -31,7 +31,7 @@ new class extends Component {
     public bool $kasusPolisi = false;
 
     /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan + skalar yang disimpan. */
-    private function serapIrisan(array $data): void
+    private function muatDariDokumen(array $data): void
     {
         $this->perencanaan = $data['perencanaan'] ?? [];
         $this->klaimId = (string) ($data['klaimId'] ?? '');
@@ -84,7 +84,7 @@ new class extends Component {
             return;
         }
 
-        $this->serapIrisan($data);
+        $this->muatDariDokumen($data);
         $this->perencanaan ??= [
             'tindakLanjut' => [
                 'tindakLanjut' => '',
@@ -276,7 +276,7 @@ new class extends Component {
                 $isBaru = empty($fresh['perencanaan']);
                 $fresh['perencanaan'] = $this->perencanaan ?? [];
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->serapIrisan($fresh);
+                $this->muatDariDokumen($fresh);
 
                 $tl = $fresh['perencanaan']['tindakLanjut'] ?? [];
                 $tlDesc = collect($this->tindakLanjutOptions)->firstWhere('tindakLanjutKode', $tl['tindakLanjutKode'] ?? '')['tindakLanjut'] ?? '-';

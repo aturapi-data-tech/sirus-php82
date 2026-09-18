@@ -63,6 +63,14 @@ new class extends Component {
     // dikosongkan diam-diam sesudah tersimpan, dan petugas yang mengira itu masih formulir
     // yang tadi diisi mengetik ulang — tersimpan sebagai draft baru.
     public string $layar = 'daftar';
+
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan di bawah ini yang disimpan. */
+    private function muatDariDokumen(array $data): void
+    {
+        $this->regNo = $data['regNo'] ?? null;
+        $this->secondOpinionList = is_array($data['secondOpinionUGD'] ?? null) ? $data['secondOpinionUGD'] : [];
+        $this->regName = $data['regName'] ?? null;
+    }
     public bool $viewOnly = false;
 
     /* ===============================
@@ -77,8 +85,7 @@ new class extends Component {
         if ($this->rjNo) {
             $data = $this->findDataUGD($this->rjNo);
             if ($data) {
-                $this->regNo = $data['regNo'] ?? null;
-                $this->secondOpinionList = $data['secondOpinionUGD'] ?? [];
+                $this->muatDariDokumen($data);
                 $this->isFormLocked = $this->checkEmrUGDStatus($this->rjNo) || $disabled;
             }
         }
@@ -105,9 +112,7 @@ new class extends Component {
             return;
         }
 
-        $this->regNo = $data['regNo'] ?? null;
-        $this->secondOpinionList = is_array($data['secondOpinionUGD'] ?? null) ? $data['secondOpinionUGD'] : [];
-        $this->regName = $data['regName'] ?? null;
+        $this->muatDariDokumen($data);
         $this->newForm['namaPenanda'] = $this->regName ?? '';
         $this->isFormLocked = $this->checkEmrUGDStatus($this->rjNo) || $this->disabled;
         $this->incrementVersion('modal-second-opinion-ugd');
@@ -285,7 +290,7 @@ new class extends Component {
             $data['secondOpinionUGD'] = array_values($list);
 
             $this->updateJsonUGD($this->rjNo, $data);
-            $this->secondOpinionList = $data['secondOpinionUGD'];
+            $this->muatDariDokumen($data);
 
             $this->appendAdminLogUGD((int) $this->rjNo, $logVerb . ' Second Opinion UGD — kategori "' . ($entry['kategori'] ?: '-') . '" (' . $key . ')', 'MR');
         });
@@ -490,7 +495,7 @@ new class extends Component {
                     ->toArray();
 
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->secondOpinionList = $data['secondOpinionUGD'];
+                $this->muatDariDokumen($data);
 
                 $this->appendAdminLogUGD((int) $this->rjNo, 'Hapus Second Opinion UGD — TTD ' . $signatureDate, 'MR');
             });
@@ -537,7 +542,7 @@ new class extends Component {
                 $data['secondOpinionUGD'] = $list;
 
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->secondOpinionList = $data['secondOpinionUGD'];
+                $this->muatDariDokumen($data);
 
                 $pelaku = auth()->user()->myuser_name ?? auth()->user()->name ?? 'unknown';
                 $this->appendAdminLogUGD((int) $this->rjNo, 'Buka Kunci Second Opinion UGD — TTD ' . $signatureDate . ' oleh ' . $pelaku, 'MR');

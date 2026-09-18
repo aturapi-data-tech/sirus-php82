@@ -23,6 +23,12 @@ new class extends Component {
     public string $noRacikan = 'R1';
 
     public array $renderVersions = [];
+
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan di bawah ini yang disimpan. */
+    private function muatDariDokumen(array $data): void
+    {
+        $this->eresepHdr = $data['eresepHdr'] ?? [];
+    }
     protected array $renderAreas = ['eresep-racikan-ri'];
 
     /* ===============================
@@ -54,7 +60,7 @@ new class extends Component {
             return;
         }
 
-        $this->eresepHdr = $data['eresepHdr'] ?? [];
+        $this->muatDariDokumen($data);
         $this->eresepHdr[$this->resepIndex]['eresepRacikan'] ??= [];
     }
 
@@ -72,7 +78,7 @@ new class extends Component {
         $data['eresepHdr'][$this->resepIndex]['eresepRacikan'] = $this->eresepHdr[$this->resepIndex]['eresepRacikan'] ?? [];
 
         $this->updateJsonRI($this->riHdrNo, $data);
-        $this->eresepHdr = $data['eresepHdr'] ?? [];
+        $this->muatDariDokumen($data);
     }
 
     /* ===============================

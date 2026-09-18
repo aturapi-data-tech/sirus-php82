@@ -27,6 +27,13 @@ new class extends Component {
     public string $descPDF = '';
     public string $viewFilePDF = '';
 
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan di bawah ini yang disimpan. */
+    private function muatDariDokumen(array $data): void
+    {
+        $this->regNoPasien = (string) ($data['regNo'] ?? '');
+        $this->pemeriksaan = $data['pemeriksaan'] ?? [];
+    }
+
     /**
      * riHdrNo datang lewat PROP dari induk (anak lahir di dalam @if($riHdrNo)), bukan lagi
      * lewat event open-rm-*: satu kali baca CLOB, tidak ada race urutan event.
@@ -61,7 +68,7 @@ new class extends Component {
             'pemeriksaanPenunjang' => ['lab' => [], 'rad' => []],
             'uploadHasilPenunjang' => [],
         ];
-        $this->regNoPasien = (string) ($data['regNo'] ?? '');
+        $this->muatDariDokumen($data);
 
         $this->isFormLocked = $this->checkEmrRIStatus($riHdrNo); // ← trait
 
@@ -112,7 +119,7 @@ new class extends Component {
                     ],
                 ];
                 $this->updateJsonRI($this->riHdrNo, $fresh);
-                $this->pemeriksaan = $fresh['pemeriksaan'] ?? [];
+                $this->muatDariDokumen($fresh);
 
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Upload Hasil Penunjang — ' . $this->descPDF, 'MR');
             });
@@ -155,7 +162,7 @@ new class extends Component {
                     ->values()
                     ->toArray();
                 $this->updateJsonRI($this->riHdrNo, $fresh);
-                $this->pemeriksaan = $fresh['pemeriksaan'] ?? [];
+                $this->muatDariDokumen($fresh);
 
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Hapus Hasil Penunjang — ' . ($deletedRow['desc'] ?? basename($file)), 'MR');
             });

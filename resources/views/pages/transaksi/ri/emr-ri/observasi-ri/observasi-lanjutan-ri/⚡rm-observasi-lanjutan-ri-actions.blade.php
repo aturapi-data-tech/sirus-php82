@@ -165,6 +165,12 @@ new class extends Component {
     /** Pratinjau skor dari isian form (dihitung ulang tiap field selesai diisi), sebelum disimpan. */
     public ?array $ewsPratinjau = null;
 
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan di bawah ini yang disimpan. */
+    private function muatDariDokumen(array $data): void
+    {
+        $this->daftarObservasiLanjutan = $data['observasi']['observasiLanjutan']['tandaVital'] ?? [];
+    }
+
     public function hitungPratinjauEws(): void
     {
         if (!$this->ewsTersedia()) {
@@ -214,7 +220,7 @@ new class extends Component {
         }
 
         // Diisi SEBELUM tentukanUmurDanVarian() — fungsi itu membaca entri terakhir dari sini.
-        $this->daftarObservasiLanjutan = $data['observasi']['observasiLanjutan']['tandaVital'] ?? [];
+        $this->muatDariDokumen($data);
 
         $this->isFormLocked = $this->checkEmrRIStatus($riHdrNo);
         $this->tentukanUmurDanVarian($data['regNo'] ?? null);
@@ -314,7 +320,7 @@ new class extends Component {
 
                 // 6. Simpan JSON
                 $this->updateJsonRI($this->riHdrNo, $data);
-                $this->daftarObservasiLanjutan = $data['observasi']['observasiLanjutan']['tandaVital'];
+                $this->muatDariDokumen($data);
 
                 // 7. Audit log
                 $ringkasEws = $hasilEws === null ? '' : ' - EWS ' . $hasilEws['total'] . ' (' . ($hasilEws['kategori'] ?? '-') . ')';
@@ -358,7 +364,7 @@ new class extends Component {
                     ->all();
 
                 $this->updateJsonRI($this->riHdrNo, $data);
-                $this->daftarObservasiLanjutan = $data['observasi']['observasiLanjutan']['tandaVital'];
+                $this->muatDariDokumen($data);
 
                 // Audit log
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Hapus Observasi Lanjutan — entri ' . $waktuPemeriksaan, 'MR');

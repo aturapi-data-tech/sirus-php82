@@ -79,7 +79,7 @@ new class extends Component {
         $this->perencanaan = array_replace_recursive($default, $this->perencanaan);
     }
     /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan + skalar + cuplikan yang disimpan. */
-    private function serapDokumen(array $data): void
+    private function muatDariDokumen(array $data): void
     {
         $this->perencanaan = $data['perencanaan'] ?? [];
         $this->drId = (string) ($data['drId'] ?? '');
@@ -131,7 +131,7 @@ new class extends Component {
             return;
         }
 
-        $this->serapDokumen($data);
+        $this->muatDariDokumen($data);
 
         // Initialize perencanaan data jika belum ada
         $this->perencanaan = $this->perencanaan ?: $this->getDefaultPerencanaan();
@@ -241,7 +241,7 @@ new class extends Component {
         }
 
         $this->updateJsonRJ($this->rjNo, $data);
-        $this->serapDokumen($data);
+        $this->muatDariDokumen($data);
     }
 
     /* ===============================

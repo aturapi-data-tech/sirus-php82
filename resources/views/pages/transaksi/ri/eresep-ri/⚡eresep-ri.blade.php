@@ -28,6 +28,13 @@ new class extends Component {
     ];
 
     public array $renderVersions = [];
+
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan di bawah ini yang disimpan. */
+    private function muatDariDokumen(array $data): void
+    {
+        $this->eresepHdr = $data['eresepHdr'] ?? [];
+        $this->activeResepIndex = count($data['eresepHdr']) - 1;
+    }
     protected array $renderAreas = ['modal', 'hdr-list'];
 
     /* ===============================
@@ -55,7 +62,7 @@ new class extends Component {
             return;
         }
 
-        $this->eresepHdr = $data['eresepHdr'] ?? [];
+        $this->muatDariDokumen($data);
 
         if ($this->checkRIStatus($riHdrNo)) {
             $this->isFormLocked = true;
@@ -94,7 +101,7 @@ new class extends Component {
         }
         $data = $this->findDataRI($this->riHdrNo);
         if ($data) {
-            $this->eresepHdr = $data['eresepHdr'] ?? [];
+            $this->muatDariDokumen($data);
         }
         $this->loadApotekStatuses();
         $this->incrementVersion('hdr-list');
@@ -168,8 +175,7 @@ new class extends Component {
                 ];
 
                 $this->updateJsonRI($this->riHdrNo, $data);
-                $this->eresepHdr = $data['eresepHdr'] ?? [];
-                $this->activeResepIndex = count($data['eresepHdr']) - 1;
+                $this->muatDariDokumen($data);
             });
 
             $this->formResepHdr['resepDate'] = Carbon::now()->format('d/m/Y H:i:s');
@@ -212,7 +218,7 @@ new class extends Component {
                 $data['eresepHdr'][$resepIndex]['cito'] = $cito;
 
                 $this->updateJsonRI($this->riHdrNo, $data);
-                $this->eresepHdr = $data['eresepHdr'] ?? [];
+                $this->muatDariDokumen($data);
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Resep #' . ($hdr['resepNo'] ?? '-') . ($cito === '1' ? ' ditandai CITO' : ' — tanda CITO dicabut'), 'MR');
             });
 
@@ -257,7 +263,7 @@ new class extends Component {
                 array_splice($data['eresepHdr'], $resepIndex, 1);
 
                 $this->updateJsonRI($this->riHdrNo, $data);
-                $this->eresepHdr = $data['eresepHdr'] ?? [];
+                $this->muatDariDokumen($data);
 
                 $total = count($data['eresepHdr']);
                 $this->activeResepIndex = $total > 0 ? min($this->activeResepIndex ?? 0, $total - 1) : null;
@@ -340,7 +346,7 @@ new class extends Component {
                 $data['eresepHdr'][$resepIndex]['slsNo'] = $slsNo;
 
                 $this->updateJsonRI($this->riHdrNo, $data);
-                $this->eresepHdr = $data['eresepHdr'] ?? [];
+                $this->muatDariDokumen($data);
             });
 
             $this->incrementVersion('modal');
@@ -415,7 +421,7 @@ new class extends Component {
                 unset($data['eresepHdr'][$resepIndex]['slsNo']);
 
                 $this->updateJsonRI($this->riHdrNo, $data);
-                $this->eresepHdr = $data['eresepHdr'] ?? [];
+                $this->muatDariDokumen($data);
             });
 
             $this->incrementVersion('modal');
@@ -479,8 +485,7 @@ new class extends Component {
                 ];
 
                 $this->updateJsonRI($this->riHdrNo, $data);
-                $this->eresepHdr = $data['eresepHdr'] ?? [];
-                $this->activeResepIndex = count($data['eresepHdr']) - 1;
+                $this->muatDariDokumen($data);
             });
 
             $this->incrementVersion('modal');

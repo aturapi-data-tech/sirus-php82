@@ -51,6 +51,15 @@ new class extends Component {
     public ?string $editingSbarId = null;
 
     public array $renderVersions = [];
+
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan di bawah ini yang disimpan. */
+    private function muatDariDokumen(array $data): void
+    {
+        $this->daftarSbar = $data['sbar'] ?? [];
+        $this->regNoPasien = $data['regNo'] ?? null;
+        $this->dpjpId = (string) ($data['drId'] ?? '');
+        $this->dpjpDesc = (string) ($data['drDesc'] ?? '');
+    }
     protected array $renderAreas = ['modal-sbar-ugd'];
 
     /**
@@ -84,10 +93,7 @@ new class extends Component {
             return;
         }
 
-        $this->daftarSbar = $data['sbar'] ?? [];
-        $this->regNoPasien = $data['regNo'] ?? null;
-        $this->dpjpId = (string) ($data['drId'] ?? '');
-        $this->dpjpDesc = (string) ($data['drDesc'] ?? '');
+        $this->muatDariDokumen($data);
 
         $role = $this->profesiSaya();
         $this->activeProfession = in_array($role, ['Dokter', 'Perawat', 'Apoteker', 'Gizi'], true) ? $role : 'Semua';
@@ -160,7 +166,7 @@ new class extends Component {
                 ]);
 
                 $this->updateJsonUGD((int) $this->rjNo, $fresh);
-                $this->daftarSbar = $fresh['sbar'] ?? [];
+                $this->muatDariDokumen($fresh);
                 $inserted = true;
 
                 $this->appendAdminLogUGD((int) $this->rjNo, 'Tambah SBAR UGD — entri ' . $this->formEntrySBAR['tglSBAR'] . ' (' . ($this->formEntrySBAR['profession'] ?: '-') . ')', 'MR');
@@ -263,7 +269,7 @@ new class extends Component {
                 $fresh['sbar'] = $list->values()->all();
 
                 $this->updateJsonUGD((int) $this->rjNo, $fresh);
-                $this->daftarSbar = $fresh['sbar'] ?? [];
+                $this->muatDariDokumen($fresh);
                 $updated = true;
 
                 $this->appendAdminLogUGD((int) $this->rjNo, 'Edit SBAR UGD — entri ' . ($row['tglSBAR'] ?? '-') . ' (' . ($row['profession'] ?: '-') . ')', 'MR');
@@ -312,7 +318,7 @@ new class extends Component {
                 $fresh['sbar'] = $list->values()->all();
 
                 $this->updateJsonUGD((int) $this->rjNo, $fresh);
-                $this->daftarSbar = $fresh['sbar'] ?? [];
+                $this->muatDariDokumen($fresh);
 
                 $this->appendAdminLogUGD((int) $this->rjNo, 'Hapus SBAR UGD — entri ' . ($row['tglSBAR'] ?? '-') . ' oleh ' . ($row['petugasSBAR'] ?? '-'), 'MR');
             });
@@ -373,7 +379,7 @@ new class extends Component {
                 $fresh['sbar'] = $list->values()->all();
 
                 $this->updateJsonUGD((int) $this->rjNo, $fresh);
-                $this->daftarSbar = $fresh['sbar'] ?? [];
+                $this->muatDariDokumen($fresh);
 
                 $this->appendAdminLogUGD((int) $this->rjNo, 'Review SBAR UGD — entri ' . ($row['tglSBAR'] ?? '-') . ' oleh DPJP ' . ($dpjpName ?: '-'), 'MR');
             });
@@ -418,7 +424,7 @@ new class extends Component {
                 $fresh['sbar'] = $list->values()->all();
 
                 $this->updateJsonUGD((int) $this->rjNo, $fresh);
-                $this->daftarSbar = $fresh['sbar'] ?? [];
+                $this->muatDariDokumen($fresh);
 
                 $this->appendAdminLogUGD((int) $this->rjNo, 'Batal review SBAR UGD — entri ' . ($row['tglSBAR'] ?? '-'), 'MR');
             });

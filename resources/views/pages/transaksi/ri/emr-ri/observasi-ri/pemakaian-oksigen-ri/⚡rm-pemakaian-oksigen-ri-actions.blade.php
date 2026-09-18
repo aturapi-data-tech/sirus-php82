@@ -37,6 +37,12 @@ new class extends Component {
     ];
 
     public array $renderVersions = [];
+
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan di bawah ini yang disimpan. */
+    private function muatDariDokumen(array $data): void
+    {
+        $this->daftarPemakaianOksigen = $data['observasi']['pemakaianOksigen']['pemakaianOksigenData'] ?? [];
+    }
     protected array $renderAreas = ['modal-pemakaian-oksigen-ri'];
 
     public function mount(): void
@@ -59,7 +65,7 @@ new class extends Component {
             return;
         }
 
-        $this->daftarPemakaianOksigen = $data['observasi']['pemakaianOksigen']['pemakaianOksigenData'] ?? [];
+        $this->muatDariDokumen($data);
 
         $this->isFormLocked = $this->checkEmrRIStatus($riHdrNo);
         $this->setWaktuMulaiOksigen();
@@ -147,7 +153,7 @@ new class extends Component {
                 ]);
 
                 $this->updateJsonRI($this->riHdrNo, $data);
-                $this->daftarPemakaianOksigen = $data['observasi']['pemakaianOksigen']['pemakaianOksigenData'];
+                $this->muatDariDokumen($data);
 
                 // Audit log
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Tambah Pemakaian Oksigen — mulai ' . ($this->formEntryOksigen['tanggalWaktuMulai'] ?? '-'), 'MR');
@@ -233,7 +239,7 @@ new class extends Component {
 
                 $data['observasi']['pemakaianOksigen']['pemakaianOksigenData'] = array_values($list);
                 $this->updateJsonRI($this->riHdrNo, $data);
-                $this->daftarPemakaianOksigen = $data['observasi']['pemakaianOksigen']['pemakaianOksigenData'];
+                $this->muatDariDokumen($data);
 
                 // Audit log
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Update selesai Pemakaian Oksigen — ' . $waktuSelesai, 'MR');
@@ -270,7 +276,7 @@ new class extends Component {
                     ->all();
 
                 $this->updateJsonRI($this->riHdrNo, $data);
-                $this->daftarPemakaianOksigen = $data['observasi']['pemakaianOksigen']['pemakaianOksigenData'];
+                $this->muatDariDokumen($data);
 
                 // Audit log
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Hapus Pemakaian Oksigen — mulai ' . $waktuMulai, 'MR');

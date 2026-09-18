@@ -31,6 +31,13 @@ new class extends Component {
     /** Tanggal masuk RI — dipakai untuk hitung exp_date paket obat. */
     public string $riDateStr = '';
 
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan di bawah ini yang disimpan. */
+    private function muatDariDokumen(array $data): void
+    {
+        $this->klaimStatus = $data['klaimStatus'] ?? 'UMUM';
+        $this->riDateStr = $data['entryDate'] ?? '';
+    }
+
     public array $formEntry = [
         'actdDate'       => '',
         'drId'           => '',
@@ -84,8 +91,7 @@ new class extends Component {
     private function loadRIMeta(int $riHdrNo): void
     {
         $data = $this->findDataRI($riHdrNo);
-        $this->klaimStatus = $data['klaimStatus'] ?? 'UMUM';
-        $this->riDateStr = $data['entryDate'] ?? '';
+        $this->muatDariDokumen($data);
     }
 
     private function findData(int $riHdrNo): void

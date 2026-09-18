@@ -21,6 +21,17 @@ new class extends Component {
     public string $regNoPasien = '';
     public array $dataPasien = [];
     public array $renderVersions = [];
+
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan di bawah ini yang disimpan. */
+    private function muatDariDokumen(array $data): void
+    {
+        $this->idrg = $data['idrg'] ?? [];
+        $this->noSep = (string) ($data['sep']['noSep'] ?? '');
+        $this->klaimStatus = (string) ($data['klaimStatus'] ?? '');
+        $this->klaimId = (string) ($data['klaimId'] ?? '');
+        $this->regNoPasien = (string) ($data['regNo'] ?? '');
+        $this->dataPasien = $this->findDataMasterPasien($data['regNo'] ?? '');
+    }
     protected array $renderAreas = ['modal'];
 
     public function mount(?string $initialRiHdrNo = null): void
@@ -96,12 +107,7 @@ new class extends Component {
             return false;
         }
         // Dokumen dibaca sebagai variabel LOKAL; hanya cabang idrg + skalar yang ditahan.
-        $this->idrg = $data['idrg'] ?? [];
-        $this->noSep = (string) ($data['sep']['noSep'] ?? '');
-        $this->klaimStatus = (string) ($data['klaimStatus'] ?? '');
-        $this->klaimId = (string) ($data['klaimId'] ?? '');
-        $this->regNoPasien = (string) ($data['regNo'] ?? '');
-        $this->dataPasien = $this->findDataMasterPasien($data['regNo'] ?? '');
+        $this->muatDariDokumen($data);
         return true;
     }
 };

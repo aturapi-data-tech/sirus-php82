@@ -27,7 +27,7 @@ new class extends Component {
     public bool $dokumenTermuat = false;
 
     /** Dokumen dibaca sebagai variabel LOKAL; hanya empat cabang + regNo yang disimpan. */
-    private function serapIrisan(array $data): void
+    private function muatDariDokumen(array $data): void
     {
         $this->telaahResep = $data['telaahResep'] ?? [];
         $this->telaahObat = $data['telaahObat'] ?? [];
@@ -367,7 +367,7 @@ new class extends Component {
     private function gantiStateDariDb(array $data, string $nodeDipertahankan): void
     {
         $isianLayar = $this->{$nodeDipertahankan};
-        $this->serapIrisan($data);
+        $this->muatDariDokumen($data);
         if (is_array($isianLayar)) {
             $this->{$nodeDipertahankan} = $isianLayar;
         }
@@ -385,7 +385,7 @@ new class extends Component {
             return;
         }
 
-        $this->serapIrisan($data);
+        $this->muatDariDokumen($data);
     }
 
     private function afterSave(): void

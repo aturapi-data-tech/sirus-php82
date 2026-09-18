@@ -109,6 +109,13 @@ new class extends Component {
     public array $kriteriaOptions = ['Anak', 'Dewasa', 'Geriatri'];
     public array $mallampatiOptions = ['I', 'II', 'III', 'IV'];
     public array $gerakLeherOptions = ['Bebas', 'Terbatas'];
+
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan di bawah ini yang disimpan. */
+    private function muatDariDokumen(array $data): void
+    {
+        $this->regNo = $data['regNo'] ?? null;
+        $this->praAnestesiList = is_array($data['praAnestesiRI'] ?? null) ? $data['praAnestesiRI'] : [];
+    }
     public array $asaOptions = ['ASA I', 'ASA II', 'ASA III', 'ASA IV', 'ASA V', 'ASA I-E', 'ASA II-E', 'ASA III-E', 'ASA IV-E', 'ASA V-E'];
 
     /* ===============================
@@ -123,8 +130,7 @@ new class extends Component {
         if ($this->riHdrNo) {
             $data = $this->findDataRI($this->riHdrNo);
             if ($data) {
-                $this->regNo = $data['regNo'] ?? null;
-                $this->praAnestesiList = $data['praAnestesiRI'] ?? [];
+                $this->muatDariDokumen($data);
                 $this->isFormLocked = $this->checkEmrRIStatus($this->riHdrNo) || $disabled;
             }
         }
@@ -151,8 +157,7 @@ new class extends Component {
             return;
         }
 
-        $this->regNo = $data['regNo'] ?? null;
-        $this->praAnestesiList = is_array($data['praAnestesiRI'] ?? null) ? $data['praAnestesiRI'] : [];
+        $this->muatDariDokumen($data);
         $this->isFormLocked = $this->checkEmrRIStatus($this->riHdrNo) || $this->disabled;
         $this->incrementVersion('modal-pra-anestesi-ri');
 
@@ -299,7 +304,7 @@ new class extends Component {
             $fresh['praAnestesiRI'] = array_values($list);
 
             $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-            $this->praAnestesiList = $fresh['praAnestesiRI'];
+            $this->muatDariDokumen($fresh);
 
             $this->appendAdminLogRI((int) $this->riHdrNo, $logVerb . ' Pengkajian Pra Anestesi — ' . ($entry['psAsa'] ?: '-') . ' (' . $key . ')', 'MR');
         });
@@ -483,7 +488,7 @@ new class extends Component {
                 $fresh['praAnestesiRI'] = array_values($list);
 
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->praAnestesiList = $fresh['praAnestesiRI'];
+                $this->muatDariDokumen($fresh);
 
                 $pembukaKunci = auth()->user()->myuser_name ?? '-';
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Buka kunci Pengkajian Pra Anestesi (' . $createdAt . ') oleh ' . $pembukaKunci . ' — kedua TTD dicabut', 'MR');
@@ -665,7 +670,7 @@ new class extends Component {
                     ->toArray();
 
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->praAnestesiList = $fresh['praAnestesiRI'];
+                $this->muatDariDokumen($fresh);
 
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Hapus Pengkajian Pra Anestesi — ' . $createdAt, 'MR');
             });

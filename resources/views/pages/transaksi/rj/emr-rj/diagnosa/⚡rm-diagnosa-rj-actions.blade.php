@@ -33,6 +33,15 @@ new class extends Component {
 
     // renderVersions
     public array $renderVersions = [];
+
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan di bawah ini yang disimpan. */
+    private function muatDariDokumen(array $data): void
+    {
+        $this->diagnosis = $data['diagnosis'] ?? [];
+        $this->procedure = $data['procedure'] ?? [];
+        $this->diagnosisFreeText = (string) ($data['diagnosisFreeText'] ?? '');
+        $this->procedureFreeText = (string) ($data['procedureFreeText'] ?? '');
+    }
     protected array $renderAreas = ['modal-diagnosis-rj'];
 
     /* ===============================
@@ -79,10 +88,7 @@ new class extends Component {
         $this->procedureId = null;
 
         // Initialize diagnosis & procedure jika belum ada
-        $this->diagnosis = $data['diagnosis'] ?? [];
-        $this->procedure = $data['procedure'] ?? [];
-        $this->diagnosisFreeText = (string) ($data['diagnosisFreeText'] ?? '');
-        $this->procedureFreeText = (string) ($data['procedureFreeText'] ?? '');
+        $this->muatDariDokumen($data);
         $this->dokumenTermuat = true;
 
         // 🔥 INCREMENT: Refresh seluruh modal diagnosis

@@ -15,9 +15,15 @@ new class extends Component {
     public bool $isFormLocked = false;
     public ?string $riHdrNo = null;
     /** IRISAN dokumen: hanya daftar `penilaian.resikoJatuh`. */
-    public array $daftarEntri = [];
+    public array $daftarResikoJatuh = [];
 
     public array $renderVersions = [];
+
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan di bawah ini yang disimpan. */
+    private function muatDariDokumen(array $data): void
+    {
+        $this->daftarResikoJatuh = $data['penilaian']['resikoJatuh'] ?? [];
+    }
     protected array $renderAreas = ['modal-penilaian-resiko-jatuh-ri'];
 
     public array $formEntryResikoJatuh = [
@@ -72,7 +78,7 @@ new class extends Component {
             return;
         }
 
-        $this->daftarEntri = $data['penilaian']['resikoJatuh'] ?? [];
+        $this->muatDariDokumen($data);
 
         $this->isFormLocked = $this->checkEmrRIStatus($riHdrNo);
 
@@ -156,7 +162,7 @@ new class extends Component {
                 $fresh['penilaian']['resikoJatuh'][] = $this->formEntryResikoJatuh;
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Tambah Penilaian Risiko Jatuh — ' . ($this->formEntryResikoJatuh['tglPenilaian'] ?? '-'), 'MR');
-                $this->daftarEntri = $fresh['penilaian']['resikoJatuh'] ?? [];
+                $this->muatDariDokumen($fresh);
             });
             $this->reset(['formEntryResikoJatuh']);
             $this->afterSave('Penilaian Risiko Jatuh berhasil disimpan.');
@@ -183,7 +189,7 @@ new class extends Component {
                 $fresh['penilaian']['resikoJatuh'] = array_values($fresh['penilaian']['resikoJatuh']);
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Hapus Penilaian Risiko Jatuh — entri ' . $tglHapus, 'MR');
-                $this->daftarEntri = $fresh['penilaian']['resikoJatuh'] ?? [];
+                $this->muatDariDokumen($fresh);
             });
             $this->afterSave('Risiko Jatuh dihapus.');
         } catch (\RuntimeException $e) {
@@ -311,7 +317,7 @@ new class extends Component {
         </div>
     @endif
 
-    @if (collect($daftarEntri)->filter(fn($r) => filled(data_get($r, 'tglPenilaian')))->isNotEmpty())
+    @if (collect($daftarResikoJatuh)->filter(fn($r) => filled(data_get($r, 'tglPenilaian')))->isNotEmpty())
         <x-border-form title="Riwayat Penilaian Risiko Jatuh" align="start" bgcolor="bg-canvas">
             <div class="mt-3 overflow-x-auto rounded-lg border border-hairline dark:border-gray-700">
                 <table class="w-full text-sm text-left text-body dark:text-gray-300">
@@ -330,7 +336,7 @@ new class extends Component {
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-hairline-soft dark:divide-gray-700">
-                        @foreach (array_reverse(array_filter($daftarEntri, fn($r) => filled(data_get($r, 'tglPenilaian'))), true) as $i => $row)
+                        @foreach (array_reverse(array_filter($daftarResikoJatuh, fn($r) => filled(data_get($r, 'tglPenilaian'))), true) as $i => $row)
                             @php
                                 $kat = $row['resikoJatuh']['kategoriResiko'] ?? '-';
                                 $rowBg =

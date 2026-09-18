@@ -71,6 +71,14 @@ new class extends Component {
     // true = entri terkunci sedang ditampilkan di form dalam mode read-only (lihat saja, tak bisa edit).
     public bool $viewOnly = false;
 
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan di bawah ini yang disimpan. */
+    private function muatDariDokumen(array $data): void
+    {
+        $this->regNo = $data['regNo'] ?? null;
+        $this->penundaanList = is_array($data['penundaanPelayananRI'] ?? null) ? $data['penundaanPelayananRI'] : [];
+        $this->regName = $data['regName'] ?? null;
+    }
+
     /* ===============================
      | MOUNT
      =============================== */
@@ -83,8 +91,7 @@ new class extends Component {
         if ($this->riHdrNo) {
             $data = $this->findDataRI($this->riHdrNo);
             if ($data) {
-                $this->regNo = $data['regNo'] ?? null;
-                $this->penundaanList = $data['penundaanPelayananRI'] ?? [];
+                $this->muatDariDokumen($data);
                 $this->isFormLocked = $this->checkEmrRIStatus($this->riHdrNo) || $disabled;
             }
         }
@@ -111,9 +118,7 @@ new class extends Component {
             return;
         }
 
-        $this->regNo = $data['regNo'] ?? null;
-        $this->penundaanList = is_array($data['penundaanPelayananRI'] ?? null) ? $data['penundaanPelayananRI'] : [];
-        $this->regName = $data['regName'] ?? null;
+        $this->muatDariDokumen($data);
         $this->newForm['namaPenanda'] = $this->regName ?? '';
         $this->isFormLocked = $this->checkEmrRIStatus($this->riHdrNo) || $this->disabled;
         $this->incrementVersion('modal-penundaan-pelayanan-ri');
@@ -313,7 +318,7 @@ new class extends Component {
             $data['penundaanPelayananRI'] = array_values($list);
 
             $this->updateJsonRI((int) $this->riHdrNo, $data);
-            $this->penundaanList = $data['penundaanPelayananRI'];
+            $this->muatDariDokumen($data);
 
             $this->appendAdminLogRI((int) $this->riHdrNo, $logVerb . ' Penundaan Pelayanan RI — jenis "' . ($entry['jenis'] ?: ($entry['alasan'] ?: '-')) . '" (' . $key . ')', 'MR');
         });
@@ -523,7 +528,7 @@ new class extends Component {
                     ->toArray();
 
                 $this->updateJsonRI((int) $this->riHdrNo, $data);
-                $this->penundaanList = $data['penundaanPelayananRI'];
+                $this->muatDariDokumen($data);
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Hapus Pemberitahuan Penundaan/Kelambatan — TTD ' . $signatureDate, 'MR');
             });
 
@@ -564,7 +569,7 @@ new class extends Component {
                 $list[$index]['pemberiInfoDate'] = '';
                 $data['penundaanPelayananRI'] = array_values($list);
                 $this->updateJsonRI((int) $this->riHdrNo, $data);
-                $this->penundaanList = $data['penundaanPelayananRI'];
+                $this->muatDariDokumen($data);
                 $pembukaKunci = auth()->user()->myuser_name ?? '-';
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Buka kunci Pemberitahuan Penundaan Pelayanan (' . $signatureDate . ') oleh ' . $pembukaKunci . ' — TTD petugas dicabut, entri kembali draft', 'MR');
             });

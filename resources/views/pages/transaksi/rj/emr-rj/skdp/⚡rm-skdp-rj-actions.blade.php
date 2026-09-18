@@ -61,7 +61,7 @@ new class extends Component {
      | OPEN
     ═══════════════════════════════════════ */
     /** Dokumen dibaca sebagai variabel LOKAL; hanya skalar ini yang disimpan. */
-    private function serapSkalar(array $data): void
+    private function muatDariDokumen(array $data): void
     {
         $this->drId = (string) ($data['drId'] ?? '');
         $this->klaimStatus = (string) ($data['klaimStatus'] ?? '');
@@ -81,7 +81,7 @@ new class extends Component {
             return;
         }
 
-        $this->serapSkalar($data);
+        $this->muatDariDokumen($data);
 
         // Isi formKontrol:
         // 1. Dari DB jika sudah ada → pakai
@@ -278,7 +278,7 @@ new class extends Component {
         // 5. Init formKontrol hanya jika child belum pernah di-mount
         //    (kasus: child mount tapi rjNo belum di-set)
         if (empty($this->formKontrol['tglKontrol'])) {
-            $this->serapSkalar($freshData);
+            $this->muatDariDokumen($freshData);
             $this->formKontrol = !empty($freshData['kontrol']) ? $freshData['kontrol'] : $this->getDefaultKontrol();
         }
 
