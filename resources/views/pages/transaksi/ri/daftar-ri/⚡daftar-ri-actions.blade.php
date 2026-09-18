@@ -27,7 +27,27 @@ new class extends Component {
     public bool $modalTerbuka = false;
 
     public ?string $riHdrNo = null;
-    public array $dataDaftarRi = [];
+    /**
+     * MODEL FORM pendaftaran RI — bukan dokumen EMR. Pola sama dengan daftar-rj-actions
+     * (1af09b7b) & daftar-ugd-actions (b76b4cd1): saat `create` isinya template header,
+     * saat `edit` dulu diisi dokumen UTUH padahal penyimpanan hanya menyalin balik
+     * $allowedFields.
+     */
+    public array $formDaftar = [];
+
+    /**
+     * Kunci yang boleh tinggal di model form = union dari: (a) $allowedFields saat simpan,
+     * (b) kunci getDefaultRITemplate(), (c) `levelingDokter` yang HANYA dibaca untuk
+     * menampilkan daftar dokter leveling.
+     */
+    private const KUNCI_FORM = [
+        'riHdrNo', 'regNo', 'regName', 'drId', 'drDesc', 'poliId', 'poliDesc',
+        'entryId', 'entryDesc', 'entryDate', 'exitDate', 'bangsalId', 'bangsalDesc',
+        'roomId', 'roomDesc', 'bedNo', 'klaimId', 'klaimDesc', 'klaimStatus', 'riStatus',
+        'ermStatus', 'shift', 'noAntrian', 'noBooking', 'slCodeFrom', 'noReferensi',
+        'sep', 'spri', 'kddrbpjs', 'kdpolibpjs', 'statusAdminAge', 'adminAge',
+        'kasusPolisi', 'k14th', 'kPolisi', 'pengkajianAwalPasienRawatInap',
+    ];
     public array $dataPasien = [];
 
     public array $renderVersions = [];
@@ -56,7 +76,7 @@ new class extends Component {
     public function mount(): void
     {
         $this->registerAreas(['modal', 'pasien', 'dokter', 'bangsal']);
-        $this->dataDaftarRi = $this->getDefaultRITemplate();
+        $this->formDaftar = $this->getDefaultRITemplate();
 
         // Cara Masuk RI pakai master rsmst_entrytypes (bukan rsmst_entryugds — itu master UGD).
         // rstxn_rihdrs.entry_id + view rsview_rihdrs (display) keduanya bersemantik entrytypes.
@@ -74,12 +94,12 @@ new class extends Component {
         $this->resetForm();
         $this->formMode = 'create';
         $this->resetValidation();
-        $this->dataDaftarRi = $this->getDefaultRITemplate();
+        $this->formDaftar = $this->getDefaultRITemplate();
 
         $now = Carbon::now();
-        $this->dataDaftarRi['entryDate'] = $now->format('d/m/Y H:i:s');
-        $this->dataDaftarRi['entryId'] = $this->entryId;
-        $this->dataDaftarRi['entryDesc'] = collect($this->entryOptions)->firstWhere('entryId', $this->entryId)['entryDesc'] ?? '';
+        $this->formDaftar['entryDate'] = $now->format('d/m/Y H:i:s');
+        $this->formDaftar['entryId'] = $this->entryId;
+        $this->formDaftar['entryDesc'] = collect($this->entryOptions)->firstWhere('entryId', $this->entryId)['entryDesc'] ?? '';
 
         $findShift = DB::table('rstxn_shiftctls')
             ->select('shift')
@@ -87,7 +107,7 @@ new class extends Component {
             ->whereNotNull('shift_end')
             ->whereRaw('? BETWEEN shift_start AND shift_end', [$now->format('H:i:s')])
             ->first();
-        $this->dataDaftarRi['shift'] = (string) ($findShift?->shift ?? 1);
+        $this->formDaftar['shift'] = (string) ($findShift?->shift ?? 1);
 
         $this->modalTerbuka = true;
         $this->incrementVersion('modal');
@@ -117,8 +137,9 @@ new class extends Component {
             $this->dispatch('toast', type: 'warning', message: 'Data RI ini sudah selesai dan tidak bisa diubah.');
         }
 
-        $this->dataDaftarRi = $data;
-        $this->dataPasien = $this->findDataMasterPasien($this->dataDaftarRi['regNo'] ?? '');
+        // Hanya kunci milik form yang ditahan — cabang EMR tidak ikut ke snapshot.
+        $this->formDaftar = array_intersect_key($data, array_flip(self::KUNCI_FORM));
+        $this->dataPasien = $this->findDataMasterPasien($this->formDaftar['regNo'] ?? '');
         $this->syncFromDataDaftarRI();
 
         $this->modalTerbuka = true;
@@ -156,7 +177,7 @@ new class extends Component {
             throw $e;
         }
 
-        $riHdrNo = $this->dataDaftarRi['riHdrNo'] ?? null;
+        $riHdrNo = $this->formDaftar['riHdrNo'] ?? null;
         if (!$riHdrNo) {
             $this->dispatch('toast', type: 'error', message: 'Nomor RI Header tidak valid.');
             return;
@@ -164,7 +185,7 @@ new class extends Component {
 
         // Cek lockstatus pasien — hanya saat create (bukan edit)
         if ($this->formMode === 'create') {
-            $lockError = $this->checkLockStatus($this->dataDaftarRi['regNo'] ?? '');
+            $lockError = $this->checkLockStatus($this->formDaftar['regNo'] ?? '');
             if ($lockError) {
                 $this->dispatch('toast', type: 'error', message: $lockError);
                 return;
@@ -186,17 +207,17 @@ new class extends Component {
                                 // (double submit) bisa sama-sama lolos. Di sini mereka
                                 // antre — yang menang set lockstatus='RI', yang kalah
                                 // terdeteksi dan ditolak.
-                                $lockError = $this->checkLockStatus($this->dataDaftarRi['regNo'] ?? '');
+                                $lockError = $this->checkLockStatus($this->formDaftar['regNo'] ?? '');
                                 if ($lockError) {
                                     throw new \RuntimeException($lockError . ' Pendaftaran ganda dibatalkan.');
                                 }
 
                                 $riHdrNo = (string) ((int) DB::table('rstxn_rihdrs')->max('rihdr_no') + 1);
-                                $this->dataDaftarRi['riHdrNo'] = $riHdrNo;
+                                $this->formDaftar['riHdrNo'] = $riHdrNo;
                                 DB::table('rstxn_rihdrs')->insert($this->buildPayload($riHdrNo, 'create'));
                                 $this->updateJsonData($riHdrNo);
                                 $this->insertTrfRoom($riHdrNo);
-                                $this->updateLockStatus($this->dataDaftarRi['regNo'], 'RI');
+                                $this->updateLockStatus($this->formDaftar['regNo'], 'RI');
                                 $message = 'Data RI berhasil disimpan.';
                             });
                         });
@@ -238,30 +259,30 @@ new class extends Component {
      =============================== */
     private function buildPayload(int|string $riHdrNo, string $mode): array
     {
-        $entryDateRaw = $this->dataDaftarRi['entryDate'] ?? Carbon::now()->format('d/m/Y H:i:s');
+        $entryDateRaw = $this->formDaftar['entryDate'] ?? Carbon::now()->format('d/m/Y H:i:s');
 
         $base = [
             // ── Primary Key ──────────────────────────────────────────────
             'rihdr_no' => $riHdrNo,
 
             // ── Identitas & Waktu ─────────────────────────────────────────
-            'reg_no' => $this->dataDaftarRi['regNo'] ?? '',
+            'reg_no' => $this->formDaftar['regNo'] ?? '',
             'entry_date' => DB::raw("to_date('{$entryDateRaw}','dd/mm/yyyy hh24:mi:ss')"),
-            'entry_id' => $this->dataDaftarRi['entryId'] ?? '1',
-            'shift' => $this->dataDaftarRi['shift'] ?? 1,
+            'entry_id' => $this->formDaftar['entryId'] ?? '1',
+            'shift' => $this->formDaftar['shift'] ?? 1,
 
             // ── Dokter & Kamar ────────────────────────────────────────────
-            'dr_id' => $this->dataDaftarRi['drId'] ?? '',
-            'room_id' => $this->dataDaftarRi['roomId'] ?? '',
-            'bed_no' => $this->dataDaftarRi['bedNo'] ?? '',
+            'dr_id' => $this->formDaftar['drId'] ?? '',
+            'room_id' => $this->formDaftar['roomId'] ?? '',
+            'bed_no' => $this->formDaftar['bedNo'] ?? '',
 
             // ── Klaim & SEP ───────────────────────────────────────────────
-            'klaim_id' => $this->dataDaftarRi['klaimId'] ?? 'UM',
-            'vno_sep' => $this->dataDaftarRi['sep']['noSep'] ?? '',
+            'klaim_id' => $this->formDaftar['klaimId'] ?? 'UM',
+            'vno_sep' => $this->formDaftar['sep']['noSep'] ?? '',
 
             // ── Status ────────────────────────────────────────────────────
-            'ri_status' => $this->dataDaftarRi['riStatus'] ?? 'I',
-            'erm_status' => $this->dataDaftarRi['ermStatus'] ?? 'A',
+            'ri_status' => $this->formDaftar['riStatus'] ?? 'I',
+            'erm_status' => $this->formDaftar['ermStatus'] ?? 'A',
 
             // ── Admin RI ──────────────────────────────────────────────────
             // ⚠️  admin_status BUKAN flag — itu NOMINAL "Admin Status RI"
@@ -279,7 +300,7 @@ new class extends Component {
             //     admin_status selalu dikenakan; yang bergantung usia adalah admin_age
             //     (par_id=3 "ADMIN USIA 14+" = 25.000) lewat toggle $statusAdminAge.
             'admin_status' => (int) (DB::table('rsmst_parameters')->where('par_id', 2)->value('par_value') ?? 0),
-            'admin_age' => $this->dataDaftarRi['adminAge'] ?? 0,
+            'admin_age' => $this->formDaftar['adminAge'] ?? 0,
 
             // ── Kasus Polisi ──────────────────────────────────────────────
             // POLICE_CASE: '1' = kasus polisi/medikolegal, '0' = tidak
@@ -288,7 +309,7 @@ new class extends Component {
             // ── JSON Payload (seluruh dataDaftarRi) ───────────────────────
             // Semua field yang tidak punya kolom sendiri (noBooking, noReferensi,
             // bangsalId, poliId, dll) disimpan di sini.
-            'datadaftarri_json' => json_encode($this->dataDaftarRi, JSON_UNESCAPED_UNICODE),
+            'datadaftarri_json' => json_encode($this->formDaftar, JSON_UNESCAPED_UNICODE),
         ];
 
         if ($mode === 'create') {
@@ -321,7 +342,7 @@ new class extends Component {
      =============================== */
     private function setDataPrimer(): void
     {
-        $data = &$this->dataDaftarRi;
+        $data = &$this->formDaftar;
         $data['entryId'] = $this->entryId;
         $data['entryDesc'] = collect($this->entryOptions)->firstWhere('entryId', $this->entryId)['entryDesc'] ?? '';
         $data['bangsalId'] = $this->bangsalId;
@@ -360,38 +381,38 @@ new class extends Component {
     {
         $this->validate(
             [
-                'dataDaftarRi.regNo' => 'bail|required|exists:rsmst_pasiens,reg_no',
-                'dataDaftarRi.drId' => 'required|exists:rsmst_doctors,dr_id',
-                'dataDaftarRi.drDesc' => 'required|string',
-                'dataDaftarRi.entryDate' => 'required|date_format:d/m/Y H:i:s',
-                'dataDaftarRi.riHdrNo' => 'required|numeric',
-                'dataDaftarRi.roomId' => 'required|exists:rsmst_rooms,room_id',
-                'dataDaftarRi.bedNo' => 'required',
-                'dataDaftarRi.shift' => 'required|in:1,2,3',
-                'dataDaftarRi.riStatus' => 'required|in:I,L,P',
-                'dataDaftarRi.klaimId' => 'required|exists:rsmst_klaimtypes,klaim_id',
+                'formDaftar.regNo' => 'bail|required|exists:rsmst_pasiens,reg_no',
+                'formDaftar.drId' => 'required|exists:rsmst_doctors,dr_id',
+                'formDaftar.drDesc' => 'required|string',
+                'formDaftar.entryDate' => 'required|date_format:d/m/Y H:i:s',
+                'formDaftar.riHdrNo' => 'required|numeric',
+                'formDaftar.roomId' => 'required|exists:rsmst_rooms,room_id',
+                'formDaftar.bedNo' => 'required',
+                'formDaftar.shift' => 'required|in:1,2,3',
+                'formDaftar.riStatus' => 'required|in:I,L,P',
+                'formDaftar.klaimId' => 'required|exists:rsmst_klaimtypes,klaim_id',
                 // bangsalId: tidak ada kolom BANGSAL_ID di RSTXN_RIHDRS → tidak divalidasi DB-level
                 // noBooking, noAntrian, noReferensi, slCodeFrom: disimpan di JSON saja
             ],
             [
-                'dataDaftarRi.regNo.required' => 'Pasien wajib dipilih.',
-                'dataDaftarRi.regNo.exists' => 'Pasien tidak ditemukan di master.',
-                'dataDaftarRi.drId.required' => 'Dokter wajib dipilih.',
-                'dataDaftarRi.drId.exists' => 'Dokter tidak ditemukan di master.',
-                'dataDaftarRi.drDesc.required' => 'Nama dokter wajib diisi.',
-                'dataDaftarRi.entryDate.required' => 'Tanggal masuk wajib diisi.',
-                'dataDaftarRi.entryDate.date_format' => 'Format tanggal masuk harus dd/mm/yyyy hh:mm:ss.',
-                'dataDaftarRi.riHdrNo.required' => 'Nomor RI belum ter-generate.',
-                'dataDaftarRi.riHdrNo.numeric' => 'Nomor RI harus numerik.',
-                'dataDaftarRi.roomId.required' => 'Ruangan / kamar wajib dipilih.',
-                'dataDaftarRi.roomId.exists' => 'Ruangan tidak ditemukan di master.',
-                'dataDaftarRi.bedNo.required' => 'Bed wajib dipilih.',
-                'dataDaftarRi.shift.required' => 'Shift wajib dipilih.',
-                'dataDaftarRi.shift.in' => 'Shift harus 1, 2, atau 3.',
-                'dataDaftarRi.riStatus.required' => 'Status RI wajib dipilih.',
-                'dataDaftarRi.riStatus.in' => 'Status RI tidak valid.',
-                'dataDaftarRi.klaimId.required' => 'Jenis klaim wajib dipilih.',
-                'dataDaftarRi.klaimId.exists' => 'Jenis klaim tidak ditemukan di master.',
+                'formDaftar.regNo.required' => 'Pasien wajib dipilih.',
+                'formDaftar.regNo.exists' => 'Pasien tidak ditemukan di master.',
+                'formDaftar.drId.required' => 'Dokter wajib dipilih.',
+                'formDaftar.drId.exists' => 'Dokter tidak ditemukan di master.',
+                'formDaftar.drDesc.required' => 'Nama dokter wajib diisi.',
+                'formDaftar.entryDate.required' => 'Tanggal masuk wajib diisi.',
+                'formDaftar.entryDate.date_format' => 'Format tanggal masuk harus dd/mm/yyyy hh:mm:ss.',
+                'formDaftar.riHdrNo.required' => 'Nomor RI belum ter-generate.',
+                'formDaftar.riHdrNo.numeric' => 'Nomor RI harus numerik.',
+                'formDaftar.roomId.required' => 'Ruangan / kamar wajib dipilih.',
+                'formDaftar.roomId.exists' => 'Ruangan tidak ditemukan di master.',
+                'formDaftar.bedNo.required' => 'Bed wajib dipilih.',
+                'formDaftar.shift.required' => 'Shift wajib dipilih.',
+                'formDaftar.shift.in' => 'Shift harus 1, 2, atau 3.',
+                'formDaftar.riStatus.required' => 'Status RI wajib dipilih.',
+                'formDaftar.riStatus.in' => 'Status RI tidak valid.',
+                'formDaftar.klaimId.required' => 'Jenis klaim wajib dipilih.',
+                'formDaftar.klaimId.exists' => 'Jenis klaim tidak ditemukan di master.',
             ],
         );
     }
@@ -427,13 +448,13 @@ new class extends Component {
         if ($this->formMode === 'create') {
             // Sudah di-handle oleh buildPayload via datadaftarri_json
             // updateJsonRI() dari EmrRITrait dipanggil jika trait itu juga update via ORM
-            $this->updateJsonRI((int) $riHdrNo, $this->dataDaftarRi);
+            $this->updateJsonRI((int) $riHdrNo, $this->formDaftar);
 
             $this->appendAdminLogRI((int) $riHdrNo, 'Pendaftaran RI - '
-                . ($this->dataDaftarRi['bangsalDesc'] ?? '-') . ' / '
-                . ($this->dataDaftarRi['roomDesc'] ?? '-') . ', '
-                . ($this->dataDaftarRi['drDesc'] ?? '-') . ', klaim '
-                . ($this->dataDaftarRi['klaimId'] ?? '-'));
+                . ($this->formDaftar['bangsalDesc'] ?? '-') . ' / '
+                . ($this->formDaftar['roomDesc'] ?? '-') . ', '
+                . ($this->formDaftar['drDesc'] ?? '-') . ', klaim '
+                . ($this->formDaftar['klaimId'] ?? '-'));
 
             return;
         }
@@ -462,8 +483,8 @@ new class extends Component {
         $sebelum = $existing;
 
         foreach ($allowedFields as $field) {
-            if (array_key_exists($field, $this->dataDaftarRi)) {
-                $existing[$field] = $this->dataDaftarRi[$field];
+            if (array_key_exists($field, $this->formDaftar)) {
+                $existing[$field] = $this->formDaftar[$field];
             }
         }
         $this->updateJsonRI((int) $riHdrNo, $existing);
@@ -536,9 +557,9 @@ new class extends Component {
      =============================== */
     private function insertTrfRoom(int|string $riHdrNo): void
     {
-        $roomId = $this->dataDaftarRi['roomId'] ?? '';
-        $bedNo = $this->dataDaftarRi['bedNo'] ?? '';
-        $regNo = $this->dataDaftarRi['regNo'] ?? '';
+        $roomId = $this->formDaftar['roomId'] ?? '';
+        $bedNo = $this->formDaftar['bedNo'] ?? '';
+        $regNo = $this->formDaftar['regNo'] ?? '';
 
         if (empty($roomId)) {
             return; // tidak ada kamar → skip (seharusnya sudah tervalidasi)
@@ -556,7 +577,7 @@ new class extends Component {
         $nextTrfr = ($maxTrfr ?? 0) + 1;
 
         // entry_date dari dataDaftarRi sudah format d/m/Y H:i:s — convert untuk Oracle
-        $entryDateRaw = $this->dataDaftarRi['entryDate'] ?? Carbon::now()->format('d/m/Y H:i:s');
+        $entryDateRaw = $this->formDaftar['entryDate'] ?? Carbon::now()->format('d/m/Y H:i:s');
 
         DB::table('rsmst_trfrooms')->insert([
             'trfr_no' => $nextTrfr,
@@ -589,11 +610,11 @@ new class extends Component {
     {
         if (empty($payload)) {
             // User klik "Ubah" / clear
-            $this->dataDaftarRi['roomId'] = '';
-            $this->dataDaftarRi['roomDesc'] = '';
-            $this->dataDaftarRi['bedNo'] = '';
-            $this->dataDaftarRi['bangsalId'] = '';
-            $this->dataDaftarRi['bangsalDesc'] = '';
+            $this->formDaftar['roomId'] = '';
+            $this->formDaftar['roomDesc'] = '';
+            $this->formDaftar['bedNo'] = '';
+            $this->formDaftar['bangsalId'] = '';
+            $this->formDaftar['bangsalDesc'] = '';
             $this->bangsalId = '';
             $this->incrementVersion('bangsal');
             return;
@@ -606,11 +627,11 @@ new class extends Component {
         // Lookup bangsal_id dari rsmst_rooms karena lov-room tidak mengirim bangsal
         $bangsalRow = DB::table('rsmst_rooms as r')->join('rsmst_bangsals as b', 'b.bangsal_id', '=', 'r.bangsal_id')->where('r.room_id', $roomId)->select('r.bangsal_id', 'b.bangsal_name')->first();
 
-        $this->dataDaftarRi['roomId'] = $roomId;
-        $this->dataDaftarRi['roomDesc'] = $roomName;
-        $this->dataDaftarRi['bedNo'] = $bedNo;
-        $this->dataDaftarRi['bangsalId'] = $bangsalRow->bangsal_id ?? '';
-        $this->dataDaftarRi['bangsalDesc'] = $bangsalRow->bangsal_name ?? '';
+        $this->formDaftar['roomId'] = $roomId;
+        $this->formDaftar['roomDesc'] = $roomName;
+        $this->formDaftar['bedNo'] = $bedNo;
+        $this->formDaftar['bangsalId'] = $bangsalRow->bangsal_id ?? '';
+        $this->formDaftar['bangsalDesc'] = $bangsalRow->bangsal_name ?? '';
         $this->bangsalId = $bangsalRow->bangsal_id ?? '';
 
         $this->incrementVersion('bangsal');
@@ -620,9 +641,9 @@ new class extends Component {
     #[On('lov.selected.riFormPasien')]
     public function riFormPasien(string $target, array $payload): void
     {
-        $this->dataDaftarRi['regNo'] = $payload['reg_no'] ?? '';
-        $this->dataDaftarRi['regName'] = $payload['reg_name'] ?? '';
-        $this->dataPasien = $this->findDataMasterPasien($this->dataDaftarRi['regNo']);
+        $this->formDaftar['regNo'] = $payload['reg_no'] ?? '';
+        $this->formDaftar['regName'] = $payload['reg_name'] ?? '';
+        $this->dataPasien = $this->findDataMasterPasien($this->formDaftar['regNo']);
         $this->incrementVersion('pasien');
         $this->incrementVersion('modal');
         $this->dispatch('focus-cari-dokter-ri');
@@ -631,12 +652,12 @@ new class extends Component {
     #[On('lov.selected.riFormDokter')]
     public function riFormDokter(string $target, array $payload): void
     {
-        $this->dataDaftarRi['drId'] = $payload['dr_id'] ?? '';
-        $this->dataDaftarRi['drDesc'] = $payload['dr_name'] ?? '';
-        $this->dataDaftarRi['kddrbpjs'] = $payload['kd_dr_bpjs'] ?? '';
-        $this->dataDaftarRi['kdpolibpjs'] = $payload['kd_poli_bpjs'] ?? '';
-        $this->dataDaftarRi['poliId'] = $payload['poli_id'] ?? '';
-        $this->dataDaftarRi['poliDesc'] = $payload['poli_desc'] ?? '';
+        $this->formDaftar['drId'] = $payload['dr_id'] ?? '';
+        $this->formDaftar['drDesc'] = $payload['dr_name'] ?? '';
+        $this->formDaftar['kddrbpjs'] = $payload['kd_dr_bpjs'] ?? '';
+        $this->formDaftar['kdpolibpjs'] = $payload['kd_poli_bpjs'] ?? '';
+        $this->formDaftar['poliId'] = $payload['poli_id'] ?? '';
+        $this->formDaftar['poliDesc'] = $payload['poli_desc'] ?? '';
         $this->incrementVersion('dokter');
         $this->incrementVersion('modal');
     }
@@ -645,16 +666,16 @@ new class extends Component {
     #[On('sep-generated-ri')]
     public function handleSepGenerated(array $reqSep, string $noSep = '', array $resSep = []): void
     {
-        $this->dataDaftarRi['sep']['reqSep'] = $reqSep;
+        $this->formDaftar['sep']['reqSep'] = $reqSep;
 
         if (!empty($noSep)) {
-            $this->dataDaftarRi['sep']['noSep'] = $noSep;
-            $this->dataDaftarRi['sep']['resSep'] = $resSep;
+            $this->formDaftar['sep']['noSep'] = $noSep;
+            $this->formDaftar['sep']['resSep'] = $resSep;
         }
 
         $noRujukan = $reqSep['request']['t_sep']['rujukan']['noRujukan'] ?? null;
         if ($noRujukan) {
-            $this->dataDaftarRi['noReferensi'] = $noRujukan;
+            $this->formDaftar['noReferensi'] = $noRujukan;
         }
 
         // Simpan ke JSON agar noSep tidak hilang saat reload
@@ -673,11 +694,11 @@ new class extends Component {
     #[On('spri-generated-ri')]
     public function handleSpriGenerated(array $spriData): void
     {
-        $this->dataDaftarRi['spri'] = $spriData;
+        $this->formDaftar['spri'] = $spriData;
 
         // Sync noReferensi dari noSPRIBPJS jika belum ada rujukan lain
-        if (!empty($spriData['noSPRIBPJS']) && empty($this->dataDaftarRi['noReferensi'])) {
-            $this->dataDaftarRi['noReferensi'] = $spriData['noSPRIBPJS'];
+        if (!empty($spriData['noSPRIBPJS']) && empty($this->formDaftar['noReferensi'])) {
+            $this->formDaftar['noReferensi'] = $spriData['noSPRIBPJS'];
         }
 
         // Simpan ke JSON agar SPRI tidak hilang saat modal ditutup/dibuka ulang
@@ -691,21 +712,21 @@ new class extends Component {
     /* ---- Vclaim ---- */
     public function openVclaimModal(): void
     {
-        if (empty($this->dataDaftarRi['regNo'])) {
+        if (empty($this->formDaftar['regNo'])) {
             $this->dispatch('toast', type: 'error', message: 'Pilih pasien terlebih dahulu.');
             return;
         }
-        $isBpjs = ($this->dataDaftarRi['klaimStatus'] ?? '') === 'BPJS' || ($this->dataDaftarRi['klaimId'] ?? '') === 'JM';
+        $isBpjs = ($this->formDaftar['klaimStatus'] ?? '') === 'BPJS' || ($this->formDaftar['klaimId'] ?? '') === 'JM';
         if (!$isBpjs) {
             $this->dispatch('toast', type: 'error', message: 'Fitur SEP hanya untuk pasien BPJS.');
             return;
         }
-        $this->dispatch('open-vclaim-modal-ri', riHdrNo: $this->riHdrNo, regNo: $this->dataDaftarRi['regNo'], drId: $this->dataDaftarRi['drId'], drDesc: $this->dataDaftarRi['drDesc'], poliId: $this->dataDaftarRi['poliId'] ?? null, poliDesc: $this->dataDaftarRi['poliDesc'] ?? null, kdpolibpjs: $this->dataDaftarRi['kdpolibpjs'] ?? null, noReferensi: $this->dataDaftarRi['noReferensi'] ?? null, sepData: $this->dataDaftarRi['sep'] ?? [], spriData: $this->dataDaftarRi['spri'] ?? []);
+        $this->dispatch('open-vclaim-modal-ri', riHdrNo: $this->riHdrNo, regNo: $this->formDaftar['regNo'], drId: $this->formDaftar['drId'], drDesc: $this->formDaftar['drDesc'], poliId: $this->formDaftar['poliId'] ?? null, poliDesc: $this->formDaftar['poliDesc'] ?? null, kdpolibpjs: $this->formDaftar['kdpolibpjs'] ?? null, noReferensi: $this->formDaftar['noReferensi'] ?? null, sepData: $this->formDaftar['sep'] ?? [], spriData: $this->formDaftar['spri'] ?? []);
     }
 
     public function cetakSEP(): void
     {
-        if (empty($this->dataDaftarRi['sep']['noSep'])) {
+        if (empty($this->formDaftar['sep']['noSep'])) {
             $this->dispatch('toast', type: 'error', message: 'Tidak ada SEP untuk dicetak.');
             return;
         }
@@ -717,8 +738,8 @@ new class extends Component {
     {
         if ($name === 'klaimId') {
             $this->klaimId = $value;
-            $this->dataDaftarRi['klaimId'] = $value;
-            $this->dataDaftarRi['klaimStatus'] = DB::table('rsmst_klaimtypes')->where('klaim_id', $value)->value('klaim_status') ?? 'UMUM';
+            $this->formDaftar['klaimId'] = $value;
+            $this->formDaftar['klaimStatus'] = DB::table('rsmst_klaimtypes')->where('klaim_id', $value)->value('klaim_status') ?? 'UMUM';
             $this->incrementVersion('modal');
         }
 
@@ -727,15 +748,15 @@ new class extends Component {
         if ($name === 'statusAdminAge') {
             if ($this->statusAdminAge) {
                 $parValue = DB::table('rsmst_parameters')->where('par_id', 3)->value('par_value');
-                $this->dataDaftarRi['adminAge'] = (int) ($parValue ?? 0);
+                $this->formDaftar['adminAge'] = (int) ($parValue ?? 0);
             } else {
-                $this->dataDaftarRi['adminAge'] = 0;
+                $this->formDaftar['adminAge'] = 0;
             }
             $this->incrementVersion('modal');
         }
 
         if ($name === 'kasusPolisi') {
-            $this->dataDaftarRi['kasusPolisi'] = $this->kasusPolisi ? '1' : '0';
+            $this->formDaftar['kasusPolisi'] = $this->kasusPolisi ? '1' : '0';
             $this->incrementVersion('modal');
         }
     }
@@ -744,7 +765,7 @@ new class extends Component {
     protected function resetForm(): void
     {
         $this->modalTerbuka = false;
-        $this->reset(['riHdrNo', 'dataDaftarRi', 'dataPasien']);
+        $this->reset(['riHdrNo', 'formDaftar', 'dataPasien']);
         $this->resetVersion();
         $this->klaimId = 'UM';
         $this->entryId = '1';
@@ -757,12 +778,12 @@ new class extends Component {
 
     private function syncFromDataDaftarRI(): void
     {
-        $this->riHdrNo = isset($this->dataDaftarRi['riHdrNo']) ? (string) $this->dataDaftarRi['riHdrNo'] : null;
-        $this->klaimId = $this->dataDaftarRi['klaimId'] ?? 'UM';
-        $this->entryId = $this->dataDaftarRi['entryId'] ?? '1';
-        $this->bangsalId = $this->dataDaftarRi['bangsalId'] ?? '';
-        $this->statusAdminAge = ($this->dataDaftarRi['statusAdminAge'] ?? '0') === '1';
-        $this->kasusPolisi = ($this->dataDaftarRi['kasusPolisi'] ?? '0') === '1';
+        $this->riHdrNo = isset($this->formDaftar['riHdrNo']) ? (string) $this->formDaftar['riHdrNo'] : null;
+        $this->klaimId = $this->formDaftar['klaimId'] ?? 'UM';
+        $this->entryId = $this->formDaftar['entryId'] ?? '1';
+        $this->bangsalId = $this->formDaftar['bangsalId'] ?? '';
+        $this->statusAdminAge = ($this->formDaftar['statusAdminAge'] ?? '0') === '1';
+        $this->kasusPolisi = ($this->formDaftar['kasusPolisi'] ?? '0') === '1';
     }
 
     /* ===============================
@@ -835,7 +856,7 @@ new class extends Component {
                     class="sticky top-0 z-20 px-4 py-2 bg-canvas border-b border-hairline dark:bg-gray-900 dark:border-gray-700 shrink-0"
                     wire:key="{{ $this->renderKey('pasien', [$dataPasien['pasien']['regNo'] ?? '']) }}">
                     @php
-                        $klaimId = $dataDaftarRi['klaimId'] ?? '-';
+                        $klaimId = $formDaftar['klaimId'] ?? '-';
                         $klaimRow = DB::table('rsmst_klaimtypes')
                             ->where('klaim_id', $klaimId)
                             ->select('klaim_status', 'klaim_desc')
@@ -862,9 +883,9 @@ new class extends Component {
                         </div>
                         <div class="text-sm">
                             {{-- DPJP = Leveling Dokter (drName + levelDokter), Penerima = drDesc — pola kolom DPJP Daftar RI --}}
-                            @if (!empty($dataDaftarRi['pengkajianAwalPasienRawatInap']['levelingDokter']))
+                            @if (!empty($formDaftar['pengkajianAwalPasienRawatInap']['levelingDokter']))
                                 <div class="text-xs text-muted dark:text-gray-400">DPJP:</div>
-                                @foreach ($dataDaftarRi['pengkajianAwalPasienRawatInap']['levelingDokter'] as $dokterLeveling)
+                                @foreach ($formDaftar['pengkajianAwalPasienRawatInap']['levelingDokter'] as $dokterLeveling)
                                     @if (!empty($dokterLeveling['drName']))
                                         <div class="font-semibold text-ink dark:text-gray-200">
                                             {{ $dokterLeveling['drName'] }}
@@ -878,17 +899,17 @@ new class extends Component {
                                 <div class="text-xs text-muted dark:text-gray-400">DPJP:</div>
                                 <div class="text-xs text-muted-soft">—</div>
                             @endif
-                            <div class="mt-1 text-xs italic text-muted dark:text-gray-400">Penerima: {{ $dataDaftarRi['drDesc'] ?? '-' }}</div>
+                            <div class="mt-1 text-xs italic text-muted dark:text-gray-400">Penerima: {{ $formDaftar['drDesc'] ?? '-' }}</div>
                         </div>
                         <div class="px-2 text-sm text-ink dark:text-gray-100">
                             <p class="text-right text-muted dark:text-gray-400">
-                                {{ $dataDaftarRi['bangsalDesc'] ?? '-' }}</p>
+                                {{ $formDaftar['bangsalDesc'] ?? '-' }}</p>
                             <p class="font-semibold text-right">
-                                {{ $dataDaftarRi['roomDesc'] ?? '-' }}
+                                {{ $formDaftar['roomDesc'] ?? '-' }}
                                 &nbsp;<x-badge :variant="$badgeVariant">{{ $klaimDesc }}</x-badge>
                             </p>
                             <p class="text-right text-xs text-muted dark:text-gray-400">Tgl Masuk:
-                                {{ $dataDaftarRi['entryDate'] ?? '-' }}</p>
+                                {{ $formDaftar['entryDate'] ?? '-' }}</p>
                         </div>
                     </div>
                 </div>
@@ -908,37 +929,37 @@ new class extends Component {
                             Pasien & Dokter</h3>
 
                         <div>
-                            <x-toggle wire:model.live="dataDaftarRi.passStatus" trueValue="N" falseValue="O"
+                            <x-toggle wire:model.live="formDaftar.passStatus" trueValue="N" falseValue="O"
                                 label="Pasien Baru" :disabled="$isFormLocked" />
                             <p class="mt-1 text-xs text-muted-soft">Tidak dicentang = Pasien Lama.</p>
                         </div>
 
                         <div x-ref="lovPasienRi"
                             x-on:keydown.enter.prevent="$nextTick(() => $refs.lovDokterRi?.querySelector('input')?.focus())">
-                            <livewire:lov.pasien.lov-pasien target="riFormPasien" :initialRegNo="$dataDaftarRi['regNo'] ?? ''" :disabled="$isFormLocked" />
-                            <x-input-error :messages="$errors->get('dataDaftarRi.regNo')" class="mt-1" />
+                            <livewire:lov.pasien.lov-pasien target="riFormPasien" :initialRegNo="$formDaftar['regNo'] ?? ''" :disabled="$isFormLocked" />
+                            <x-input-error :messages="$errors->get('formDaftar.regNo')" class="mt-1" />
                         </div>
 
                         <div x-ref="lovDokterRi">
                             <livewire:lov.dokter.lov-dokter label="Cari Dokter DPJP RI" target="riFormDokter"
-                                :initialDrId="$dataDaftarRi['drId'] ?? null" :disabled="$isFormLocked" />
-                            <x-input-error :messages="$errors->get('dataDaftarRi.drId')" class="mt-1" />
+                                :initialDrId="$formDaftar['drId'] ?? null" :disabled="$isFormLocked" />
+                            <x-input-error :messages="$errors->get('formDaftar.drId')" class="mt-1" />
                         </div>
 
-                        @if (!empty($dataDaftarRi['kddrbpjs']))
+                        @if (!empty($formDaftar['kddrbpjs']))
                             <div
                                 class="px-3 py-2 text-xs border border-hairline rounded-lg bg-surface-soft dark:bg-gray-800 dark:border-gray-700">
-                                <span class="font-semibold">Kode Dr BPJS:</span> {{ $dataDaftarRi['kddrbpjs'] }}
+                                <span class="font-semibold">Kode Dr BPJS:</span> {{ $formDaftar['kddrbpjs'] }}
                                 &nbsp;|&nbsp;
-                                <span class="font-semibold">Poli:</span> {{ $dataDaftarRi['poliDesc'] ?? '-' }}
-                                ({{ $dataDaftarRi['kdpolibpjs'] ?? '-' }})
+                                <span class="font-semibold">Poli:</span> {{ $formDaftar['poliDesc'] ?? '-' }}
+                                ({{ $formDaftar['kdpolibpjs'] ?? '-' }})
                             </div>
                         @endif
                     </div>
 
                     {{-- KOLOM 2: Kamar / Bangsal + Toggle --}}
                     <div class="p-6 space-y-5 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700"
-                        wire:key="{{ $this->renderKey('bangsal', [$bangsalId, $dataDaftarRi['roomId'] ?? '']) }}">
+                        wire:key="{{ $this->renderKey('bangsal', [$bangsalId, $formDaftar['roomId'] ?? '']) }}">
                         <h3 class="text-xs font-semibold uppercase tracking-wide text-muted dark:text-gray-400">Kamar
                             & Bangsal</h3>
 
@@ -947,31 +968,31 @@ new class extends Component {
                              Listener: lov.selected.riFormRoom → riFormRoom() --}}
                         <div>
                             <livewire:lov.room.lov-room target="riFormRoom" label="Cari Ruangan / Bed *"
-                                :initialRoomId="$dataDaftarRi['roomId'] ?? null" :disabled="$isFormLocked" />
-                            <x-input-error :messages="$errors->get('dataDaftarRi.roomId')" class="mt-1" />
-                            <x-input-error :messages="$errors->get('dataDaftarRi.bedNo')" class="mt-1" />
-                            <x-input-error :messages="$errors->get('dataDaftarRi.bangsalId')" class="mt-1" />
+                                :initialRoomId="$formDaftar['roomId'] ?? null" :disabled="$isFormLocked" />
+                            <x-input-error :messages="$errors->get('formDaftar.roomId')" class="mt-1" />
+                            <x-input-error :messages="$errors->get('formDaftar.bedNo')" class="mt-1" />
+                            <x-input-error :messages="$errors->get('formDaftar.bangsalId')" class="mt-1" />
                         </div>
 
                         {{-- Bangsal otomatis dari pilihan LOV Room --}}
-                        @if (!empty($dataDaftarRi['bangsalDesc']))
+                        @if (!empty($formDaftar['bangsalDesc']))
                             <div
                                 class="px-3 py-2 text-xs border border-hairline rounded-lg bg-surface-soft dark:bg-gray-800 dark:border-gray-700">
                                 <span class="text-muted">Bangsal:</span>
-                                <span class="ml-1 font-semibold">{{ $dataDaftarRi['bangsalDesc'] }}</span>
-                                <span class="ml-2 text-muted-soft">({{ $dataDaftarRi['bangsalId'] ?? '-' }})</span>
+                                <span class="ml-1 font-semibold">{{ $formDaftar['bangsalDesc'] }}</span>
+                                <span class="ml-2 text-muted-soft">({{ $formDaftar['bangsalId'] ?? '-' }})</span>
                             </div>
                         @endif
 
                         <div>
                             <x-input-label value="Status RI" />
-                            <x-select-input wire:model.live="dataDaftarRi.riStatus" class="w-full mt-1"
+                            <x-select-input wire:model.live="formDaftar.riStatus" class="w-full mt-1"
                                 :disabled="$isFormLocked">
                                 <option value="I">Rawat Inap (Aktif)</option>
                                 <option value="L">Pulang / Selesai</option>
                                 <option value="P">Pindah Kamar</option>
                             </x-select-input>
-                            <x-input-error :messages="$errors->get('dataDaftarRi.riStatus')" class="mt-1" />
+                            <x-input-error :messages="$errors->get('formDaftar.riStatus')" class="mt-1" />
                         </div>
 
                         <div>
@@ -995,7 +1016,7 @@ new class extends Component {
                                 <div class="flex items-center gap-2">
                                     <span class="text-xs text-muted">Nominal:</span>
                                     <span class="text-sm font-semibold text-blue-600 dark:text-blue-400">
-                                        Rp {{ number_format($dataDaftarRi['adminAge'] ?? 0, 0, ',', '.') }}
+                                        Rp {{ number_format($formDaftar['adminAge'] ?? 0, 0, ',', '.') }}
                                     </span>
                                     <span class="text-xs text-muted-soft">(parameter par_id = 3)</span>
                                 </div>
@@ -1032,23 +1053,23 @@ new class extends Component {
                                         wire:model.live="klaimId" :disabled="$isFormLocked" />
                                 @endforeach
                             </div>
-                            <x-input-error :messages="$errors->get('dataDaftarRi.klaimId')" class="mt-1" />
+                            <x-input-error :messages="$errors->get('formDaftar.klaimId')" class="mt-1" />
                         </div>
 
-                        @if (($dataDaftarRi['klaimStatus'] ?? '') === 'BPJS' || ($dataDaftarRi['klaimId'] ?? '') === 'JM')
+                        @if (($formDaftar['klaimStatus'] ?? '') === 'BPJS' || ($formDaftar['klaimId'] ?? '') === 'JM')
                             <div>
                                 <x-input-label value="No Referensi / Rujukan" />
-                                <x-text-input wire:model.live="dataDaftarRi.noReferensi" class="block w-full mt-1"
+                                <x-text-input wire:model.live="formDaftar.noReferensi" class="block w-full mt-1"
                                     :disabled="$isFormLocked" placeholder="No. Rujukan dari FKTP" />
                                 <p class="mt-1 text-xs text-muted-soft">Isi nomor rujukan dari Faskes Tingkat Pertama
                                     (FKTP).</p>
-                                <x-input-error :messages="$errors->get('dataDaftarRi.noReferensi')" class="mt-1" />
+                                <x-input-error :messages="$errors->get('formDaftar.noReferensi')" class="mt-1" />
                             </div>
 
                             <div class="space-y-2">
                                 <div class="flex flex-wrap items-center gap-2">
                                     {{-- Tombol SPRI / SEP: hanya mode edit + klaim BPJS --}}
-                                    @if ($formMode === 'edit' && (($dataDaftarRi['klaimStatus'] ?? '') === 'BPJS' || ($dataDaftarRi['klaimId'] ?? '') === 'JM'))
+                                    @if ($formMode === 'edit' && (($formDaftar['klaimStatus'] ?? '') === 'BPJS' || ($formDaftar['klaimId'] ?? '') === 'JM'))
                                         <x-info-button type="button" wire:click="openVclaimModal"
                                             class="gap-2 text-xs">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor"
@@ -1060,7 +1081,7 @@ new class extends Component {
                                         </x-info-button>
                                     @endif
 
-                                    @if (!empty($dataDaftarRi['sep']['noSep']))
+                                    @if (!empty($formDaftar['sep']['noSep']))
                                         <x-cetak-button wire:click="cetakSEP" title="Cetak SEP" />
                                         <div
                                             class="flex items-center gap-1 px-2 py-1 text-xs text-green-700 bg-green-100 rounded-full dark:bg-green-900/30 dark:text-green-300">
@@ -1069,33 +1090,33 @@ new class extends Component {
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                     d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                             </svg>
-                                            SEP: {{ $dataDaftarRi['sep']['noSep'] }}
+                                            SEP: {{ $formDaftar['sep']['noSep'] }}
                                         </div>
                                     @endif
                                 </div>
 
-                                @if (!empty($dataDaftarRi['sep']['noSep']))
+                                @if (!empty($formDaftar['sep']['noSep']))
                                     <div
                                         class="flex items-center gap-2 px-3 py-2 text-sm border border-blue-200 rounded-lg bg-blue-50 dark:bg-blue-900/20 dark:border-blue-800">
                                         <div class="flex-1">
                                             <span class="text-xs font-medium text-blue-700 dark:text-blue-300">SEP
                                                 RI:</span>
                                             <span
-                                                class="ml-2 font-mono text-sm font-semibold text-blue-800 dark:text-blue-200">{{ $dataDaftarRi['sep']['noSep'] }}</span>
+                                                class="ml-2 font-mono text-sm font-semibold text-blue-800 dark:text-blue-200">{{ $formDaftar['sep']['noSep'] }}</span>
                                         </div>
                                         <span class="text-xs text-blue-500">
-                                            {{ Carbon::parse($dataDaftarRi['sep']['resSep']['tglSEP'] ?? now())->format('d/m/Y') }}
+                                            {{ Carbon::parse($formDaftar['sep']['resSep']['tglSEP'] ?? now())->format('d/m/Y') }}
                                         </span>
                                     </div>
                                 @endif
 
-                                @if (!empty($dataDaftarRi['spri']['noSPRIBPJS']))
+                                @if (!empty($formDaftar['spri']['noSPRIBPJS']))
                                     <div
                                         class="flex items-center gap-2 px-3 py-2 text-sm border border-purple-200 rounded-lg bg-purple-50 dark:bg-purple-900/20 dark:border-purple-800">
                                         <span class="text-xs font-medium text-purple-700 dark:text-purple-300">SPRI
                                             BPJS:</span>
                                         <span
-                                            class="ml-1 font-mono text-sm font-semibold text-purple-800 dark:text-purple-200">{{ $dataDaftarRi['spri']['noSPRIBPJS'] }}</span>
+                                            class="ml-1 font-mono text-sm font-semibold text-purple-800 dark:text-purple-200">{{ $formDaftar['spri']['noSPRIBPJS'] }}</span>
                                     </div>
                                 @endif
 
@@ -1104,7 +1125,7 @@ new class extends Component {
 
                                 <div>
                                     <x-input-label value="No SEP (manual)" />
-                                    <x-text-input wire:model.live="dataDaftarRi.sep.noSep" class="block w-full mt-1"
+                                    <x-text-input wire:model.live="formDaftar.sep.noSep" class="block w-full mt-1"
                                         :disabled="$isFormLocked" />
                                 </div>
                             </div>

@@ -18,7 +18,8 @@ new class extends Component {
     public ?string $riHdrNo = null;
     public ?string $regNo = null;
     public bool $disabled = false;
-    public array $dataDaftarRi = [];
+    /** Nama pasien untuk isian awal penanda tangan (dulu dibaca dari dokumen penuh). */
+    public ?string $regName = null;
 
     public array $renderVersions = [];
     protected array $renderAreas = ['modal-inform-consent-ri'];
@@ -100,7 +101,6 @@ new class extends Component {
         if ($this->riHdrNo) {
             $data = $this->findDataRI($this->riHdrNo);
             if ($data) {
-                $this->dataDaftarRi = $data;
                 $this->regNo = $data['regNo'] ?? null;
                 $this->consentList = $data['informConsentPasienRI'] ?? [];
                 $this->isFormLocked = $this->checkEmrRIStatus($this->riHdrNo) || $disabled;
@@ -130,14 +130,11 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarRi = $data;
         $this->regNo = $data['regNo'] ?? null;
-        if (!isset($this->dataDaftarRi['informConsentPasienRI']) || !is_array($this->dataDaftarRi['informConsentPasienRI'])) {
-            $this->dataDaftarRi['informConsentPasienRI'] = [];
-        }
-        $this->consentList = $this->dataDaftarRi['informConsentPasienRI'];
+        $this->consentList = is_array($data['informConsentPasienRI'] ?? null) ? $data['informConsentPasienRI'] : [];
+        $this->regName = $data['regName'] ?? null;
         // Default nama Pasien/Wali = nama pasien & hubungan = Pasien Sendiri (pola penundaan)
-        $this->newConsent['wali'] = $this->dataDaftarRi['regName'] ?? '';
+        $this->newConsent['wali'] = $this->regName ?? '';
         $this->newConsent['waliHubungan'] = 'pasien';
         $this->isFormLocked = $this->checkEmrRIStatus($this->riHdrNo) || $this->disabled;
         $this->incrementVersion('modal-inform-consent-ri');
@@ -283,7 +280,7 @@ new class extends Component {
         try {
             $this->persistEntry($key, true, 'Kunci (TTD Petugas)');
             $this->resetNewConsent();
-            $this->newConsent['wali'] = $this->dataDaftarRi['regName'] ?? '';
+            $this->newConsent['wali'] = $this->regName ?? '';
             $this->newConsent['waliHubungan'] = 'pasien';
             $this->signature = '';
             $this->signatureSaksi = '';
@@ -324,7 +321,6 @@ new class extends Component {
                 $list[$index]['dokterDate'] = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
                 $fresh['informConsentPasienRI'] = $list;
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->dataDaftarRi = $fresh;
                 $this->consentList = $list;
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'TTD Dokter (menyusul) Inform Consent — entri ' . $signatureDate, 'MR');
             });
@@ -374,7 +370,6 @@ new class extends Component {
                 $list[$index]['dokterDate'] = '';
                 $fresh['informConsentPasienRI'] = array_values($list);
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->dataDaftarRi = $fresh;
                 $this->consentList = $fresh['informConsentPasienRI'];
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Buka kunci Inform Consent — entri ' . $signatureDate . ' (oleh ' . (auth()->user()->myuser_name ?? auth()->user()->name ?? '-') . ')', 'MR');
             });
@@ -490,7 +485,6 @@ new class extends Component {
             $data['informConsentPasienRI'] = array_values($list);
 
             $this->updateJsonRI((int) $this->riHdrNo, $data);
-            $this->dataDaftarRi = $data;
             $this->consentList = $data['informConsentPasienRI'];
 
             $this->appendAdminLogRI((int) $this->riHdrNo, $logVerb . ' Inform Consent RI — tindakan "' . ($entry['tindakan'] ?: '-') . '" (' . $key . ')', 'MR');
@@ -601,7 +595,7 @@ new class extends Component {
     public function cancelEdit(): void
     {
         $this->resetNewConsent();
-        $this->newConsent['wali'] = $this->dataDaftarRi['regName'] ?? '';
+        $this->newConsent['wali'] = $this->regName ?? '';
         $this->newConsent['waliHubungan'] = 'pasien';
         $this->signature = '';
         $this->signatureSaksi = '';
@@ -676,7 +670,7 @@ new class extends Component {
             }
 
             $data = array_merge($pasien, [
-                'dataRi' => $this->dataDaftarRi,
+                'dataRi' => $this->findDataRI($this->riHdrNo) ?: [],
                 'consent' => $consent,
                 'identitasRs' => $identitasRs,
                 'ttdDokterPath' => $ttdDokterPath,
@@ -718,7 +712,6 @@ new class extends Component {
                 $fresh['informConsentPasienRI'] = collect($fresh['informConsentPasienRI'])->reject(fn($item) => ($item['signatureDate'] ?? '') === $signatureDate)->values()->toArray();
 
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->dataDaftarRi = $fresh;
                 $this->consentList = $fresh['informConsentPasienRI'];
 
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Hapus Inform Consent — entri ' . ($signatureDate ?: '-'), 'MR');
@@ -767,7 +760,6 @@ new class extends Component {
     {
         $this->resetVersion();
         $this->isFormLocked = false;
-        $this->dataDaftarRi = [];
         $this->consentList = [];
         $this->resetNewConsent();
         $this->signature = '';

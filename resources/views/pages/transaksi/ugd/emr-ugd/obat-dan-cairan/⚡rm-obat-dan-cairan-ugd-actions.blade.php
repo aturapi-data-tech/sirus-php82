@@ -14,7 +14,22 @@ new class extends Component {
 
     public bool $isFormLocked = false;
     public ?int $rjNo = null;
-    public array $dataDaftarUGD = [];
+
+    /**
+     * IRISAN dokumen: hanya `observasi.obatDanCairan.pemberianObatDanCairan`.
+     *
+     * Dokumen `datadaftarugd_json` utuh sengaja TIDAK disimpan di properti publik — properti
+     * publik ikut snapshot Livewire dan dikirim bolak-balik tiap request. Untuk MENYIMPAN,
+     * dokumen utuh tetap dibaca ulang dari DB di dalam transaksi + lock.
+     */
+    public array $daftarObatCairan = [];
+
+    /**
+     * Penanda dokumen sudah ter-muat: mengganti peran `dataDaftarUGD['regNo']` pada guard
+     * reloadAfterUgdSaved() dan guard tampilan "Data UGD belum dimuat". Ikut ter-wipe saat
+     * morph, persis seperti properti publik lainnya.
+     */
+    public ?string $regNoPasien = null;
 
     public array $renderVersions = [];
     protected array $renderAreas = ['modal-obat-cairan-ugd'];
@@ -90,14 +105,8 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarUGD = $data;
-
-        // Inisialisasi struktur jika belum ada
-        $this->dataDaftarUGD['observasi']['obatDanCairan'] ??= [
-            'pemberianObatDanCairanTab' => 'Pemberian Obat Dan Cairan',
-            'pemberianObatDanCairan' => [],
-        ];
-        $this->dataDaftarUGD['observasi']['obatDanCairan']['pemberianObatDanCairan'] ??= [];
+        $this->daftarObatCairan = $data['observasi']['obatDanCairan']['pemberianObatDanCairan'] ?? [];
+        $this->regNoPasien = $data['regNo'] ?? null;
 
         // Generate ID untuk data lama yang belum ada ID
         $this->generateIds();
@@ -114,12 +123,12 @@ new class extends Component {
      | RELOAD SETELAH SIMPAN EMR GLOBAL
      | Simpan SOAP mem-morph parent EMR → komponen pasif (tak dapat event save) ikut
      | ter-wipe ("Data UGD belum dimuat"). Muat ulang HANYA bila memang ter-wipe
-     | (regNo hilang), supaya entri berjalan tak ke-reset.
+     | (regNoPasien hilang), supaya entri berjalan tak ke-reset.
      =============================== */
     #[On('refresh-after-ugd.saved')]
     public function reloadAfterUgdSaved(): void
     {
-        if (empty($this->rjNo) || !empty($this->dataDaftarUGD['regNo'])) {
+        if (empty($this->rjNo) || !empty($this->regNoPasien)) {
             return;
         }
 
@@ -209,7 +218,8 @@ new class extends Component {
 
                 // 6. Simpan JSON
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->dataDaftarUGD = $data;
+                $this->daftarObatCairan = $data['observasi']['obatDanCairan']['pemberianObatDanCairan'];
+                $this->generateIds();
 
                 // 7. Audit log (rekam medis)
                 $this->appendAdminLogUGD((int) $this->rjNo, 'Tambah Obat & Cairan UGD: ' . $this->obatDanCairan['namaObatAtauJenisCairan'] . ' (' . $this->obatDanCairan['waktuPemberian'] . ')', 'MR');
@@ -265,7 +275,8 @@ new class extends Component {
 
                 // 5. Simpan JSON
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->dataDaftarUGD = $data;
+                $this->daftarObatCairan = $data['observasi']['obatDanCairan']['pemberianObatDanCairan'];
+                $this->generateIds();
 
                 // 6. Audit log (rekam medis)
                 $this->appendAdminLogUGD((int) $this->rjNo, 'Hapus Obat & Cairan UGD: ' . $namaObat . ' (' . $waktuPemberian . ')', 'MR');
@@ -293,7 +304,7 @@ new class extends Component {
             return;
         }
 
-        $row = collect($this->dataDaftarUGD['observasi']['obatDanCairan']['pemberianObatDanCairan'] ?? [])
+        $row = collect($this->daftarObatCairan)
             ->first(fn($r) => (string) ($r['id'] ?? '') === (string) $id);
 
         if (!$row) {
@@ -337,18 +348,18 @@ new class extends Component {
 
     private function generateIds(): void
     {
-        if (isset($this->dataDaftarUGD['observasi']['obatDanCairan']['pemberianObatDanCairan'])) {
-            foreach ($this->dataDaftarUGD['observasi']['obatDanCairan']['pemberianObatDanCairan'] as &$item) {
-                $item['id'] ??= uniqid('obat_');
-            }
+        foreach ($this->daftarObatCairan as &$item) {
+            $item['id'] ??= uniqid('obat_');
         }
+        unset($item);
     }
 
     protected function resetForm(): void
     {
         $this->resetVersion();
         $this->isFormLocked = false;
-        $this->dataDaftarUGD = [];
+        $this->daftarObatCairan = [];
+        $this->regNoPasien = null;
         $this->reset(['obatDanCairan']);
     }
 };
@@ -370,7 +381,7 @@ new class extends Component {
                 </div>
             @endif
 
-            @if (isset($dataDaftarUGD['observasi']['obatDanCairan']))
+            @if (filled($regNoPasien))
 
                 {{-- FORM INPUT --}}
                 @if (!$isFormLocked)
@@ -478,7 +489,7 @@ new class extends Component {
 
                 {{-- TABEL DATA --}}
                 @php
-                    $daftarObat = $dataDaftarUGD['observasi']['obatDanCairan']['pemberianObatDanCairan'] ?? [];
+                    $daftarObat = $daftarObatCairan;
                     $sortedObat = collect($daftarObat)
                         ->sortByDesc(
                             fn($item) => \Carbon\Carbon::createFromFormat(

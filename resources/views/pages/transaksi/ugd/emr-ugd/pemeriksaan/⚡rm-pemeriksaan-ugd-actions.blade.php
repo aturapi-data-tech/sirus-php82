@@ -15,7 +15,14 @@ new class extends Component {
 
     public bool $isFormLocked = false;
     public ?int $rjNo = null;
-    public array $dataDaftarUGD = [];
+    /**
+     * IRISAN dokumen: hanya cabang `pemeriksaan` — sekaligus model form
+     * (jalur validasi & wire:model kini `pemeriksaan.*`).
+     */
+    public array $pemeriksaan = [];
+
+    /** Penanda kunjungan sudah dimuat lewat open(). */
+    public bool $dokumenTermuat = false;
 
     // ── Upload Penunjang ──
     public $filePDF = null;
@@ -47,8 +54,7 @@ new class extends Component {
     public function rendering(): void
     {
         $default = $this->getDefaultPemeriksaan();
-        $current = $this->dataDaftarUGD['pemeriksaan'] ?? [];
-        $this->dataDaftarUGD['pemeriksaan'] = array_replace_recursive($default, $current);
+        $this->pemeriksaan = array_replace_recursive($default, $this->pemeriksaan);
     }
 
     /* ===============================
@@ -71,18 +77,17 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarUGD = $data;
-
-        $this->dataDaftarUGD['pemeriksaan'] ??= $this->getDefaultPemeriksaan();
+        $this->pemeriksaan = $data['pemeriksaan'] ?? $this->getDefaultPemeriksaan();
+        $this->dokumenTermuat = true;
 
         // Default 'Tidak' jika belum diisi
-        $this->suspekAkibatKerja = $this->dataDaftarUGD['pemeriksaan']['suspekAkibatKerja']['suspekAkibatKerja'] ?? '' ?: 'Tidak';
-        $this->dataDaftarUGD['pemeriksaan']['suspekAkibatKerja'] ??= [
+        $this->suspekAkibatKerja = $this->pemeriksaan['suspekAkibatKerja']['suspekAkibatKerja'] ?? '' ?: 'Tidak';
+        $this->pemeriksaan['suspekAkibatKerja'] ??= [
             'suspekAkibatKerja' => $this->suspekAkibatKerja,
             'keteranganSuspekAkibatKerja' => '',
             'suspekAkibatKerjaOptions' => [['suspekAkibatKerja' => 'Ya'], ['suspekAkibatKerja' => 'Tidak']],
         ];
-        $this->dataDaftarUGD['pemeriksaan']['suspekAkibatKerja']['suspekAkibatKerja'] = $this->suspekAkibatKerja;
+        $this->pemeriksaan['suspekAkibatKerja']['suspekAkibatKerja'] = $this->suspekAkibatKerja;
 
         $this->isFormLocked = $this->checkEmrUGDStatus($rjNo);
         $this->incrementVersion('modal-pemeriksaan-ugd');
@@ -104,7 +109,7 @@ new class extends Component {
      =============================== */
     protected function rules(): array
     {
-        $pre = 'dataDaftarUGD.pemeriksaan';
+        $pre = 'pemeriksaan';
         return [
             "{$pre}.tandaVital.waktuPemeriksaan" => 'date_format:d/m/Y H:i:s',
             "{$pre}.tandaVital.sistolik" => 'nullable|numeric',
@@ -127,7 +132,7 @@ new class extends Component {
 
     protected function messages(): array
     {
-        $pre = 'dataDaftarUGD.pemeriksaan';
+        $pre = 'pemeriksaan';
         return [
             "{$pre}.tandaVital.waktuPemeriksaan.date_format" => ':attribute harus dalam format dd/mm/yyyy hh:mi:ss',
             "{$pre}.tandaVital.frekuensiNadi.required" => ':attribute wajib diisi',
@@ -165,7 +170,7 @@ new class extends Component {
 
     protected function validationAttributes(): array
     {
-        $pre = 'dataDaftarUGD.pemeriksaan';
+        $pre = 'pemeriksaan';
         return [
             "{$pre}.tandaVital.waktuPemeriksaan" => 'Waktu Pemeriksaan',
             "{$pre}.tandaVital.sistolik" => 'Sistolik',
@@ -215,10 +220,10 @@ new class extends Component {
                 $isBaru = empty($data['pemeriksaan']);
 
                 // 3. Patch hanya key pemeriksaan
-                $data['pemeriksaan'] = $this->dataDaftarUGD['pemeriksaan'] ?? [];
+                $data['pemeriksaan'] = $this->pemeriksaan;
 
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->dataDaftarUGD = $data;
+                $this->pemeriksaan = $data['pemeriksaan'] ?? [];
 
                 // Audit log
                 $this->appendAdminLogUGD((int) $this->rjNo, ($isBaru ? 'Buat' : 'Update') . ' Pemeriksaan UGD — waktu pemeriksaan ' . ($data['pemeriksaan']['tandaVital']['waktuPemeriksaan'] ?? '-'), 'MR');
@@ -288,7 +293,7 @@ new class extends Component {
                 ];
 
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->dataDaftarUGD = $data;
+                $this->pemeriksaan = $data['pemeriksaan'] ?? [];
 
                 // Audit log
                 $this->appendAdminLogUGD((int) $this->rjNo, 'Upload Hasil Penunjang UGD — ' . $this->descPDF, 'MR');
@@ -351,7 +356,7 @@ new class extends Component {
                     ->toArray();
 
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->dataDaftarUGD = $data;
+                $this->pemeriksaan = $data['pemeriksaan'] ?? [];
 
                 // 5. Audit log
                 $this->appendAdminLogUGD((int) $this->rjNo, 'Hapus Hasil Penunjang UGD — ' . $ketLog, 'MR');
@@ -418,15 +423,15 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarUGD['pemeriksaan']['tandaVital']['perawatPemeriksa'] = auth()->user()->myuser_name;
-        $this->dataDaftarUGD['pemeriksaan']['tandaVital']['perawatPemeriksaCode'] = auth()->user()->myuser_code;
+        $this->pemeriksaan['tandaVital']['perawatPemeriksa'] = auth()->user()->myuser_name;
+        $this->pemeriksaan['tandaVital']['perawatPemeriksaCode'] = auth()->user()->myuser_code;
         $this->incrementVersion('modal-pemeriksaan-ugd');
     }
 
     public function setWaktuPemeriksaan(string $time): void
     {
         if (!$this->isFormLocked) {
-            $this->dataDaftarUGD['pemeriksaan']['tandaVital']['waktuPemeriksaan'] = $time;
+            $this->pemeriksaan['tandaVital']['waktuPemeriksaan'] = $time;
             $this->incrementVersion('modal-pemeriksaan-ugd');
         }
     }
@@ -456,14 +461,14 @@ new class extends Component {
 
                 // Idempotency: skip kalau $text sudah ada di tail (handle double-fire)
                 if (str_ends_with(rtrim($existing), trim($text))) {
-                    $this->dataDaftarUGD = $data;
+                    $this->pemeriksaan = $data['pemeriksaan'] ?? [];
                     return;
                 }
 
                 $data['pemeriksaan']['penunjang'] = trim(($existing ? $existing . "\n" : '') . $text);
 
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->dataDaftarUGD = $data;
+                $this->pemeriksaan = $data['pemeriksaan'] ?? [];
 
                 // Audit log
                 $this->appendAdminLogUGD((int) $this->rjNo, 'Terima Hasil Laborat ke Penunjang UGD', 'MR');
@@ -484,7 +489,7 @@ new class extends Component {
     {
         $data = $this->findDataUGD($this->rjNo);
         if ($data) {
-            $this->dataDaftarUGD['pemeriksaan']['pemeriksaanPenunjang'] = $data['pemeriksaan']['pemeriksaanPenunjang'] ?? [];
+            $this->pemeriksaan['pemeriksaanPenunjang'] = $data['pemeriksaan']['pemeriksaanPenunjang'] ?? [];
         }
         $this->incrementVersion('modal-pemeriksaan-ugd');
     }
@@ -494,7 +499,7 @@ new class extends Component {
     {
         $data = $this->findDataUGD($this->rjNo);
         if ($data) {
-            $this->dataDaftarUGD['pemeriksaan']['pemeriksaanPenunjang'] = $data['pemeriksaan']['pemeriksaanPenunjang'] ?? [];
+            $this->pemeriksaan['pemeriksaanPenunjang'] = $data['pemeriksaan']['pemeriksaanPenunjang'] ?? [];
         }
         $this->incrementVersion('modal-pemeriksaan-ugd');
     }
@@ -509,22 +514,22 @@ new class extends Component {
         }
 
         if (in_array($propertyName, [
-            'dataDaftarUGD.pemeriksaan.tandaVital.e',
-            'dataDaftarUGD.pemeriksaan.tandaVital.v',
-            'dataDaftarUGD.pemeriksaan.tandaVital.m',
+            'pemeriksaan.tandaVital.e',
+            'pemeriksaan.tandaVital.v',
+            'pemeriksaan.tandaVital.m',
         ], true)) {
             $this->hitungGCS();
         }
 
         if ($propertyName === 'suspekAkibatKerja') {
             $this->suspekAkibatKerja = $value;
-            $this->dataDaftarUGD['pemeriksaan']['suspekAkibatKerja']['suspekAkibatKerja'] = $value;
+            $this->pemeriksaan['suspekAkibatKerja']['suspekAkibatKerja'] = $value;
         }
     }
 
     private function hitungGCS(): void
     {
-        $tv = &$this->dataDaftarUGD['pemeriksaan']['tandaVital'];
+        $tv = &$this->pemeriksaan['tandaVital'];
         $e = (int) ($tv['e'] ?? 0);
         $v = (int) ($tv['v'] ?? 0);
         $m = (int) ($tv['m'] ?? 0);
@@ -658,11 +663,11 @@ new class extends Component {
      =============================== */
     private function hitungIMT(): void
     {
-        $bb = (float) ($this->dataDaftarUGD['pemeriksaan']['nutrisi']['bb'] ?? 0);
-        $tb = (float) ($this->dataDaftarUGD['pemeriksaan']['nutrisi']['tb'] ?? 0);
+        $bb = (float) ($this->pemeriksaan['nutrisi']['bb'] ?? 0);
+        $tb = (float) ($this->pemeriksaan['nutrisi']['tb'] ?? 0);
         $tbM = $tb / 100;
 
-        $this->dataDaftarUGD['pemeriksaan']['nutrisi']['imt'] = $tbM > 0
+        $this->pemeriksaan['nutrisi']['imt'] = $tbM > 0
             ? round($bb / ($tbM * $tbM), 2)
             : 0;
     }
@@ -695,7 +700,7 @@ new class extends Component {
             <div
                 class="w-full p-4 space-y-6 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
 
-                @if (isset($dataDaftarUGD['pemeriksaan']))
+                @if (!empty($pemeriksaan))
                     <div class="w-full mb-1">
                         <div class="grid grid-cols-1">
                             <div class="px-2">
@@ -706,9 +711,9 @@ new class extends Component {
                                         <div class="flex flex-nowrap gap-2 -mb-px">
 
                                             <x-tab variant="underline"
-                                                active-expr="activeTab === '{{ $dataDaftarUGD['pemeriksaan']['umumTab'] ?? 'Umum' }}'"
-                                                x-on:click="activeTab = '{{ $dataDaftarUGD['pemeriksaan']['umumTab'] ?? 'Umum' }}'">
-                                                {{ $dataDaftarUGD['pemeriksaan']['umumTab'] ?? 'Umum' }}
+                                                active-expr="activeTab === '{{ $pemeriksaan['umumTab'] ?? 'Umum' }}'"
+                                                x-on:click="activeTab = '{{ $pemeriksaan['umumTab'] ?? 'Umum' }}'">
+                                                {{ $pemeriksaan['umumTab'] ?? 'Umum' }}
                                             </x-tab>
 
                                             <x-tab variant="underline" active-expr="activeTab === 'Anatomi'"
@@ -742,7 +747,7 @@ new class extends Component {
 
                                     {{-- UMUM --}}
                                     <div class="p-2 rounded-lg bg-canvas mt-4 dark:bg-gray-800"
-                                        x-show.transition.in.opacity.duration.600="activeTab === '{{ $dataDaftarUGD['pemeriksaan']['umumTab'] ?? 'Umum' }}'">
+                                        x-show.transition.in.opacity.duration.600="activeTab === '{{ $pemeriksaan['umumTab'] ?? 'Umum' }}'">
                                         @include('pages.transaksi.ugd.emr-ugd.pemeriksaan.tabs.umum-tab')
                                     </div>
 

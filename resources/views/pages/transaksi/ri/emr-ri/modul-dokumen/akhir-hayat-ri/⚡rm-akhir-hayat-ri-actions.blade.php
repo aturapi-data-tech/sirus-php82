@@ -28,7 +28,18 @@ new class extends Component {
     public ?string $riHdrNo = null;
     public ?string $regNo = null;
     public bool $disabled = false;
-    public array $dataDaftarRi = [];
+    /** IRISAN dokumen: cabang `pengkajianAkhirHayatRI` + dua nilai rekam medis. */
+    public array $daftarAkhirHayat = [];
+    public string $diagnosaMasuk = '';
+    public string $regName = '';
+
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan + skalar yang disimpan. */
+    private function serapIrisan(array $data): void
+    {
+        $this->daftarAkhirHayat = $data['pengkajianAkhirHayatRI'] ?? [];
+        $this->diagnosaMasuk = (string) (data_get($data, 'pengkajianAwalPasienRawatInap.bagian1DataUmum.diagnosaMasuk') ?? '');
+        $this->regName = (string) ($data['regName'] ?? '');
+    }
 
     // TTD gambar dari komponen signature-pad (jangan tulis tag x-... di komentar:
     // Blade tetap mengkompilasinya walau berada di dalam komentar PHP)
@@ -148,9 +159,8 @@ new class extends Component {
         if ($this->riHdrNo) {
             $data = $this->findDataRI($this->riHdrNo);
             if ($data) {
-                $this->dataDaftarRi = $data;
+                $this->serapIrisan($data);
                 $this->regNo = $data['regNo'] ?? null;
-                $this->dataDaftarRi['pengkajianAkhirHayatRI'] ??= [];
                 $this->form['ttd']['keluargaNama'] = $data['regName'] ?? '';
                 $this->isFormLocked = $this->checkEmrRIStatus($this->riHdrNo) || $disabled;
             }
@@ -165,9 +175,8 @@ new class extends Component {
 
         $data = $this->findDataRI($this->riHdrNo);
         if ($data) {
-            $this->dataDaftarRi = $data;
+            $this->serapIrisan($data);
             $this->regNo = $data['regNo'] ?? $this->regNo;
-            $this->dataDaftarRi['pengkajianAkhirHayatRI'] ??= [];
             $this->isFormLocked = $this->checkEmrRIStatus($this->riHdrNo) || $this->disabled;
         }
 
@@ -284,7 +293,7 @@ new class extends Component {
      */
     private function prefillDariEmr(): void
     {
-        $diagnosa = data_get($this->dataDaftarRi, 'pengkajianAwalPasienRawatInap.bagian1DataUmum.diagnosaMasuk', '');
+        $diagnosa = $this->diagnosaMasuk;
         if (filled($diagnosa) && empty($this->form['medis']['diagnosaUtama'])) {
             $this->form['medis']['diagnosaUtama'] = (string) $diagnosa;
         }
@@ -312,7 +321,7 @@ new class extends Component {
     /** Jenis asesmen ditentukan sistem: entri pertama Awal, berikutnya Ulang. */
     private function tentukanJenisAsesmen(string $id): string
     {
-        $list = $this->dataDaftarRi['pengkajianAkhirHayatRI'] ?? [];
+        $list = $this->daftarAkhirHayat ?? [];
         $existing = collect($list)->firstWhere('id', $id);
         if ($existing) {
             return $existing['form']['jenisAsesmen'] ?? 'awal';
@@ -453,7 +462,7 @@ new class extends Component {
         }
         $form['fisik']['bmi'] = $this->bmi ?? ''; // snapshot hasil hitung
 
-        $existing = collect($this->dataDaftarRi['pengkajianAkhirHayatRI'] ?? [])->firstWhere('id', $id);
+        $existing = collect($this->daftarAkhirHayat ?? [])->firstWhere('id', $id);
         $createdAt = $existing['created_at'] ?? Carbon::now(config('app.timezone'))->format('Y-m-d H:i:s');
         $createdBy = $existing['created_by'] ?? [
             'code' => auth()->user()->myuser_code ?? '',
@@ -494,7 +503,7 @@ new class extends Component {
             $fresh['pengkajianAkhirHayatRI'] = array_values($list);
 
             $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-            $this->dataDaftarRi = $fresh;
+            $this->daftarAkhirHayat = $fresh['pengkajianAkhirHayatRI'] ?? [];
 
             $jenis = ($entry['form']['jenisAsesmen'] ?? 'awal') === 'ulang' ? 'Ulang' : 'Awal';
             $this->appendAdminLogRI(
@@ -625,7 +634,7 @@ new class extends Component {
             $this->dispatch('toast', type: 'error', message: 'Pasien sudah pulang.');
             return;
         }
-        $entri = collect($this->dataDaftarRi['pengkajianAkhirHayatRI'] ?? [])->firstWhere('id', $id);
+        $entri = collect($this->daftarAkhirHayat ?? [])->firstWhere('id', $id);
         if (!$entri) {
             $this->dispatch('toast', type: 'error', message: 'Entri tidak ditemukan.');
             return;
@@ -642,7 +651,7 @@ new class extends Component {
 
     public function viewEntry(string $id): void
     {
-        $entri = collect($this->dataDaftarRi['pengkajianAkhirHayatRI'] ?? [])->firstWhere('id', $id);
+        $entri = collect($this->daftarAkhirHayat ?? [])->firstWhere('id', $id);
         if (!$entri) {
             $this->dispatch('toast', type: 'error', message: 'Entri tidak ditemukan.');
             return;
@@ -707,7 +716,7 @@ new class extends Component {
 
                 $fresh['pengkajianAkhirHayatRI'] = $newList;
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->dataDaftarRi = $fresh;
+                $this->daftarAkhirHayat = $fresh['pengkajianAkhirHayatRI'] ?? [];
 
                 $this->appendAdminLogRI(
                     (int) $this->riHdrNo,
@@ -768,7 +777,7 @@ new class extends Component {
 
                 $fresh['pengkajianAkhirHayatRI'] = array_values($list);
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->dataDaftarRi = $fresh;
+                $this->daftarAkhirHayat = $fresh['pengkajianAkhirHayatRI'] ?? [];
 
                 $this->appendAdminLogRI(
                     (int) $this->riHdrNo,
@@ -792,7 +801,7 @@ new class extends Component {
      =============================== */
     public function cetak(string $id)
     {
-        $entry = collect($this->dataDaftarRi['pengkajianAkhirHayatRI'] ?? [])->firstWhere('id', $id);
+        $entry = collect($this->daftarAkhirHayat ?? [])->firstWhere('id', $id);
         if (!$entry) {
             $this->dispatch('toast', type: 'error', message: 'Data pengkajian tidak ditemukan.');
             return;
@@ -821,7 +830,7 @@ new class extends Component {
             }
 
             $data = array_merge($pasien, [
-                'dataRi' => $this->dataDaftarRi,
+                'dataRi' => $this->findDataRI($this->riHdrNo) ?: [],
                 'entry' => $entry,
                 'identitasRs' => $identitasRs,
                 'ttdPetugasPath' => $ttdPetugasPath,
@@ -855,7 +864,7 @@ new class extends Component {
     public function resetFormAkhirHayat(): void
     {
         $this->form = $this->defaultForm();
-        $this->form['ttd']['keluargaNama'] = $this->dataDaftarRi['regName'] ?? '';
+        $this->form['ttd']['keluargaNama'] = $this->regName;
         $this->prefillHeader();
         $this->keluargaSignature = '';
         $this->saksiSignature = '';
@@ -870,14 +879,14 @@ new class extends Component {
 
 <div>
     {{-- ══ RINGKASAN + TOMBOL ══ --}}
-    @php $akhirHayatCount = count($dataDaftarRi['pengkajianAkhirHayatRI'] ?? []); @endphp
+    @php $akhirHayatCount = count($daftarAkhirHayat ?? []); @endphp
     <x-modul-dokumen.kartu judul="Pengkajian Akhir Hayat"
         :jumlah="$akhirHayatCount"
         satuan="entri"
         tombol="Buka Pengkajian Akhir Hayat"
         :nonaktif="!$riHdrNo">
         <x-slot:deskripsi>Asesmen pasien terminal &amp; keluarganya: kondisi medis, simptom, psikososial-spiritual, rencana &amp; intervensi (termasuk DNR), lalu ditandatangani pasien/keluarga, saksi, dan petugas.</x-slot:deskripsi>
-        @php $list = $dataDaftarRi['pengkajianAkhirHayatRI'] ?? []; @endphp
+        @php $list = $daftarAkhirHayat ?? []; @endphp
             <div class="overflow-x-auto rounded-2xl border border-hairline dark:border-gray-700">
                 <table class="min-w-full text-sm">
                     <thead class="bg-surface-card dark:bg-gray-800">
@@ -985,7 +994,7 @@ new class extends Component {
                         <div class="pb-1">
                             @php
                                 $jenisTersimpan = $editingKey ? $form['jenisAsesmen'] ?? '' : '';
-                                $jenisAktif = $jenisTersimpan ?: (count($dataDaftarRi['pengkajianAkhirHayatRI'] ?? []) > 0 ? 'ulang' : 'awal');
+                                $jenisAktif = $jenisTersimpan ?: (count($daftarAkhirHayat ?? []) > 0 ? 'ulang' : 'awal');
                             @endphp
                             <x-badge variant="info">{{ $jenisAktif === 'ulang' ? 'Asesmen Ulang' : 'Asesmen Awal' }}</x-badge>
                         </div>
@@ -1535,7 +1544,7 @@ new class extends Component {
 
                 {{-- ═══════════ RIWAYAT ═══════════ --}}
                 @unless ($this->diForm())
-                @php $list = $dataDaftarRi['pengkajianAkhirHayatRI'] ?? []; @endphp
+                @php $list = $daftarAkhirHayat ?? []; @endphp
                 <x-modul-dokumen.tabel-daftar :kolom="['', 'Tanggal', 'Jenis', 'Penanda Tangan', 'Petugas', 'Status' => 'text-center', 'Aksi' => 'text-center w-56']">
                             @forelse (collect($list)->sortByDesc(fn($entri) => strtotime(strtr(($entri['tanggal'] ?? '') ?: ($entri['createdAt'] ?? ''), '/', '-')))->values()->all() as $entri)
                                 @php

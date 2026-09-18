@@ -11,7 +11,20 @@ new class extends Component {
 
     public bool $isFormLocked = false;
     public ?int $rjNo = null;
-    public array $dataDaftarPoliRJ = [];
+
+    /**
+     * RINGKASAN status dokumen, bukan isinya.
+     *
+     * Hub ini memang perlu tahu keadaan SEMUA dokumen untuk menyalakan badge — tapi cukup
+     * benar/salah dan hitungannya, bukan isi dokumennya. Menyimpan `datadaftarpolirj_json`
+     * utuh di properti publik berarti mengirim seluruh dokumen bolak-balik tiap request
+     * hanya demi lima badge.
+     */
+    public bool $adaSuket = false;
+    public bool $adaGeneralConsent = false;
+    public int $jumlahInformConsent = 0;
+    public int $jumlahPenundaan = 0;
+    public bool $adaBedah = false;
 
     // renderVersions
     public array $renderVersions = [];
@@ -41,14 +54,14 @@ new class extends Component {
         $this->tabAwal = in_array($tab, self::TAB_BOLEH, true) ? $tab : 'suket';
         $this->resetValidation();
 
-        $dataDaftarPoliRJ = $this->findDataRJ($rjNo);
+        $data = $this->findDataRJ($rjNo);
 
-        if (!$dataDaftarPoliRJ) {
+        if (!$data) {
             $this->dispatch('toast', type: 'error', message: 'Data Rawat Jalan tidak ditemukan.');
             return;
         }
 
-        $this->dataDaftarPoliRJ = $dataDaftarPoliRJ;
+        $this->hitungRingkasan($data);
 
         if ($this->checkEmrRJStatus($rjNo)) {
             $this->isFormLocked = true;
@@ -83,14 +96,27 @@ new class extends Component {
 
         $data = $this->findDataRJ($rjNo);
         if ($data) {
-            $this->dataDaftarPoliRJ = $data;
+            $this->hitungRingkasan($data);
         }
+    }
+
+    /** Dokumen dibaca sebagai variabel LOKAL, diperas jadi lima penanda, lalu dilepas. */
+    private function hitungRingkasan(array $data): void
+    {
+        $this->adaSuket = !empty($data['suket']['suketSehat']) || !empty($data['suket']['suketIstirahat']);
+        $this->adaGeneralConsent = !empty($data['generalConsentPasienRJ']['signature']);
+        $this->jumlahInformConsent = count($data['informConsentPasienRJ'] ?? []);
+        $this->jumlahPenundaan = count($data['penundaanPelayananRJ'] ?? []);
+        $this->adaBedah = collect([
+            'pengkajianPreOpRJ', 'praAnestesiRJ', 'praInduksiRJ', 'surgicalSafetyChecklistRJ',
+            'laporanOperasiRJ', 'laporanAnestesiRJ', 'pascaAnestesiRJ', 'instruksiPascaBedahRJ',
+        ])->contains(fn($k) => !empty($data[$k]));
     }
 
     protected function resetForm(): void
     {
         $this->tabAwal = 'suket';
-        $this->reset(['rjNo', 'dataDaftarPoliRJ']);
+        $this->reset(['rjNo', 'adaSuket', 'adaGeneralConsent', 'jumlahInformConsent', 'jumlahPenundaan', 'adaBedah']);
         $this->resetVersion();
         $this->isFormLocked = false;
     }
@@ -144,7 +170,7 @@ new class extends Component {
                                                 d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                         </svg>
                                         Surat Keterangan
-                                        @if (!empty($dataDaftarPoliRJ['suket']['suketSehat']) || !empty($dataDaftarPoliRJ['suket']['suketIstirahat']))
+                                        @if ($adaSuket)
                                             <x-badge variant="success" class="text-[10px] px-1.5 py-0">&#10003;</x-badge>
                                         @endif
                                     </x-tab>
@@ -158,7 +184,7 @@ new class extends Component {
                                                 d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 012.828 2.828L11.828 15.828a4 4 0 01-2.828 1.172H7v-2a4 4 0 011.172-2.828z" />
                                         </svg>
                                         General Consent
-                                        @if (!empty($dataDaftarPoliRJ['generalConsentPasienRJ']['signature']))
+                                        @if ($adaGeneralConsent)
                                             <x-badge variant="success"
                                                 class="text-[10px] px-1.5 py-0">&#10003;</x-badge>
                                         @endif
@@ -173,9 +199,9 @@ new class extends Component {
                                                 d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                                         </svg>
                                         Inform Consent
-                                        @if (!empty($dataDaftarPoliRJ['informConsentPasienRJ']) && count($dataDaftarPoliRJ['informConsentPasienRJ']) > 0)
+                                        @if ($jumlahInformConsent > 0)
                                             <x-badge variant="success"
-                                                class="text-[10px] px-1.5 py-0">{{ count($dataDaftarPoliRJ['informConsentPasienRJ']) }}</x-badge>
+                                                class="text-[10px] px-1.5 py-0">{{ $jumlahInformConsent }}</x-badge>
                                         @endif
                                     </x-tab>
 
@@ -188,9 +214,9 @@ new class extends Component {
                                                 d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                                         </svg>
                                         Penundaan Pelayanan
-                                        @if (!empty($dataDaftarPoliRJ['penundaanPelayananRJ']) && count($dataDaftarPoliRJ['penundaanPelayananRJ']) > 0)
+                                        @if ($jumlahPenundaan > 0)
                                             <x-badge variant="success"
-                                                class="text-[10px] px-1.5 py-0">{{ count($dataDaftarPoliRJ['penundaanPelayananRJ']) }}</x-badge>
+                                                class="text-[10px] px-1.5 py-0">{{ $jumlahPenundaan }}</x-badge>
                                         @endif
                                     </x-tab>
 
@@ -202,7 +228,7 @@ new class extends Component {
                                                 d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                         </svg>
                                         Pelayanan Bedah
-                                        @if (collect(['pengkajianPreOpRJ', 'praAnestesiRJ', 'praInduksiRJ', 'surgicalSafetyChecklistRJ', 'laporanOperasiRJ', 'laporanAnestesiRJ', 'pascaAnestesiRJ', 'instruksiPascaBedahRJ'])->first(fn($k) => !empty($dataDaftarPoliRJ[$k])))
+                                        @if ($adaBedah)
                                             <x-badge variant="success" class="text-[10px] px-1.5 py-0">&#10003;</x-badge>
                                         @endif
                                     </x-tab>

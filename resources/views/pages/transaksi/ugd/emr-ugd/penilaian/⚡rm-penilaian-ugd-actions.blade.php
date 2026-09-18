@@ -16,7 +16,19 @@ new class extends Component {
 
     public bool $isFormLocked = false;
     public ?int $rjNo = null;
-    public array $dataDaftarUGD = [];
+
+    /**
+     * IRISAN dokumen: hanya cabang `penilaian` (nyeri / resikoJatuh / resikoBunuhDiri /
+     * dekubitus / gizi / statusPediatrik / diagnosis).
+     *
+     * Dokumen `datadaftarugd_json` utuh sengaja TIDAK disimpan di properti publik — properti
+     * publik ikut snapshot Livewire dan dikirim bolak-balik tiap request. savePenilaian()
+     * memang sudah hanya mem-patch key `penilaian`, jadi sisa dokumen murni beban mati.
+     */
+    public array $penilaian = [];
+
+    /** Dipakai penanda "sudah ter-muat" untuk reloadAfterUgdSaved() + hitung umur pasien. */
+    public ?string $regNoPasien = null;
     public string $activePenilaianTab = 'Nyeri'; // persist sub-tab agar tidak balik ke Nyeri setelah simpan
 
     public array $renderVersions = [];
@@ -143,9 +155,7 @@ new class extends Component {
 
     public function rendering(): void
     {
-        $default = $this->getDefaultPenilaian();
-        $current = $this->dataDaftarUGD['penilaian'] ?? [];
-        $this->dataDaftarUGD['penilaian'] = array_replace_recursive($default, $current);
+        $this->penilaian = array_replace_recursive($this->getDefaultPenilaian(), $this->penilaian);
     }
 
     /* ===============================
@@ -168,10 +178,10 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarUGD = $data;
-        $this->dataDaftarUGD['penilaian'] ??= $this->getDefaultPenilaian();
+        $this->penilaian = $data['penilaian'] ?? $this->getDefaultPenilaian();
+        $this->regNoPasien = $data['regNo'] ?? null;
 
-        $this->umurPasienTahun = $this->hitungUmurPasien($this->dataDaftarUGD['regNo'] ?? null);
+        $this->umurPasienTahun = $this->hitungUmurPasien($this->regNoPasien);
         $this->skalaDisarankan = NyeriOptions::saranUntukUmur($this->umurPasienTahun);
 
         $this->incrementVersion('modal-penilaian-ugd');
@@ -185,13 +195,13 @@ new class extends Component {
      | RELOAD SETELAH SIMPAN EMR GLOBAL
      | Simpan SOAP (anamnesa/pemeriksaan/diagnosa/perencanaan) mem-morph parent EMR.
      | Komponen "pasif" yg tak menerima event save (penilaian/observasi/obat-cairan)
-     | ikut ter-wipe saat morph → dataDaftarUGD kosong ("Buka kunjungan..."). Muat ulang
-     | HANYA bila memang ter-wipe (regNo hilang), supaya input berjalan tak ke-reset.
+     | ikut ter-wipe saat morph → regNoPasien kosong. Muat ulang HANYA bila memang ter-wipe
+     | (regNoPasien hilang), supaya input berjalan tak ke-reset.
      =============================== */
     #[On('refresh-after-ugd.saved')]
     public function reloadAfterUgdSaved(): void
     {
-        if (empty($this->rjNo) || !empty($this->dataDaftarUGD['regNo'])) {
+        if (empty($this->rjNo) || !empty($this->regNoPasien)) {
             return;
         }
 
@@ -223,10 +233,10 @@ new class extends Component {
                 }
 
                 // 3. Patch hanya key penilaian
-                $data['penilaian'] = $this->dataDaftarUGD['penilaian'] ?? [];
+                $data['penilaian'] = $this->penilaian;
 
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->dataDaftarUGD = $data;
+                $this->penilaian = $data['penilaian'];
 
                 // 4. Audit log
                 if ($logKeterangan !== null) {
@@ -343,7 +353,7 @@ new class extends Component {
         // Keterangan nyeri selalu diturunkan ulang sesaat sebelum simpan.
         $this->sinkronKetNyeri();
 
-        $this->dataDaftarUGD['penilaian']['nyeri'][] = $this->formEntryNyeri;
+        $this->penilaian['nyeri'][] = $this->formEntryNyeri;
         $this->savePenilaian('Tambah Penilaian Nyeri UGD — penilaian ' . ($this->formEntryNyeri['tglPenilaian'] ?? '-'));
         $this->formEntryNyeri = $this->defaultFormEntryNyeriState();
     }
@@ -354,9 +364,9 @@ new class extends Component {
             return;
         }
 
-        if (isset($this->dataDaftarUGD['penilaian']['nyeri'][$index])) {
-            $tgl = $this->dataDaftarUGD['penilaian']['nyeri'][$index]['tglPenilaian'] ?? '-';
-            array_splice($this->dataDaftarUGD['penilaian']['nyeri'], $index, 1);
+        if (isset($this->penilaian['nyeri'][$index])) {
+            $tgl = $this->penilaian['nyeri'][$index]['tglPenilaian'] ?? '-';
+            array_splice($this->penilaian['nyeri'], $index, 1);
             $this->savePenilaian('Hapus Penilaian Nyeri UGD — penilaian ' . $tgl);
         }
     }
@@ -455,7 +465,7 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarUGD['penilaian']['resikoJatuh'][] = $this->formEntryResikoJatuh;
+        $this->penilaian['resikoJatuh'][] = $this->formEntryResikoJatuh;
         $this->savePenilaian('Tambah Penilaian Resiko Jatuh UGD — penilaian ' . ($this->formEntryResikoJatuh['tglPenilaian'] ?? '-'));
         $this->formEntryResikoJatuh = $this->defaultFormEntryResikoJatuhState();
     }
@@ -466,9 +476,9 @@ new class extends Component {
             return;
         }
 
-        if (isset($this->dataDaftarUGD['penilaian']['resikoJatuh'][$index])) {
-            $tgl = $this->dataDaftarUGD['penilaian']['resikoJatuh'][$index]['tglPenilaian'] ?? '-';
-            array_splice($this->dataDaftarUGD['penilaian']['resikoJatuh'], $index, 1);
+        if (isset($this->penilaian['resikoJatuh'][$index])) {
+            $tgl = $this->penilaian['resikoJatuh'][$index]['tglPenilaian'] ?? '-';
+            array_splice($this->penilaian['resikoJatuh'], $index, 1);
             $this->savePenilaian('Hapus Penilaian Resiko Jatuh UGD — penilaian ' . $tgl);
         }
     }
@@ -704,7 +714,7 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarUGD['penilaian']['resikoBunuhDiri'][] = $this->formEntryResikoBunuhDiri;
+        $this->penilaian['resikoBunuhDiri'][] = $this->formEntryResikoBunuhDiri;
         $this->savePenilaian('Tambah Skrining UGD Risiko Bunuh Diri (C-SSRS) — kategori ' . ($this->formEntryResikoBunuhDiri['kategoriResiko'] ?? '-') . ', entri ' . ($this->formEntryResikoBunuhDiri['tglPenilaian'] ?? '-'));
         $this->formEntryResikoBunuhDiri = $this->defaultFormEntryResikoBunuhDiriState();
     }
@@ -716,9 +726,9 @@ new class extends Component {
             return;
         }
 
-        if (isset($this->dataDaftarUGD['penilaian']['resikoBunuhDiri'][$index])) {
-            $tglEntri = $this->dataDaftarUGD['penilaian']['resikoBunuhDiri'][$index]['tglPenilaian'] ?? '-';
-            array_splice($this->dataDaftarUGD['penilaian']['resikoBunuhDiri'], $index, 1);
+        if (isset($this->penilaian['resikoBunuhDiri'][$index])) {
+            $tglEntri = $this->penilaian['resikoBunuhDiri'][$index]['tglPenilaian'] ?? '-';
+            array_splice($this->penilaian['resikoBunuhDiri'], $index, 1);
             $this->savePenilaian('Hapus Skrining UGD Risiko Bunuh Diri (C-SSRS) — entri ' . $tglEntri);
         }
     }
@@ -789,7 +799,7 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarUGD['penilaian']['dekubitus'][] = $this->formEntryDekubitus;
+        $this->penilaian['dekubitus'][] = $this->formEntryDekubitus;
         $this->savePenilaian('Tambah Penilaian Dekubitus UGD — penilaian ' . ($this->formEntryDekubitus['tglPenilaian'] ?? '-'));
         $this->formEntryDekubitus = $this->defaultFormEntryDekubitusState();
     }
@@ -800,9 +810,9 @@ new class extends Component {
             return;
         }
 
-        if (isset($this->dataDaftarUGD['penilaian']['dekubitus'][$index])) {
-            $tgl = $this->dataDaftarUGD['penilaian']['dekubitus'][$index]['tglPenilaian'] ?? '-';
-            array_splice($this->dataDaftarUGD['penilaian']['dekubitus'], $index, 1);
+        if (isset($this->penilaian['dekubitus'][$index])) {
+            $tgl = $this->penilaian['dekubitus'][$index]['tglPenilaian'] ?? '-';
+            array_splice($this->penilaian['dekubitus'], $index, 1);
             $this->savePenilaian('Hapus Penilaian Dekubitus UGD — penilaian ' . $tgl);
         }
     }
@@ -871,7 +881,7 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarUGD['penilaian']['gizi'][] = $this->formEntryGizi;
+        $this->penilaian['gizi'][] = $this->formEntryGizi;
         $this->savePenilaian('Tambah Penilaian Gizi UGD — penilaian ' . ($this->formEntryGizi['tglPenilaian'] ?? '-'));
         $this->formEntryGizi = $this->defaultFormEntryGiziState();
     }
@@ -882,9 +892,9 @@ new class extends Component {
             return;
         }
 
-        if (isset($this->dataDaftarUGD['penilaian']['gizi'][$index])) {
-            $tgl = $this->dataDaftarUGD['penilaian']['gizi'][$index]['tglPenilaian'] ?? '-';
-            array_splice($this->dataDaftarUGD['penilaian']['gizi'], $index, 1);
+        if (isset($this->penilaian['gizi'][$index])) {
+            $tgl = $this->penilaian['gizi'][$index]['tglPenilaian'] ?? '-';
+            array_splice($this->penilaian['gizi'], $index, 1);
             $this->savePenilaian('Hapus Penilaian Gizi UGD — penilaian ' . $tgl);
         }
     }
@@ -1060,7 +1070,7 @@ new class extends Component {
 <div>
     <div class="flex flex-col w-full" wire:key="{{ $this->renderKey('modal-penilaian-ugd', [$rjNo ?? 'new']) }}">
 
-        @if (isset($dataDaftarUGD['penilaian']))
+        @if (!empty($penilaian))
             <div
                 class="w-full p-4 space-y-6 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
 

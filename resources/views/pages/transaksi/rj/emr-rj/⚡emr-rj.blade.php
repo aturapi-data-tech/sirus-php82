@@ -38,7 +38,7 @@ new class extends Component {
         }
 
         // Ambil nokartu BPJS dari master pasien
-        $regNo = $this->dataDaftarPoliRJ['regNo'] ?? '';
+        $regNo = $this->regNoPasien;
         $dataMasterPasien = $this->findDataMasterPasien($regNo);
         $nokartuBpjs = $dataMasterPasien['pasien']['identitas']['idbpjs'] ?? '';
 
@@ -47,7 +47,7 @@ new class extends Component {
             return;
         }
 
-        $drId = $this->dataDaftarPoliRJ['drId'] ?? '';
+        $drId = $this->drId;
 
         if (!$drId) {
             $this->dispatch('toast', type: 'error', message: 'Data dokter tidak ditemukan.');
@@ -78,7 +78,17 @@ new class extends Component {
 
     public bool $isFormLocked = false;
     public ?int $rjNo = null;
-    public array $dataDaftarPoliRJ = [];
+    /**
+     * RINGKASAN kunjungan, bukan dokumennya.
+     *
+     * Induk EMR RJ hanya perlu identitas pasien, SEP, dan tahu apakah e-resep sudah terisi —
+     * bukan isi dokumen `datadaftarpolirj_json`. Properti publik ikut snapshot Livewire dan
+     * dikirim bolak-balik tiap request; anak-anaknya memuat datanya sendiri dari prop rjNo.
+     */
+    public string $regNoPasien = '';
+    public string $drId = '';
+    public string $noSep = '';
+    public bool $adaEresep = false;
 
     // renderVersions
     public array $renderVersions = [];
@@ -95,17 +105,20 @@ new class extends Component {
         $this->resetValidation();
 
         // Ambil data kunjungan RJ
-        $dataDaftarPoliRJ = $this->findDataRJ($rjNo);
+        $data = $this->findDataRJ($rjNo);
 
-        if (!$dataDaftarPoliRJ) {
+        if (!$data) {
             $this->dispatch('toast', type: 'error', message: 'Data Rawat Jalan tidak ditemukan.');
             return;
         }
 
-        $this->dataDaftarPoliRJ = $dataDaftarPoliRJ;
+        // Dokumen dibaca sebagai variabel LOKAL, diperas jadi ringkasan, lalu dilepas.
+        $this->regNoPasien = (string) ($data['regNo'] ?? '');
+        $this->drId = (string) ($data['drId'] ?? '');
+        $this->noSep = (string) ($data['sep']['noSep'] ?? '');
+        $this->adaEresep = !empty($data['eresep']) || !empty($data['eresepRacikan']);
 
         // Ambil data rekam medis perawat jika sudah ada
-        // $this->dataDaftarPoliRJ = $this->findRekamMedisPerawat($rjNo);
 
         // Cek status lock
         if ($this->checkEmrRJStatus($rjNo)) {
@@ -130,7 +143,7 @@ new class extends Component {
 
     protected function resetForm(): void
     {
-        $this->reset(['rjNo', 'dataDaftarPoliRJ']);
+        $this->reset(['rjNo', 'regNoPasien', 'drId', 'noSep', 'adaEresep']);
         $this->resetVersion();
         $this->isFormLocked = false;
     }
@@ -181,8 +194,7 @@ new class extends Component {
 
     public function hasEresep(): bool
     {
-        return !empty($this->dataDaftarPoliRJ['eresep'])
-            || !empty($this->dataDaftarPoliRJ['eresepRacikan']);
+        return $this->adaEresep;
     }
 };
 
@@ -320,8 +332,8 @@ new class extends Component {
                                         Medis</span>
                                 </div>
                                 <livewire:pages::components.rekam-medis.rekam-medis-display.rekam-medis-display
-                                    :regNo="$dataDaftarPoliRJ['regNo'] ?? ''" :rjNoRefCopyTo="$rjNo ?? 0"
-                                    wire:key="emr-rj.eresep-rj-rekam-medis-display-rj-{{ $dataDaftarPoliRJ['regNo'] ?? 'new' }}" />
+                                    :regNo="$regNoPasien" :rjNoRefCopyTo="$rjNo ?? 0"
+                                    wire:key="emr-rj.eresep-rj-rekam-medis-display-rj-{{ $regNoPasien ?: 'new' }}" />
                             </div>
                         </div>
 
@@ -343,9 +355,9 @@ new class extends Component {
                         @endif
 
                         @role(['Dokter', 'Admin'])
-                            @if (!empty($dataDaftarPoliRJ['sep']['noSep']))
+                            @if (filled($noSep))
                                 <x-primary-button type="button"
-                                    wire:click="myiCare('{{ $dataDaftarPoliRJ['sep']['noSep'] }}')"
+                                    wire:click="myiCare('{{ $noSep }}')"
                                     wire:loading.attr="disabled" wire:target="myiCare"
                                     class="gap-1 !bg-emerald-600 hover:!bg-emerald-700 !text-white focus:!ring-emerald-300 dark:!bg-emerald-600 dark:!text-white dark:hover:!bg-emerald-700 dark:focus:!ring-emerald-900">
                                     <span wire:loading.remove wire:target="myiCare" class="flex items-center gap-1">

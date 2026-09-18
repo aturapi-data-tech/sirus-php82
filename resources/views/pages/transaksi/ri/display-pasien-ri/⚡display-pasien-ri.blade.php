@@ -13,7 +13,11 @@ new class extends Component {
     use EmrRITrait, MasterPasienTrait;
 
     public ?string $riHdrNo = null;
-    public array $dataDaftarRi = [];
+    /**
+     * RINGKASAN kunjungan untuk kartu display — bukan dokumennya. Bentuknya sengaja
+     * MENIRU dokumen aslinya supaya blade cukup memakai alias `$ri` seperti sebelumnya.
+     */
+    public array $ringkas = [];
     public array $dataPasien = [];
 
     /** Penilaian risiko jatuh terbaru — terisi hanya jika kategori Sedang/Tinggi. */
@@ -46,17 +50,30 @@ new class extends Component {
 
         $this->riHdrNo = $riHdrNo;
 
-        $dataDaftarRi = $this->findDataRI($riHdrNo);
-        if (!$dataDaftarRi) {
+        $data = $this->findDataRI($riHdrNo);
+        if (!$data) {
             $this->dispatch('toast', type: 'error', message: 'Data RI tidak ditemukan.');
             return;
         }
 
-        $this->dataDaftarRi = $dataDaftarRi;
-        $this->dataPasien = $this->findDataMasterPasien($dataDaftarRi['regNo']) ?? [];
-        $this->resikoJatuhTerakhir = $this->hitungResikoJatuhTerakhir($dataDaftarRi);
-        $this->resikoBunuhDiriTerakhir = $this->hitungResikoBunuhDiriTerakhir($dataDaftarRi);
-        $this->ewsTerakhir = EwsSkor::terakhirDari($dataDaftarRi['observasi']['observasiLanjutan']['tandaVital'] ?? []) ?? [];
+        // Dokumen dibaca sebagai variabel LOKAL; hanya nilai yang dipakai kartu yang ditahan.
+        $this->ringkas = [
+            'bangsalDesc' => $data['bangsalDesc'] ?? null,
+            'roomDesc'    => $data['roomDesc'] ?? null,
+            'entryId'     => $data['entryId'] ?? null,
+            'entryDesc'   => $data['entryDesc'] ?? null,
+            'entryDate'   => $data['entryDate'] ?? null,
+            'klaimId'     => $data['klaimId'] ?? null,
+            'riStatus'    => $data['riStatus'] ?? null,
+            'sep'         => ['noSep' => $data['sep']['noSep'] ?? null],
+            'pengkajianAwalPasienRawatInap' => [
+                'levelingDokter' => $data['pengkajianAwalPasienRawatInap']['levelingDokter'] ?? [],
+            ],
+        ];
+        $this->dataPasien = $this->findDataMasterPasien($data['regNo'] ?? '') ?? [];
+        $this->resikoJatuhTerakhir = $this->hitungResikoJatuhTerakhir($data);
+        $this->resikoBunuhDiriTerakhir = $this->hitungResikoBunuhDiriTerakhir($data);
+        $this->ewsTerakhir = EwsSkor::terakhirDari($data['observasi']['observasiLanjutan']['tandaVital'] ?? []) ?? [];
         $this->entryLabels = DB::table('rsmst_entrytypes')->pluck('entry_desc', 'entry_id')
             ->mapWithKeys(fn($entryDesc, $entryId) => [(string) $entryId => $entryDesc])->all();
     }
@@ -159,11 +176,11 @@ new class extends Component {
 ?>
 
 <div>
-    @if (!empty($dataDaftarRi) && !empty($dataPasien))
+    @if (!empty($ringkas) && !empty($dataPasien))
 
         @php
             $pasien = $dataPasien['pasien'] ?? [];
-            $ri = $dataDaftarRi;
+            $ri = $ringkas;
 
             /* ── Klaim ── */
             $klaim = DB::table('rsmst_klaimtypes')

@@ -13,7 +13,12 @@ new class extends Component {
     public bool $isFormLocked = false;
     public ?int $riHdrNo = null;
     public int $resepIndex = 0;
-    public array $dataDaftarRI = [];
+    /**
+     * IRISAN dokumen: hanya cabang `eresepHdr` (daftar lembar resep RI) — sekaligus model
+     * form. Indeks lembar (`$resepIndex`) tetap seperti semula, jadi jalur wire:model hanya
+     * kehilangan awalan dokumennya.
+     */
+    public array $eresepHdr = [];
     public array $formEresepRacikan = [];
     public string $noRacikan = 'R1';
 
@@ -49,9 +54,8 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarRI = $data;
-        $this->dataDaftarRI['eresepHdr'] ??= [];
-        $this->dataDaftarRI['eresepHdr'][$this->resepIndex]['eresepRacikan'] ??= [];
+        $this->eresepHdr = $data['eresepHdr'] ?? [];
+        $this->eresepHdr[$this->resepIndex]['eresepRacikan'] ??= [];
     }
 
     /* ===============================
@@ -65,10 +69,10 @@ new class extends Component {
         }
 
         // Patch hanya eresepRacikan di resepIndex ini
-        $data['eresepHdr'][$this->resepIndex]['eresepRacikan'] = $this->dataDaftarRI['eresepHdr'][$this->resepIndex]['eresepRacikan'] ?? [];
+        $data['eresepHdr'][$this->resepIndex]['eresepRacikan'] = $this->eresepHdr[$this->resepIndex]['eresepRacikan'] ?? [];
 
         $this->updateJsonRI($this->riHdrNo, $data);
-        $this->dataDaftarRI = $data;
+        $this->eresepHdr = $data['eresepHdr'] ?? [];
     }
 
     /* ===============================
@@ -127,7 +131,7 @@ new class extends Component {
             DB::transaction(function () {
                 $this->lockRIRow($this->riHdrNo);
 
-                $this->dataDaftarRI['eresepHdr'][$this->resepIndex]['eresepRacikan'][] = [
+                $this->eresepHdr[$this->resepIndex]['eresepRacikan'][] = [
                     'noRacikan' => $this->formEresepRacikan['noRacikan'],
                     'productId' => $this->formEresepRacikan['productId'],
                     'productName' => $this->formEresepRacikan['productName'],
@@ -187,7 +191,7 @@ new class extends Component {
             DB::transaction(function () use ($riObatDtl, $qty, $dosis, $takar, $catatan, $catatanKhusus) {
                 $this->lockRIRow($this->riHdrNo);
 
-                foreach ($this->dataDaftarRI['eresepHdr'][$this->resepIndex]['eresepRacikan'] as &$item) {
+                foreach ($this->eresepHdr[$this->resepIndex]['eresepRacikan'] as &$item) {
                     if (($item['riObatDtl'] ?? null) === $riObatDtl) {
                         $item['qty'] = $qty;
                         $item['dosis'] = $dosis;
@@ -226,13 +230,13 @@ new class extends Component {
             DB::transaction(function () use ($riObatDtl) {
                 $this->lockRIRow($this->riHdrNo);
 
-                $obatExists = collect($this->dataDaftarRI['eresepHdr'][$this->resepIndex]['eresepRacikan'] ?? [])->contains('riObatDtl', $riObatDtl);
+                $obatExists = collect($this->eresepHdr[$this->resepIndex]['eresepRacikan'] ?? [])->contains('riObatDtl', $riObatDtl);
 
                 if (!$obatExists) {
                     throw new \RuntimeException('Obat racikan tidak ditemukan.');
                 }
 
-                $this->dataDaftarRI['eresepHdr'][$this->resepIndex]['eresepRacikan'] = collect($this->dataDaftarRI['eresepHdr'][$this->resepIndex]['eresepRacikan'] ?? [])
+                $this->eresepHdr[$this->resepIndex]['eresepRacikan'] = collect($this->eresepHdr[$this->resepIndex]['eresepRacikan'] ?? [])
                     ->where('riObatDtl', '!=', $riObatDtl)
                     ->values()
                     ->toArray();
@@ -266,7 +270,7 @@ new class extends Component {
     {
         $this->resetVersion();
         $this->isFormLocked = false;
-        $this->dataDaftarRI = [];
+        $this->eresepHdr = [];
         $this->formEresepRacikan = [];
         $this->noRacikan = 'R1';
     }
@@ -280,7 +284,7 @@ new class extends Component {
 
                 @php
                     $hasTTDResep = !empty(
-                        $dataDaftarRI['eresepHdr'][$resepIndex]['tandaTanganDokter']['dokterPeresep'] ?? null
+                        $eresepHdr[$resepIndex]['tandaTanganDokter']['dokterPeresep'] ?? null
                     );
                     $isResepEditable = !$isFormLocked && !$hasTTDResep;
                 @endphp
@@ -419,9 +423,9 @@ new class extends Component {
                                         </tr>
                                     </thead>
                                     <tbody class="bg-canvas dark:bg-gray-900">
-                                        @isset($dataDaftarRI['eresepHdr'][$resepIndex]['eresepRacikan'])
+                                        @isset($eresepHdr[$resepIndex]['eresepRacikan'])
                                             @php $prevRacikan = null; @endphp
-                                            @foreach ($dataDaftarRI['eresepHdr'][$resepIndex]['eresepRacikan'] as $key => $eresep)
+                                            @foreach ($eresepHdr[$resepIndex]['eresepRacikan'] as $key => $eresep)
                                                 @php
                                                     $borderClass =
                                                         $prevRacikan !== ($eresep['noRacikan'] ?? '')
@@ -448,46 +452,46 @@ new class extends Component {
                                                         <div class="flex items-center gap-1">
                                                             <div class="w-20 shrink-0">
                                                                 <x-text-input placeholder="Dosis" :disabled="!$isResepEditable"
-                                                                    wire:model="dataDaftarRI.eresepHdr.{{ $resepIndex }}.eresepRacikan.{{ $key }}.dosis"
+                                                                    wire:model="eresepHdr.{{ $resepIndex }}.eresepRacikan.{{ $key }}.dosis"
                                                                     x-ref="dosis{{ $key }}"
                                                                     x-on:keydown.enter.prevent="$refs.takar{{ $key }}.focus()" />
                                                             </div>
                                                             <div class="w-20 shrink-0">
                                                                 <x-text-input placeholder="Satuan" :disabled="!$isResepEditable"
-                                                                    wire:model="dataDaftarRI.eresepHdr.{{ $resepIndex }}.eresepRacikan.{{ $key }}.takar"
+                                                                    wire:model="eresepHdr.{{ $resepIndex }}.eresepRacikan.{{ $key }}.takar"
                                                                     x-ref="takar{{ $key }}"
                                                                     x-on:keydown.enter.prevent="$refs.qty{{ $key }}.focus()" />
                                                             </div>
                                                             <div class="w-16 shrink-0">
                                                                 <x-text-input placeholder="Jml" :disabled="!$isResepEditable"
-                                                                    wire:model="dataDaftarRI.eresepHdr.{{ $resepIndex }}.eresepRacikan.{{ $key }}.qty"
+                                                                    wire:model="eresepHdr.{{ $resepIndex }}.eresepRacikan.{{ $key }}.qty"
                                                                     x-ref="qty{{ $key }}"
                                                                     x-on:keydown.enter.prevent="$refs.catatan{{ $key }}.focus()" />
                                                             </div>
                                                             <div class="flex-1">
                                                                 <x-text-input placeholder="Catatan" :disabled="!$isResepEditable"
-                                                                    wire:model="dataDaftarRI.eresepHdr.{{ $resepIndex }}.eresepRacikan.{{ $key }}.catatan"
+                                                                    wire:model="eresepHdr.{{ $resepIndex }}.eresepRacikan.{{ $key }}.catatan"
                                                                     x-ref="catatan{{ $key }}"
                                                                     x-on:keydown.enter.prevent="$refs.signa{{ $key }}.focus()" />
                                                             </div>
                                                             <div class="flex-1">
                                                                 <x-text-input placeholder="Signa" :disabled="!$isResepEditable"
-                                                                    wire:model="dataDaftarRI.eresepHdr.{{ $resepIndex }}.eresepRacikan.{{ $key }}.catatanKhusus"
+                                                                    wire:model="eresepHdr.{{ $resepIndex }}.eresepRacikan.{{ $key }}.catatanKhusus"
                                                                     x-ref="signa{{ $key }}"
                                                                     x-on:keydown.enter.prevent="
                                                                         $wire.updateProduct(
                                                                             '{{ $eresep['riObatDtl'] }}',
-                                                                            $wire.dataDaftarRI.eresepHdr[{{ $resepIndex }}].eresepRacikan[{{ $key }}].qty,
-                                                                            $wire.dataDaftarRI.eresepHdr[{{ $resepIndex }}].eresepRacikan[{{ $key }}].dosis,
-                                                                            $wire.dataDaftarRI.eresepHdr[{{ $resepIndex }}].eresepRacikan[{{ $key }}].takar,
-                                                                            $wire.dataDaftarRI.eresepHdr[{{ $resepIndex }}].eresepRacikan[{{ $key }}].catatan,
-                                                                            $wire.dataDaftarRI.eresepHdr[{{ $resepIndex }}].eresepRacikan[{{ $key }}].catatanKhusus
+                                                                            $wire.eresepHdr[{{ $resepIndex }}].eresepRacikan[{{ $key }}].qty,
+                                                                            $wire.eresepHdr[{{ $resepIndex }}].eresepRacikan[{{ $key }}].dosis,
+                                                                            $wire.eresepHdr[{{ $resepIndex }}].eresepRacikan[{{ $key }}].takar,
+                                                                            $wire.eresepHdr[{{ $resepIndex }}].eresepRacikan[{{ $key }}].catatan,
+                                                                            $wire.eresepHdr[{{ $resepIndex }}].eresepRacikan[{{ $key }}].catatanKhusus
                                                                         );
                                                                         $nextTick(() => $refs.dosis{{ $key }}.focus())
                                                                     " />
                                                             </div>
                                                         </div>
-                                                        @error("dataDaftarRI.eresepHdr.{$resepIndex}.eresepRacikan.{$key}.dosis")
+                                                        @error("eresepHdr.{$resepIndex}.eresepRacikan.{$key}.dosis")
                                                             <x-input-error :messages="$message" class="mt-1" />
                                                         @enderror
                                                     </td>

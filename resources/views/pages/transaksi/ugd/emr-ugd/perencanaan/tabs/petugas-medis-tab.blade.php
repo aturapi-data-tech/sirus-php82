@@ -8,7 +8,7 @@
             <p class="mt-3 text-sm text-muted dark:text-gray-400">
                 Waktu Pemeriksaan:
                 <span class="font-medium text-body dark:text-gray-200">
-                    {{ $dataDaftarUGD['perencanaan']['pengkajianMedis']['waktuPemeriksaan'] ?? '-' }}
+                    {{ $perencanaan['pengkajianMedis']['waktuPemeriksaan'] ?? '-' }}
                 </span>
             </p>
         </div>
@@ -18,21 +18,21 @@
     <x-border-form :title="__('Dokter Pemeriksa')" :align="__('start')" :bgcolor="__('bg-surface-soft')">
         <div class="space-y-3">
             <x-signature.ttd-petugas :framed="false" :allowClear="false"
-                :ttd="$dataDaftarUGD['perencanaan']['pengkajianMedis']['drPemeriksa'] ?? ''"
-                :date="$dataDaftarUGD['perencanaan']['pengkajianMedis']['selesaiPemeriksaan'] ?? ''"
+                :ttd="$perencanaan['pengkajianMedis']['drPemeriksa'] ?? ''"
+                :date="$perencanaan['pengkajianMedis']['selesaiPemeriksaan'] ?? ''"
                 {{-- Kode = drId kunjungan: setDrPemeriksa() hanya mengizinkan TTD bila drId == myuser_code dokter login --}}
-                :code="$dataDaftarUGD['drId'] ?? ''"
+                :code="$drId"
                 :locked="$isFormLocked"
                 sign="setDrPemeriksa" nameLabel="Dokter Pemeriksa" dateLabel="Selesai Pemeriksaan" signLabel="TTD Dokter" />
 
-            <x-input-error :messages="$errors->get('dataDaftarUGD.perencanaan.pengkajianMedis.drPemeriksa')" class="mt-1" />
+            <x-input-error :messages="$errors->get('perencanaan.pengkajianMedis.drPemeriksa')" class="mt-1" />
 
             {{-- Buka Kunci TTD-E — hanya muncul bila SUDAH ter-TTD, dan hanya untuk role
                  berhak (Gate dokumen.bukaKunci, sama dengan Buka Kunci Screening & modul
                  dokumen). Tombol TTD sendiri hilang begitu stempel
                  terisi, jadi tanpa ini salah TTD tak punya jalan pulang. Gaya mengikuti
                  Buka Kunci modul dokumen: x-confirm-button variant kuning. --}}
-            @if (filled($dataDaftarUGD['perencanaan']['pengkajianMedis']['drPemeriksa'] ?? ''))
+            @if (filled($perencanaan['pengkajianMedis']['drPemeriksa'] ?? ''))
                 @can('dokumen.bukaKunci')
                     <div class="flex justify-end">
                         <x-confirm-button variant="warning-soft" action="bukaKunciTtdPemeriksa()"

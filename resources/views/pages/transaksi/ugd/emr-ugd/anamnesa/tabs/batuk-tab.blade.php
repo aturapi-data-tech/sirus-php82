@@ -15,15 +15,15 @@
                     <div
                         class="rounded-lg border border-hairline-soft bg-surface-soft px-4 py-3 dark:border-gray-700 dark:bg-gray-800/50">
                         <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:items-center">
-                            <x-toggle wire:model.live="dataDaftarUGD.anamnesa.batuk.riwayatDemam" trueValue="1"
+                            <x-toggle wire:model.live="anamnesa.batuk.riwayatDemam" trueValue="1"
                                 falseValue="0" :disabled="$isFormLocked">
                                 {{ __('Riwayat Demam') }}
                             </x-toggle>
                             <div>
-                                <x-text-input wire:model.live="dataDaftarUGD.anamnesa.batuk.keteranganRiwayatDemam"
-                                    placeholder="Keterangan (opsional)" class="w-full" :error="$errors->has('dataDaftarUGD.anamnesa.batuk.keteranganRiwayatDemam')"
+                                <x-text-input wire:model.live="anamnesa.batuk.keteranganRiwayatDemam"
+                                    placeholder="Keterangan (opsional)" class="w-full" :error="$errors->has('anamnesa.batuk.keteranganRiwayatDemam')"
                                     :disabled="$isFormLocked" />
-                                <x-input-error :messages="$errors->get('dataDaftarUGD.anamnesa.batuk.keteranganRiwayatDemam')" class="mt-1" />
+                                <x-input-error :messages="$errors->get('anamnesa.batuk.keteranganRiwayatDemam')" class="mt-1" />
                             </div>
                         </div>
                     </div>
@@ -32,18 +32,18 @@
                     <div
                         class="rounded-lg border border-hairline-soft bg-surface-soft px-4 py-3 dark:border-gray-700 dark:bg-gray-800/50">
                         <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:items-center">
-                            <x-toggle wire:model.live="dataDaftarUGD.anamnesa.batuk.berkeringatMlmHari" trueValue="1"
+                            <x-toggle wire:model.live="anamnesa.batuk.berkeringatMlmHari" trueValue="1"
                                 falseValue="0" :disabled="$isFormLocked">
                                 {{ __('Berkeringat Malam Tanpa Aktivitas') }}
                             </x-toggle>
                             <div>
                                 <x-text-input
-                                    wire:model.live="dataDaftarUGD.anamnesa.batuk.keteranganBerkeringatMlmHari"
+                                    wire:model.live="anamnesa.batuk.keteranganBerkeringatMlmHari"
                                     placeholder="Keterangan (opsional)" class="w-full" :error="$errors->has(
-                                        'dataDaftarUGD.anamnesa.batuk.keteranganBerkeringatMlmHari',
+                                        'anamnesa.batuk.keteranganBerkeringatMlmHari',
                                     )"
                                     :disabled="$isFormLocked" />
-                                <x-input-error :messages="$errors->get('dataDaftarUGD.anamnesa.batuk.keteranganBerkeringatMlmHari')" class="mt-1" />
+                                <x-input-error :messages="$errors->get('anamnesa.batuk.keteranganBerkeringatMlmHari')" class="mt-1" />
                             </div>
                         </div>
                     </div>
@@ -52,18 +52,18 @@
                     <div
                         class="rounded-lg border border-hairline-soft bg-surface-soft px-4 py-3 dark:border-gray-700 dark:bg-gray-800/50">
                         <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:items-center">
-                            <x-toggle wire:model.live="dataDaftarUGD.anamnesa.batuk.bepergianDaerahWabah" trueValue="1"
+                            <x-toggle wire:model.live="anamnesa.batuk.bepergianDaerahWabah" trueValue="1"
                                 falseValue="0" :disabled="$isFormLocked">
                                 {{ __('Riwayat ke Daerah Wabah') }}
                             </x-toggle>
                             <div>
                                 <x-text-input
-                                    wire:model.live="dataDaftarUGD.anamnesa.batuk.keteranganBepergianDaerahWabah"
+                                    wire:model.live="anamnesa.batuk.keteranganBepergianDaerahWabah"
                                     placeholder="Keterangan (opsional)" class="w-full" :error="$errors->has(
-                                        'dataDaftarUGD.anamnesa.batuk.keteranganBepergianDaerahWabah',
+                                        'anamnesa.batuk.keteranganBepergianDaerahWabah',
                                     )"
                                     :disabled="$isFormLocked" />
-                                <x-input-error :messages="$errors->get('dataDaftarUGD.anamnesa.batuk.keteranganBepergianDaerahWabah')" class="mt-1" />
+                                <x-input-error :messages="$errors->get('anamnesa.batuk.keteranganBepergianDaerahWabah')" class="mt-1" />
                             </div>
                         </div>
                     </div>
@@ -72,19 +72,19 @@
                     <div
                         class="rounded-lg border border-hairline-soft bg-surface-soft px-4 py-3 dark:border-gray-700 dark:bg-gray-800/50">
                         <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:items-center">
-                            <x-toggle wire:model.live="dataDaftarUGD.anamnesa.batuk.riwayatPakaiObatJangkaPanjangan"
+                            <x-toggle wire:model.live="anamnesa.batuk.riwayatPakaiObatJangkaPanjangan"
                                 trueValue="1" falseValue="0" :disabled="$isFormLocked">
                                 {{ __('Pemakaian Obat Jangka Panjang') }}
                             </x-toggle>
                             <div>
                                 <x-text-input
-                                    wire:model.live="dataDaftarUGD.anamnesa.batuk.keteranganRiwayatPakaiObatJangkaPanjangan"
+                                    wire:model.live="anamnesa.batuk.keteranganRiwayatPakaiObatJangkaPanjangan"
                                     placeholder="Keterangan (opsional)" class="w-full" :error="$errors->has(
-                                        'dataDaftarUGD.anamnesa.batuk.keteranganRiwayatPakaiObatJangkaPanjangan',
+                                        'anamnesa.batuk.keteranganRiwayatPakaiObatJangkaPanjangan',
                                     )"
                                     :disabled="$isFormLocked" />
                                 <x-input-error :messages="$errors->get(
-                                    'dataDaftarUGD.anamnesa.batuk.keteranganRiwayatPakaiObatJangkaPanjangan',
+                                    'anamnesa.batuk.keteranganRiwayatPakaiObatJangkaPanjangan',
                                 )" class="mt-1" />
                             </div>
                         </div>
@@ -94,15 +94,15 @@
                     <div
                         class="rounded-lg border border-hairline-soft bg-surface-soft px-4 py-3 dark:border-gray-700 dark:bg-gray-800/50">
                         <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:items-center">
-                            <x-toggle wire:model.live="dataDaftarUGD.anamnesa.batuk.BBTurunTanpaSebab" trueValue="1"
+                            <x-toggle wire:model.live="anamnesa.batuk.BBTurunTanpaSebab" trueValue="1"
                                 falseValue="0" :disabled="$isFormLocked">
                                 {{ __('Berat Badan Turun Tanpa Sebab') }}
                             </x-toggle>
                             <div>
-                                <x-text-input wire:model.live="dataDaftarUGD.anamnesa.batuk.keteranganBBTurunTanpaSebab"
-                                    placeholder="Keterangan (opsional)" class="w-full" :error="$errors->has('dataDaftarUGD.anamnesa.batuk.keteranganBBTurunTanpaSebab')"
+                                <x-text-input wire:model.live="anamnesa.batuk.keteranganBBTurunTanpaSebab"
+                                    placeholder="Keterangan (opsional)" class="w-full" :error="$errors->has('anamnesa.batuk.keteranganBBTurunTanpaSebab')"
                                     :disabled="$isFormLocked" />
-                                <x-input-error :messages="$errors->get('dataDaftarUGD.anamnesa.batuk.keteranganBBTurunTanpaSebab')" class="mt-1" />
+                                <x-input-error :messages="$errors->get('anamnesa.batuk.keteranganBBTurunTanpaSebab')" class="mt-1" />
                             </div>
                         </div>
                     </div>
@@ -111,18 +111,18 @@
                     <div
                         class="rounded-lg border border-hairline-soft bg-surface-soft px-4 py-3 dark:border-gray-700 dark:bg-gray-800/50">
                         <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:items-center">
-                            <x-toggle wire:model.live="dataDaftarUGD.anamnesa.batuk.pembesaranGetahBening"
+                            <x-toggle wire:model.live="anamnesa.batuk.pembesaranGetahBening"
                                 trueValue="1" falseValue="0" :disabled="$isFormLocked">
                                 {{ __('Pembesaran Kelenjar Getah Bening') }}
                             </x-toggle>
                             <div>
                                 <x-text-input
-                                    wire:model.live="dataDaftarUGD.anamnesa.batuk.keteranganPembesaranGetahBening"
+                                    wire:model.live="anamnesa.batuk.keteranganPembesaranGetahBening"
                                     placeholder="Keterangan (opsional)" class="w-full" :error="$errors->has(
-                                        'dataDaftarUGD.anamnesa.batuk.keteranganPembesaranGetahBening',
+                                        'anamnesa.batuk.keteranganPembesaranGetahBening',
                                     )"
                                     :disabled="$isFormLocked" />
-                                <x-input-error :messages="$errors->get('dataDaftarUGD.anamnesa.batuk.keteranganPembesaranGetahBening')" class="mt-1" />
+                                <x-input-error :messages="$errors->get('anamnesa.batuk.keteranganPembesaranGetahBening')" class="mt-1" />
                             </div>
                         </div>
                     </div>

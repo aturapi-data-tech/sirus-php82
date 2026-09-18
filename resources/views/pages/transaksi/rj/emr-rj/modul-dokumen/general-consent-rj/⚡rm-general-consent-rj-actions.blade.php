@@ -17,7 +17,19 @@ new class extends Component {
     public bool $isFormLocked = false;
     public ?int $rjNo = null;
     public bool $disabled = false;
-    public array $dataDaftarPoliRJ = [];
+
+    /**
+     * IRISAN dokumen: hanya cabang `generalConsentPasienRJ`.
+     *
+     * Dokumen `datadaftar*_json` utuh sengaja TIDAK disimpan di properti publik — properti
+     * publik ikut snapshot Livewire dan dikirim bolak-balik tiap request, dan TTD pasien di
+     * cabang ini berupa data-URL base64 yang membuat dokumen membengkak. Untuk MENYIMPAN,
+     * dokumen utuh tetap dibaca ulang dari DB di dalam transaksi + lock.
+     */
+    public array $generalConsent = [];
+
+    /** Nama pasien untuk isian awal Nama Pasien/Wali (dulu dibaca dari dokumen penuh). */
+    public ?string $regName = null;
 
     public array $renderVersions = [];
     protected array $renderAreas = ['modal-general-consent-rj'];
@@ -59,7 +71,8 @@ new class extends Component {
         if ($this->rjNo) {
             $data = $this->findDataRJ($this->rjNo);
             if ($data) {
-                $this->dataDaftarPoliRJ = $data;
+                $this->generalConsent = $data['generalConsentPasienRJ'] ?? $this->getDefaultGeneralConsent();
+                $this->regName = $data['regName'] ?? null;
                 // Terkunci bila EMR terkunci, dinonaktifkan, ATAU sudah di-TTD petugas (final).
                 $this->isFormLocked = $this->checkEmrRJStatus($this->rjNo) || $disabled
                     || !empty($data['generalConsentPasienRJ']['petugasPemeriksa'] ?? '');
@@ -69,9 +82,7 @@ new class extends Component {
 
     public function rendering(): void
     {
-        $default = $this->getDefaultGeneralConsent();
-        $current = $this->dataDaftarPoliRJ['generalConsentPasienRJ'] ?? [];
-        $this->dataDaftarPoliRJ['generalConsentPasienRJ'] = array_replace_recursive($default, $current);
+        $this->generalConsent = array_replace_recursive($this->getDefaultGeneralConsent(), $this->generalConsent);
     }
 
     /* ===============================
@@ -91,12 +102,12 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarPoliRJ = $data;
-        $this->dataDaftarPoliRJ['generalConsentPasienRJ'] ??= $this->getDefaultGeneralConsent();
+        $this->generalConsent = $data['generalConsentPasienRJ'] ?? $this->getDefaultGeneralConsent();
+        $this->regName = $data['regName'] ?? null;
 
-        $consent = $this->dataDaftarPoliRJ['generalConsentPasienRJ'];
+        $consent = $this->generalConsent;
         // Default Nama Pasien/Wali = nama pasien & hubungan = Pasien Sendiri bila belum diisi (pola penundaan)
-        $this->wali = ($consent['wali'] ?? '') ?: ($this->dataDaftarPoliRJ['regName'] ?? '');
+        $this->wali = ($consent['wali'] ?? '') ?: ($this->regName ?? '');
         $this->waliHubungan = ($consent['waliHubungan'] ?? '') ?: 'pasien';
         $this->agreement = $consent['agreement'] ?? '1';
         $this->signature = $consent['signature'] ?? '';
@@ -171,12 +182,12 @@ new class extends Component {
             'agreement' => 'agreement',
         ];
         if (isset($map[$name])) {
-            $this->dataDaftarPoliRJ['generalConsentPasienRJ'][$map[$name]] = $value;
+            $this->generalConsent[$map[$name]] = $value;
         }
 
         // Sync pihakInfoMedis (nested wire:model live)
         if (str_starts_with($name, 'pihakInfoMedis.')) {
-            $this->dataDaftarPoliRJ['generalConsentPasienRJ']['pihakInfoMedis'] = $this->pihakInfoMedis;
+            $this->generalConsent['pihakInfoMedis'] = $this->pihakInfoMedis;
         }
 
         if ($name === 'agreement') {
@@ -207,7 +218,7 @@ new class extends Component {
             unset($this->pihakInfoMedis[$index]);
             $this->pihakInfoMedis = array_values($this->pihakInfoMedis);
         }
-        $this->dataDaftarPoliRJ['generalConsentPasienRJ']['pihakInfoMedis'] = $this->pihakInfoMedis;
+        $this->generalConsent['pihakInfoMedis'] = $this->pihakInfoMedis;
     }
 
     /* ===============================
@@ -220,8 +231,8 @@ new class extends Component {
         }
 
         $this->signature = $dataUrl;
-        $this->dataDaftarPoliRJ['generalConsentPasienRJ']['signature'] = $dataUrl;
-        $this->dataDaftarPoliRJ['generalConsentPasienRJ']['signatureDate'] = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
+        $this->generalConsent['signature'] = $dataUrl;
+        $this->generalConsent['signatureDate'] = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
     }
 
     /* ===============================
@@ -234,8 +245,8 @@ new class extends Component {
         }
 
         $this->signature = '';
-        $this->dataDaftarPoliRJ['generalConsentPasienRJ']['signature'] = '';
-        $this->dataDaftarPoliRJ['generalConsentPasienRJ']['signatureDate'] = '';
+        $this->generalConsent['signature'] = '';
+        $this->generalConsent['signatureDate'] = '';
         $this->incrementVersion('modal-general-consent-rj');
     }
 
@@ -249,7 +260,7 @@ new class extends Component {
             return;
         }
 
-        if (!empty($this->dataDaftarPoliRJ['generalConsentPasienRJ']['petugasPemeriksa'])) {
+        if (!empty($this->generalConsent['petugasPemeriksa'])) {
             $this->dispatch('toast', type: 'error', message: 'Tanda tangan petugas pemberi penjelasan sudah ada.');
             return;
         }
@@ -263,9 +274,9 @@ new class extends Component {
         }
 
         // Sync field prop top-level (pre-fill wali/hubungan/agreement tak ter-updated bila user tak mengedit)
-        $this->dataDaftarPoliRJ['generalConsentPasienRJ']['wali'] = $this->wali;
-        $this->dataDaftarPoliRJ['generalConsentPasienRJ']['waliHubungan'] = $this->waliHubungan;
-        $this->dataDaftarPoliRJ['generalConsentPasienRJ']['agreement'] = $this->agreement;
+        $this->generalConsent['wali'] = $this->wali;
+        $this->generalConsent['waliHubungan'] = $this->waliHubungan;
+        $this->generalConsent['agreement'] = $this->agreement;
 
         try {
             DB::transaction(function () {
@@ -279,14 +290,14 @@ new class extends Component {
                 // Simpan seluruh isian form (in-memory) sekaligus stempel TTD petugas → kunci.
                 $data['generalConsentPasienRJ'] = array_replace(
                     $data['generalConsentPasienRJ'] ?? $this->getDefaultGeneralConsent(),
-                    $this->dataDaftarPoliRJ['generalConsentPasienRJ'] ?? []
+                    $this->generalConsent ?? []
                 );
                 $data['generalConsentPasienRJ']['petugasPemeriksa'] = auth()->user()->myuser_name ?? '';
                 $data['generalConsentPasienRJ']['petugasPemeriksaCode'] = auth()->user()->myuser_code ?? '';
                 $data['generalConsentPasienRJ']['petugasPemeriksaDate'] = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
 
                 $this->updateJsonRJ($this->rjNo, $data);
-                $this->dataDaftarPoliRJ = $data;
+                $this->generalConsent = $data['generalConsentPasienRJ'] ?? [];
                 $this->appendAdminLogRJ((int) $this->rjNo, 'TTD Petugas + kunci General Consent — TTD pasien ' . ($data['generalConsentPasienRJ']['signatureDate'] ?? '-'), 'MR');
             });
 
@@ -331,12 +342,12 @@ new class extends Component {
                 $gc['petugasPemeriksaDate'] = '';
                 $data['generalConsentPasienRJ'] = $gc;
                 $this->updateJsonRJ($this->rjNo, $data);
-                $this->dataDaftarPoliRJ = $data;
+                $this->generalConsent = $data['generalConsentPasienRJ'] ?? [];
                 $this->appendAdminLogRJ((int) $this->rjNo, 'Buka kunci General Consent — TTD petugas dicabut (oleh ' . (auth()->user()->myuser_name ?? auth()->user()->name ?? '-') . ')', 'MR');
             });
 
             $this->isFormLocked = $this->checkEmrRJStatus($this->rjNo) || $this->disabled
-                || !empty($this->dataDaftarPoliRJ['generalConsentPasienRJ']['petugasPemeriksa'] ?? '');
+                || !empty($this->generalConsent['petugasPemeriksa'] ?? '');
             $this->incrementVersion('modal-general-consent-rj');
             $this->dispatch('toast', type: 'success', message: 'Kunci dibuka — TTD petugas dicabut. Silakan koreksi lalu TTD & kunci ulang.');
             $this->dispatch('refresh-modul-dokumen-rj-data', rjNo: $this->rjNo);
@@ -359,9 +370,9 @@ new class extends Component {
         // Draft: boleh simpan sebagian (nyicil). Validasi lengkap + kunci dilakukan saat TTD Petugas.
 
         // Sync field prop top-level (pre-fill wali/hubungan/agreement tak ter-updated bila user tak mengedit)
-        $this->dataDaftarPoliRJ['generalConsentPasienRJ']['wali'] = $this->wali;
-        $this->dataDaftarPoliRJ['generalConsentPasienRJ']['waliHubungan'] = $this->waliHubungan;
-        $this->dataDaftarPoliRJ['generalConsentPasienRJ']['agreement'] = $this->agreement;
+        $this->generalConsent['wali'] = $this->wali;
+        $this->generalConsent['waliHubungan'] = $this->waliHubungan;
+        $this->generalConsent['agreement'] = $this->agreement;
 
         try {
             DB::transaction(function () {
@@ -376,10 +387,10 @@ new class extends Component {
                 // (key generalConsentPasienRJ bisa pre-init, tapi signatureDate baru terisi saat sudah disimpan/ditandatangani)
                 $isBaru = empty($data['generalConsentPasienRJ']['signatureDate'] ?? '');
 
-                $data['generalConsentPasienRJ'] = array_replace($data['generalConsentPasienRJ'] ?? $this->getDefaultGeneralConsent(), $this->dataDaftarPoliRJ['generalConsentPasienRJ'] ?? []);
+                $data['generalConsentPasienRJ'] = array_replace($data['generalConsentPasienRJ'] ?? $this->getDefaultGeneralConsent(), $this->generalConsent ?? []);
 
                 $this->updateJsonRJ($this->rjNo, $data);
-                $this->dataDaftarPoliRJ = $data;
+                $this->generalConsent = $data['generalConsentPasienRJ'] ?? [];
                 $this->appendAdminLogRJ((int) $this->rjNo, ($isBaru ? 'Buat' : 'Update') . ' General Consent — TTD ' . ($data['generalConsentPasienRJ']['signatureDate'] ?? '-'), 'MR');
             });
 
@@ -433,7 +444,8 @@ new class extends Component {
     {
         $this->resetVersion();
         $this->isFormLocked = false;
-        $this->dataDaftarPoliRJ = [];
+        $this->generalConsent = [];
+        $this->regName = null;
         $this->signature = '';
         $this->wali = '';
         $this->waliHubungan = '';
@@ -446,7 +458,7 @@ new class extends Component {
 <div>
     {{-- ══ SUMMARY CARD (inline) ══ --}}
     @php
-        $gc = $dataDaftarPoliRJ['generalConsentPasienRJ'] ?? [];
+        $gc = $generalConsent ?? [];
         $gcSigned = !empty($gc['signature']);
     @endphp
 
@@ -512,9 +524,9 @@ new class extends Component {
                             <x-modul-dokumen.banner jenis="terkunci" />
                         @endif
 
-                        @if (isset($dataDaftarPoliRJ['generalConsentPasienRJ']))
+                        @if (!empty($generalConsent))
 
-                            @php $consent = $dataDaftarPoliRJ['generalConsentPasienRJ']; @endphp
+                            @php $consent = $generalConsent; @endphp
 
                             {{-- ══ ISI PERSETUJUAN ══ --}}
                             <section>
@@ -522,7 +534,7 @@ new class extends Component {
                                      langsung di bawah paragraf izin akses info medis --}}
                                 <x-consent.general-consent-rj mode="screen"
                                     :consent="['wali' => $wali, 'waliHubungan' => $waliHubungan, 'agreement' => $agreement, 'pihakInfoMedis' => $pihakInfoMedis]"
-                                    :version="$dataDaftarPoliRJ['generalConsentPasienRJ']['clauseVersion'] ?? null">
+                                    :version="$generalConsent['clauseVersion'] ?? null">
 
                                     {{-- Tabel entry bergaris tipis — selaras tabel di cetakan (No/Nama/Hubungan/No. HP) --}}
                                     <div class="overflow-hidden border border-hairline rounded-lg dark:border-gray-700">

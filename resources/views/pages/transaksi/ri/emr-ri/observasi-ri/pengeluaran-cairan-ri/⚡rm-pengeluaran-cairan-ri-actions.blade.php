@@ -14,7 +14,15 @@ new class extends Component {
 
     public bool $isFormLocked = false;
     public ?int $riHdrNo = null;
-    public array $dataDaftarRi = [];
+
+    /**
+     * IRISAN dokumen: hanya `observasi.pengeluaranCairan.pengeluaranCairan`.
+     *
+     * Dokumen `datadaftarri_json` utuh sengaja TIDAK disimpan di properti publik — properti
+     * publik ikut snapshot Livewire dan dikirim bolak-balik tiap request. Untuk MENYIMPAN,
+     * dokumen utuh tetap dibaca ulang dari DB di dalam transaksi + lock.
+     */
+    public array $daftarPengeluaranCairan = [];
 
     public array $formEntryPengeluaran = [
         'waktuPengeluaran' => '',
@@ -48,12 +56,7 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarRi = $data;
-        $this->dataDaftarRi['observasi'] ??= [];
-        $this->dataDaftarRi['observasi']['pengeluaranCairan'] ??= [
-            'pengeluaranCairanTab' => 'Pengeluaran Cairan',
-            'pengeluaranCairan' => [],
-        ];
+        $this->daftarPengeluaranCairan = $data['observasi']['pengeluaranCairan']['pengeluaranCairan'] ?? [];
 
         $this->isFormLocked = $this->checkRIStatus($riHdrNo);
         $this->setWaktuPengeluaran(); // set default waktu
@@ -120,7 +123,7 @@ new class extends Component {
 
                 // 6. Simpan JSON
                 $this->updateJsonRI($this->riHdrNo, $data);
-                $this->dataDaftarRi = $data;
+                $this->daftarPengeluaranCairan = $data['observasi']['pengeluaranCairan']['pengeluaranCairan'];
 
                 // 7. Audit log
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Tambah Pengeluaran Cairan — ' . ($this->formEntryPengeluaran['jenisOutput'] ?? '-') . ' @ ' . ($this->formEntryPengeluaran['waktuPengeluaran'] ?? '-'), 'MR');
@@ -162,7 +165,7 @@ new class extends Component {
                     ->all();
 
                 $this->updateJsonRI($this->riHdrNo, $data);
-                $this->dataDaftarRi = $data;
+                $this->daftarPengeluaranCairan = $data['observasi']['pengeluaranCairan']['pengeluaranCairan'];
 
                 // Audit log
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Hapus Pengeluaran Cairan — ' . ($deletedRow['jenisOutput'] ?? '-') . ' @ ' . $waktuPengeluaran, 'MR');
@@ -182,7 +185,7 @@ new class extends Component {
     {
         $this->resetVersion();
         $this->isFormLocked = false;
-        $this->dataDaftarRi = [];
+        $this->daftarPengeluaranCairan = [];
         $this->reset(['formEntryPengeluaran']);
     }
 };
@@ -268,7 +271,7 @@ new class extends Component {
 
             {{-- TABEL DATA --}}
             @php
-                $daftarPengeluaran = $dataDaftarRi['observasi']['pengeluaranCairan']['pengeluaranCairan'] ?? [];
+                $daftarPengeluaran = $daftarPengeluaranCairan;
                 $sortedPengeluaran = collect($daftarPengeluaran)
                     ->sortByDesc(
                         fn($item) => Carbon::createFromFormat(

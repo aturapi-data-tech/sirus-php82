@@ -17,7 +17,11 @@ new class extends Component {
     public bool $isFormLocked = false;
     public bool $isReadOnlyByRole = false; // true jika user bukan Perawat/Admin — dokter boleh lihat tapi tidak edit/simpan
     public ?string $riHdrNo = null;
-    public array $dataDaftarRi = [];
+    /**
+     * IRISAN dokumen: hanya cabang `pengkajianAwalPasienRawatInap` — sekaligus model form
+     * (jalur validasi & wire:model kini `pengkajianAwal.*`).
+     */
+    public array $pengkajianAwal = [];
 
     public array $renderVersions = [];
     protected array $renderAreas = ['modal-pengkajian-awal-ri'];
@@ -148,11 +152,11 @@ new class extends Component {
         }
 
         // Pastikan target struct sudah init
-        $this->dataDaftarRi['pengkajianAwalPasienRawatInap'] ??= $this->pengkajianAwalDefault;
-        $this->dataDaftarRi['pengkajianAwalPasienRawatInap']['bagian4PemeriksaanFisik'] ??= [];
-        $this->dataDaftarRi['pengkajianAwalPasienRawatInap']['bagian4PemeriksaanFisik']['tandaVital'] ??= [];
+        $this->pengkajianAwal ??= $this->pengkajianAwalDefault;
+        $this->pengkajianAwal['bagian4PemeriksaanFisik'] ??= [];
+        $this->pengkajianAwal['bagian4PemeriksaanFisik']['tandaVital'] ??= [];
 
-        $b4 = &$this->dataDaftarRi['pengkajianAwalPasienRawatInap']['bagian4PemeriksaanFisik'];
+        $b4 = &$this->pengkajianAwal['bagian4PemeriksaanFisik'];
 
         $copied = 0;
         $skipped = 0;
@@ -217,16 +221,16 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarRi = $data;
-        $this->dataDaftarRi['pengkajianAwalPasienRawatInap'] ??= $this->pengkajianAwalDefault;
+        $this->pengkajianAwal = $data['pengkajianAwalPasienRawatInap'] ?? [];
+        $this->pengkajianAwal ??= $this->pengkajianAwalDefault;
         // Entri lama (sebelum 2026-09-15) belum punya node nilaiKebudayaan → isi standar "tidak".
-        $this->dataDaftarRi['pengkajianAwalPasienRawatInap']['bagian3PsikososialDanEkonomi']['nilaiKebudayaan'] ??= ['pilihan' => 'tidak', 'keterangan' => ''];
+        $this->pengkajianAwal['bagian3PsikososialDanEkonomi']['nilaiKebudayaan'] ??= ['pilihan' => 'tidak', 'keterangan' => ''];
         // Entri lama (sebelum 2026-09-16) belum punya node identifikasiHambatan → isi standar "tidak".
-        $this->dataDaftarRi['pengkajianAwalPasienRawatInap']['bagian3PsikososialDanEkonomi']['identifikasiHambatan'] ??= ['pilihan' => 'tidak', 'jenis' => '', 'keterangan' => '', 'tindakLanjut' => ''];
+        $this->pengkajianAwal['bagian3PsikososialDanEkonomi']['identifikasiHambatan'] ??= ['pilihan' => 'tidak', 'jenis' => '', 'keterangan' => '', 'tindakLanjut' => ''];
         // Entri yang sudah punya node hambatan tapi belum punya tindakLanjut (ditambah belakangan).
-        $this->dataDaftarRi['pengkajianAwalPasienRawatInap']['bagian3PsikososialDanEkonomi']['identifikasiHambatan']['tindakLanjut'] ??= '';
+        $this->pengkajianAwal['bagian3PsikososialDanEkonomi']['identifikasiHambatan']['tindakLanjut'] ??= '';
         // Entri lama belum punya diagnosaKeperawatan di bagian 5.
-        $this->dataDaftarRi['pengkajianAwalPasienRawatInap']['bagian5CatatanDanTandaTangan']['diagnosaKeperawatan'] ??= '';
+        $this->pengkajianAwal['bagian5CatatanDanTandaTangan']['diagnosaKeperawatan'] ??= '';
 
         $this->isFormLocked = $this->checkEmrRIStatus($riHdrNo); // ← trait
 
@@ -259,9 +263,9 @@ new class extends Component {
 
                 $fresh = $this->findDataRI($this->riHdrNo) ?? [];
                 $isBaru = empty($fresh['pengkajianAwalPasienRawatInap']);
-                $fresh['pengkajianAwalPasienRawatInap'] = $this->dataDaftarRi['pengkajianAwalPasienRawatInap'] ?? [];
+                $fresh['pengkajianAwalPasienRawatInap'] = $this->pengkajianAwal ?? [];
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->dataDaftarRi = $fresh;
+                $this->pengkajianAwal = $fresh['pengkajianAwalPasienRawatInap'] ?? [];
 
                 $this->appendAdminLogRI((int) $this->riHdrNo, $logKeterangan ?? ($isBaru ? 'Buat' : 'Update') . ' Pengkajian Awal RI', 'MR');
             });
@@ -284,9 +288,9 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarRi['pengkajianAwalPasienRawatInap']['bagian5CatatanDanTandaTangan']['petugasPengkaji'] = auth()->user()->myuser_name;
-        $this->dataDaftarRi['pengkajianAwalPasienRawatInap']['bagian5CatatanDanTandaTangan']['petugasPengkajiCode'] = auth()->user()->myuser_code;
-        $this->dataDaftarRi['pengkajianAwalPasienRawatInap']['bagian5CatatanDanTandaTangan']['jamPengkaji'] = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
+        $this->pengkajianAwal['bagian5CatatanDanTandaTangan']['petugasPengkaji'] = auth()->user()->myuser_name;
+        $this->pengkajianAwal['bagian5CatatanDanTandaTangan']['petugasPengkajiCode'] = auth()->user()->myuser_code;
+        $this->pengkajianAwal['bagian5CatatanDanTandaTangan']['jamPengkaji'] = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
         $this->save();
     }
 
@@ -298,7 +302,7 @@ new class extends Component {
         $this->levelingDokter['poliId'] = $payload['poli_id'] ?? '';
         $this->levelingDokter['poliDesc'] = $payload['poli_desc'] ?? '';
 
-        $sudahAdaUtama = collect($this->dataDaftarRi['pengkajianAwalPasienRawatInap']['levelingDokter'] ?? [])->contains('levelDokter', 'Utama');
+        $sudahAdaUtama = collect($this->pengkajianAwal['levelingDokter'] ?? [])->contains('levelDokter', 'Utama');
 
         $this->levelingDokter['levelDokter'] = $sudahAdaUtama ? 'RawatGabung' : 'Utama';
     }
@@ -322,7 +326,7 @@ new class extends Component {
             ],
         );
 
-        $existing = collect($this->dataDaftarRi['pengkajianAwalPasienRawatInap']['levelingDokter'] ?? [])
+        $existing = collect($this->pengkajianAwal['levelingDokter'] ?? [])
             ->where('drId', $this->levelingDokter['drId'])
             ->count();
 
@@ -331,7 +335,7 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarRi['pengkajianAwalPasienRawatInap']['levelingDokter'][] = [
+        $this->pengkajianAwal['levelingDokter'][] = [
             'drId' => $this->levelingDokter['drId'],
             'drName' => $this->levelingDokter['drName'],
             'poliId' => $this->levelingDokter['poliId'],
@@ -347,16 +351,16 @@ new class extends Component {
 
     public function removeLevelingDokter(string $tglEntry): void
     {
-        $list = collect($this->dataDaftarRi['pengkajianAwalPasienRawatInap']['levelingDokter'] ?? []);
+        $list = collect($this->pengkajianAwal['levelingDokter'] ?? []);
         $removed = $list->firstWhere('tglEntry', $tglEntry);
         $drName = $removed['drName'] ?? '-';
-        $this->dataDaftarRi['pengkajianAwalPasienRawatInap']['levelingDokter'] = $list->where('tglEntry', '!=', $tglEntry)->values()->toArray();
+        $this->pengkajianAwal['levelingDokter'] = $list->where('tglEntry', '!=', $tglEntry)->values()->toArray();
         $this->save('Hapus leveling dokter — ' . $drName);
     }
 
     public function setLevelDokter(int $index, string $level): void
     {
-        $list = &$this->dataDaftarRi['pengkajianAwalPasienRawatInap']['levelingDokter'];
+        $list = &$this->pengkajianAwal['levelingDokter'];
         if (!isset($list[$index])) {
             $this->dispatch('toast', type: 'error', message: 'Data tidak ditemukan.');
             return;
@@ -446,7 +450,7 @@ new class extends Component {
             <div class="col-span-3 xl:col-span-2">
                 <x-input-label value="Kondisi Saat Masuk" />
                 <x-select-input
-                    wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian1DataUmum.kondisiSaatMasuk"
+                    wire:model.live="pengkajianAwal.bagian1DataUmum.kondisiSaatMasuk"
                     class="w-full mt-1" :disabled="$isFormLocked || $isReadOnlyByRole">
                     <option value="">— Pilih —</option>
                     @foreach (PengkajianAwalRiOptions::KONDISI_SAAT_MASUK as $nilaiOpsi => $labelOpsi)
@@ -458,7 +462,7 @@ new class extends Component {
             {{-- Diagnosis Masuk (paling lebar — teks bebas) --}}
             <div class="col-span-3 xl:col-span-4">
                 <x-input-label value="Diagnosis Masuk" />
-                <x-text-input wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian1DataUmum.diagnosaMasuk"
+                <x-text-input wire:model.live="pengkajianAwal.bagian1DataUmum.diagnosaMasuk"
                     class="w-full mt-1" placeholder="Diagnosis masuk..." :disabled="$isFormLocked || $isReadOnlyByRole" />
             </div>
 
@@ -466,16 +470,16 @@ new class extends Component {
             <div class="col-span-2 xl:col-span-2">
                 <x-input-label value="Asal Pasien" />
                 <x-select-input
-                    wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian1DataUmum.asalPasien.pilihan"
+                    wire:model.live="pengkajianAwal.bagian1DataUmum.asalPasien.pilihan"
                     class="w-full mt-1" :disabled="$isFormLocked || $isReadOnlyByRole">
                     <option value="">— Pilih —</option>
                     @foreach (PengkajianAwalRiOptions::ASAL_PASIEN as $nilaiOpsi => $labelOpsi)
                         <option value="{{ $nilaiOpsi }}">{{ $labelOpsi }}</option>
                     @endforeach
                 </x-select-input>
-                @if (($dataDaftarRi['pengkajianAwalPasienRawatInap']['bagian1DataUmum']['asalPasien']['pilihan'] ?? '') === 'lainnya')
+                @if (($pengkajianAwal['bagian1DataUmum']['asalPasien']['pilihan'] ?? '') === 'lainnya')
                     <x-text-input
-                        wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian1DataUmum.asalPasien.keterangan"
+                        wire:model.live="pengkajianAwal.bagian1DataUmum.asalPasien.keterangan"
                         class="w-full mt-1" placeholder="Keterangan asal pasien..." :disabled="$isFormLocked || $isReadOnlyByRole" />
                 @endif
             </div>
@@ -486,16 +490,16 @@ new class extends Component {
             <div class="col-span-2 xl:col-span-2">
                 <x-input-label value="Barang Berharga" />
                 <x-select-input
-                    wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian1DataUmum.barangBerharga.pilihan"
+                    wire:model.live="pengkajianAwal.bagian1DataUmum.barangBerharga.pilihan"
                     class="w-full mt-1" :disabled="$isFormLocked || $isReadOnlyByRole">
                     <option value="">— Pilih —</option>
                     @foreach (PengkajianAwalRiOptions::BARANG_BERHARGA as $nilaiOpsi => $labelOpsi)
                         <option value="{{ $nilaiOpsi }}">{{ $labelOpsi }}</option>
                     @endforeach
                 </x-select-input>
-                @if (($dataDaftarRi['pengkajianAwalPasienRawatInap']['bagian1DataUmum']['barangBerharga']['pilihan'] ?? '') === 'ada')
+                @if (($pengkajianAwal['bagian1DataUmum']['barangBerharga']['pilihan'] ?? '') === 'ada')
                     <x-text-input
-                        wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian1DataUmum.barangBerharga.catatan"
+                        wire:model.live="pengkajianAwal.bagian1DataUmum.barangBerharga.catatan"
                         class="w-full mt-1" placeholder="Catatan barang berharga..." :disabled="$isFormLocked || $isReadOnlyByRole" />
                 @endif
             </div>
@@ -504,21 +508,21 @@ new class extends Component {
             <div class="col-span-2 xl:col-span-2">
                 <x-input-label value="Alat Bantu" />
                 <x-select-input
-                    wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian1DataUmum.alatBantu.pilihan"
+                    wire:model.live="pengkajianAwal.bagian1DataUmum.alatBantu.pilihan"
                     class="w-full mt-1" :disabled="$isFormLocked || $isReadOnlyByRole">
                     <option value="">— Pilih —</option>
                     @foreach (PengkajianAwalRiOptions::ALAT_BANTU as $nilaiOpsi => $labelOpsi)
                         <option value="{{ $nilaiOpsi }}">{{ $labelOpsi }}</option>
                     @endforeach
                 </x-select-input>
-                @if (($dataDaftarRi['pengkajianAwalPasienRawatInap']['bagian1DataUmum']['alatBantu']['pilihan'] ?? '') === 'lainnya')
+                @if (($pengkajianAwal['bagian1DataUmum']['alatBantu']['pilihan'] ?? '') === 'lainnya')
                     <x-text-input
-                        wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian1DataUmum.alatBantu.keterangan"
+                        wire:model.live="pengkajianAwal.bagian1DataUmum.alatBantu.keterangan"
                         class="w-full mt-1" placeholder="Keterangan alat bantu..." :disabled="$isFormLocked || $isReadOnlyByRole" />
                 @endif
-                @if (!empty($dataDaftarRi['pengkajianAwalPasienRawatInap']['bagian1DataUmum']['alatBantu']['pilihan']))
+                @if (!empty($pengkajianAwal['bagian1DataUmum']['alatBantu']['pilihan']))
                     <x-text-input
-                        wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian1DataUmum.alatBantu.catatan"
+                        wire:model.live="pengkajianAwal.bagian1DataUmum.alatBantu.catatan"
                         class="w-full mt-1" placeholder="Catatan alat bantu..." :disabled="$isFormLocked || $isReadOnlyByRole" />
                 @endif
             </div>
@@ -538,7 +542,7 @@ new class extends Component {
                 <div>
                     <x-input-label value="Riwayat Penyakit / Operasi / Cedera" />
                     <x-select-input
-                        wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian2RiwayatPasien.riwayatPenyakitOperasiCedera.pilihan"
+                        wire:model.live="pengkajianAwal.bagian2RiwayatPasien.riwayatPenyakitOperasiCedera.pilihan"
                         class="w-full mt-1" :disabled="$isFormLocked || $isReadOnlyByRole">
                         <option value="">— Pilih —</option>
                         @foreach (PengkajianAwalRiOptions::RIWAYAT_PENYAKIT as $nilaiOpsi => $labelOpsi)
@@ -546,20 +550,20 @@ new class extends Component {
                         @endforeach
                     </x-select-input>
                     @if (
-                        ($dataDaftarRi['pengkajianAwalPasienRawatInap']['bagian2RiwayatPasien']['riwayatPenyakitOperasiCedera'][
+                        ($pengkajianAwal['bagian2RiwayatPasien']['riwayatPenyakitOperasiCedera'][
                             'pilihan'
                         ] ??
                             '') ===
                             'lainnya')
                         <x-text-input
-                            wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian2RiwayatPasien.riwayatPenyakitOperasiCedera.keterangan"
+                            wire:model.live="pengkajianAwal.bagian2RiwayatPasien.riwayatPenyakitOperasiCedera.keterangan"
                             class="w-full mt-1" placeholder="Keterangan riwayat..." :disabled="$isFormLocked || $isReadOnlyByRole" />
                     @endif
                 </div>
                 <div>
                     <x-input-label value="Deskripsi Riwayat" />
                     <x-textarea
-                        wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian2RiwayatPasien.riwayatPenyakitOperasiCedera.deskripsi"
+                        wire:model.live="pengkajianAwal.bagian2RiwayatPasien.riwayatPenyakitOperasiCedera.deskripsi"
                         class="w-full mt-1" rows="3" placeholder="Deskripsi riwayat penyakit..."
                         :disabled="$isFormLocked || $isReadOnlyByRole" />
                 </div>
@@ -576,7 +580,7 @@ new class extends Component {
                         <div>
                             <x-input-label value="Status" />
                             <x-select-input
-                                wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian2RiwayatPasien.kebiasaan.merokok.pilihan"
+                                wire:model.live="pengkajianAwal.bagian2RiwayatPasien.kebiasaan.merokok.pilihan"
                                 class="w-full mt-1" :disabled="$isFormLocked || $isReadOnlyByRole">
                                 <option value="">— Pilih —</option>
                                 @foreach (PengkajianAwalRiOptions::KEBIASAAN as $nilaiOpsi => $labelOpsi)
@@ -585,18 +589,18 @@ new class extends Component {
                             </x-select-input>
                         </div>
                         @if (in_array(
-                                $dataDaftarRi['pengkajianAwalPasienRawatInap']['bagian2RiwayatPasien']['kebiasaan']['merokok']['pilihan'] ?? '',
+                                $pengkajianAwal['bagian2RiwayatPasien']['kebiasaan']['merokok']['pilihan'] ?? '',
                                 ['ya', 'berhenti']))
                             <div>
                                 <x-input-label value="Jenis Rokok" />
                                 <x-text-input
-                                    wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian2RiwayatPasien.kebiasaan.merokok.detail.jenis"
+                                    wire:model.live="pengkajianAwal.bagian2RiwayatPasien.kebiasaan.merokok.detail.jenis"
                                     class="w-full mt-1" placeholder="Filter, Kretek, dll..." :disabled="$isFormLocked || $isReadOnlyByRole" />
                             </div>
                             <div>
                                 <x-input-label value="Jumlah/Hari (batang)" />
                                 <x-text-input
-                                    wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian2RiwayatPasien.kebiasaan.merokok.detail.jumlahPerHari"
+                                    wire:model.live="pengkajianAwal.bagian2RiwayatPasien.kebiasaan.merokok.detail.jumlahPerHari"
                                     class="w-full mt-1" type="number" step="1" min="0"
                                     :disabled="$isFormLocked || $isReadOnlyByRole" />
                             </div>
@@ -612,7 +616,7 @@ new class extends Component {
                         <div>
                             <x-input-label value="Status" />
                             <x-select-input
-                                wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian2RiwayatPasien.kebiasaan.alkoholObat.pilihan"
+                                wire:model.live="pengkajianAwal.bagian2RiwayatPasien.kebiasaan.alkoholObat.pilihan"
                                 class="w-full mt-1" :disabled="$isFormLocked || $isReadOnlyByRole">
                                 <option value="">— Pilih —</option>
                                 @foreach (PengkajianAwalRiOptions::KEBIASAAN as $nilaiOpsi => $labelOpsi)
@@ -621,19 +625,19 @@ new class extends Component {
                             </x-select-input>
                         </div>
                         @if (in_array(
-                                $dataDaftarRi['pengkajianAwalPasienRawatInap']['bagian2RiwayatPasien']['kebiasaan']['alkoholObat']['pilihan'] ??
+                                $pengkajianAwal['bagian2RiwayatPasien']['kebiasaan']['alkoholObat']['pilihan'] ??
                                     '',
                                 ['ya', 'berhenti']))
                             <div>
                                 <x-input-label value="Jenis" />
                                 <x-text-input
-                                    wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian2RiwayatPasien.kebiasaan.alkoholObat.detail.jenis"
+                                    wire:model.live="pengkajianAwal.bagian2RiwayatPasien.kebiasaan.alkoholObat.detail.jenis"
                                     class="w-full mt-1" placeholder="Jenis alkohol/obat..." :disabled="$isFormLocked || $isReadOnlyByRole" />
                             </div>
                             <div>
                                 <x-input-label value="Jumlah/Hari" />
                                 <x-text-input
-                                    wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian2RiwayatPasien.kebiasaan.alkoholObat.detail.jumlahPerHari"
+                                    wire:model.live="pengkajianAwal.bagian2RiwayatPasien.kebiasaan.alkoholObat.detail.jumlahPerHari"
                                     class="w-full mt-1" type="number" step="any" min="0"
                                     :disabled="$isFormLocked || $isReadOnlyByRole" />
                             </div>
@@ -648,7 +652,7 @@ new class extends Component {
                 <div>
                     <x-input-label value="Vaksinasi Influenza" />
                     <x-select-input
-                        wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian2RiwayatPasien.vaksinasi.influenza.pilihan"
+                        wire:model.live="pengkajianAwal.bagian2RiwayatPasien.vaksinasi.influenza.pilihan"
                         class="w-full mt-1" :disabled="$isFormLocked || $isReadOnlyByRole">
                         <option value="">— Pilih —</option>
                         @foreach (PengkajianAwalRiOptions::VAKSINASI as $nilaiOpsi => $labelOpsi)
@@ -659,7 +663,7 @@ new class extends Component {
                 <div>
                     <x-input-label value="Vaksinasi Pneumonia" />
                     <x-select-input
-                        wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian2RiwayatPasien.vaksinasi.pneumonia.pilihan"
+                        wire:model.live="pengkajianAwal.bagian2RiwayatPasien.vaksinasi.pneumonia.pilihan"
                         class="w-full mt-1" :disabled="$isFormLocked || $isReadOnlyByRole">
                         <option value="">— Pilih —</option>
                         @foreach (PengkajianAwalRiOptions::VAKSINASI as $nilaiOpsi => $labelOpsi)
@@ -672,7 +676,7 @@ new class extends Component {
                 <div>
                     <x-input-label value="Riwayat Penyakit Keluarga" />
                     <x-select-input
-                        wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian2RiwayatPasien.riwayatKeluarga.pilihan"
+                        wire:model.live="pengkajianAwal.bagian2RiwayatPasien.riwayatKeluarga.pilihan"
                         class="w-full mt-1" :disabled="$isFormLocked || $isReadOnlyByRole">
                         <option value="">— Pilih —</option>
                         @foreach (PengkajianAwalRiOptions::RIWAYAT_KELUARGA as $nilaiOpsi => $labelOpsi)
@@ -680,10 +684,10 @@ new class extends Component {
                         @endforeach
                     </x-select-input>
                     @if (
-                        ($dataDaftarRi['pengkajianAwalPasienRawatInap']['bagian2RiwayatPasien']['riwayatKeluarga']['pilihan'] ?? '') ===
+                        ($pengkajianAwal['bagian2RiwayatPasien']['riwayatKeluarga']['pilihan'] ?? '') ===
                             'lainnya')
                         <x-text-input
-                            wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian2RiwayatPasien.riwayatKeluarga.keterangan"
+                            wire:model.live="pengkajianAwal.bagian2RiwayatPasien.riwayatKeluarga.keterangan"
                             class="w-full mt-1" placeholder="Keterangan riwayat keluarga..."
                             :disabled="$isFormLocked || $isReadOnlyByRole" />
                     @endif
@@ -704,7 +708,7 @@ new class extends Component {
             <div>
                 <x-input-label value="Agama / Kepercayaan" />
                 <x-select-input
-                    wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian3PsikososialDanEkonomi.agamaKepercayaan.pilihan"
+                    wire:model.live="pengkajianAwal.bagian3PsikososialDanEkonomi.agamaKepercayaan.pilihan"
                     class="w-full mt-1" :disabled="$isFormLocked || $isReadOnlyByRole">
                     <option value="">— Pilih —</option>
                     @foreach (PengkajianAwalRiOptions::AGAMA as $nilaiOpsi => $labelOpsi)
@@ -712,11 +716,11 @@ new class extends Component {
                     @endforeach
                 </x-select-input>
                 @if (
-                    ($dataDaftarRi['pengkajianAwalPasienRawatInap']['bagian3PsikososialDanEkonomi']['agamaKepercayaan']['pilihan'] ??
+                    ($pengkajianAwal['bagian3PsikososialDanEkonomi']['agamaKepercayaan']['pilihan'] ??
                         '') ===
                         'lainnya')
                     <x-text-input
-                        wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian3PsikososialDanEkonomi.agamaKepercayaan.keterangan"
+                        wire:model.live="pengkajianAwal.bagian3PsikososialDanEkonomi.agamaKepercayaan.keterangan"
                         class="w-full mt-1" placeholder="Keterangan agama..." :disabled="$isFormLocked || $isReadOnlyByRole" />
                 @endif
             </div>
@@ -725,7 +729,7 @@ new class extends Component {
             <div>
                 <x-input-label value="Status Pernikahan" />
                 <x-select-input
-                    wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian3PsikososialDanEkonomi.statusPernikahan.pilihan"
+                    wire:model.live="pengkajianAwal.bagian3PsikososialDanEkonomi.statusPernikahan.pilihan"
                     class="w-full mt-1" :disabled="$isFormLocked || $isReadOnlyByRole">
                     <option value="">— Pilih —</option>
                     @foreach (PengkajianAwalRiOptions::STATUS_PERNIKAHAN as $nilaiOpsi => $labelOpsi)
@@ -738,7 +742,7 @@ new class extends Component {
             <div>
                 <x-input-label value="Tempat Tinggal" />
                 <x-select-input
-                    wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian3PsikososialDanEkonomi.tempatTinggal.pilihan"
+                    wire:model.live="pengkajianAwal.bagian3PsikososialDanEkonomi.tempatTinggal.pilihan"
                     class="w-full mt-1" :disabled="$isFormLocked || $isReadOnlyByRole">
                     <option value="">— Pilih —</option>
                     @foreach (PengkajianAwalRiOptions::TEMPAT_TINGGAL as $nilaiOpsi => $labelOpsi)
@@ -746,11 +750,11 @@ new class extends Component {
                     @endforeach
                 </x-select-input>
                 @if (
-                    ($dataDaftarRi['pengkajianAwalPasienRawatInap']['bagian3PsikososialDanEkonomi']['tempatTinggal']['pilihan'] ??
+                    ($pengkajianAwal['bagian3PsikososialDanEkonomi']['tempatTinggal']['pilihan'] ??
                         '') ===
                         'lainnya')
                     <x-text-input
-                        wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian3PsikososialDanEkonomi.tempatTinggal.keterangan"
+                        wire:model.live="pengkajianAwal.bagian3PsikososialDanEkonomi.tempatTinggal.keterangan"
                         class="w-full mt-1" placeholder="Keterangan tempat tinggal..." :disabled="$isFormLocked || $isReadOnlyByRole" />
                 @endif
             </div>
@@ -759,7 +763,7 @@ new class extends Component {
             <div>
                 <x-input-label value="Aktivitas" />
                 <x-select-input
-                    wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian3PsikososialDanEkonomi.aktivitas.pilihan"
+                    wire:model.live="pengkajianAwal.bagian3PsikososialDanEkonomi.aktivitas.pilihan"
                     class="w-full mt-1" :disabled="$isFormLocked || $isReadOnlyByRole">
                     <option value="">— Pilih —</option>
                     @foreach (PengkajianAwalRiOptions::AKTIVITAS as $nilaiOpsi => $labelOpsi)
@@ -772,7 +776,7 @@ new class extends Component {
             <div>
                 <x-input-label value="Status Emosional" />
                 <x-select-input
-                    wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian3PsikososialDanEkonomi.statusEmosional.pilihan"
+                    wire:model.live="pengkajianAwal.bagian3PsikososialDanEkonomi.statusEmosional.pilihan"
                     class="w-full mt-1" :disabled="$isFormLocked || $isReadOnlyByRole">
                     <option value="">— Pilih —</option>
                     @foreach (PengkajianAwalRiOptions::STATUS_EMOSIONAL as $nilaiOpsi => $labelOpsi)
@@ -780,11 +784,11 @@ new class extends Component {
                     @endforeach
                 </x-select-input>
                 @if (
-                    ($dataDaftarRi['pengkajianAwalPasienRawatInap']['bagian3PsikososialDanEkonomi']['statusEmosional']['pilihan'] ??
+                    ($pengkajianAwal['bagian3PsikososialDanEkonomi']['statusEmosional']['pilihan'] ??
                         '') ===
                         'lainnya')
                     <x-text-input
-                        wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian3PsikososialDanEkonomi.statusEmosional.keterangan"
+                        wire:model.live="pengkajianAwal.bagian3PsikososialDanEkonomi.statusEmosional.keterangan"
                         class="w-full mt-1" placeholder="Keterangan status emosional..." :disabled="$isFormLocked || $isReadOnlyByRole" />
                 @endif
             </div>
@@ -793,7 +797,7 @@ new class extends Component {
             <div>
                 <x-input-label value="Informasi Didapat Dari" />
                 <x-select-input
-                    wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian3PsikososialDanEkonomi.informasiDidapatDari.pilihan"
+                    wire:model.live="pengkajianAwal.bagian3PsikososialDanEkonomi.informasiDidapatDari.pilihan"
                     class="w-full mt-1" :disabled="$isFormLocked || $isReadOnlyByRole">
                     <option value="">— Pilih —</option>
                     @foreach (PengkajianAwalRiOptions::INFORMASI_DARI as $nilaiOpsi => $labelOpsi)
@@ -801,13 +805,13 @@ new class extends Component {
                     @endforeach
                 </x-select-input>
                 @if (
-                    ($dataDaftarRi['pengkajianAwalPasienRawatInap']['bagian3PsikososialDanEkonomi']['informasiDidapatDari'][
+                    ($pengkajianAwal['bagian3PsikososialDanEkonomi']['informasiDidapatDari'][
                         'pilihan'
                     ] ??
                         '') ===
                         'lainnya')
                     <x-text-input
-                        wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian3PsikososialDanEkonomi.informasiDidapatDari.keterangan"
+                        wire:model.live="pengkajianAwal.bagian3PsikososialDanEkonomi.informasiDidapatDari.keterangan"
                         class="w-full mt-1" placeholder="Keterangan sumber informasi..." :disabled="$isFormLocked || $isReadOnlyByRole" />
                 @endif
             </div>
@@ -818,13 +822,13 @@ new class extends Component {
         <div class="flex flex-col gap-2 mt-4 sm:flex-row sm:items-center">
             <div class="shrink-0 sm:w-80">
                 <x-toggle
-                    wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian3PsikososialDanEkonomi.nilaiKebudayaan.pilihan"
+                    wire:model.live="pengkajianAwal.bagian3PsikososialDanEkonomi.nilaiKebudayaan.pilihan"
                     trueValue="ya" falseValue="tidak" label="Ada nilai kebudayaan yang dipercaya"
                     :disabled="$isFormLocked || $isReadOnlyByRole" />
             </div>
-            @if (($dataDaftarRi['pengkajianAwalPasienRawatInap']['bagian3PsikososialDanEkonomi']['nilaiKebudayaan']['pilihan'] ?? 'tidak') === 'ya')
+            @if (($pengkajianAwal['bagian3PsikososialDanEkonomi']['nilaiKebudayaan']['pilihan'] ?? 'tidak') === 'ya')
                 <x-text-input
-                    wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian3PsikososialDanEkonomi.nilaiKebudayaan.keterangan"
+                    wire:model.live="pengkajianAwal.bagian3PsikososialDanEkonomi.nilaiKebudayaan.keterangan"
                     class="w-full" placeholder="Keterangan nilai kebudayaan (mis. pantangan makanan, ritual, pengobatan tradisional)..."
                     :disabled="$isFormLocked || $isReadOnlyByRole" />
             @endif
@@ -834,13 +838,13 @@ new class extends Component {
         <div class="flex flex-col gap-2 mt-4 sm:flex-row sm:items-center">
             <div class="shrink-0 sm:w-80">
                 <x-toggle
-                    wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian3PsikososialDanEkonomi.identifikasiHambatan.pilihan"
+                    wire:model.live="pengkajianAwal.bagian3PsikososialDanEkonomi.identifikasiHambatan.pilihan"
                     trueValue="ya" falseValue="tidak" label="Ada hambatan komunikasi / edukasi"
                     :disabled="$isFormLocked || $isReadOnlyByRole" />
             </div>
-            @if (($dataDaftarRi['pengkajianAwalPasienRawatInap']['bagian3PsikososialDanEkonomi']['identifikasiHambatan']['pilihan'] ?? 'tidak') === 'ya')
+            @if (($pengkajianAwal['bagian3PsikososialDanEkonomi']['identifikasiHambatan']['pilihan'] ?? 'tidak') === 'ya')
                 <x-select-input
-                    wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian3PsikososialDanEkonomi.identifikasiHambatan.jenis"
+                    wire:model.live="pengkajianAwal.bagian3PsikososialDanEkonomi.identifikasiHambatan.jenis"
                     class="w-full sm:w-64 sm:shrink-0" :disabled="$isFormLocked || $isReadOnlyByRole">
                     <option value="">— Jenis Hambatan —</option>
                     @foreach (PengkajianAwalRiOptions::HAMBATAN as $nilaiOpsi => $labelOpsi)
@@ -848,17 +852,17 @@ new class extends Component {
                     @endforeach
                 </x-select-input>
                 <x-text-input
-                    wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian3PsikososialDanEkonomi.identifikasiHambatan.keterangan"
+                    wire:model.live="pengkajianAwal.bagian3PsikososialDanEkonomi.identifikasiHambatan.keterangan"
                     class="w-full" placeholder="Keterangan hambatan (mis. hanya bisa bahasa Jawa, gangguan pendengaran berat)..."
                     :disabled="$isFormLocked || $isReadOnlyByRole" />
             @endif
         </div>
 
         {{-- Tindak Lanjut Hambatan — teks bebas, hanya muncul bila ada hambatan --}}
-        @if (($dataDaftarRi['pengkajianAwalPasienRawatInap']['bagian3PsikososialDanEkonomi']['identifikasiHambatan']['pilihan'] ?? 'tidak') === 'ya')
+        @if (($pengkajianAwal['bagian3PsikososialDanEkonomi']['identifikasiHambatan']['pilihan'] ?? 'tidak') === 'ya')
             <div class="mt-2 sm:pl-80">
                 <x-text-input
-                    wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian3PsikososialDanEkonomi.identifikasiHambatan.tindakLanjut"
+                    wire:model.live="pengkajianAwal.bagian3PsikososialDanEkonomi.identifikasiHambatan.tindakLanjut"
                     class="w-full" placeholder="Tindak lanjut hambatan (mis. dampingi penerjemah keluarga, edukasi tertulis, libatkan alat bantu dengar)..."
                     :disabled="$isFormLocked || $isReadOnlyByRole" />
             </div>
@@ -872,19 +876,19 @@ new class extends Component {
                 <div>
                     <x-input-label value="Nama" />
                     <x-text-input
-                        wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian3PsikososialDanEkonomi.keluargaDekat.nama"
+                        wire:model.live="pengkajianAwal.bagian3PsikososialDanEkonomi.keluargaDekat.nama"
                         class="w-full mt-1" placeholder="Nama keluarga..." :disabled="$isFormLocked || $isReadOnlyByRole" />
                 </div>
                 <div>
                     <x-input-label value="Hubungan" />
                     <x-text-input
-                        wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian3PsikososialDanEkonomi.keluargaDekat.hubungan"
+                        wire:model.live="pengkajianAwal.bagian3PsikososialDanEkonomi.keluargaDekat.hubungan"
                         class="w-full mt-1" placeholder="Ayah, Ibu, Suami, dll..." :disabled="$isFormLocked || $isReadOnlyByRole" />
                 </div>
                 <div>
                     <x-input-label value="No. Telepon" />
                     <x-text-input
-                        wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian3PsikososialDanEkonomi.keluargaDekat.telp"
+                        wire:model.live="pengkajianAwal.bagian3PsikososialDanEkonomi.keluargaDekat.telp"
                         class="w-full mt-1" placeholder="08xxxxxxxxxx" :disabled="$isFormLocked || $isReadOnlyByRole" />
                 </div>
             </div>
@@ -903,7 +907,7 @@ new class extends Component {
                 <div>
                     <x-input-label value="{{ $ttv['label'] }}" />
                     <x-text-input
-                        wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian4PemeriksaanFisik.tandaVital.{{ $ttv['key'] }}"
+                        wire:model.live="pengkajianAwal.bagian4PemeriksaanFisik.tandaVital.{{ $ttv['key'] }}"
                         class="w-full mt-1" type="number" step="any" :disabled="$isFormLocked || $isReadOnlyByRole" />
                 </div>
             @endforeach
@@ -913,7 +917,7 @@ new class extends Component {
         <div class="mt-3">
             <x-input-label value="Keluhan Utama" />
             <x-textarea
-                wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian4PemeriksaanFisik.keluhanUtama"
+                wire:model.live="pengkajianAwal.bagian4PemeriksaanFisik.keluhanUtama"
                 class="w-full mt-1" rows="2" placeholder="Keluhan utama pasien..." :disabled="$isFormLocked || $isReadOnlyByRole" />
         </div>
 
@@ -934,7 +938,7 @@ new class extends Component {
                 @foreach ($organSystems as $organ)
                     @php
                         $currentPilihan =
-                            $dataDaftarRi['pengkajianAwalPasienRawatInap']['bagian4PemeriksaanFisik'][
+                            $pengkajianAwal['bagian4PemeriksaanFisik'][
                                 'pemeriksaanSistemOrgan'
                             ][$organ['path']]['pilihan'] ?? '';
                     @endphp
@@ -943,7 +947,7 @@ new class extends Component {
                              lalu komponen meng-escape lagi → tampil "&amp;" di layar --}}
                         <x-input-label :value="$organ['label']" />
                         <x-select-input
-                            wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian4PemeriksaanFisik.pemeriksaanSistemOrgan.{{ $organ['path'] }}.pilihan"
+                            wire:model.live="pengkajianAwal.bagian4PemeriksaanFisik.pemeriksaanSistemOrgan.{{ $organ['path'] }}.pilihan"
                             class="w-full mt-1" :disabled="$isFormLocked || $isReadOnlyByRole">
                             <option value="">— Pilih —</option>
                             @foreach ($organ['opts'] as $val => $label)
@@ -952,7 +956,7 @@ new class extends Component {
                         </x-select-input>
                         @if ($currentPilihan === 'lainnya')
                             <x-text-input
-                                wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian4PemeriksaanFisik.pemeriksaanSistemOrgan.{{ $organ['path'] }}.keterangan"
+                                wire:model.live="pengkajianAwal.bagian4PemeriksaanFisik.pemeriksaanSistemOrgan.{{ $organ['path'] }}.keterangan"
                                 class="w-full mt-1" placeholder="Keterangan..." :disabled="$isFormLocked || $isReadOnlyByRole" />
                         @endif
                     </div>
@@ -961,7 +965,7 @@ new class extends Component {
                 {{-- Neurologi (special — punya GCS) --}}
                 @php
                     $neuroKesadaran =
-                        $dataDaftarRi['pengkajianAwalPasienRawatInap']['bagian4PemeriksaanFisik'][
+                        $pengkajianAwal['bagian4PemeriksaanFisik'][
                             'pemeriksaanSistemOrgan'
                         ]['neurologi']['tingkatKesadaran']['pilihan'] ?? '';
                 @endphp
@@ -972,7 +976,7 @@ new class extends Component {
                         <div>
                             <x-input-label value="Tingkat Kesadaran" />
                             <x-select-input
-                                wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian4PemeriksaanFisik.pemeriksaanSistemOrgan.neurologi.tingkatKesadaran.pilihan"
+                                wire:model.live="pengkajianAwal.bagian4PemeriksaanFisik.pemeriksaanSistemOrgan.neurologi.tingkatKesadaran.pilihan"
                                 class="w-full mt-1" :disabled="$isFormLocked || $isReadOnlyByRole">
                                 <option value="">— Pilih —</option>
                                 @foreach (PengkajianAwalRiOptions::TINGKAT_KESADARAN as $nilaiOpsi => $labelOpsi)
@@ -983,7 +987,7 @@ new class extends Component {
                         <div>
                             <x-input-label value="GCS (E/V/M)" />
                             <x-text-input
-                                wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian4PemeriksaanFisik.pemeriksaanSistemOrgan.neurologi.gcs"
+                                wire:model.live="pengkajianAwal.bagian4PemeriksaanFisik.pemeriksaanSistemOrgan.neurologi.gcs"
                                 class="w-full mt-1" placeholder="Contoh: E4V5M6" :disabled="$isFormLocked || $isReadOnlyByRole" />
                         </div>
                     </div>
@@ -999,7 +1003,7 @@ new class extends Component {
         :open="false">
 
         {{-- Tabel Leveling Dokter --}}
-        @php $levelingList = $dataDaftarRi['pengkajianAwalPasienRawatInap']['levelingDokter'] ?? []; @endphp
+        @php $levelingList = $pengkajianAwal['levelingDokter'] ?? []; @endphp
 
         @if (count($levelingList) > 0)
             <div class="mt-3 overflow-x-auto">
@@ -1126,7 +1130,7 @@ new class extends Component {
             <div>
                 <x-input-label value="Catatan Umum" />
                 <x-textarea
-                    wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian5CatatanDanTandaTangan.catatanUmum"
+                    wire:model.live="pengkajianAwal.bagian5CatatanDanTandaTangan.catatanUmum"
                     class="w-full mt-1" rows="2" placeholder="Catatan tambahan..." :disabled="$isFormLocked || $isReadOnlyByRole" />
             </div>
 
@@ -1134,7 +1138,7 @@ new class extends Component {
             <div>
                 <x-input-label value="Rumusan Masalah" />
                 <x-textarea
-                    wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian5CatatanDanTandaTangan.rumusanMasalah"
+                    wire:model.live="pengkajianAwal.bagian5CatatanDanTandaTangan.rumusanMasalah"
                     class="w-full mt-1" rows="2"
                     placeholder="Masalah keperawatan, mis: Nyeri akut b.d agen pencedera fisiologis..."
                     :disabled="$isFormLocked || $isReadOnlyByRole" />
@@ -1148,7 +1152,7 @@ new class extends Component {
             <div>
                 <x-input-label value="Diagnosa Keperawatan" />
                 <x-textarea
-                    wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian5CatatanDanTandaTangan.diagnosaKeperawatan"
+                    wire:model.live="pengkajianAwal.bagian5CatatanDanTandaTangan.diagnosaKeperawatan"
                     class="w-full mt-1" rows="2"
                     placeholder="Diagnosa keperawatan, mis: Nyeri akut, Risiko jatuh, Defisit nutrisi..."
                     :disabled="$isFormLocked || $isReadOnlyByRole" />
@@ -1158,11 +1162,11 @@ new class extends Component {
 
         {{-- TTD Perawat --}}
         <div class="mt-3">
-            <x-signature.ttd-petugas :framed="false" :allowClear="false" :ttd="$dataDaftarRi['pengkajianAwalPasienRawatInap']['bagian5CatatanDanTandaTangan'][
+            <x-signature.ttd-petugas :framed="false" :allowClear="false" :ttd="$pengkajianAwal['bagian5CatatanDanTandaTangan'][
                 'petugasPengkaji'
-            ] ?? ''" :date="$dataDaftarRi['pengkajianAwalPasienRawatInap']['bagian5CatatanDanTandaTangan']['jamPengkaji'] ??
+            ] ?? ''" :date="$pengkajianAwal['bagian5CatatanDanTandaTangan']['jamPengkaji'] ??
                 ''"
-                :code="$dataDaftarRi['pengkajianAwalPasienRawatInap']['bagian5CatatanDanTandaTangan'][
+                :code="$pengkajianAwal['bagian5CatatanDanTandaTangan'][
                     'petugasPengkajiCode'
                 ] ?? ''" :locked="$isFormLocked || $isReadOnlyByRole" :canSign="auth()
                     ->user()

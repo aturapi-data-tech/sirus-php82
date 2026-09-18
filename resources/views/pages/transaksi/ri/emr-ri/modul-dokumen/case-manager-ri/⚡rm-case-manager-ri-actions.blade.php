@@ -23,7 +23,16 @@ new class extends Component {
     public bool $isFormLocked = false;
     public ?string $riHdrNo = null;
     public bool $disabled = false;
-    public array $dataDaftarRi = [];
+    /** IRISAN dokumen: cabang `formMPP` + nomor RM pasien. */
+    public array $formMPP = [];
+    public string $regNoPasien = '';
+
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan + regNo yang disimpan. */
+    private function serapIrisan(array $data): void
+    {
+        $this->formMPP = $data['formMPP'] ?? [];
+        $this->regNoPasien = (string) ($data['regNo'] ?? '');
+    }
 
     public array $formA = [
         'formA_id' => '',
@@ -81,8 +90,8 @@ new class extends Component {
         if (!$data) {
             return;
         }
-        $this->dataDaftarRi = $data;
-        $this->dataDaftarRi['formMPP'] ??= ['formA' => [], 'formB' => []];
+        $this->serapIrisan($data);
+        $this->formMPP ??= ['formA' => [], 'formB' => []];
         $this->isFormLocked = $this->checkEmrRIStatus($this->riHdrNo) || $this->disabled;
     }
 
@@ -103,8 +112,8 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarRi = $data;
-        $this->dataDaftarRi['formMPP'] ??= ['formA' => [], 'formB' => []];
+        $this->serapIrisan($data);
+        $this->formMPP ??= ['formA' => [], 'formB' => []];
         $this->isFormLocked = $this->checkEmrRIStatus($this->riHdrNo) || $this->disabled;
 
         $this->incrementVersion('modal-case-manager-ri');
@@ -220,7 +229,7 @@ new class extends Component {
             $fresh['formMPP']['formA'] = array_values($list);
 
             $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-            $this->dataDaftarRi = $fresh;
+            $this->formMPP = $fresh['formMPP'] ?? [];
 
             $this->appendAdminLogRI((int) $this->riHdrNo, $logVerb . ' Form A (Skrining MPP) — ' . ($entry['tanggal'] ?: '-') . ' (' . $key . ')', 'MR');
         });
@@ -256,7 +265,7 @@ new class extends Component {
             $fresh['formMPP']['formB'] = array_values($list);
 
             $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-            $this->dataDaftarRi = $fresh;
+            $this->formMPP = $fresh['formMPP'] ?? [];
 
             $this->appendAdminLogRI((int) $this->riHdrNo, $logVerb . ' Form B (Pelaksanaan MPP) — ' . ($entry['tanggal'] ?: '-') . ' (' . $key . ')', 'MR');
         });
@@ -520,7 +529,7 @@ new class extends Component {
             $this->dispatch('toast', type: 'error', message: 'Form read-only.');
             return;
         }
-        $entry = collect($this->dataDaftarRi['formMPP']['formA'] ?? [])->firstWhere('formA_id', $id);
+        $entry = collect($this->formMPP['formA'] ?? [])->firstWhere('formA_id', $id);
         if (!$entry) {
             $this->dispatch('toast', type: 'error', message: 'Entri Form A tidak ditemukan.');
             return;
@@ -537,7 +546,7 @@ new class extends Component {
 
     public function viewEntryA(string $id): void
     {
-        $entry = collect($this->dataDaftarRi['formMPP']['formA'] ?? [])->firstWhere('formA_id', $id);
+        $entry = collect($this->formMPP['formA'] ?? [])->firstWhere('formA_id', $id);
         if (!$entry) {
             $this->dispatch('toast', type: 'error', message: 'Entri Form A tidak ditemukan.');
             return;
@@ -554,7 +563,7 @@ new class extends Component {
             $this->dispatch('toast', type: 'error', message: 'Form read-only.');
             return;
         }
-        $entry = collect($this->dataDaftarRi['formMPP']['formB'] ?? [])->firstWhere('formB_id', $id);
+        $entry = collect($this->formMPP['formB'] ?? [])->firstWhere('formB_id', $id);
         if (!$entry) {
             $this->dispatch('toast', type: 'error', message: 'Entri Form B tidak ditemukan.');
             return;
@@ -571,7 +580,7 @@ new class extends Component {
 
     public function viewEntryB(string $id): void
     {
-        $entry = collect($this->dataDaftarRi['formMPP']['formB'] ?? [])->firstWhere('formB_id', $id);
+        $entry = collect($this->formMPP['formB'] ?? [])->firstWhere('formB_id', $id);
         if (!$entry) {
             $this->dispatch('toast', type: 'error', message: 'Entri Form B tidak ditemukan.');
             return;
@@ -696,7 +705,7 @@ new class extends Component {
                 $deletedRow = collect($list)->firstWhere($tipe . '_id', $id);
                 $fresh['formMPP'][$tipe] = array_values(array_filter($list, fn($e) => ($e[$tipe . '_id'] ?? null) !== $id));
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->dataDaftarRi = $fresh;
+                $this->formMPP = $fresh['formMPP'] ?? [];
 
                 $formLabel = $tipe === 'formA' ? 'Form A (Skrining MPP)' : 'Form B (Pelaksanaan MPP)';
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Hapus ' . $formLabel . ' — entri ' . ($deletedRow['tanggal'] ?? '-'), 'MR');
@@ -745,7 +754,7 @@ new class extends Component {
                 $list[$index]['tandaTanganPetugas']['petugasName'] = '';
                 $fresh['formMPP'][$tipe] = array_values($list);
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->dataDaftarRi = $fresh;
+                $this->formMPP = $fresh['formMPP'] ?? [];
                 $formLabel = $tipe === 'formA' ? 'Form A (Skrining MPP)' : 'Form B (Pelaksanaan MPP)';
                 $pembukaKunci = auth()->user()->myuser_name ?? '-';
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Buka kunci ' . $formLabel . ' — entri ' . ($list[$index]['tanggal'] ?? '-') . ' oleh ' . $pembukaKunci . ' — TTD MPP dicabut, entri kembali draft', 'MR');
@@ -770,7 +779,7 @@ new class extends Component {
      =============================== */
     public function cetakFormA(string $id)
     {
-        $formA = collect($this->dataDaftarRi['formMPP']['formA'] ?? [])->firstWhere('formA_id', $id);
+        $formA = collect($this->formMPP['formA'] ?? [])->firstWhere('formA_id', $id);
         if (!$formA) {
             $this->dispatch('toast', type: 'error', message: 'Data Form A tidak ditemukan.');
             return;
@@ -778,11 +787,11 @@ new class extends Component {
 
         try {
             $identitasRs = DB::table('rsmst_identitases')->select('int_name', 'int_phone1', 'int_phone2', 'int_fax', 'int_address', 'int_city')->first();
-            $dataPasien = $this->findDataMasterPasien($this->dataDaftarRi['regNo'] ?? '');
+            $dataPasien = $this->findDataMasterPasien($this->regNoPasien);
             $pdf = Pdf::loadView('livewire.cetak.cetak-form-a-print', [
                 'identitasRs' => $identitasRs,
                 'dataPasien' => $dataPasien,
-                'dataDaftarRi' => $this->dataDaftarRi,
+                'dataDaftarRi' => $this->findDataRI($this->riHdrNo) ?: [],
                 'dataFormA' => $formA,
             ])->output();
 
@@ -795,7 +804,7 @@ new class extends Component {
 
     public function cetakFormB(string $id)
     {
-        $formB = collect($this->dataDaftarRi['formMPP']['formB'] ?? [])->firstWhere('formB_id', $id);
+        $formB = collect($this->formMPP['formB'] ?? [])->firstWhere('formB_id', $id);
         if (!$formB) {
             $this->dispatch('toast', type: 'error', message: 'Data Form B tidak ditemukan.');
             return;
@@ -803,11 +812,11 @@ new class extends Component {
 
         try {
             $identitasRs = DB::table('rsmst_identitases')->select('int_name', 'int_phone1', 'int_phone2', 'int_fax', 'int_address', 'int_city')->first();
-            $dataPasien = $this->findDataMasterPasien($this->dataDaftarRi['regNo'] ?? '');
+            $dataPasien = $this->findDataMasterPasien($this->regNoPasien);
             $pdf = Pdf::loadView('livewire.cetak.cetak-form-b-print', [
                 'identitasRs' => $identitasRs,
                 'dataPasien' => $dataPasien,
-                'dataDaftarRi' => $this->dataDaftarRi,
+                'dataDaftarRi' => $this->findDataRI($this->riHdrNo) ?: [],
                 'dataFormB' => $formB,
             ])->output();
 
@@ -854,7 +863,8 @@ new class extends Component {
     {
         $this->resetVersion();
         $this->isFormLocked = false;
-        $this->dataDaftarRi = [];
+        $this->formMPP = [];
+        $this->regNoPasien = '';
         $this->resetFormA();
         $this->resetFormB();
         $this->editingKeyA = null;
@@ -868,8 +878,8 @@ new class extends Component {
 <div>
     {{-- ══ SUMMARY CARD (inline di tab) ══ --}}
     @php
-        $mppCountA = count($dataDaftarRi['formMPP']['formA'] ?? []);
-        $mppCountB = count($dataDaftarRi['formMPP']['formB'] ?? []);
+        $mppCountA = count($formMPP['formA'] ?? []);
+        $mppCountB = count($formMPP['formB'] ?? []);
     @endphp
     <x-modul-dokumen.kartu judul="Case Manager — Manajer Pelayanan Pasien"
         tombol="Buka Case Manager (MPP)"
@@ -904,8 +914,8 @@ new class extends Component {
     @php
         $formReadOnlyA = $isFormLocked || $viewOnlyA;
         $formReadOnlyB = $isFormLocked || $viewOnlyB;
-        $listFormA = $dataDaftarRi['formMPP']['formA'] ?? [];
-        $listFormB = $dataDaftarRi['formMPP']['formB'] ?? [];
+        $listFormA = $formMPP['formA'] ?? [];
+        $listFormB = $formMPP['formB'] ?? [];
         // Peta label Form A (untuk referensi read-only di Form B)
         $formALabels = [];
         foreach ($listFormA as $fa) {

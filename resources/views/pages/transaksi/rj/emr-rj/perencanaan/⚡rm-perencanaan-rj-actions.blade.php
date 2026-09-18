@@ -14,7 +14,38 @@ new class extends Component {
 
     public bool $isFormLocked = false;
     public ?int $rjNo = null;
-    public array $dataDaftarPoliRJ = [];
+    /**
+     * IRISAN dokumen: cabang `perencanaan` — sekaligus model form
+     * (jalur validasi & wire:model kini `perencanaan.*`).
+     */
+    public array $perencanaan = [];
+
+    /** Skalar identitas dokter (dipakai guard TTD-E & partial Petugas Medis). */
+    public string $drId = '';
+    public string $drDesc = '';
+
+    /**
+     * Dua key tingkat-atas yang MEMANG dikelola komponen ini. null = tidak ada di dokumen
+     * saat dimuat, sehingga tidak ikut dipatch — menjaga perilaku isset() yang lama.
+     */
+    public ?string $statusPRB = null;
+    public ?string $ermStatus = null;
+
+    /**
+     * Cuplikan prasyarat TTD-E dokter: tujuh nilai milik cabang LAIN (pemeriksaan & anamnesa)
+     * yang divalidasi sebelum dokter menandatangani. Dulu dibaca dari salinan dokumen penuh;
+     * kini hanya tujuh nilai itu yang ditahan, dengan bentuk bersarang yang sama supaya jalur
+     * aturan validasi tetap sah.
+     *
+     * CATATAN (perilaku lama dipertahankan): cuplikan ini diambil saat openPerencanaan(),
+     * sedangkan komponen pemeriksaan/anamnesa adalah SAUDARA yang mengedit dokumen yang sama —
+     * jadi nilainya bisa basi. Membacanya segar dari DB lebih benar, tapi itu perubahan
+     * perilaku, bukan bagian dari perapian properti ini.
+     */
+    public array $prasyaratTtd = [];
+
+    /** Penanda kunjungan sudah dimuat lewat openPerencanaan(). */
+    public bool $dokumenTermuat = false;
 
     // renderVersions
     public array $renderVersions = [];
@@ -45,9 +76,38 @@ new class extends Component {
     public function rendering(): void
     {
         $default = $this->getDefaultPerencanaan();
-        $current = $this->dataDaftarPoliRJ['perencanaan'] ?? [];
-        $this->dataDaftarPoliRJ['perencanaan'] = array_replace_recursive($default, $current);
+        $this->perencanaan = array_replace_recursive($default, $this->perencanaan);
     }
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan + skalar + cuplikan yang disimpan. */
+    private function serapDokumen(array $data): void
+    {
+        $this->perencanaan = $data['perencanaan'] ?? [];
+        $this->drId = (string) ($data['drId'] ?? '');
+        $this->drDesc = (string) ($data['drDesc'] ?? '');
+        $this->statusPRB = array_key_exists('statusPRB', $data) ? (string) $data['statusPRB'] : null;
+        $this->ermStatus = array_key_exists('ermStatus', $data) ? (string) $data['ermStatus'] : null;
+        $this->prasyaratTtd = [
+            'pemeriksaan' => [
+                'tandaVital' => [
+                    'frekuensiNadi'  => $data['pemeriksaan']['tandaVital']['frekuensiNadi'] ?? null,
+                    'frekuensiNafas' => $data['pemeriksaan']['tandaVital']['frekuensiNafas'] ?? null,
+                    'suhu'           => $data['pemeriksaan']['tandaVital']['suhu'] ?? null,
+                ],
+                'nutrisi' => [
+                    'bb'  => $data['pemeriksaan']['nutrisi']['bb'] ?? null,
+                    'tb'  => $data['pemeriksaan']['nutrisi']['tb'] ?? null,
+                    'imt' => $data['pemeriksaan']['nutrisi']['imt'] ?? null,
+                ],
+            ],
+            'anamnesa' => [
+                'pengkajianPerawatan' => [
+                    'jamDatang' => $data['anamnesa']['pengkajianPerawatan']['jamDatang'] ?? null,
+                ],
+            ],
+        ];
+        $this->dokumenTermuat = true;
+    }
+
 
     /* ===============================
      | OPEN REKAM MEDIS - PERENCANAAN
@@ -64,17 +124,17 @@ new class extends Component {
         $this->resetForm();
         $this->resetValidation();
 
-        $dataDaftarPoliRJ = $this->findDataRJ($rjNo);
+        $data = $this->findDataRJ($rjNo);
 
-        if (!$dataDaftarPoliRJ) {
+        if (!$data) {
             $this->dispatch('toast', type: 'error', message: 'Data Rawat Jalan tidak ditemukan.');
             return;
         }
 
-        $this->dataDaftarPoliRJ = $dataDaftarPoliRJ;
+        $this->serapDokumen($data);
 
         // Initialize perencanaan data jika belum ada
-        $this->dataDaftarPoliRJ['perencanaan'] ??= $this->getDefaultPerencanaan();
+        $this->perencanaan = $this->perencanaan ?: $this->getDefaultPerencanaan();
 
         // 🔥 INCREMENT: Refresh seluruh modal perencanaan
         $this->incrementVersion('modal-perencanaan-rj');
@@ -168,20 +228,20 @@ new class extends Component {
         }
 
         // Set hanya key milik komponen ini — key lain tidak tersentuh
-        $data['perencanaan'] = $this->dataDaftarPoliRJ['perencanaan'] ?? [];
+        $data['perencanaan'] = $this->perencanaan;
 
         // statusPRB juga dikelola dari komponen ini
-        if (isset($this->dataDaftarPoliRJ['statusPRB'])) {
-            $data['statusPRB'] = $this->dataDaftarPoliRJ['statusPRB'];
+        if ($this->statusPRB !== null) {
+            $data['statusPRB'] = $this->statusPRB;
         }
 
         // ermStatus dikelola dari setDrPemeriksa
-        if (isset($this->dataDaftarPoliRJ['ermStatus'])) {
-            $data['ermStatus'] = $this->dataDaftarPoliRJ['ermStatus'];
+        if ($this->ermStatus !== null) {
+            $data['ermStatus'] = $this->ermStatus;
         }
 
         $this->updateJsonRJ($this->rjNo, $data);
-        $this->dataDaftarPoliRJ = $data;
+        $this->serapDokumen($data);
     }
 
     /* ===============================
@@ -197,7 +257,7 @@ new class extends Component {
         }
 
         // 2. Guard: properti lokal belum ter-load
-        if (empty($this->dataDaftarPoliRJ)) {
+        if (!$this->dokumenTermuat) {
             $this->dispatch('toast', type: 'error', message: 'Data kunjungan tidak ditemukan, silakan buka ulang form.');
             return;
         }
@@ -218,7 +278,7 @@ new class extends Component {
                 $this->syncPerencanaanJson();
 
                 // 6. Audit log
-                $this->appendAdminLogRJ((int) $this->rjNo, ($isBaru ? 'Buat' : 'Update') . ' Perencanaan RJ — waktu pemeriksaan ' . ($this->dataDaftarPoliRJ['perencanaan']['pengkajianMedis']['waktuPemeriksaan'] ?? '-'), 'MR');
+                $this->appendAdminLogRJ((int) $this->rjNo, ($isBaru ? 'Buat' : 'Update') . ' Perencanaan RJ — waktu pemeriksaan ' . ($this->perencanaan['pengkajianMedis']['waktuPemeriksaan'] ?? '-'), 'MR');
             });
 
             $this->afterSave('Perencanaan berhasil disimpan.', $silent);
@@ -238,13 +298,13 @@ new class extends Component {
         try {
             $this->validateWithToast(
                 [
-                    'dataDaftarPoliRJ.pemeriksaan.tandaVital.frekuensiNadi' => 'required|numeric',
-                    'dataDaftarPoliRJ.pemeriksaan.tandaVital.frekuensiNafas' => 'required|numeric',
-                    'dataDaftarPoliRJ.pemeriksaan.tandaVital.suhu' => 'required|numeric',
-                    'dataDaftarPoliRJ.pemeriksaan.nutrisi.bb' => 'required|numeric',
-                    'dataDaftarPoliRJ.pemeriksaan.nutrisi.tb' => 'required|numeric',
-                    'dataDaftarPoliRJ.pemeriksaan.nutrisi.imt' => 'required|numeric',
-                    'dataDaftarPoliRJ.anamnesa.pengkajianPerawatan.jamDatang' => 'required|date_format:d/m/Y H:i:s',
+                    'prasyaratTtd.pemeriksaan.tandaVital.frekuensiNadi' => 'required|numeric',
+                    'prasyaratTtd.pemeriksaan.tandaVital.frekuensiNafas' => 'required|numeric',
+                    'prasyaratTtd.pemeriksaan.tandaVital.suhu' => 'required|numeric',
+                    'prasyaratTtd.pemeriksaan.nutrisi.bb' => 'required|numeric',
+                    'prasyaratTtd.pemeriksaan.nutrisi.tb' => 'required|numeric',
+                    'prasyaratTtd.pemeriksaan.nutrisi.imt' => 'required|numeric',
+                    'prasyaratTtd.anamnesa.pengkajianPerawatan.jamDatang' => 'required|date_format:d/m/Y H:i:s',
                 ],
                 [
                     'required' => ':attribute wajib diisi.',
@@ -252,13 +312,13 @@ new class extends Component {
                     'date_format' => ':attribute harus dalam format dd/mm/yyyy hh:mi:ss.',
                 ],
                 [
-                    'dataDaftarPoliRJ.pemeriksaan.tandaVital.frekuensiNadi' => 'Frekuensi Nadi',
-                    'dataDaftarPoliRJ.pemeriksaan.tandaVital.frekuensiNafas' => 'Frekuensi Nafas',
-                    'dataDaftarPoliRJ.pemeriksaan.tandaVital.suhu' => 'Suhu',
-                    'dataDaftarPoliRJ.pemeriksaan.nutrisi.bb' => 'Berat Badan',
-                    'dataDaftarPoliRJ.pemeriksaan.nutrisi.tb' => 'Tinggi Badan',
-                    'dataDaftarPoliRJ.pemeriksaan.nutrisi.imt' => 'Indeks Massa Tubuh',
-                    'dataDaftarPoliRJ.anamnesa.pengkajianPerawatan.jamDatang' => 'Waktu Datang',
+                    'prasyaratTtd.pemeriksaan.tandaVital.frekuensiNadi' => 'Frekuensi Nadi',
+                    'prasyaratTtd.pemeriksaan.tandaVital.frekuensiNafas' => 'Frekuensi Nafas',
+                    'prasyaratTtd.pemeriksaan.tandaVital.suhu' => 'Suhu',
+                    'prasyaratTtd.pemeriksaan.nutrisi.bb' => 'Berat Badan',
+                    'prasyaratTtd.pemeriksaan.nutrisi.tb' => 'Tinggi Badan',
+                    'prasyaratTtd.pemeriksaan.nutrisi.imt' => 'Indeks Massa Tubuh',
+                    'prasyaratTtd.anamnesa.pengkajianPerawatan.jamDatang' => 'Waktu Datang',
                 ],
             );
         } catch (ValidationException $e) {
@@ -292,7 +352,7 @@ new class extends Component {
             return;
         }
 
-        if (($this->dataDaftarPoliRJ['drId'] ?? '') !== $myUserCodeActive) {
+        if ($this->drId !== $myUserCodeActive) {
             $this->dispatch('toast', type: 'error', message: "Anda tidak dapat melakukan TTD-E karena Bukan Pasien {$myUserNameActive}.");
             return;
         }
@@ -302,19 +362,19 @@ new class extends Component {
                 // 1. Lock row dulu — update erm_status + JSON harus atomik dalam satu transaksi
                 $this->lockRJRow($this->rjNo);
 
-                $drDesc = $this->dataDaftarPoliRJ['drDesc'] ?? 'Dokter Pemeriksa';
+                $drDesc = $this->drDesc ?: 'Dokter Pemeriksa';
 
                 // 2. Set data perencanaan
-                $this->dataDaftarPoliRJ['perencanaan']['pengkajianMedis']['drPemeriksa'] = $drDesc;
+                $this->perencanaan['pengkajianMedis']['drPemeriksa'] = $drDesc;
 
                 // Auto-isi waktu pemeriksaan jika belum diisi
-                $this->dataDaftarPoliRJ['perencanaan']['pengkajianMedis']['waktuPemeriksaan'] ??= Carbon::now()->format('d/m/Y H:i:s');
+                $this->perencanaan['pengkajianMedis']['waktuPemeriksaan'] ??= Carbon::now()->format('d/m/Y H:i:s');
 
                 // Auto-isi selesai pemeriksaan jika belum diisi
-                $this->dataDaftarPoliRJ['perencanaan']['pengkajianMedis']['selesaiPemeriksaan'] ??= Carbon::now()->format('d/m/Y H:i:s');
+                $this->perencanaan['pengkajianMedis']['selesaiPemeriksaan'] ??= Carbon::now()->format('d/m/Y H:i:s');
 
                 // 3. Update erm_status di header — dalam satu transaksi dengan JSON update
-                $this->dataDaftarPoliRJ['ermStatus'] = 'L';
+                $this->ermStatus = 'L';
                 DB::table('rstxn_rjhdrs')
                     ->where('rj_no', $this->rjNo)
                     ->update(['erm_status' => 'L']);
@@ -323,7 +383,7 @@ new class extends Component {
                 $this->syncPerencanaanJson();
 
                 // 5. Audit log
-                $this->appendAdminLogRJ((int) $this->rjNo, 'TTD-E Dokter Pemeriksa (kunci EMR) — ' . $drDesc . ' @ ' . ($this->dataDaftarPoliRJ['perencanaan']['pengkajianMedis']['waktuPemeriksaan'] ?? '-'), 'MR');
+                $this->appendAdminLogRJ((int) $this->rjNo, 'TTD-E Dokter Pemeriksa (kunci EMR) — ' . $drDesc . ' @ ' . ($this->perencanaan['pengkajianMedis']['waktuPemeriksaan'] ?? '-'), 'MR');
             });
 
             $this->afterSave('TTD-E berhasil.');
@@ -363,7 +423,7 @@ new class extends Component {
             return;
         }
 
-        if (blank($this->dataDaftarPoliRJ['perencanaan']['pengkajianMedis']['drPemeriksa'] ?? '')) {
+        if (blank($this->perencanaan['pengkajianMedis']['drPemeriksa'] ?? '')) {
             $this->dispatch('toast', type: 'error', message: 'Belum ada TTD-E yang perlu dibuka.');
 
             return;
@@ -373,12 +433,12 @@ new class extends Component {
             DB::transaction(function () {
                 $this->lockRJRow($this->rjNo);
 
-                $drSebelumnya = $this->dataDaftarPoliRJ['perencanaan']['pengkajianMedis']['drPemeriksa'];
+                $drSebelumnya = $this->perencanaan['pengkajianMedis']['drPemeriksa'];
 
-                $this->dataDaftarPoliRJ['perencanaan']['pengkajianMedis']['drPemeriksa'] = '';
-                $this->dataDaftarPoliRJ['perencanaan']['pengkajianMedis']['selesaiPemeriksaan'] = '';
+                $this->perencanaan['pengkajianMedis']['drPemeriksa'] = '';
+                $this->perencanaan['pengkajianMedis']['selesaiPemeriksaan'] = '';
 
-                $this->dataDaftarPoliRJ['ermStatus'] = 'A';
+                $this->ermStatus = 'A';
                 DB::table('rstxn_rjhdrs')
                     ->where('rj_no', $this->rjNo)
                     ->update(['erm_status' => 'A']);
@@ -417,27 +477,27 @@ new class extends Component {
     protected function rules(): array
     {
         return [
-            'dataDaftarPoliRJ.perencanaan.pengkajianMedis.waktuPemeriksaan' => 'nullable|date_format:d/m/Y H:i:s',
-            'dataDaftarPoliRJ.perencanaan.pengkajianMedis.selesaiPemeriksaan' => 'nullable|date_format:d/m/Y H:i:s',
-            'dataDaftarPoliRJ.perencanaan.rawatInap.tanggal' => 'nullable|date_format:d/m/Y',
+            'perencanaan.pengkajianMedis.waktuPemeriksaan' => 'nullable|date_format:d/m/Y H:i:s',
+            'perencanaan.pengkajianMedis.selesaiPemeriksaan' => 'nullable|date_format:d/m/Y H:i:s',
+            'perencanaan.rawatInap.tanggal' => 'nullable|date_format:d/m/Y',
         ];
     }
 
     protected function messages(): array
     {
         return [
-            'dataDaftarPoliRJ.perencanaan.pengkajianMedis.waktuPemeriksaan.date_format' => ':attribute harus dalam format dd/mm/yyyy hh:mi:ss',
-            'dataDaftarPoliRJ.perencanaan.pengkajianMedis.selesaiPemeriksaan.date_format' => ':attribute harus dalam format dd/mm/yyyy hh:mi:ss',
-            'dataDaftarPoliRJ.perencanaan.rawatInap.tanggal.date_format' => ':attribute harus dalam format dd/mm/yyyy',
+            'perencanaan.pengkajianMedis.waktuPemeriksaan.date_format' => ':attribute harus dalam format dd/mm/yyyy hh:mi:ss',
+            'perencanaan.pengkajianMedis.selesaiPemeriksaan.date_format' => ':attribute harus dalam format dd/mm/yyyy hh:mi:ss',
+            'perencanaan.rawatInap.tanggal.date_format' => ':attribute harus dalam format dd/mm/yyyy',
         ];
     }
 
     protected function validationAttributes(): array
     {
         return [
-            'dataDaftarPoliRJ.perencanaan.pengkajianMedis.waktuPemeriksaan' => 'Waktu Pemeriksaan',
-            'dataDaftarPoliRJ.perencanaan.pengkajianMedis.selesaiPemeriksaan' => 'Selesai Pemeriksaan',
-            'dataDaftarPoliRJ.perencanaan.rawatInap.tanggal' => 'Tanggal Rawat Inap',
+            'perencanaan.pengkajianMedis.waktuPemeriksaan' => 'Waktu Pemeriksaan',
+            'perencanaan.pengkajianMedis.selesaiPemeriksaan' => 'Selesai Pemeriksaan',
+            'perencanaan.rawatInap.tanggal' => 'Tanggal Rawat Inap',
         ];
     }
 
@@ -484,9 +544,9 @@ new class extends Component {
                 class="w-full p-4 space-y-6 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
 
                 {{-- jika perencanaan ada --}}
-                @if (isset($dataDaftarPoliRJ['perencanaan']))
+                @if (!empty($perencanaan))
                     <div class="w-full">
-                        <div id="TransaksiRawatJalan" x-data="{ activeTab: '{{ $dataDaftarPoliRJ['perencanaan']['pengkajianMedisTab'] ?? 'Petugas Medis' }}' }" class="w-full">
+                        <div id="TransaksiRawatJalan" x-data="{ activeTab: '{{ $perencanaan['pengkajianMedisTab'] ?? 'Petugas Medis' }}' }" class="w-full">
 
                             {{-- TAB NAVIGATION --}}
                             <x-scrollable-tabs class="w-full px-2 mb-2 border-b border-hairline dark:border-gray-700">
@@ -494,26 +554,26 @@ new class extends Component {
 
                                     {{-- PETUGAS MEDIS TAB --}}
                                     <x-tab variant="underline"
-                                        active-expr="activeTab === '{{ $dataDaftarPoliRJ['perencanaan']['pengkajianMedisTab'] ?? 'Petugas Medis' }}'"
-                                        x-on:click="activeTab = '{{ $dataDaftarPoliRJ['perencanaan']['pengkajianMedisTab'] ?? 'Petugas Medis' }}'">
-                                        {{ $dataDaftarPoliRJ['perencanaan']['pengkajianMedisTab'] ?? 'Petugas Medis' }}
+                                        active-expr="activeTab === '{{ $perencanaan['pengkajianMedisTab'] ?? 'Petugas Medis' }}'"
+                                        x-on:click="activeTab = '{{ $perencanaan['pengkajianMedisTab'] ?? 'Petugas Medis' }}'">
+                                        {{ $perencanaan['pengkajianMedisTab'] ?? 'Petugas Medis' }}
                                     </x-tab>
 
                                     {{-- TINDAK LANJUT TAB --}}
                                     <x-tab variant="underline"
-                                        active-expr="activeTab === '{{ $dataDaftarPoliRJ['perencanaan']['tindakLanjutTab'] ?? 'Tindak Lanjut' }}'"
-                                        x-on:click="activeTab = '{{ $dataDaftarPoliRJ['perencanaan']['tindakLanjutTab'] ?? 'Tindak Lanjut' }}'">
-                                        {{ $dataDaftarPoliRJ['perencanaan']['tindakLanjutTab'] ?? 'Tindak Lanjut' }}
+                                        active-expr="activeTab === '{{ $perencanaan['tindakLanjutTab'] ?? 'Tindak Lanjut' }}'"
+                                        x-on:click="activeTab = '{{ $perencanaan['tindakLanjutTab'] ?? 'Tindak Lanjut' }}'">
+                                        {{ $perencanaan['tindakLanjutTab'] ?? 'Tindak Lanjut' }}
                                     </x-tab>
 
                                     {{-- TERAPI TAB --}}
                                     {{-- <li class="mr-2">
                                         <label
                                             class="inline-block p-4 border-b-2 border-transparent rounded-t-lg cursor-pointer hover:text-muted hover:border-gray-300"
-                                            :class="activeTab === '{{ $dataDaftarPoliRJ['perencanaan']['terapiTab'] ?? 'Terapi' }}'
+                                            :class="activeTab === '{{ $perencanaan['terapiTab'] ?? 'Terapi' }}'
                                                 ? 'text-brand border-brand dark:text-emerald-300 dark:border-emerald-400 bg-surface-soft' : ''"
-                                            @click="activeTab = '{{ $dataDaftarPoliRJ['perencanaan']['terapiTab'] ?? 'Terapi' }}'">
-                                            {{ $dataDaftarPoliRJ['perencanaan']['terapiTab'] ?? 'Terapi' }}
+                                            @click="activeTab = '{{ $perencanaan['terapiTab'] ?? 'Terapi' }}'">
+                                            {{ $perencanaan['terapiTab'] ?? 'Terapi' }}
                                         </label>
                                     </li> --}}
 
@@ -521,10 +581,10 @@ new class extends Component {
                                     {{-- <li class="mr-2">
                                         <label
                                             class="inline-block p-4 border-b-2 border-transparent rounded-t-lg cursor-pointer hover:text-muted hover:border-gray-300"
-                                            :class="activeTab === '{{ $dataDaftarPoliRJ['perencanaan']['rawatInapTab'] ?? 'Rawat Inap' }}'
+                                            :class="activeTab === '{{ $perencanaan['rawatInapTab'] ?? 'Rawat Inap' }}'
                                                 ? 'text-brand border-brand dark:text-emerald-300 dark:border-emerald-400 bg-surface-soft' : ''"
-                                            @click="activeTab = '{{ $dataDaftarPoliRJ['perencanaan']['rawatInapTab'] ?? 'Rawat Inap' }}'">
-                                            {{ $dataDaftarPoliRJ['perencanaan']['rawatInapTab'] ?? 'Rawat Inap' }}
+                                            @click="activeTab = '{{ $perencanaan['rawatInapTab'] ?? 'Rawat Inap' }}'">
+                                            {{ $perencanaan['rawatInapTab'] ?? 'Rawat Inap' }}
                                         </label>
                                     </li> --}}
 
@@ -532,10 +592,10 @@ new class extends Component {
                                     {{-- <li class="mr-2">
                                         <label
                                             class="inline-block p-4 border-b-2 border-transparent rounded-t-lg cursor-pointer hover:text-muted hover:border-gray-300"
-                                            :class="activeTab === '{{ $dataDaftarPoliRJ['perencanaan']['dischargePlanningTab'] ?? 'Discharge Planning' }}'
+                                            :class="activeTab === '{{ $perencanaan['dischargePlanningTab'] ?? 'Discharge Planning' }}'
                                                 ? 'text-brand border-brand dark:text-emerald-300 dark:border-emerald-400 bg-surface-soft' : ''"
-                                            @click="activeTab = '{{ $dataDaftarPoliRJ['perencanaan']['dischargePlanningTab'] ?? 'Discharge Planning' }}'">
-                                            {{ $dataDaftarPoliRJ['perencanaan']['dischargePlanningTab'] ?? 'Discharge Planning' }}
+                                            @click="activeTab = '{{ $perencanaan['dischargePlanningTab'] ?? 'Discharge Planning' }}'">
+                                            {{ $perencanaan['dischargePlanningTab'] ?? 'Discharge Planning' }}
                                         </label>
                                     </li> --}}
 
@@ -547,34 +607,34 @@ new class extends Component {
 
                                 {{-- PETUGAS MEDIS TAB --}}
                                 <div class="w-full"
-                                    x-show.transition.in.opacity.duration.600="activeTab === '{{ $dataDaftarPoliRJ['perencanaan']['pengkajianMedisTab'] ?? 'Petugas Medis' }}'">
+                                    x-show.transition.in.opacity.duration.600="activeTab === '{{ $perencanaan['pengkajianMedisTab'] ?? 'Petugas Medis' }}'">
                                     @include('pages.transaksi.rj.emr-rj.perencanaan.tabs.petugas-medis-tab')
                                 </div>
 
                                 {{-- TINDAK LANJUT TAB --}}
                                 <div class="w-full"
-                                    x-show.transition.in.opacity.duration.600="activeTab === '{{ $dataDaftarPoliRJ['perencanaan']['tindakLanjutTab'] ?? 'Tindak Lanjut' }}'">
+                                    x-show.transition.in.opacity.duration.600="activeTab === '{{ $perencanaan['tindakLanjutTab'] ?? 'Tindak Lanjut' }}'">
                                     @include('pages.transaksi.rj.emr-rj.perencanaan.tabs.tindak-lanjut-tab')
                                 </div>
 
                                 {{-- TERAPI TAB --}}
                                 {{-- <div class="w-full"
-                                    x-show.transition.in.opacity.duration.600="activeTab === '{{ $dataDaftarPoliRJ['perencanaan']['terapiTab'] ?? 'Terapi' }}'">
+                                    x-show.transition.in.opacity.duration.600="activeTab === '{{ $perencanaan['terapiTab'] ?? 'Terapi' }}'">
                                     @include('pages.transaksi.rj.emr-rj.perencanaan.tabs.terapi-tab')
                                 </div> --}}
 
                                 {{-- RAWAT INAP TAB --}}
-                                {{-- @if (isset($dataDaftarPoliRJ['perencanaan']['rawatInapTab']))
+                                {{-- @if (isset($perencanaan['rawatInapTab']))
                                     <div class="w-full"
-                                        x-show.transition.in.opacity.duration.600="activeTab === '{{ $dataDaftarPoliRJ['perencanaan']['rawatInapTab'] ?? 'Rawat Inap' }}'">
+                                        x-show.transition.in.opacity.duration.600="activeTab === '{{ $perencanaan['rawatInapTab'] ?? 'Rawat Inap' }}'">
                                         @include('pages.transaksi.rj.emr-rj.perencanaan.tabs.rawat-inap-tab')
                                     </div>
                                 @endif --}}
 
                                 {{-- DISCHARGE PLANNING TAB --}}
-                                {{-- @if (isset($dataDaftarPoliRJ['perencanaan']['dischargePlanningTab']))
+                                {{-- @if (isset($perencanaan['dischargePlanningTab']))
                                     <div class="w-full"
-                                        x-show.transition.in.opacity.duration.600="activeTab === '{{ $dataDaftarPoliRJ['perencanaan']['dischargePlanningTab'] ?? 'Discharge Planning' }}'">
+                                        x-show.transition.in.opacity.duration.600="activeTab === '{{ $perencanaan['dischargePlanningTab'] ?? 'Discharge Planning' }}'">
                                         @include('pages.transaksi.rj.emr-rj.perencanaan.tabs.discharge-planning-tab')
                                     </div>
                                 @endif --}}

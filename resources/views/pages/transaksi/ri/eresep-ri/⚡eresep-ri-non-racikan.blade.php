@@ -13,7 +13,12 @@ new class extends Component {
     public bool $isFormLocked = false;
     public ?int $riHdrNo = null;
     public int $resepIndex = 0;
-    public array $dataDaftarRI = [];
+    /**
+     * IRISAN dokumen: hanya cabang `eresepHdr` (daftar lembar resep RI) — sekaligus model
+     * form. Indeks lembar (`$resepIndex`) tetap seperti semula, jadi jalur wire:model hanya
+     * kehilangan awalan dokumennya.
+     */
+    public array $eresepHdr = [];
     public array $formEresep = [];
     public array $signaCatatanOptions = [];
 
@@ -57,9 +62,8 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarRI = $data;
-        $this->dataDaftarRI['eresepHdr'] ??= [];
-        $this->dataDaftarRI['eresepHdr'][$this->resepIndex]['eresep'] ??= [];
+        $this->eresepHdr = $data['eresepHdr'] ?? [];
+        $this->eresepHdr[$this->resepIndex]['eresep'] ??= [];
     }
 
     /* ===============================
@@ -72,10 +76,10 @@ new class extends Component {
 
         // Patch hanya eresep di resepIndex ini
         $data['eresepHdr'][$this->resepIndex]['eresep'] =
-            $this->dataDaftarRI['eresepHdr'][$this->resepIndex]['eresep'] ?? [];
+            $this->eresepHdr[$this->resepIndex]['eresep'] ?? [];
 
         $this->updateJsonRI($this->riHdrNo, $data);
-        $this->dataDaftarRI = $data;
+        $this->eresepHdr = $data['eresepHdr'] ?? [];
     }
 
     /* ===============================
@@ -131,7 +135,7 @@ new class extends Component {
             DB::transaction(function () {
                 $this->lockRIRow($this->riHdrNo);
 
-                $this->dataDaftarRI['eresepHdr'][$this->resepIndex]['eresep'][] = [
+                $this->eresepHdr[$this->resepIndex]['eresep'][] = [
                     'productId'       => $this->formEresep['productId'],
                     'productName'     => $this->formEresep['productName'],
                     'jenisKeterangan' => 'NonRacikan',
@@ -185,7 +189,7 @@ new class extends Component {
             DB::transaction(function () use ($riObatDtl, $qty, $signaX, $signaHari, $catatanKhusus) {
                 $this->lockRIRow($this->riHdrNo);
 
-                foreach ($this->dataDaftarRI['eresepHdr'][$this->resepIndex]['eresep'] as &$item) {
+                foreach ($this->eresepHdr[$this->resepIndex]['eresep'] as &$item) {
                     if (($item['riObatDtl'] ?? null) === $riObatDtl) {
                         $item['qty']           = $qty;
                         $item['signaX']        = $signaX;
@@ -223,15 +227,15 @@ new class extends Component {
             DB::transaction(function () use ($riObatDtl) {
                 $this->lockRIRow($this->riHdrNo);
 
-                $obatExists = collect($this->dataDaftarRI['eresepHdr'][$this->resepIndex]['eresep'] ?? [])
+                $obatExists = collect($this->eresepHdr[$this->resepIndex]['eresep'] ?? [])
                     ->contains('riObatDtl', $riObatDtl);
 
                 if (!$obatExists) {
                     throw new \RuntimeException("Obat tidak ditemukan.");
                 }
 
-                $this->dataDaftarRI['eresepHdr'][$this->resepIndex]['eresep'] =
-                    collect($this->dataDaftarRI['eresepHdr'][$this->resepIndex]['eresep'] ?? [])
+                $this->eresepHdr[$this->resepIndex]['eresep'] =
+                    collect($this->eresepHdr[$this->resepIndex]['eresep'] ?? [])
                         ->where('riObatDtl', '!=', $riObatDtl)
                         ->values()
                         ->toArray();
@@ -265,7 +269,7 @@ new class extends Component {
     {
         $this->resetVersion();
         $this->isFormLocked = false;
-        $this->dataDaftarRI = [];
+        $this->eresepHdr = [];
         $this->formEresep   = [];
     }
 };
@@ -277,7 +281,7 @@ new class extends Component {
             <div wire:key="{{ $this->renderKey('eresep-non-racikan-ri', [$riHdrNo ?? 'new', $resepIndex]) }}">
 
                 @php
-                    $hasTTDResep = !empty($dataDaftarRI['eresepHdr'][$resepIndex]['tandaTanganDokter']['dokterPeresep'] ?? null);
+                    $hasTTDResep = !empty($eresepHdr[$resepIndex]['tandaTanganDokter']['dokterPeresep'] ?? null);
                     $isResepEditable = !$isFormLocked && !$hasTTDResep;
                 @endphp
 
@@ -406,7 +410,7 @@ new class extends Component {
                                         </tr>
                                     </thead>
                                     <tbody class="bg-canvas dark:bg-gray-900">
-                                        @foreach ($dataDaftarRI['eresepHdr'][$resepIndex]['eresep'] ?? [] as $key => $eresep)
+                                        @foreach ($eresepHdr[$resepIndex]['eresep'] ?? [] as $key => $eresep)
                                             <tr wire:key="eresep-ri-non-racikan-{{ $resepIndex }}-{{ $key }}"
                                                 class="border-b border-hairline dark:border-gray-700 hover:bg-surface-soft dark:hover:bg-gray-800/40 group" x-data>
                                                 <td class="hidden">
@@ -416,7 +420,7 @@ new class extends Component {
                                                 <td class="w-20 px-4 py-3">
                                                     <x-text-input placeholder="Jml" :disabled="!$isResepEditable"
                                                         id="eresep-ri-qty-{{ $resepIndex }}-{{ $key }}"
-                                                        wire:model="dataDaftarRI.eresepHdr.{{ $resepIndex }}.eresep.{{ $key }}.qty"
+                                                        wire:model="eresepHdr.{{ $resepIndex }}.eresep.{{ $key }}.qty"
                                                         x-ref="qty{{ $key }}"
                                                         x-on:keydown.enter.prevent="$refs.signaX{{ $key }}.focus()" />
                                                 </td>
@@ -425,7 +429,7 @@ new class extends Component {
                                                         <div class="w-16 shrink-0">
                                                             <x-text-input placeholder="Signa1"
                                                                 :disabled="!$isResepEditable"
-                                                                wire:model="dataDaftarRI.eresepHdr.{{ $resepIndex }}.eresep.{{ $key }}.signaX"
+                                                                wire:model="eresepHdr.{{ $resepIndex }}.eresep.{{ $key }}.signaX"
                                                                 x-ref="signaX{{ $key }}"
                                                                 x-on:keydown.enter.prevent="$refs.signaHari{{ $key }}.focus()" />
                                                         </div>
@@ -433,13 +437,13 @@ new class extends Component {
                                                         <div class="w-16 shrink-0">
                                                             <x-text-input placeholder="Signa2"
                                                                 :disabled="!$isResepEditable"
-                                                                wire:model="dataDaftarRI.eresepHdr.{{ $resepIndex }}.eresep.{{ $key }}.signaHari"
+                                                                wire:model="eresepHdr.{{ $resepIndex }}.eresep.{{ $key }}.signaHari"
                                                                 x-ref="signaHari{{ $key }}"
                                                                 x-on:keydown.enter.prevent="document.getElementById('eresep-ri-catatan-{{ $resepIndex }}-{{ $key }}')?.focus()" />
                                                         </div>
                                                         <div class="flex-1">
                                                             <x-catatan-signa-combobox
-                                                                wireModel="dataDaftarRI.eresepHdr.{{ $resepIndex }}.eresep.{{ $key }}.catatanKhusus"
+                                                                wireModel="eresepHdr.{{ $resepIndex }}.eresep.{{ $key }}.catatanKhusus"
                                                                 :options="$signaCatatanOptions"
                                                                 :disabled="!$isResepEditable"
                                                                 inputId="eresep-ri-catatan-{{ $resepIndex }}-{{ $key }}"
@@ -447,10 +451,10 @@ new class extends Component {
                                                                 :maxlength="255"
                                                                 enterAction="$wire.updateProduct(
                                                                     '{{ $eresep['riObatDtl'] }}',
-                                                                    $wire.dataDaftarRI.eresepHdr[{{ $resepIndex }}].eresep[{{ $key }}].qty,
-                                                                    $wire.dataDaftarRI.eresepHdr[{{ $resepIndex }}].eresep[{{ $key }}].signaX,
-                                                                    $wire.dataDaftarRI.eresepHdr[{{ $resepIndex }}].eresep[{{ $key }}].signaHari,
-                                                                    $wire.dataDaftarRI.eresepHdr[{{ $resepIndex }}].eresep[{{ $key }}].catatanKhusus
+                                                                    $wire.eresepHdr[{{ $resepIndex }}].eresep[{{ $key }}].qty,
+                                                                    $wire.eresepHdr[{{ $resepIndex }}].eresep[{{ $key }}].signaX,
+                                                                    $wire.eresepHdr[{{ $resepIndex }}].eresep[{{ $key }}].signaHari,
+                                                                    $wire.eresepHdr[{{ $resepIndex }}].eresep[{{ $key }}].catatanKhusus
                                                                 );
                                                                 $nextTick(() => document.getElementById('eresep-ri-qty-{{ $resepIndex }}-{{ $key }}')?.focus())" />
                                                         </div>

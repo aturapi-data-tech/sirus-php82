@@ -19,7 +19,21 @@ new class extends Component {
     public ?int $eresepIndex = null;   // index ke eresepHdr (dokter — untuk display obat)
     public ?int $apotekIndex = null;   // index ke apotekHdr (apoteker — untuk telaah)
     public bool $isFormLocked = false;
-    public array $dataDaftarRI = [];
+    /**
+     * IRISAN dokumen: cabang `apotekHdr` (model form telaah) + `eresepHdr` (dibaca untuk
+     * ditampilkan) + nomor RM pasien.
+     */
+    public array $apotekHdr = [];
+    public array $eresepHdr = [];
+    public string $regNoPasien = '';
+
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan + regNo yang disimpan. */
+    private function serapIrisan(array $data): void
+    {
+        $this->apotekHdr = $data['apotekHdr'] ?? [];
+        $this->eresepHdr = $data['eresepHdr'] ?? [];
+        $this->regNoPasien = (string) ($data['regNo'] ?? '');
+    }
 
     /**
      * Tab modal: 'telaah' | 'resume'. Sengaja state server, bukan Alpine —
@@ -65,21 +79,21 @@ new class extends Component {
         }
 
         $this->riHdrNo = (int) $sls->rihdr_no;
-        $this->dataDaftarRI = $this->findDataRI($this->riHdrNo);
+        $this->serapIrisan($this->findDataRI($this->riHdrNo) ?: []);
 
         // Index ke eresepHdr (dokter) — untuk display obat di modal
-        $this->eresepIndex = $this->findIndexInArr($this->dataDaftarRI['eresepHdr'] ?? [], $slsNo);
+        $this->eresepIndex = $this->findIndexInArr($this->eresepHdr ?? [], $slsNo);
         if ($this->eresepIndex === null) {
             $this->dispatch('toast', type: 'error', message: 'Header resep dokter tidak ditemukan untuk SLS ini.');
             return;
         }
 
         // Pastikan apotekHdr[apotekIndex] ada untuk slsNo (auto-create)
-        $this->dataDaftarRI['apotekHdr'] ??= [];
-        $existing = $this->findIndexInArr($this->dataDaftarRI['apotekHdr'], $slsNo);
+        $this->apotekHdr ??= [];
+        $existing = $this->findIndexInArr($this->apotekHdr, $slsNo);
         if ($existing === null) {
-            $this->dataDaftarRI['apotekHdr'][] = ['slsNo' => $slsNo];
-            $existing = count($this->dataDaftarRI['apotekHdr']) - 1;
+            $this->apotekHdr[] = ['slsNo' => $slsNo];
+            $existing = count($this->apotekHdr) - 1;
         }
         $this->apotekIndex = $existing;
 
@@ -87,7 +101,7 @@ new class extends Component {
         $this->lengkapiDefaultTelaah($this->apotekIndex);
 
         // Hitung saldo apotek untuk semua obat unik di resep (non-racikan + racikan).
-        $this->saldoPerObat = $this->hitungSaldoPerObat($this->dataDaftarRI['eresepHdr'][$this->eresepIndex] ?? []);
+        $this->saldoPerObat = $this->hitungSaldoPerObat($this->eresepHdr[$this->eresepIndex] ?? []);
 
         $this->incrementVersion('ri-resep-modal-telaah');
         $this->dispatch('open-modal', name: 'ri-resep-telaah');
@@ -183,9 +197,9 @@ new class extends Component {
                 $idx = $this->ensureApotekHdrIndex($data, $this->slsNo);
 
                 $data['apotekHdr'][$idx]['telaahResep'] =
-                    array_replace($this->defaultTelaahResep(), $this->dataDaftarRI['apotekHdr'][$this->apotekIndex]['telaahResep'] ?? []);
+                    array_replace($this->defaultTelaahResep(), $this->apotekHdr[$this->apotekIndex]['telaahResep'] ?? []);
                 $data['apotekHdr'][$idx]['telaahObat'] =
-                    array_replace($this->defaultTelaahObat(), $this->dataDaftarRI['apotekHdr'][$this->apotekIndex]['telaahObat'] ?? []);
+                    array_replace($this->defaultTelaahObat(), $this->apotekHdr[$this->apotekIndex]['telaahObat'] ?? []);
 
                 $this->updateJsonRI($this->riHdrNo, $data);
                 $this->gantiStateDariDb($data, $idx, 'telaahObat');
@@ -211,7 +225,7 @@ new class extends Component {
             return;
         }
 
-        $apotek = $this->dataDaftarRI['apotekHdr'][$this->apotekIndex] ?? null;
+        $apotek = $this->apotekHdr[$this->apotekIndex] ?? null;
         if ($apotek && isset($apotek['telaahResep']['penanggungJawab'])) {
             $this->dispatch('toast', type: 'info', message: 'TTD-E Telaah Resep sudah dilakukan oleh ' . $apotek['telaahResep']['penanggungJawab']['userLog']);
             return;
@@ -224,9 +238,9 @@ new class extends Component {
                 $idx = $this->ensureApotekHdrIndex($data, $this->slsNo);
 
                 $data['apotekHdr'][$idx]['telaahResep'] =
-                    array_replace($this->defaultTelaahResep(), $this->dataDaftarRI['apotekHdr'][$this->apotekIndex]['telaahResep'] ?? []);
+                    array_replace($this->defaultTelaahResep(), $this->apotekHdr[$this->apotekIndex]['telaahResep'] ?? []);
                 $data['apotekHdr'][$idx]['telaahObat'] =
-                    array_replace($this->defaultTelaahObat(), $this->dataDaftarRI['apotekHdr'][$this->apotekIndex]['telaahObat'] ?? []);
+                    array_replace($this->defaultTelaahObat(), $this->apotekHdr[$this->apotekIndex]['telaahObat'] ?? []);
                 $data['apotekHdr'][$idx]['telaahResep']['penanggungJawab'] = [
                     'userLog' => auth()->user()->myuser_name,
                     'userLogCode' => auth()->user()->myuser_code,
@@ -264,9 +278,9 @@ new class extends Component {
                 $idx = $this->ensureApotekHdrIndex($data, $this->slsNo);
 
                 $data['apotekHdr'][$idx]['telaahResep'] =
-                    array_replace($this->defaultTelaahResep(), $this->dataDaftarRI['apotekHdr'][$this->apotekIndex]['telaahResep'] ?? []);
+                    array_replace($this->defaultTelaahResep(), $this->apotekHdr[$this->apotekIndex]['telaahResep'] ?? []);
                 $data['apotekHdr'][$idx]['telaahObat'] =
-                    array_replace($this->defaultTelaahObat(), $this->dataDaftarRI['apotekHdr'][$this->apotekIndex]['telaahObat'] ?? []);
+                    array_replace($this->defaultTelaahObat(), $this->apotekHdr[$this->apotekIndex]['telaahObat'] ?? []);
 
                 $this->updateJsonRI($this->riHdrNo, $data);
                 $this->gantiStateDariDb($data, $idx, 'telaahResep');
@@ -292,7 +306,7 @@ new class extends Component {
             return;
         }
 
-        $apotek = $this->dataDaftarRI['apotekHdr'][$this->apotekIndex] ?? null;
+        $apotek = $this->apotekHdr[$this->apotekIndex] ?? null;
         if ($apotek && isset($apotek['telaahObat']['penanggungJawab'])) {
             $this->dispatch('toast', type: 'info', message: 'TTD-E Telaah Obat sudah dilakukan oleh ' . $apotek['telaahObat']['penanggungJawab']['userLog']);
             return;
@@ -305,9 +319,9 @@ new class extends Component {
                 $idx = $this->ensureApotekHdrIndex($data, $this->slsNo);
 
                 $data['apotekHdr'][$idx]['telaahResep'] =
-                    array_replace($this->defaultTelaahResep(), $this->dataDaftarRI['apotekHdr'][$this->apotekIndex]['telaahResep'] ?? []);
+                    array_replace($this->defaultTelaahResep(), $this->apotekHdr[$this->apotekIndex]['telaahResep'] ?? []);
                 $data['apotekHdr'][$idx]['telaahObat'] =
-                    array_replace($this->defaultTelaahObat(), $this->dataDaftarRI['apotekHdr'][$this->apotekIndex]['telaahObat'] ?? []);
+                    array_replace($this->defaultTelaahObat(), $this->apotekHdr[$this->apotekIndex]['telaahObat'] ?? []);
                 $data['apotekHdr'][$idx]['telaahObat']['penanggungJawab'] = [
                     'userLog' => auth()->user()->myuser_name,
                     'userLogCode' => auth()->user()->myuser_code,
@@ -377,7 +391,7 @@ new class extends Component {
     private function lengkapiDefaultTelaah(int $idx): void
     {
         foreach (['telaahResep' => $this->defaultTelaahResep(), 'telaahObat' => $this->defaultTelaahObat()] as $node => $default) {
-            $this->dataDaftarRI['apotekHdr'][$idx][$node] = array_replace($default, $this->dataDaftarRI['apotekHdr'][$idx][$node] ?? []);
+            $this->apotekHdr[$idx][$node] = array_replace($default, $this->apotekHdr[$idx][$node] ?? []);
         }
     }
 
@@ -387,11 +401,11 @@ new class extends Component {
      */
     private function gantiStateDariDb(array $data, int $idx, string $nodeDipertahankan): void
     {
-        $isianLayar = $this->dataDaftarRI['apotekHdr'][$this->apotekIndex][$nodeDipertahankan] ?? null;
-        $this->dataDaftarRI = $data;
+        $isianLayar = $this->apotekHdr[$this->apotekIndex][$nodeDipertahankan] ?? null;
+        $this->serapIrisan($data);
         $this->apotekIndex = $idx;
         if (is_array($isianLayar)) {
-            $this->dataDaftarRI['apotekHdr'][$idx][$nodeDipertahankan] = $isianLayar;
+            $this->apotekHdr[$idx][$nodeDipertahankan] = $isianLayar;
         }
         $this->lengkapiDefaultTelaah($idx);
     }
@@ -434,7 +448,9 @@ new class extends Component {
         $this->eresepIndex = null;
         $this->apotekIndex = null;
         $this->isFormLocked = false;
-        $this->dataDaftarRI = [];
+        $this->apotekHdr = [];
+        $this->eresepHdr = [];
+        $this->regNoPasien = '';
         $this->saldoPerObat = [];
     }
 };
@@ -445,8 +461,8 @@ new class extends Component {
         <div wire:key="{{ $this->renderKey('ri-resep-modal-telaah', [$slsNo ?? 'new']) }}">
 
             @php
-                $eresep = $eresepIndex !== null ? ($dataDaftarRI['eresepHdr'][$eresepIndex] ?? null) : null;
-                $apotek = $apotekIndex !== null ? ($dataDaftarRI['apotekHdr'][$apotekIndex] ?? null) : null;
+                $eresep = $eresepIndex !== null ? ($eresepHdr[$eresepIndex] ?? null) : null;
+                $apotek = $apotekIndex !== null ? ($apotekHdr[$apotekIndex] ?? null) : null;
             @endphp
 
             {{-- HEADER — mengikuti EMR RJ: judul & nomor kunjungan dibuang, identitas
@@ -482,11 +498,11 @@ new class extends Component {
                 {{-- REKAM MEDIS — riwayat kunjungan pasien. rjNoRefCopyTo sengaja TIDAK
                      dikirim: apoteker menelaah, bukan menulis resep, jadi tombol salin
                      resep ke kunjungan aktif tidak boleh aktif di sini. --}}
-                @if (filled($dataDaftarRI['regNo'] ?? ''))
+                @if (filled($regNoPasien))
                     <div class="px-6 py-4">
                         <livewire:pages::components.rekam-medis.rekam-medis-display.rekam-medis-display
-                            :regNo="$dataDaftarRI['regNo']"
-                            wire:key="ri-resep-telaah-rekam-medis-{{ $dataDaftarRI['regNo'] }}-{{ $slsNo ?? 'none' }}" />
+                            :regNo="$regNoPasien"
+                            wire:key="ri-resep-telaah-rekam-medis-{{ $regNoPasien }}-{{ $slsNo ?? 'none' }}" />
                     </div>
                 @else
                     <div class="px-6 py-12 text-center text-muted-soft">Data pasien belum dimuat.</div>
@@ -627,7 +643,7 @@ new class extends Component {
                                                 </div>
                                                 <div class="shrink-0">
                                                     <x-toggle
-                                                        wire:model.live="dataDaftarRI.apotekHdr.{{ $apotekIndex }}.telaahResep.{{ $key }}.{{ $key }}"
+                                                        wire:model.live="apotekHdr.{{ $apotekIndex }}.telaahResep.{{ $key }}.{{ $key }}"
                                                         trueValue="Ya" falseValue="Tidak"
                                                         :disabled="isset($apotek['telaahResep']['penanggungJawab'])">
                                                         {{ ($field[$key] ?? 'Tidak') === 'Ya' ? 'Ya' : 'Tidak' }}
@@ -636,7 +652,7 @@ new class extends Component {
                                             </div>
                                             <div class="mt-2">
                                                 <x-text-input
-                                                    wire:model="dataDaftarRI.apotekHdr.{{ $apotekIndex }}.telaahResep.{{ $key }}.desc"
+                                                    wire:model="apotekHdr.{{ $apotekIndex }}.telaahResep.{{ $key }}.desc"
                                                     class="w-full text-xs py-1.5"
                                                     placeholder="Catatan (opsional)..."
                                                     :disabled="isset($apotek['telaahResep']['penanggungJawab'])" />
@@ -751,7 +767,7 @@ new class extends Component {
                                                 </div>
                                                 <div class="shrink-0">
                                                     <x-toggle
-                                                        wire:model.live="dataDaftarRI.apotekHdr.{{ $apotekIndex }}.telaahObat.{{ $key }}.{{ $key }}"
+                                                        wire:model.live="apotekHdr.{{ $apotekIndex }}.telaahObat.{{ $key }}.{{ $key }}"
                                                         trueValue="Ya" falseValue="Tidak"
                                                         :disabled="isset($apotek['telaahObat']['penanggungJawab'])">
                                                         {{ ($field[$key] ?? 'Tidak') === 'Ya' ? 'Ya' : 'Tidak' }}
@@ -760,7 +776,7 @@ new class extends Component {
                                             </div>
                                             <div class="mt-2">
                                                 <x-text-input
-                                                    wire:model="dataDaftarRI.apotekHdr.{{ $apotekIndex }}.telaahObat.{{ $key }}.desc"
+                                                    wire:model="apotekHdr.{{ $apotekIndex }}.telaahObat.{{ $key }}.desc"
                                                     class="w-full text-xs py-1.5"
                                                     placeholder="Catatan (opsional)..."
                                                     :disabled="isset($apotek['telaahObat']['penanggungJawab'])" />

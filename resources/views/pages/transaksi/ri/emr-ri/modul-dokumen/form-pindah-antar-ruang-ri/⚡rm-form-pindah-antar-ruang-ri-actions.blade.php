@@ -15,7 +15,18 @@ new class extends Component {
     public bool $isFormLocked = false;
     public ?string $riHdrNo = null;
     public bool $disabled = false;
-    public array $dataDaftarRi = [];
+    /** IRISAN dokumen: cabang `formPindahAntarRuangRI` + ruangan asal pasien saat ini. */
+    public array $daftarPindah = [];
+    public string $roomId = '';
+    public string $roomDesc = '';
+
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan + skalar yang disimpan. */
+    private function serapIrisan(array $data): void
+    {
+        $this->daftarPindah = $data['formPindahAntarRuangRI'] ?? [];
+        $this->roomId = (string) ($data['roomId'] ?? '');
+        $this->roomDesc = (string) ($data['roomDesc'] ?? '');
+    }
 
     public array $renderVersions = [];
     protected array $renderAreas = ['modal-form-pindah-ri'];
@@ -81,7 +92,7 @@ new class extends Component {
         if ($this->riHdrNo) {
             $data = $this->findDataRI($this->riHdrNo);
             if ($data) {
-                $this->dataDaftarRi = $data;
+                $this->serapIrisan($data);
                 $this->listPindah = $data['formPindahAntarRuangRI'] ?? [];
                 $this->isFormLocked = $this->checkEmrRIStatus($this->riHdrNo) || $disabled;
             }
@@ -107,7 +118,7 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarRi = $data;
+        $this->serapIrisan($data);
         $this->listPindah = $data['formPindahAntarRuangRI'] ?? [];
 
         // Auto-fill "Dari ruang" dari kamar pasien saat ini
@@ -169,8 +180,8 @@ new class extends Component {
     {
         $this->editingTglPindah = null;
         $this->resetNewPindah();
-        $this->newPindah['dariRoomId'] = $this->dataDaftarRi['roomId'] ?? '';
-        $this->newPindah['dariRoomDesc'] = $this->dataDaftarRi['roomDesc'] ?? '';
+        $this->newPindah['dariRoomId'] = $this->roomId;
+        $this->newPindah['dariRoomDesc'] = $this->roomDesc;
         $this->resetValidation();
         $this->incrementVersion('modal-form-pindah-ri');
         $this->layar = 'daftar';
@@ -416,7 +427,7 @@ new class extends Component {
                 }
 
                 $this->updateJsonRI((int) $this->riHdrNo, $data);
-                $this->dataDaftarRi = $data;
+                $this->serapIrisan($data);
                 $this->listPindah = $data['formPindahAntarRuangRI'];
 
                 $this->appendAdminLogRI((int) $this->riHdrNo, ($this->editingTglPindah === null ? 'Buat' : 'Update') . ' Form Pindah Antar Ruang — entri ' . ($this->newPindah['tglPindah'] ?: '-'), 'MR');
@@ -433,8 +444,8 @@ new class extends Component {
             if ($resetAfter) {
                 $this->editingTglPindah = null;
                 $this->resetNewPindah();
-                $this->newPindah['dariRoomId'] = $this->dataDaftarRi['roomId'] ?? '';
-                $this->newPindah['dariRoomDesc'] = $this->dataDaftarRi['roomDesc'] ?? '';
+                $this->newPindah['dariRoomId'] = $this->roomId;
+                $this->newPindah['dariRoomDesc'] = $this->roomDesc;
             }
         } catch (\RuntimeException $e) {
             $this->dispatch('toast', type: 'error', message: $e->getMessage());
@@ -478,7 +489,7 @@ new class extends Component {
                     ->toArray();
 
                 $this->updateJsonRI((int) $this->riHdrNo, $data);
-                $this->dataDaftarRi = $data;
+                $this->serapIrisan($data);
                 $this->listPindah = $data['formPindahAntarRuangRI'];
 
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Hapus Form Pindah Antar Ruang — entri ' . ($tglPindah ?: '-'), 'MR');
@@ -521,7 +532,7 @@ new class extends Component {
                 $list[$index]['petugasPenerimaDate'] = '';
                 $data['formPindahAntarRuangRI'] = array_values($list);
                 $this->updateJsonRI((int) $this->riHdrNo, $data);
-                $this->dataDaftarRi = $data;
+                $this->serapIrisan($data);
                 $this->listPindah = $data['formPindahAntarRuangRI'];
                 $pembukaKunci = auth()->user()->myuser_name ?? '-';
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Buka kunci Form Pindah Antar Ruang (' . ($tglPindah ?: '-') . ') oleh ' . $pembukaKunci . ' — TTD penerima dicabut, entri kembali Transit', 'MR');
@@ -543,8 +554,8 @@ new class extends Component {
         $this->newPindah = [
             'tglPindah' => '',
             'tglTerima' => '',
-            'dariRoomId' => $this->dataDaftarRi['roomId'] ?? '',
-            'dariRoomDesc' => $this->dataDaftarRi['roomDesc'] ?? '',
+            'dariRoomId' => $this->roomId,
+            'dariRoomDesc' => $this->roomDesc,
             'dariBedNo' => '',
             'keRoomId' => '',
             'keRoomDesc' => '',
@@ -586,7 +597,6 @@ new class extends Component {
     {
         $this->resetVersion();
         $this->isFormLocked = false;
-        $this->dataDaftarRi = [];
         $this->listPindah = [];
         $this->editingTglPindah = null;
         $this->resetNewPindah();

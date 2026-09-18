@@ -14,11 +14,36 @@ new class extends Component {
 
     public bool $isFormLocked = false;
     public ?int $rjNo = null;
-    public array $dataDaftarPoliRJ = [];
+    /**
+     * IRISAN dokumen: cabang `anamnesa` (sekaligus model form — jalur validasi & wire:model
+     * kini `anamnesa.*`) plus dua nilai turunan dari cabang lain.
+     *
+     * Dokumen `datadaftarpolirj_json` utuh tidak disimpan di properti publik — ikut snapshot
+     * Livewire tiap request. save() memang sudah hanya mem-patch key `anamnesa` di atas
+     * dokumen yang baru dibaca dari DB.
+     */
+    public array $anamnesa = [];
+
+    public string $regNoPasien = '';
+
+    /** Sudah ada dokter pemeriksa di cabang `perencanaan` (dipakai guard alur dokter). */
+    public bool $adaDrPemeriksa = false;
+
+    /** Penanda kunjungan sudah dimuat lewat open(). */
+    public bool $dokumenTermuat = false;
 
     // renderVersions
     public array $renderVersions = [];
     protected array $renderAreas = ['modal-anamnesa-rj'];
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan + dua penanda yang disimpan. */
+    private function serapDokumen(array $data): void
+    {
+        $this->anamnesa = $data['anamnesa'] ?? [];
+        $this->regNoPasien = (string) ($data['regNo'] ?? '');
+        $this->adaDrPemeriksa = filled($data['perencanaan']['pengkajianMedis']['drPemeriksa'] ?? '');
+        $this->dokumenTermuat = true;
+    }
+
 
     /* ===============================
      | OPEN REKAM MEDIS PERAWAT - ANAMNESA
@@ -35,27 +60,27 @@ new class extends Component {
         $this->resetForm();
         $this->resetValidation();
         // Ambil data kunjungan RJ
-        $dataDaftarPoliRJ = $this->findDataRJ($rjNo);
+        $data = $this->findDataRJ($rjNo);
 
-        if (!$dataDaftarPoliRJ) {
+        if (!$data) {
             $this->dispatch('toast', type: 'error', message: 'Data Rawat Jalan tidak ditemukan.');
             return;
         }
 
-        $this->dataDaftarPoliRJ = $dataDaftarPoliRJ;
+        $this->serapDokumen($data);
 
         // Initialize anamnesa data if not exists
-        if (!isset($this->dataDaftarPoliRJ['anamnesa'])) {
-            $this->dataDaftarPoliRJ['anamnesa'] = $this->getDefaultAnamnesa();
+        if (!$this->anamnesa) {
+            $this->anamnesa = $this->getDefaultAnamnesa();
         }
 
         // ✅ Ambil data pasien dari master pasien (untuk alergi & riwayat penyakit)
-        $pasienData = $this->findDataMasterPasien($dataDaftarPoliRJ['regNo']);
+        $pasienData = $this->findDataMasterPasien($this->regNoPasien);
 
         // ✅ Isi alergi jika ada di data pasien
         if (isset($pasienData['pasien']['alergi'])) {
             // Masukkan ke struktur anamnesa
-            $this->dataDaftarPoliRJ['anamnesa']['alergi']['alergi'] = $pasienData['pasien']['alergi'];
+            $this->anamnesa['alergi']['alergi'] = $pasienData['pasien']['alergi'];
         }
 
         // ✅ Isi kode SNOMED alergi dari master pasien — supaya kunjungan berikutnya tak
@@ -63,21 +88,21 @@ new class extends Component {
         // kalau tidak, kode bisa "menempel" ke teks alergi lain (mis. dokter mengetik alergi
         // baru) dan salah kode. Dulu snomedCode tak pernah disinkron → terisi 0 dari 397 record.
         if (isset($pasienData['pasien']['alergi']) && !empty($pasienData['pasien']['alergiSnomedCode'])) {
-            $this->dataDaftarPoliRJ['anamnesa']['alergi']['snomedCode'] = $pasienData['pasien']['alergiSnomedCode'];
-            $this->dataDaftarPoliRJ['anamnesa']['alergi']['snomedDisplayEn'] = $pasienData['pasien']['alergiSnomedDisplayEn'] ?? '';
-            $this->dataDaftarPoliRJ['anamnesa']['alergi']['snomedDisplayId'] = $pasienData['pasien']['alergiSnomedDisplayId'] ?? '';
+            $this->anamnesa['alergi']['snomedCode'] = $pasienData['pasien']['alergiSnomedCode'];
+            $this->anamnesa['alergi']['snomedDisplayEn'] = $pasienData['pasien']['alergiSnomedDisplayEn'] ?? '';
+            $this->anamnesa['alergi']['snomedDisplayId'] = $pasienData['pasien']['alergiSnomedDisplayId'] ?? '';
         }
 
         // ✅ Isi riwayat penyakit dahulu jika ada
         if (isset($pasienData['pasien']['riwayatPenyakitDahulu'])) {
-            $this->dataDaftarPoliRJ['anamnesa']['riwayatPenyakitDahulu']['riwayatPenyakitDahulu'] = $pasienData['pasien']['riwayatPenyakitDahulu'];
+            $this->anamnesa['riwayatPenyakitDahulu']['riwayatPenyakitDahulu'] = $pasienData['pasien']['riwayatPenyakitDahulu'];
         }
 
         // ✅ Seragamkan node alergi + turunkan radio "Ada alergi?" (default Tidak -> SNOMED
         // 716186003). Record lama tak punya key adaAlergi -> diturunkan dari teksnya, jadi
         // tak perlu migrasi data. Lihat App\Support\Terminologi\AlergiSnomed.
-        $this->dataDaftarPoliRJ['anamnesa']['alergi'] = AlergiSnomed::normalisasi(
-            $this->dataDaftarPoliRJ['anamnesa']['alergi'] ?? [],
+        $this->anamnesa['alergi'] = AlergiSnomed::normalisasi(
+            $this->anamnesa['alergi'] ?? [],
         );
 
         // 🔥 INCREMENT: Refresh seluruh modal anamnesa
@@ -96,8 +121,8 @@ new class extends Component {
      */
     public function updatedDataDaftarPoliRjAnamnesaAlergiAdaAlergi(): void
     {
-        $this->dataDaftarPoliRJ['anamnesa']['alergi'] = AlergiSnomed::normalisasi(
-            $this->dataDaftarPoliRJ['anamnesa']['alergi'] ?? [],
+        $this->anamnesa['alergi'] = AlergiSnomed::normalisasi(
+            $this->anamnesa['alergi'] ?? [],
         );
     }
 
@@ -314,21 +339,21 @@ new class extends Component {
 
     protected function rules(): array
     {
-        $rules['dataDaftarPoliRJ.anamnesa.pengkajianPerawatan.jamDatang'] = 'date_format:d/m/Y H:i:s';
+        $rules['anamnesa.pengkajianPerawatan.jamDatang'] = 'date_format:d/m/Y H:i:s';
         return $rules;
     }
 
     protected function messages(): array
     {
         return [
-            'dataDaftarPoliRJ.anamnesa.pengkajianPerawatan.jamDatang.date_format' => ':attribute harus dalam format dd/mm/yyyy hh:mi:ss',
+            'anamnesa.pengkajianPerawatan.jamDatang.date_format' => ':attribute harus dalam format dd/mm/yyyy hh:mi:ss',
         ];
     }
 
     protected function validationAttributes(): array
     {
         return [
-            'dataDaftarPoliRJ.anamnesa.pengkajianPerawatan.jamDatang' => 'Waktu Datang',
+            'anamnesa.pengkajianPerawatan.jamDatang' => 'Waktu Datang',
         ];
     }
 
@@ -345,7 +370,7 @@ new class extends Component {
         }
 
         // 2. Guard: properti lokal belum ter-load
-        if (empty($this->dataDaftarPoliRJ)) {
+        if (!$this->dokumenTermuat) {
             $this->dispatch('toast', type: 'error', message: 'Data kunjungan tidak ditemukan, silakan buka ulang form.');
             return;
         }
@@ -371,17 +396,17 @@ new class extends Component {
                 $isBaru = empty($data['anamnesa']);
 
                 // 7. Set hanya key 'anamnesa' — key lain tidak tersentuh
-                $data['anamnesa'] = $this->dataDaftarPoliRJ['anamnesa'] ?? [];
+                $data['anamnesa'] = $this->anamnesa;
 
                 // 8. Persist + sync properti lokal
                 $this->updateJsonRJ($this->rjNo, $data);
-                $this->dataDaftarPoliRJ = $data;
+                $this->serapDokumen($data);
 
                 // 9. Side effect: sync alergi & riwayat penyakit ke master pasien
                 $this->updateRiwayatMedisPasien();
 
                 // 10. Audit log
-                $this->appendAdminLogRJ((int) $this->rjNo, ($isBaru ? 'Buat' : 'Update') . ' Anamnesa — jam datang ' . ($this->dataDaftarPoliRJ['anamnesa']['pengkajianPerawatan']['jamDatang'] ?? '-'), 'MR');
+                $this->appendAdminLogRJ((int) $this->rjNo, ($isBaru ? 'Buat' : 'Update') . ' Anamnesa — jam datang ' . ($this->anamnesa['pengkajianPerawatan']['jamDatang'] ?? '-'), 'MR');
             });
 
             $this->afterSave('Anamnesa berhasil disimpan.', $silent);
@@ -395,7 +420,7 @@ new class extends Component {
 
     private function updateRiwayatMedisPasien(): void
     {
-        $regNo = $this->dataDaftarPoliRJ['regNo'];
+        $regNo = $this->regNoPasien;
 
         // Ambil data pasien
         $pasienData = $this->findDataMasterPasien($regNo);
@@ -403,18 +428,18 @@ new class extends Component {
         $updated = false;
 
         // ✅ Update Alergi (text) + kode SNOMED-nya
-        if (!empty(($alergi = $this->dataDaftarPoliRJ['anamnesa']['alergi']['alergi'] ?? ''))) {
+        if (!empty(($alergi = $this->anamnesa['alergi']['alergi'] ?? ''))) {
             $pasienData['pasien']['alergi'] = $alergi;
             // Kode SNOMED ikut teksnya — SELALU ditimpa (termasuk jadi kosong) supaya kode
             // lama tak tertinggal menempel pada teks alergi yang sudah diganti.
-            $pasienData['pasien']['alergiSnomedCode'] = $this->dataDaftarPoliRJ['anamnesa']['alergi']['snomedCode'] ?? '';
-            $pasienData['pasien']['alergiSnomedDisplayEn'] = $this->dataDaftarPoliRJ['anamnesa']['alergi']['snomedDisplayEn'] ?? '';
-            $pasienData['pasien']['alergiSnomedDisplayId'] = $this->dataDaftarPoliRJ['anamnesa']['alergi']['snomedDisplayId'] ?? '';
+            $pasienData['pasien']['alergiSnomedCode'] = $this->anamnesa['alergi']['snomedCode'] ?? '';
+            $pasienData['pasien']['alergiSnomedDisplayEn'] = $this->anamnesa['alergi']['snomedDisplayEn'] ?? '';
+            $pasienData['pasien']['alergiSnomedDisplayId'] = $this->anamnesa['alergi']['snomedDisplayId'] ?? '';
             $updated = true;
         }
 
         // ✅ Update Riwayat Penyakit Dahulu (text)
-        if (!empty(($riwayat = $this->dataDaftarPoliRJ['anamnesa']['riwayatPenyakitDahulu']['riwayatPenyakitDahulu'] ?? ''))) {
+        if (!empty(($riwayat = $this->anamnesa['riwayatPenyakitDahulu']['riwayatPenyakitDahulu'] ?? ''))) {
             $pasienData['pasien']['riwayatPenyakitDahulu'] = $riwayat;
             $updated = true;
         }
@@ -435,12 +460,12 @@ new class extends Component {
         }
 
         if (auth()->user()->hasAnyRole(['Perawat', 'Dokter', 'Admin'])) {
-            $this->dataDaftarPoliRJ['anamnesa']['pengkajianPerawatan']['perawatPenerima'] = auth()->user()->myuser_name;
-            $this->dataDaftarPoliRJ['anamnesa']['pengkajianPerawatan']['perawatPenerimaCode'] = auth()->user()->myuser_code;
+            $this->anamnesa['pengkajianPerawatan']['perawatPenerima'] = auth()->user()->myuser_name;
+            $this->anamnesa['pengkajianPerawatan']['perawatPenerimaCode'] = auth()->user()->myuser_code;
 
             // ✅ Auto-isi jam datang saat TTD perawat (hanya jika belum diisi)
-            if (empty($this->dataDaftarPoliRJ['anamnesa']['pengkajianPerawatan']['jamDatang'])) {
-                $this->dataDaftarPoliRJ['anamnesa']['pengkajianPerawatan']['jamDatang'] = now()->format('d/m/Y H:i:s');
+            if (empty($this->anamnesa['pengkajianPerawatan']['jamDatang'])) {
+                $this->anamnesa['pengkajianPerawatan']['jamDatang'] = now()->format('d/m/Y H:i:s');
             }
 
             // 🔥 INCREMENT: Refresh untuk menampilkan perawat yang sudah di-set
@@ -479,7 +504,7 @@ new class extends Component {
             return;
         }
 
-        if (blank($this->dataDaftarPoliRJ['anamnesa']['pengkajianPerawatan']['perawatPenerima'] ?? '')) {
+        if (blank($this->anamnesa['pengkajianPerawatan']['perawatPenerima'] ?? '')) {
             $this->dispatch('toast', type: 'error', message: 'Belum ada TTD Perawat yang perlu dibuka.');
 
             return;
@@ -492,7 +517,7 @@ new class extends Component {
         // Kalau stempel perawat boleh dicabut selagi TTD dokter masih berdiri, isinya
         // berubah di bawah tanda tangan yang sudah mengesahkannya — dokter tercatat
         // menyetujui rekaman yang bukan lagi yang dia setujui.
-        if (filled($this->dataDaftarPoliRJ['perencanaan']['pengkajianMedis']['drPemeriksa'] ?? '')) {
+        if ($this->adaDrPemeriksa) {
             $this->dispatch('toast', type: 'error', message: 'Buka kunci TTD-E Dokter Pemeriksa lebih dulu — TTD dokter mengesahkan seluruh rekaman kunjungan ini.');
 
             return;
@@ -516,7 +541,7 @@ new class extends Component {
                 $data['anamnesa']['pengkajianPerawatan']['perawatPenerimaCode'] = '';
 
                 $this->updateJsonRJ((int) $this->rjNo, $data);
-                $this->dataDaftarPoliRJ = $data;
+                $this->serapDokumen($data);
 
                 $this->appendAdminLogRJ((int) $this->rjNo, 'Buka Kunci TTD Perawat Penerima — stempel ' . $perawatSebelumnya . ' dicabut oleh ' . (auth()->user()->myuser_name ?? '-'), 'MR');
             });
@@ -548,17 +573,17 @@ new class extends Component {
     #[On('lov.selected.keluhanUtamaSnomed')]
     public function onKeluhanUtamaSnomedSelected(string $target, array $payload): void
     {
-        $this->dataDaftarPoliRJ['anamnesa']['keluhanUtama']['snomedCode'] = $payload['snomed_code'] ?? '';
-        $this->dataDaftarPoliRJ['anamnesa']['keluhanUtama']['snomedDisplayEn'] = $payload['display_en'] ?? '';
-        $this->dataDaftarPoliRJ['anamnesa']['keluhanUtama']['snomedDisplayId'] = $payload['display_id'] ?? '';
+        $this->anamnesa['keluhanUtama']['snomedCode'] = $payload['snomed_code'] ?? '';
+        $this->anamnesa['keluhanUtama']['snomedDisplayEn'] = $payload['display_en'] ?? '';
+        $this->anamnesa['keluhanUtama']['snomedDisplayId'] = $payload['display_id'] ?? '';
     }
 
     #[On('lov.cleared.keluhanUtamaSnomed')]
     public function onKeluhanUtamaSnomedCleared(string $target): void
     {
-        $this->dataDaftarPoliRJ['anamnesa']['keluhanUtama']['snomedCode'] = '';
-        $this->dataDaftarPoliRJ['anamnesa']['keluhanUtama']['snomedDisplayEn'] = '';
-        $this->dataDaftarPoliRJ['anamnesa']['keluhanUtama']['snomedDisplayId'] = '';
+        $this->anamnesa['keluhanUtama']['snomedCode'] = '';
+        $this->anamnesa['keluhanUtama']['snomedDisplayEn'] = '';
+        $this->anamnesa['keluhanUtama']['snomedDisplayId'] = '';
     }
 
     /* ===============================
@@ -567,17 +592,17 @@ new class extends Component {
     #[On('lov.selected.alergiSnomed')]
     public function onAlergiSnomedSelected(string $target, array $payload): void
     {
-        $this->dataDaftarPoliRJ['anamnesa']['alergi']['snomedCode'] = $payload['snomed_code'] ?? '';
-        $this->dataDaftarPoliRJ['anamnesa']['alergi']['snomedDisplayEn'] = $payload['display_en'] ?? '';
-        $this->dataDaftarPoliRJ['anamnesa']['alergi']['snomedDisplayId'] = $payload['display_id'] ?? '';
+        $this->anamnesa['alergi']['snomedCode'] = $payload['snomed_code'] ?? '';
+        $this->anamnesa['alergi']['snomedDisplayEn'] = $payload['display_en'] ?? '';
+        $this->anamnesa['alergi']['snomedDisplayId'] = $payload['display_id'] ?? '';
     }
 
     #[On('lov.cleared.alergiSnomed')]
     public function onAlergiSnomedCleared(string $target): void
     {
-        $this->dataDaftarPoliRJ['anamnesa']['alergi']['snomedCode'] = '';
-        $this->dataDaftarPoliRJ['anamnesa']['alergi']['snomedDisplayEn'] = '';
-        $this->dataDaftarPoliRJ['anamnesa']['alergi']['snomedDisplayId'] = '';
+        $this->anamnesa['alergi']['snomedCode'] = '';
+        $this->anamnesa['alergi']['snomedDisplayEn'] = '';
+        $this->anamnesa['alergi']['snomedDisplayId'] = '';
     }
 
     protected function resetForm(): void
@@ -603,8 +628,7 @@ new class extends Component {
     public function rendering(): void
     {
         $default = $this->getDefaultAnamnesa();
-        $current = $this->dataDaftarPoliRJ['anamnesa'] ?? [];
-        $this->dataDaftarPoliRJ['anamnesa'] = array_replace_recursive($default, $current);
+        $this->anamnesa = array_replace_recursive($default, $this->anamnesa);
     }
 };
 
@@ -618,9 +642,9 @@ new class extends Component {
                 class="w-full p-4 space-y-6 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
 
                 {{-- jika anamnesa ada --}}
-                @if (isset($dataDaftarPoliRJ['anamnesa']))
+                @if (!empty($anamnesa))
                     <div class="w-full">
-                        <div id="TransaksiRawatJalan" x-data="{ activeTab: '{{ $dataDaftarPoliRJ['anamnesa']['pengkajianPerawatanTab'] ?? 'Pengkajian' }}' }" class="w-full">
+                        <div id="TransaksiRawatJalan" x-data="{ activeTab: '{{ $anamnesa['pengkajianPerawatanTab'] ?? 'Pengkajian' }}' }" class="w-full">
 
                             {{-- TAB NAVIGATION --}}
                             <x-scrollable-tabs class="w-full px-2 mb-2 border-b border-hairline dark:border-gray-700">
@@ -628,24 +652,24 @@ new class extends Component {
 
                                     {{-- PENGKAJIAN PERAWATAN TAB --}}
                                     <x-tab variant="underline"
-                                        active-expr="activeTab === '{{ $dataDaftarPoliRJ['anamnesa']['pengkajianPerawatanTab'] ?? 'Pengkajian' }}'"
-                                        x-on:click="activeTab = '{{ $dataDaftarPoliRJ['anamnesa']['pengkajianPerawatanTab'] ?? 'Pengkajian' }}'">
-                                        {{ $dataDaftarPoliRJ['anamnesa']['pengkajianPerawatanTab'] ?? 'Pengkajian' }}
+                                        active-expr="activeTab === '{{ $anamnesa['pengkajianPerawatanTab'] ?? 'Pengkajian' }}'"
+                                        x-on:click="activeTab = '{{ $anamnesa['pengkajianPerawatanTab'] ?? 'Pengkajian' }}'">
+                                        {{ $anamnesa['pengkajianPerawatanTab'] ?? 'Pengkajian' }}
                                     </x-tab>
 
                                     {{-- STATUS PSIKOLOGIS TAB --}}
                                     <x-tab variant="underline"
-                                        active-expr="activeTab === '{{ $dataDaftarPoliRJ['anamnesa']['statusPsikologisTab'] ?? 'Status Psikologis' }}'"
-                                        x-on:click="activeTab = '{{ $dataDaftarPoliRJ['anamnesa']['statusPsikologisTab'] ?? 'Status Psikologis' }}'">
-                                        {{ $dataDaftarPoliRJ['anamnesa']['statusPsikologisTab'] ?? 'Status Psikologis' }}
+                                        active-expr="activeTab === '{{ $anamnesa['statusPsikologisTab'] ?? 'Status Psikologis' }}'"
+                                        x-on:click="activeTab = '{{ $anamnesa['statusPsikologisTab'] ?? 'Status Psikologis' }}'">
+                                        {{ $anamnesa['statusPsikologisTab'] ?? 'Status Psikologis' }}
                                     </x-tab>
 
                                     {{-- BATUK TAB — hidden untuk role Dokter --}}
                                     @unlessrole('Dokter')
                                         <x-tab variant="underline"
-                                            active-expr="activeTab === '{{ $dataDaftarPoliRJ['anamnesa']['batukTab'] ?? 'Screening Batuk' }}'"
-                                            x-on:click="activeTab = '{{ $dataDaftarPoliRJ['anamnesa']['batukTab'] ?? 'Screening Batuk' }}'">
-                                            {{ $dataDaftarPoliRJ['anamnesa']['batukTab'] ?? 'Screening Batuk' }}
+                                            active-expr="activeTab === '{{ $anamnesa['batukTab'] ?? 'Screening Batuk' }}'"
+                                            x-on:click="activeTab = '{{ $anamnesa['batukTab'] ?? 'Screening Batuk' }}'">
+                                            {{ $anamnesa['batukTab'] ?? 'Screening Batuk' }}
                                         </x-tab>
                                     @endunlessrole
                                 </div>
@@ -654,26 +678,26 @@ new class extends Component {
                             {{-- TAB CONTENTS --}}
                             <div class="w-full p-4">
                                 {{-- PENGKAJIAN PERAWATAN TAB --}}
-                                @if (isset($dataDaftarPoliRJ['anamnesa']['pengkajianPerawatanTab']))
+                                @if (isset($anamnesa['pengkajianPerawatanTab']))
                                     <div class="w-full"
-                                        x-show.transition.in.opacity.duration.600="activeTab === '{{ $dataDaftarPoliRJ['anamnesa']['pengkajianPerawatanTab'] ?? 'Pengkajian' }}'">
+                                        x-show.transition.in.opacity.duration.600="activeTab === '{{ $anamnesa['pengkajianPerawatanTab'] ?? 'Pengkajian' }}'">
                                         @include('pages.transaksi.rj.emr-rj.anamnesa.tabs.pengkajian-perawatan-tab')
                                     </div>
                                 @endif
 
                                 {{-- STATUS PSIKOLOGIS TAB --}}
-                                @if (isset($dataDaftarPoliRJ['anamnesa']['statusPsikologisTab']))
+                                @if (isset($anamnesa['statusPsikologisTab']))
                                     <div class="w-full"
-                                        x-show.transition.in.opacity.duration.600="activeTab === '{{ $dataDaftarPoliRJ['anamnesa']['statusPsikologisTab'] ?? 'Status Psikologis' }}'">
+                                        x-show.transition.in.opacity.duration.600="activeTab === '{{ $anamnesa['statusPsikologisTab'] ?? 'Status Psikologis' }}'">
                                         @include('pages.transaksi.rj.emr-rj.anamnesa.tabs.status-psikologis-tab')
                                     </div>
                                 @endif
 
                                 {{-- BATUK TAB — hidden untuk role Dokter --}}
                                 @unlessrole('Dokter')
-                                    @if (isset($dataDaftarPoliRJ['anamnesa']['batukTab']))
+                                    @if (isset($anamnesa['batukTab']))
                                         <div class="w-full"
-                                            x-show.transition.in.opacity.duration.600="activeTab === '{{ $dataDaftarPoliRJ['anamnesa']['batukTab'] ?? 'Screening Batuk' }}'">
+                                            x-show.transition.in.opacity.duration.600="activeTab === '{{ $anamnesa['batukTab'] ?? 'Screening Batuk' }}'">
                                             @include('pages.transaksi.rj.emr-rj.anamnesa.tabs.batuk-tab')
                                         </div>
                                     @endif

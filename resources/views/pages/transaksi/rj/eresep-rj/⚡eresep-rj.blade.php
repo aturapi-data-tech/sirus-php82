@@ -12,7 +12,20 @@ new class extends Component {
 
     public bool $isFormLocked = false;
     public ?int $rjNo = null;
-    public array $dataDaftarPoliRJ = [];
+    /**
+     * IRISAN dokumen: hanya dua cabang status yang MEMANG dikelola induk ini
+     * (toggle PRB & Iter beserta jejak userLog-nya), plus satu skalar untuk
+     * komponen display rekam medis.
+     *
+     * Cabang `eresep`/`eresepRacikan` TIDAK ditahan di sini — anak non-racikan
+     * & racikan memuat dan menyimpan cabangnya masing-masing.
+     */
+    public array $statusPRB = [];
+    public array $statusIter = [];
+    public string $regNoPasien = '';
+
+    /** Penanda kunjungan sudah dimuat. */
+    public bool $dokumenTermuat = false;
     public string $activeTab = 'NonRacikan'; // tab aktif, default Non Racikan
 
     // renderVersions
@@ -26,6 +39,15 @@ new class extends Component {
     {
         $this->registerAreas(['modal']);
     }
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya dua cabang status + regNo yang disimpan. */
+    private function serapStatus(array $data): void
+    {
+        $this->statusPRB = $data['statusPRB'] ?? [];
+        $this->statusIter = $data['statusIter'] ?? [];
+        $this->regNoPasien = (string) ($data['regNo'] ?? '');
+        $this->dokumenTermuat = true;
+    }
+
 
     /* ===============================
      | OPEN ERESEP RJ
@@ -44,16 +66,12 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarPoliRJ = $data;
+        $this->serapStatus($data);
 
         // Cek status lock kunjungan
         if ($this->checkRJStatus($rjNo)) {
             $this->isFormLocked = true;
         }
-
-        // Initialize struktur data resep jika belum ada
-        $this->dataDaftarPoliRJ['eresep'] ??= [];
-        $this->dataDaftarPoliRJ['eresepRacikan'] ??= [];
 
         // Buka modal
         $this->dispatch('open-modal', name: 'emr-rj.eresep-rj');
@@ -113,7 +131,7 @@ new class extends Component {
                 }
 
                 $this->updateJsonRJ($this->rjNo, $data);
-                $this->dataDaftarPoliRJ = $data;
+                $this->serapStatus($data);
             });
 
             $this->dispatch('toast', type: 'success', message: 'Status PRB berhasil diperbarui.');
@@ -163,7 +181,7 @@ new class extends Component {
                     ->where('rj_no', $this->rjNo)
                     ->update(['status_iter' => $statusIter ? 'Y' : 'N']);
 
-                $this->dataDaftarPoliRJ = $data;
+                $this->serapStatus($data);
             });
 
             $this->dispatch('toast', type: 'success', message: 'Status Iter berhasil diperbarui.');
@@ -195,7 +213,7 @@ new class extends Component {
         }
 
         // 3. Guard: properti lokal belum ter-load
-        if (empty($this->dataDaftarPoliRJ)) {
+        if (!$this->dokumenTermuat) {
             $this->dispatch('toast', type: 'error', message: 'Data kunjungan tidak ditemukan, silakan buka ulang form.');
             return;
         }
@@ -255,7 +273,7 @@ new class extends Component {
 
                 // 9. Persist + sync properti lokal
                 $this->updateJsonRJ($this->rjNo, $data);
-                $this->dataDaftarPoliRJ = $data;
+                $this->serapStatus($data);
             });
 
             // Silent: tutup modal + reopen rekam medis sudah jadi feedback visual; tak perlu toast.
@@ -278,7 +296,7 @@ new class extends Component {
      =============================== */
     protected function resetForm(): void
     {
-        $this->reset(['rjNo', 'dataDaftarPoliRJ', 'activeTab']);
+        $this->reset(['rjNo', 'statusPRB', 'statusIter', 'regNoPasien', 'dokumenTermuat', 'activeTab']);
         $this->resetVersion();
         $this->isFormLocked = false;
     }
@@ -319,32 +337,32 @@ new class extends Component {
                             @endif
 
                             {{-- Toggle Status PRB --}}
-                            <x-toggle :current="$dataDaftarPoliRJ['statusPRB']['penanggungJawab']['statusPRB'] ?? 0"
+                            <x-toggle :current="$statusPRB['penanggungJawab']['statusPRB'] ?? 0"
                                 :trueValue="1" :falseValue="0"
                                 wireClick="setStatusPRB"
                                 :disabled="$isFormLocked">
                                 Status PRB
-                                @if (!empty($dataDaftarPoliRJ['statusPRB']['penanggungJawab']['userLog'] ?? null))
+                                @if (!empty($statusPRB['penanggungJawab']['userLog'] ?? null))
                                     <span class="ml-1 text-xs text-muted dark:text-gray-400">
-                                        — {{ $dataDaftarPoliRJ['statusPRB']['penanggungJawab']['userLog'] }}
-                                        @if (!empty($dataDaftarPoliRJ['statusPRB']['penanggungJawab']['userLogDate'] ?? null))
-                                            · {{ $dataDaftarPoliRJ['statusPRB']['penanggungJawab']['userLogDate'] }}
+                                        — {{ $statusPRB['penanggungJawab']['userLog'] }}
+                                        @if (!empty($statusPRB['penanggungJawab']['userLogDate'] ?? null))
+                                            · {{ $statusPRB['penanggungJawab']['userLogDate'] }}
                                         @endif
                                     </span>
                                 @endif
                             </x-toggle>
 
                             {{-- Toggle Status Iter --}}
-                            <x-toggle :current="$dataDaftarPoliRJ['statusIter']['penanggungJawab']['statusIter'] ?? 0"
+                            <x-toggle :current="$statusIter['penanggungJawab']['statusIter'] ?? 0"
                                 :trueValue="1" :falseValue="0"
                                 wireClick="setStatusIter"
                                 :disabled="$isFormLocked">
                                 Status Iter
-                                @if (!empty($dataDaftarPoliRJ['statusIter']['penanggungJawab']['userLog'] ?? null))
+                                @if (!empty($statusIter['penanggungJawab']['userLog'] ?? null))
                                     <span class="ml-1 text-xs text-muted dark:text-gray-400">
-                                        — {{ $dataDaftarPoliRJ['statusIter']['penanggungJawab']['userLog'] }}
-                                        @if (!empty($dataDaftarPoliRJ['statusIter']['penanggungJawab']['userLogDate'] ?? null))
-                                            · {{ $dataDaftarPoliRJ['statusIter']['penanggungJawab']['userLogDate'] }}
+                                        — {{ $statusIter['penanggungJawab']['userLog'] }}
+                                        @if (!empty($statusIter['penanggungJawab']['userLogDate'] ?? null))
+                                            · {{ $statusIter['penanggungJawab']['userLogDate'] }}
                                         @endif
                                     </span>
                                 @endif
@@ -415,8 +433,8 @@ new class extends Component {
                     {{-- REKAM MEDIS --}}
                     <div>
                         <livewire:pages::components.rekam-medis.rekam-medis-display.rekam-medis-display
-                            :regNo="$dataDaftarPoliRJ['regNo'] ?? ''" :rjNoRefCopyTo="$rjNo ?? 0"
-                            wire:key="eresep-rj-rekam-medis-display-rj-{{ $dataDaftarPoliRJ['regNo'] ?? 'new' }}-{{ $rjNo ?? 'none' }}" />
+                            :regNo="$regNoPasien" :rjNoRefCopyTo="$rjNo ?? 0"
+                            wire:key="eresep-rj-rekam-medis-display-rj-{{ $regNoPasien ?: 'new' }}-{{ $rjNo ?? 'none' }}" />
                     </div>
                 </div>
             </div>

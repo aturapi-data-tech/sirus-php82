@@ -13,7 +13,12 @@ new class extends Component {
     use EmrRJTrait, MasterPasienTrait, WithRenderVersioningTrait;
 
     public ?string $rjNo = null;
-    public array $dataDaftarPoliRJ = [];
+    /** IRISAN dokumen: cabang `idrg` + tiga skalar yang dipakai panduan & panel. */
+    public array $idrg = [];
+    public string $noSep = '';
+    public string $klaimStatus = '';
+    public string $klaimId = '';
+    public string $regNoPasien = '';
     public array $dataPasien = [];
     public array $renderVersions = [];
     protected array $renderAreas = ['modal'];
@@ -36,7 +41,7 @@ new class extends Component {
             return;
         }
 
-        $isBpjs = ($this->dataDaftarPoliRJ['klaimStatus'] ?? '') === 'BPJS' || ($this->dataDaftarPoliRJ['klaimId'] ?? '') === 'JM';
+        $isBpjs = $this->klaimStatus === 'BPJS' || $this->klaimId === 'JM';
         if (!$isBpjs) {
             $this->dispatch('toast', type: 'error', message: 'Kirim iDRG hanya untuk pasien BPJS.');
             return;
@@ -53,7 +58,11 @@ new class extends Component {
     public function closeModal(): void
     {
         $this->rjNo = null;
-        $this->dataDaftarPoliRJ = [];
+        $this->idrg = [];
+        $this->noSep = '';
+        $this->klaimStatus = '';
+        $this->klaimId = '';
+        $this->regNoPasien = '';
         $this->dataPasien = [];
         $this->dispatch('close-modal', name: 'rj-idrg');
     }
@@ -86,8 +95,13 @@ new class extends Component {
             $this->dispatch('toast', type: 'error', message: 'Data Rawat Jalan tidak ditemukan.');
             return false;
         }
-        $this->dataDaftarPoliRJ = $data;
-        $this->dataPasien = $this->findDataMasterPasien($data['regNo'] ?? '');
+        // Dokumen dibaca sebagai variabel LOKAL; hanya cabang idrg + skalar yang ditahan.
+        $this->idrg = $data['idrg'] ?? [];
+        $this->noSep = (string) ($data['sep']['noSep'] ?? '');
+        $this->klaimStatus = (string) ($data['klaimStatus'] ?? '');
+        $this->klaimId = (string) ($data['klaimId'] ?? '');
+        $this->regNoPasien = (string) ($data['regNo'] ?? '');
+        $this->dataPasien = $this->findDataMasterPasien($this->regNoPasien);
         return true;
     }
 };
@@ -99,14 +113,14 @@ new class extends Component {
              (anak memuat datanya dari prop), tutup = dihapus tanpa mount ulang. --}}
         @if ($rjNo)
         @php
-            $idrgData = $dataDaftarPoliRJ['idrg'] ?? [];
+            $idrgData = $idrg;
             $hasClaim = !empty($idrgData['nomorSep']);
             $idrgUngroup = !empty($idrgData['idrgUngroupable']);
             $idrgFinal = !empty($idrgData['idrgFinal']);
             $inacbgUngroup = !empty($idrgData['inacbgUngroupable']);
             $inacbgFinal = !empty($idrgData['inacbgFinal']);
             $klaimFinal = !empty($idrgData['klaimFinal']);
-            $nomorSepKlaim = $dataDaftarPoliRJ['sep']['noSep'] ?? '-';
+            $nomorSepKlaim = $noSep ?: '-';
 
             $guide = [
                 ['key' => 'A', 'title' => 'A. Setup Klaim', 'items' => [
@@ -336,7 +350,7 @@ new class extends Component {
                         </summary>
                         <div class="px-5 pt-3 pb-4 border-t border-hairline-soft dark:border-gray-800">
                             <livewire:pages::transaksi.casemix.idrg-history.idrg-history
-                                :regNo="$dataDaftarPoliRJ['regNo'] ?? ''" :currentTxnNo="(string) ($rjNo ?? '')"
+                                :regNo="$regNoPasien" :currentTxnNo="(string) ($rjNo ?? '')"
                                 wire:key="{{ $this->renderKey('modal', ['idrg-history', $rjNo ?? 'none']) }}" />
                         </div>
                     </details>

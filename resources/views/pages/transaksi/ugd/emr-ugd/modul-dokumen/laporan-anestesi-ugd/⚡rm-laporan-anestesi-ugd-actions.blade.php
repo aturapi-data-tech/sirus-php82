@@ -23,7 +23,6 @@ new class extends Component {
     public ?string $rjNo = null;
     public ?string $regNo = null;
     public bool $disabled = false;
-    public array $dataDaftarUGD = [];
 
     public array $renderVersions = [];
     protected array $renderAreas = ['modal-laporan-anestesi-ugd'];
@@ -106,7 +105,6 @@ new class extends Component {
         if ($this->rjNo) {
             $data = $this->findDataUGD($this->rjNo);
             if ($data) {
-                $this->dataDaftarUGD = $data;
                 $this->regNo = $data['regNo'] ?? null;
                 $this->laporanAnList = $data[$this->jsonKey] ?? [];
                 $this->isFormLocked = $this->checkEmrUGDStatus($this->rjNo) || $disabled;
@@ -132,12 +130,8 @@ new class extends Component {
             $this->dispatch('toast', type: 'error', message: 'Data UGD tidak ditemukan.');
             return;
         }
-        $this->dataDaftarUGD = $data;
         $this->regNo = $data['regNo'] ?? null;
-        if (!isset($this->dataDaftarUGD[$this->jsonKey]) || !is_array($this->dataDaftarUGD[$this->jsonKey])) {
-            $this->dataDaftarUGD[$this->jsonKey] = [];
-        }
-        $this->laporanAnList = $this->dataDaftarUGD[$this->jsonKey];
+        $this->laporanAnList = is_array($data[$this->jsonKey] ?? null) ? $data[$this->jsonKey] : [];
         $this->isFormLocked = $this->checkEmrUGDStatus($this->rjNo) || $this->disabled;
         $this->incrementVersion('modal-laporan-anestesi-ugd');
         $this->layar = 'daftar';
@@ -251,7 +245,6 @@ new class extends Component {
             $fresh[$this->jsonKey] = array_values($list);
 
             $this->updateJsonUGD((int) $this->rjNo, $fresh);
-            $this->dataDaftarUGD = $fresh;
             $this->laporanAnList = $fresh[$this->jsonKey];
 
             $this->appendAdminLogUGD((int) $this->rjNo, $logVerb . ' Laporan Anestesi — ' . ($entry['jenisAnestesi'] ?: '-') . ' (' . $key . ')', 'MR');
@@ -425,7 +418,6 @@ new class extends Component {
     {
         $this->resetVersion();
         $this->isFormLocked = false;
-        $this->dataDaftarUGD = [];
         $this->laporanAnList = [];
         $this->resetNewForm();
         $this->editingKey = null;
@@ -462,7 +454,7 @@ new class extends Component {
                 }
             }
             $data = array_merge($pasien, [
-                'dataRi' => $this->dataDaftarUGD, 'form' => $entry, 'identitasRs' => $identitasRs,
+                'dataRi' => $this->findDataUGD($this->rjNo) ?: [], 'form' => $entry, 'identitasRs' => $identitasRs,
                 'ttdPath' => $ttdPath, 'tglCetak' => Carbon::now(config('app.timezone'))->translatedFormat('d F Y'),
             ]);
             set_time_limit(300);
@@ -496,7 +488,6 @@ new class extends Component {
                     ->values()
                     ->toArray();
                 $this->updateJsonUGD((int) $this->rjNo, $fresh);
-                $this->dataDaftarUGD = $fresh;
                 $this->laporanAnList = $fresh[$this->jsonKey];
                 $this->appendAdminLogUGD((int) $this->rjNo, 'Hapus Laporan Anestesi — ' . $createdAt, 'MR');
             });
@@ -542,7 +533,6 @@ new class extends Component {
                 $list[$index]['ttdDate'] = '';
                 $fresh[$this->jsonKey] = array_values($list);
                 $this->updateJsonUGD((int) $this->rjNo, $fresh);
-                $this->dataDaftarUGD = $fresh;
                 $this->laporanAnList = $fresh[$this->jsonKey];
                 $pembukaKunci = auth()->user()->myuser_name ?? '-';
                 $this->appendAdminLogUGD((int) $this->rjNo, 'Buka kunci Laporan Anestesi (' . $createdAt . ') oleh ' . $pembukaKunci . ' — TTD petugas dicabut, entri kembali draft', 'MR');

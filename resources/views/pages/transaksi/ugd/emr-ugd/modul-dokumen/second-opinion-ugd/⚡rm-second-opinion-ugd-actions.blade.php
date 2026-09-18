@@ -20,7 +20,8 @@ new class extends Component {
     public ?int $rjNo = null;
     public ?string $regNo = null;
     public bool $disabled = false;
-    public array $dataDaftarUGD = [];
+    /** Nama pasien untuk isian awal penanda tangan (dulu dibaca dari dokumen penuh). */
+    public ?string $regName = null;
 
     public array $renderVersions = [];
     protected array $renderAreas = ['modal-second-opinion-ugd'];
@@ -76,7 +77,6 @@ new class extends Component {
         if ($this->rjNo) {
             $data = $this->findDataUGD($this->rjNo);
             if ($data) {
-                $this->dataDaftarUGD = $data;
                 $this->regNo = $data['regNo'] ?? null;
                 $this->secondOpinionList = $data['secondOpinionUGD'] ?? [];
                 $this->isFormLocked = $this->checkEmrUGDStatus($this->rjNo) || $disabled;
@@ -105,13 +105,10 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarUGD = $data;
         $this->regNo = $data['regNo'] ?? null;
-        if (!isset($this->dataDaftarUGD['secondOpinionUGD']) || !is_array($this->dataDaftarUGD['secondOpinionUGD'])) {
-            $this->dataDaftarUGD['secondOpinionUGD'] = [];
-        }
-        $this->secondOpinionList = $this->dataDaftarUGD['secondOpinionUGD'];
-        $this->newForm['namaPenanda'] = $this->dataDaftarUGD['regName'] ?? '';
+        $this->secondOpinionList = is_array($data['secondOpinionUGD'] ?? null) ? $data['secondOpinionUGD'] : [];
+        $this->regName = $data['regName'] ?? null;
+        $this->newForm['namaPenanda'] = $this->regName ?? '';
         $this->isFormLocked = $this->checkEmrUGDStatus($this->rjNo) || $this->disabled;
         $this->incrementVersion('modal-second-opinion-ugd');
 
@@ -221,7 +218,7 @@ new class extends Component {
         try {
             $this->persistEntry($key, true, 'Kunci (TTD Petugas)');
             $this->resetNewForm();
-            $this->newForm['namaPenanda'] = $this->dataDaftarUGD['regName'] ?? '';
+            $this->newForm['namaPenanda'] = $this->regName ?? '';
             $this->signature = '';
             $this->editingKey = null;
             $this->viewOnly = false;
@@ -288,7 +285,6 @@ new class extends Component {
             $data['secondOpinionUGD'] = array_values($list);
 
             $this->updateJsonUGD($this->rjNo, $data);
-            $this->dataDaftarUGD = $data;
             $this->secondOpinionList = $data['secondOpinionUGD'];
 
             $this->appendAdminLogUGD((int) $this->rjNo, $logVerb . ' Second Opinion UGD — kategori "' . ($entry['kategori'] ?: '-') . '" (' . $key . ')', 'MR');
@@ -382,7 +378,7 @@ new class extends Component {
     public function cancelEdit(): void
     {
         $this->resetNewForm();
-        $this->newForm['namaPenanda'] = $this->dataDaftarUGD['regName'] ?? '';
+        $this->newForm['namaPenanda'] = $this->regName ?? '';
         $this->signature = '';
         $this->editingKey = null;
         $this->viewOnly = false;
@@ -447,7 +443,7 @@ new class extends Component {
             }
 
             $data = array_merge($pasien, [
-                'dataRi' => $this->dataDaftarUGD,
+                'dataRi' => $this->findDataUGD($this->rjNo) ?: [],
                 'form' => $entry,
                 'identitasRs' => $identitasRs,
                 'ttdPemberiPath' => $ttdPemberiPath,
@@ -494,7 +490,6 @@ new class extends Component {
                     ->toArray();
 
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->dataDaftarUGD = $data;
                 $this->secondOpinionList = $data['secondOpinionUGD'];
 
                 $this->appendAdminLogUGD((int) $this->rjNo, 'Hapus Second Opinion UGD — TTD ' . $signatureDate, 'MR');
@@ -542,7 +537,6 @@ new class extends Component {
                 $data['secondOpinionUGD'] = $list;
 
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->dataDaftarUGD = $data;
                 $this->secondOpinionList = $data['secondOpinionUGD'];
 
                 $pelaku = auth()->user()->myuser_name ?? auth()->user()->name ?? 'unknown';
@@ -581,7 +575,6 @@ new class extends Component {
     {
         $this->resetVersion();
         $this->isFormLocked = false;
-        $this->dataDaftarUGD = [];
         $this->secondOpinionList = [];
         $this->resetNewForm();
         $this->signature = '';

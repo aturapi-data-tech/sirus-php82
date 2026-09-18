@@ -15,7 +15,8 @@ new class extends Component {
     public bool $isFormLocked = false;
     public ?int $rjNo = null;
     public bool $disabled = false;
-    public array $dataDaftarUGD = [];
+    /** Nama pasien untuk isian awal penanda tangan (dulu dibaca dari dokumen penuh). */
+    public ?string $regName = null;
 
     public array $renderVersions = [];
     protected array $renderAreas = ['modal-penundaan-pelayanan-ugd'];
@@ -78,8 +79,8 @@ new class extends Component {
         if ($this->rjNo) {
             $data = $this->findDataUGD($this->rjNo);
             if ($data) {
-                $this->dataDaftarUGD = $data;
                 $this->penundaanList = $data['penundaanPelayananUGD'] ?? [];
+                $this->regName = $data['regName'] ?? null;
                 $this->isFormLocked = $this->checkEmrUGDStatus($this->rjNo) || $disabled;
             }
         }
@@ -106,12 +107,9 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarUGD = $data;
-        if (!isset($this->dataDaftarUGD['penundaanPelayananUGD']) || !is_array($this->dataDaftarUGD['penundaanPelayananUGD'])) {
-            $this->dataDaftarUGD['penundaanPelayananUGD'] = [];
-        }
-        $this->penundaanList = $this->dataDaftarUGD['penundaanPelayananUGD'];
-        $this->newForm['namaPenanda'] = $this->dataDaftarUGD['regName'] ?? '';
+        $this->penundaanList = is_array($data['penundaanPelayananUGD'] ?? null) ? $data['penundaanPelayananUGD'] : [];
+        $this->regName = $data['regName'] ?? null;
+        $this->newForm['namaPenanda'] = $this->regName ?? '';
         $this->isFormLocked = $this->checkEmrUGDStatus($this->rjNo) || $this->disabled;
         $this->incrementVersion('modal-penundaan-pelayanan-ugd');
 
@@ -242,7 +240,7 @@ new class extends Component {
         try {
             $this->persistEntry($key, true, 'Kunci (TTD Petugas)');
             $this->resetNewForm();
-            $this->newForm['namaPenanda'] = $this->dataDaftarUGD['regName'] ?? '';
+            $this->newForm['namaPenanda'] = $this->regName ?? '';
             $this->signature = '';
             $this->editingKey = null;
             $this->viewOnly = false;
@@ -316,7 +314,6 @@ new class extends Component {
             $data['penundaanPelayananUGD'] = array_values($list);
 
             $this->updateJsonUGD($this->rjNo, $data);
-            $this->dataDaftarUGD = $data;
             $this->penundaanList = $data['penundaanPelayananUGD'];
 
             $this->appendAdminLogUGD((int) $this->rjNo, $logVerb . ' Penundaan Pelayanan UGD — jenis "' . ($entry['jenis'] ?: ($entry['alasan'] ?: '-')) . '" (' . $key . ')', 'MR');
@@ -415,7 +412,7 @@ new class extends Component {
     public function cancelEdit(): void
     {
         $this->resetNewForm();
-        $this->newForm['namaPenanda'] = $this->dataDaftarUGD['regName'] ?? '';
+        $this->newForm['namaPenanda'] = $this->regName ?? '';
         $this->signature = '';
         $this->editingKey = null;
         $this->viewOnly = false;
@@ -494,7 +491,6 @@ new class extends Component {
                     ->toArray();
 
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->dataDaftarUGD = $data;
                 $this->penundaanList = $data['penundaanPelayananUGD'];
                 $this->appendAdminLogUGD((int) $this->rjNo, 'Hapus Pemberitahuan Penundaan/Kelambatan — TTD ' . $signatureDate, 'MR');
             });
@@ -537,7 +533,6 @@ new class extends Component {
                 $list[$index]['pemberiInfoDate'] = '';
                 $data['penundaanPelayananUGD'] = array_values($list);
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->dataDaftarUGD = $data;
                 $this->penundaanList = $data['penundaanPelayananUGD'];
                 $pembukaKunci = auth()->user()->myuser_name ?? '-';
                 $this->appendAdminLogUGD((int) $this->rjNo, 'Buka kunci Pemberitahuan Penundaan Pelayanan (' . $signatureDate . ') oleh ' . $pembukaKunci . ' — TTD petugas dicabut, entri kembali draft', 'MR');
@@ -576,7 +571,6 @@ new class extends Component {
     {
         $this->resetVersion();
         $this->isFormLocked = false;
-        $this->dataDaftarUGD = [];
         $this->penundaanList = [];
         $this->resetNewForm();
         $this->signature = '';

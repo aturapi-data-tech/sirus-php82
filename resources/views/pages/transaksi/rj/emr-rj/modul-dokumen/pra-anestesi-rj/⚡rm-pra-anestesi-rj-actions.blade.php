@@ -25,7 +25,6 @@ new class extends Component {
     public ?string $rjNo = null;
     public ?string $regNo = null;
     public bool $disabled = false;
-    public array $dataDaftarPoliRJ = [];
 
     public array $renderVersions = [];
     protected array $renderAreas = ['modal-pra-anestesi-rj'];
@@ -124,7 +123,6 @@ new class extends Component {
         if ($this->rjNo) {
             $data = $this->findDataRJ($this->rjNo);
             if ($data) {
-                $this->dataDaftarPoliRJ = $data;
                 $this->regNo = $data['regNo'] ?? null;
                 $this->praAnestesiList = $data['praAnestesiRJ'] ?? [];
                 $this->isFormLocked = $this->checkEmrRJStatus($this->rjNo) || $disabled;
@@ -153,12 +151,8 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarPoliRJ = $data;
         $this->regNo = $data['regNo'] ?? null;
-        if (!isset($this->dataDaftarPoliRJ['praAnestesiRJ']) || !is_array($this->dataDaftarPoliRJ['praAnestesiRJ'])) {
-            $this->dataDaftarPoliRJ['praAnestesiRJ'] = [];
-        }
-        $this->praAnestesiList = $this->dataDaftarPoliRJ['praAnestesiRJ'];
+        $this->praAnestesiList = is_array($data['praAnestesiRJ'] ?? null) ? $data['praAnestesiRJ'] : [];
         $this->isFormLocked = $this->checkEmrRJStatus($this->rjNo) || $this->disabled;
         $this->incrementVersion('modal-pra-anestesi-rj');
 
@@ -305,7 +299,6 @@ new class extends Component {
             $fresh['praAnestesiRJ'] = array_values($list);
 
             $this->updateJsonRJ((int) $this->rjNo, $fresh);
-            $this->dataDaftarPoliRJ = $fresh;
             $this->praAnestesiList = $fresh['praAnestesiRJ'];
 
             $this->appendAdminLogRJ((int) $this->rjNo, $logVerb . ' Pengkajian Pra Anestesi — ' . ($entry['psAsa'] ?: '-') . ' (' . $key . ')', 'MR');
@@ -490,7 +483,6 @@ new class extends Component {
                 $fresh['praAnestesiRJ'] = array_values($list);
 
                 $this->updateJsonRJ((int) $this->rjNo, $fresh);
-                $this->dataDaftarPoliRJ = $fresh;
                 $this->praAnestesiList = $fresh['praAnestesiRJ'];
 
                 $pembukaKunci = auth()->user()->myuser_name ?? '-';
@@ -626,7 +618,7 @@ new class extends Component {
             }
 
             $data = array_merge($pasien, [
-                'dataRi' => $this->dataDaftarPoliRJ,
+                'dataRi' => $this->findDataRJ($this->rjNo) ?: [],
                 'form' => $entry,
                 'identitasRs' => $identitasRs,
                 'ttdPath' => $ttdPath,
@@ -673,7 +665,6 @@ new class extends Component {
                     ->toArray();
 
                 $this->updateJsonRJ((int) $this->rjNo, $fresh);
-                $this->dataDaftarPoliRJ = $fresh;
                 $this->praAnestesiList = $fresh['praAnestesiRJ'];
 
                 $this->appendAdminLogRJ((int) $this->rjNo, 'Hapus Pengkajian Pra Anestesi — ' . $createdAt, 'MR');
@@ -720,7 +711,6 @@ new class extends Component {
     {
         $this->resetVersion();
         $this->isFormLocked = false;
-        $this->dataDaftarPoliRJ = [];
         $this->praAnestesiList = [];
         $this->resetNewForm();
         $this->signaturePasien = '';

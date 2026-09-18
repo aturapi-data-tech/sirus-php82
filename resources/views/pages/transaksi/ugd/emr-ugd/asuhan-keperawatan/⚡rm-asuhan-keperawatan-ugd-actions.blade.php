@@ -16,7 +16,8 @@ new class extends Component {
 
     public bool $isFormLocked = false;
     public ?int $rjNo = null;
-    public array $dataDaftarUGD = [];
+    /** IRISAN dokumen: hanya cabang `asuhanKeperawatan`. */
+    public array $daftarAskep = [];
 
     public array $formEntryAsuhanKeperawatan = [
         'tglAsuhanKeperawatan' => '',
@@ -73,8 +74,8 @@ new class extends Component {
             $this->dispatch('toast', type: 'error', message: 'Data UGD tidak ditemukan.');
             return;
         }
-        $this->dataDaftarUGD = $data;
-        $this->dataDaftarUGD['asuhanKeperawatan'] ??= [];
+        $this->daftarAskep = $data['asuhanKeperawatan'] ?? [];
+        $this->daftarAskep ??= [];
         $this->incrementVersion('modal-asuhan-keperawatan-ugd');
         // Kunci klinis mengikuti kebijakan trait (sengaja longgar), bukan inline ri_status.
         $this->isFormLocked = $this->checkEmrUGDStatus($rjNo);
@@ -202,7 +203,7 @@ new class extends Component {
                 $fresh['asuhanKeperawatan'] ??= [];
                 $fresh['asuhanKeperawatan'][] = $this->formEntryAsuhanKeperawatan;
                 $this->updateJsonUGD((int) $this->rjNo, $fresh);
-                $this->dataDaftarUGD = $fresh;
+                $this->daftarAskep = $fresh['asuhanKeperawatan'] ?? [];
                 $this->appendAdminLogUGD((int) $this->rjNo, 'Tambah Asuhan Keperawatan — entri ' . ($this->formEntryAsuhanKeperawatan['tglAsuhanKeperawatan'] ?: '-') . ' (' . ($this->formEntryAsuhanKeperawatan['diagKepId'] ?: '-') . ')', 'MR');
             });
             $this->resetFormEntry();
@@ -230,7 +231,7 @@ new class extends Component {
                 array_splice($fresh['asuhanKeperawatan'], $index, 1);
                 $fresh['asuhanKeperawatan'] = array_values($fresh['asuhanKeperawatan']);
                 $this->updateJsonUGD((int) $this->rjNo, $fresh);
-                $this->dataDaftarUGD = $fresh;
+                $this->daftarAskep = $fresh['asuhanKeperawatan'] ?? [];
                 $this->appendAdminLogUGD((int) $this->rjNo, 'Hapus Asuhan Keperawatan — entri ' . ($askepRow['tglAsuhanKeperawatan'] ?? '-') . ' (' . ($askepRow['diagKepId'] ?? '-') . ')', 'MR');
             });
             $this->afterSave('Asuhan Keperawatan berhasil dihapus.');
@@ -318,7 +319,7 @@ new class extends Component {
                 $fresh['asuhanKeperawatan'][$idx]['implementasi'][] = $implEntry;
 
                 $this->updateJsonUGD((int) $this->rjNo, $fresh);
-                $this->dataDaftarUGD = $fresh;
+                $this->daftarAskep = $fresh['asuhanKeperawatan'] ?? [];
                 $this->appendAdminLogUGD((int) $this->rjNo, 'Tambah Implementasi Askep — entri ' . ($implEntry['tglImpl'] ?: '-') . ' (' . ($askep['diagKepId'] ?? '-') . ')', 'MR');
             });
             $this->reset(['formImpl']);
@@ -347,7 +348,7 @@ new class extends Component {
                 $fresh['asuhanKeperawatan'][$askepIndex]['implementasi'] = array_values($fresh['asuhanKeperawatan'][$askepIndex]['implementasi']);
 
                 $this->updateJsonUGD((int) $this->rjNo, $fresh);
-                $this->dataDaftarUGD = $fresh;
+                $this->daftarAskep = $fresh['asuhanKeperawatan'] ?? [];
                 $this->appendAdminLogUGD((int) $this->rjNo, 'Hapus Implementasi Askep — entri ' . ($impl['tglImpl'] ?? '-') . ' oleh ' . ($impl['petugasImpl'] ?? '-'), 'MR');
             });
             $this->afterSave('Implementasi berhasil dihapus.');
@@ -844,7 +845,7 @@ new class extends Component {
     {{-- ============================================================
     | RIWAYAT ASUHAN KEPERAWATAN
     ============================================================= --}}
-    @forelse (array_reverse($dataDaftarUGD['asuhanKeperawatan'] ?? [], true) as $idx => $askep)
+    @forelse (array_reverse($daftarAskep, true) as $idx => $askep)
         <div wire:key="askep-{{ $idx }}-{{ $this->renderKey('modal-asuhan-keperawatan-ugd') }}"
             class="grid grid-cols-1 lg:grid-cols-2 gap-2">
 

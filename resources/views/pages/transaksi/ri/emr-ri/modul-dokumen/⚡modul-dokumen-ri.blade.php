@@ -11,7 +11,59 @@ new class extends Component {
 
     public bool $isFormLocked = false;
     public ?string $riHdrNo = null;
-    public array $dataDaftarRi = [];
+    /**
+     * RINGKASAN status dokumen, bukan isinya. Hub perlu tahu keadaan SEMUA dokumen untuk
+     * menyalakan badge — cukup benar/salah dan hitungannya.
+     */
+    public bool $adaGeneralConsent = false;
+    public bool $adaBedah = false;
+    public bool $adaObstetriNeonatal = false;
+    public bool $adaSurveilans = false;
+    public bool $adaSuratKematianFinal = false;
+    public string $statusPulang = '';
+    public int $jumlahMpp = 0;
+    public int $jumlahPenundaan = 0;
+    public int $jumlahPenolakanObat = 0;
+    public int $jumlahPenolakanResusitasi = 0;
+    public int $jumlahPulangAps = 0;
+    public int $jumlahSecondOpinion = 0;
+    public int $jumlahKerohanian = 0;
+    public int $jumlahAkhirHayat = 0;
+    public int $jumlahEso = 0;
+    public int $jumlahPermintaanDarah = 0;
+    public int $jumlahInformConsent = 0;
+    public int $jumlahEdukasi = 0;
+    public int $jumlahPindahRuang = 0;
+
+    /** Dokumen dibaca sebagai variabel LOKAL, diperas jadi penanda, lalu dilepas. */
+    private function hitungRingkasan(array $data): void
+    {
+        $this->adaGeneralConsent = !empty($data['generalConsentPasienRI']['signature']);
+        $this->adaSuratKematianFinal = !empty($data['suratKematianRI']['isFinal']);
+        $this->statusPulang = (string) ($data['perencanaan']['tindakLanjut']['statusPulang'] ?? '');
+        $this->jumlahMpp = count($data['formMPP']['formA'] ?? []) + count($data['formMPP']['formB'] ?? []);
+        $this->jumlahPenundaan = count($data['penundaanPelayananRI'] ?? []);
+        $this->jumlahPenolakanObat = count($data['penolakanObatRI'] ?? []);
+        $this->jumlahPenolakanResusitasi = count($data['penolakanResusitasiRI'] ?? []);
+        $this->jumlahPulangAps = count($data['pulangApsRI'] ?? []);
+        $this->jumlahSecondOpinion = count($data['secondOpinionRI'] ?? []);
+        $this->jumlahKerohanian = count($data['permintaanKerohanianRI'] ?? []);
+        $this->jumlahAkhirHayat = count($data['pengkajianAkhirHayatRI'] ?? []);
+        $this->jumlahEso = count($data['pelaporanEsoRI'] ?? []);
+        $this->jumlahPermintaanDarah = count($data['permintaanDarahRI'] ?? []);
+        $this->jumlahInformConsent = count($data['informConsentPasienRI'] ?? []);
+        $this->jumlahEdukasi = count($data['edukasiPasienTerintegrasi'] ?? []);
+        $this->jumlahPindahRuang = count($data['formPindahAntarRuangRI'] ?? []);
+        $this->adaBedah = collect(['pengkajianPreOpRI', 'praAnestesiRI', 'praInduksiRI',
+            'surgicalSafetyChecklistRI', 'laporanOperasiRI', 'laporanAnestesiRI',
+            'pascaAnestesiRI', 'instruksiPascaBedahRI'])->contains(fn($k) => !empty($data[$k]));
+        $this->adaObstetriNeonatal = collect(['pengkajianAwalObstetriRI', 'riwayatObstetriRI',
+            'observasiPersalinanRI', 'laporanPersalinanRI', 'indikatorScRI', 'observasiNifasRI',
+            'pengkajianAwalGinekologiRI', 'pengkajianAwalBayiRI', 'pengkajianNeonatalPerawatRI',
+            'identifikasiBayiRI', 'catatanTerapiNeonatalRI'])->contains(fn($k) => !empty($data[$k]));
+        $this->adaSurveilans = collect(['surveilansPlebitisRI', 'surveilansIskRI',
+            'surveilansVapRI', 'surveilansHapRI', 'surveilansIloRI'])->contains(fn($k) => !empty($data[$k]));
+    }
 
     /**
      * Tab yang langsung terbuka. Default General Consent (perilaku lama).
@@ -54,7 +106,7 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarRi = $data;
+        $this->hitungRingkasan($data);
         $this->isFormLocked = $this->checkEmrRIStatus($riHdrNo);
 
         $this->incrementVersion('modal-modul-dokumen-ri');
@@ -77,7 +129,7 @@ new class extends Component {
         $this->resetVersion();
         $this->isFormLocked = false;
         $this->tabAwal = 'generalConsent';
-        $this->dataDaftarRi = [];
+        $this->reset(['adaGeneralConsent', 'adaBedah', 'adaObstetriNeonatal', 'adaSurveilans', 'adaSuratKematianFinal', 'statusPulang', 'jumlahMpp', 'jumlahPenundaan', 'jumlahPenolakanObat', 'jumlahPenolakanResusitasi', 'jumlahPulangAps', 'jumlahSecondOpinion', 'jumlahKerohanian', 'jumlahAkhirHayat', 'jumlahEso', 'jumlahPermintaanDarah', 'jumlahInformConsent', 'jumlahEdukasi', 'jumlahPindahRuang']);
     }
 };
 ?>
@@ -117,7 +169,7 @@ new class extends Component {
                                     d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                             </svg>
                             General Consent
-                            @if (!empty($dataDaftarRi['generalConsentPasienRI']['signature']))
+                            @if ($adaGeneralConsent)
                                 <x-badge variant="success" class="text-[10px] px-1.5 py-0">&#10003;</x-badge>
                             @endif
                         </x-tab>
@@ -129,8 +181,8 @@ new class extends Component {
                                     d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
                             Penundaan Pelayanan
-                            @if (count($dataDaftarRi['penundaanPelayananRI'] ?? []) > 0)
-                                <x-badge variant="success" class="text-[10px] px-1.5 py-0">{{ count($dataDaftarRi['penundaanPelayananRI']) }}</x-badge>
+                            @if ($jumlahPenundaan > 0)
+                                <x-badge variant="success" class="text-[10px] px-1.5 py-0">{{ $jumlahPenundaan }}</x-badge>
                             @endif
                         </x-tab>
 
@@ -141,8 +193,8 @@ new class extends Component {
                                     d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
                             </svg>
                             Penolakan Obat
-                            @if (count($dataDaftarRi['penolakanObatRI'] ?? []) > 0)
-                                <x-badge variant="success" class="text-[10px] px-1.5 py-0">{{ count($dataDaftarRi['penolakanObatRI']) }}</x-badge>
+                            @if ($jumlahPenolakanObat > 0)
+                                <x-badge variant="success" class="text-[10px] px-1.5 py-0">{{ $jumlahPenolakanObat }}</x-badge>
                             @endif
                         </x-tab>
 
@@ -154,8 +206,8 @@ new class extends Component {
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3l18 18" />
                             </svg>
                             Penolakan Resusitasi (DNR)
-                            @if (count($dataDaftarRi['penolakanResusitasiRI'] ?? []) > 0)
-                                <x-badge variant="success" class="text-[10px] px-1.5 py-0">{{ count($dataDaftarRi['penolakanResusitasiRI']) }}</x-badge>
+                            @if ($jumlahPenolakanResusitasi > 0)
+                                <x-badge variant="success" class="text-[10px] px-1.5 py-0">{{ $jumlahPenolakanResusitasi }}</x-badge>
                             @endif
                         </x-tab>
 
@@ -166,8 +218,8 @@ new class extends Component {
                                     d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                             </svg>
                             Pulang APS
-                            @if (count($dataDaftarRi['pulangApsRI'] ?? []) > 0)
-                                <x-badge variant="success" class="text-[10px] px-1.5 py-0">{{ count($dataDaftarRi['pulangApsRI']) }}</x-badge>
+                            @if ($jumlahPulangAps > 0)
+                                <x-badge variant="success" class="text-[10px] px-1.5 py-0">{{ $jumlahPulangAps }}</x-badge>
                             @endif
                         </x-tab>
 
@@ -178,8 +230,8 @@ new class extends Component {
                                     d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
                             </svg>
                             Second Opinion
-                            @if (count($dataDaftarRi['secondOpinionRI'] ?? []) > 0)
-                                <x-badge variant="success" class="text-[10px] px-1.5 py-0">{{ count($dataDaftarRi['secondOpinionRI']) }}</x-badge>
+                            @if ($jumlahSecondOpinion > 0)
+                                <x-badge variant="success" class="text-[10px] px-1.5 py-0">{{ $jumlahSecondOpinion }}</x-badge>
                             @endif
                         </x-tab>
 
@@ -194,8 +246,8 @@ new class extends Component {
                                     d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
                             </svg>
                             Kerohanian
-                            @if (count($dataDaftarRi['permintaanKerohanianRI'] ?? []) > 0)
-                                <x-badge variant="success" class="text-[10px] px-1.5 py-0">{{ count($dataDaftarRi['permintaanKerohanianRI']) }}</x-badge>
+                            @if ($jumlahKerohanian > 0)
+                                <x-badge variant="success" class="text-[10px] px-1.5 py-0">{{ $jumlahKerohanian }}</x-badge>
                             @endif
                         </x-tab>
 
@@ -206,8 +258,8 @@ new class extends Component {
                                     d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                             </svg>
                             Akhir Hayat
-                            @if (count($dataDaftarRi['pengkajianAkhirHayatRI'] ?? []) > 0)
-                                <x-badge variant="success" class="text-[10px] px-1.5 py-0">{{ count($dataDaftarRi['pengkajianAkhirHayatRI']) }}</x-badge>
+                            @if ($jumlahAkhirHayat > 0)
+                                <x-badge variant="success" class="text-[10px] px-1.5 py-0">{{ $jumlahAkhirHayat }}</x-badge>
                             @endif
                         </x-tab>
 
@@ -218,8 +270,8 @@ new class extends Component {
                                     d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
                             </svg>
                             Pelaporan ESO
-                            @if (count($dataDaftarRi['pelaporanEsoRI'] ?? []) > 0)
-                                <x-badge variant="success" class="text-[10px] px-1.5 py-0">{{ count($dataDaftarRi['pelaporanEsoRI']) }}</x-badge>
+                            @if ($jumlahEso > 0)
+                                <x-badge variant="success" class="text-[10px] px-1.5 py-0">{{ $jumlahEso }}</x-badge>
                             @endif
                         </x-tab>
 
@@ -230,8 +282,8 @@ new class extends Component {
                                     d="M12 3l5.5 6.5a5.5 5.5 0 11-11 0L12 3z" />
                             </svg>
                             Permintaan Darah
-                            @if (count($dataDaftarRi['permintaanDarahRI'] ?? []) > 0)
-                                <x-badge variant="success" class="text-[10px] px-1.5 py-0">{{ count($dataDaftarRi['permintaanDarahRI']) }}</x-badge>
+                            @if ($jumlahPermintaanDarah > 0)
+                                <x-badge variant="success" class="text-[10px] px-1.5 py-0">{{ $jumlahPermintaanDarah }}</x-badge>
                             @endif
                         </x-tab>
 
@@ -243,8 +295,8 @@ new class extends Component {
                                     d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                             </svg>
                             Inform Consent
-                            @if (count($dataDaftarRi['informConsentPasienRI'] ?? []) > 0)
-                                <x-badge variant="success" class="text-[10px] px-1.5 py-0">{{ count($dataDaftarRi['informConsentPasienRI']) }}</x-badge>
+                            @if ($jumlahInformConsent > 0)
+                                <x-badge variant="success" class="text-[10px] px-1.5 py-0">{{ $jumlahInformConsent }}</x-badge>
                             @endif
                         </x-tab>
 
@@ -257,7 +309,7 @@ new class extends Component {
                                         d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
                                 </svg>
                                 Case Manager (MPP)
-                                @php $jumlahMpp = count($dataDaftarRi['formMPP']['formA'] ?? []) + count($dataDaftarRi['formMPP']['formB'] ?? []); @endphp
+                                
                                 @if ($jumlahMpp > 0)
                                     <x-badge variant="success" class="text-[10px] px-1.5 py-0">{{ $jumlahMpp }}</x-badge>
                                 @endif
@@ -272,8 +324,8 @@ new class extends Component {
                                     d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                             </svg>
                             Edukasi Terintegrasi
-                            @if (count($dataDaftarRi['edukasiPasienTerintegrasi'] ?? []) > 0)
-                                <x-badge variant="success" class="text-[10px] px-1.5 py-0">{{ count($dataDaftarRi['edukasiPasienTerintegrasi']) }}</x-badge>
+                            @if ($jumlahEdukasi > 0)
+                                <x-badge variant="success" class="text-[10px] px-1.5 py-0">{{ $jumlahEdukasi }}</x-badge>
                             @endif
                         </x-tab>
 
@@ -285,8 +337,8 @@ new class extends Component {
                                     d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                             </svg>
                             Pindah Antar Ruang
-                            @if (count($dataDaftarRi['formPindahAntarRuangRI'] ?? []) > 0)
-                                <x-badge variant="success" class="text-[10px] px-1.5 py-0">{{ count($dataDaftarRi['formPindahAntarRuangRI']) }}</x-badge>
+                            @if ($jumlahPindahRuang > 0)
+                                <x-badge variant="success" class="text-[10px] px-1.5 py-0">{{ $jumlahPindahRuang }}</x-badge>
                             @endif
                         </x-tab>
 
@@ -297,7 +349,7 @@ new class extends Component {
                                     d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                             </svg>
                             Pelayanan Bedah
-                            @if (collect(['pengkajianPreOpRI', 'praAnestesiRI', 'praInduksiRI', 'surgicalSafetyChecklistRI', 'laporanOperasiRI', 'laporanAnestesiRI', 'pascaAnestesiRI', 'instruksiPascaBedahRI'])->first(fn($k) => !empty($dataDaftarRi[$k])))
+                            @if ($adaBedah)
                                 <x-badge variant="success" class="text-[10px] px-1.5 py-0">&#10003;</x-badge>
                             @endif
                         </x-tab>
@@ -308,7 +360,7 @@ new class extends Component {
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                             </svg>
                             VK / Kebidanan
-                            @if (collect(['pengkajianAwalObstetriRI', 'riwayatObstetriRI', 'observasiPersalinanRI', 'laporanPersalinanRI', 'indikatorScRI', 'observasiNifasRI', 'pengkajianAwalGinekologiRI', 'pengkajianAwalBayiRI', 'pengkajianNeonatalPerawatRI', 'identifikasiBayiRI', 'catatanTerapiNeonatalRI'])->first(fn($k) => !empty($dataDaftarRi[$k])))
+                            @if ($adaObstetriNeonatal)
                                 <x-badge variant="success" class="text-[10px] px-1.5 py-0">&#10003;</x-badge>
                             @endif
                         </x-tab>
@@ -320,14 +372,14 @@ new class extends Component {
                                     d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
                             </svg>
                             Surveilans HAIs
-                            @if (collect(['surveilansPlebitisRI', 'surveilansIskRI', 'surveilansVapRI', 'surveilansHapRI', 'surveilansIloRI'])->first(fn($k) => !empty($dataDaftarRi[$k])))
+                            @if ($adaSurveilans)
                                 <x-badge variant="success" class="text-[10px] px-1.5 py-0">&#10003;</x-badge>
                             @endif
                         </x-tab>
 
                         {{-- Surat Kematian — tab hanya muncul bila status pulang di Perencanaan
                              adalah Meninggal (statusPulang BPJS 4), supaya tak jadi tab permanen. --}}
-                        @if ((string) ($dataDaftarRi['perencanaan']['tindakLanjut']['statusPulang'] ?? '') === '4')
+                        @if ($statusPulang === '4')
                             <x-tab variant="underline" active-expr="activeTab === 'suratKematian'"
                                 x-on:click="activeTab = 'suratKematian'" class="inline-flex items-center gap-2">
                                 <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor"
@@ -336,7 +388,7 @@ new class extends Component {
                                         d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                 </svg>
                                 Surat Kematian
-                                @if (!empty($dataDaftarRi['suratKematianRI']['isFinal']))
+                                @if ($adaSuratKematianFinal)
                                     <x-badge variant="success" class="text-[10px] px-1.5 py-0">TTD</x-badge>
                                 @else
                                     <x-badge variant="danger" class="text-[10px] px-1.5 py-0">!</x-badge>
@@ -348,7 +400,7 @@ new class extends Component {
                 </div>
 
                 {{-- TAB: SURAT KEMATIAN --}}
-                @if ((string) ($dataDaftarRi['perencanaan']['tindakLanjut']['statusPulang'] ?? '') === '4')
+                @if ($statusPulang === '4')
                     <div x-show="activeTab === 'suratKematian'" x-transition.opacity.duration.200ms
                         style="display:none">
                         <livewire:pages::transaksi.ri.emr-ri.modul-dokumen.surat-kematian-ri.rm-surat-kematian-ri-actions

@@ -5,25 +5,25 @@
         {{-- No. Referensi --}}
         <div>
             <x-input-label value="No. Referensi" />
-            <x-text-input placeholder="No. Referensi Rawat Inap" class="mt-1" :error="$errors->has('dataDaftarUGD.perencanaan.rawatInap.noRef')" :disabled="$isFormLocked"
-                wire:model.live="dataDaftarUGD.perencanaan.rawatInap.noRef" />
-            <x-input-error :messages="$errors->get('dataDaftarUGD.perencanaan.rawatInap.noRef')" class="mt-1" />
+            <x-text-input placeholder="No. Referensi Rawat Inap" class="mt-1" :error="$errors->has('perencanaan.rawatInap.noRef')" :disabled="$isFormLocked"
+                wire:model.live="perencanaan.rawatInap.noRef" />
+            <x-input-error :messages="$errors->get('perencanaan.rawatInap.noRef')" class="mt-1" />
         </div>
 
         {{-- Tanggal --}}
         <div>
             <x-input-label value="Tanggal" />
-            <x-text-input placeholder="Tanggal [dd/mm/yyyy]" class="mt-1" :error="$errors->has('dataDaftarUGD.perencanaan.rawatInap.tanggal')" :disabled="$isFormLocked"
-                wire:model.live="dataDaftarUGD.perencanaan.rawatInap.tanggal" />
-            <x-input-error :messages="$errors->get('dataDaftarUGD.perencanaan.rawatInap.tanggal')" class="mt-1" />
+            <x-text-input placeholder="Tanggal [dd/mm/yyyy]" class="mt-1" :error="$errors->has('perencanaan.rawatInap.tanggal')" :disabled="$isFormLocked"
+                wire:model.live="perencanaan.rawatInap.tanggal" />
+            <x-input-error :messages="$errors->get('perencanaan.rawatInap.tanggal')" class="mt-1" />
         </div>
 
         {{-- Keterangan --}}
         <div>
             <x-input-label value="Keterangan" />
-            <x-textarea placeholder="Keterangan Rawat Inap" class="mt-1" :rows="3" :error="$errors->has('dataDaftarUGD.perencanaan.rawatInap.keterangan')"
-                :disabled="$isFormLocked" wire:model.live="dataDaftarUGD.perencanaan.rawatInap.keterangan" />
-            <x-input-error :messages="$errors->get('dataDaftarUGD.perencanaan.rawatInap.keterangan')" class="mt-1" />
+            <x-textarea placeholder="Keterangan Rawat Inap" class="mt-1" :rows="3" :error="$errors->has('perencanaan.rawatInap.keterangan')"
+                :disabled="$isFormLocked" wire:model.live="perencanaan.rawatInap.keterangan" />
+            <x-input-error :messages="$errors->get('perencanaan.rawatInap.keterangan')" class="mt-1" />
         </div>
 
     </div>

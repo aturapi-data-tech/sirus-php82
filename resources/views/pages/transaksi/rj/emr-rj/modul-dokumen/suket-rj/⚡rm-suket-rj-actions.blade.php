@@ -13,7 +13,22 @@ new class extends Component {
 
     public bool $isFormLocked = false;
     public ?int $rjNo = null;
-    public array $dataDaftarPoliRJ = [];
+
+    /**
+     * IRISAN dokumen: hanya cabang `suket`. Sekaligus MODEL FORM — partial tab
+     * mengikat `wire:model.live="suket.suketIstirahat.*"` langsung ke sini.
+     *
+     * Dokumen utuh tidak disimpan di properti publik; save() tetap membaca ulang
+     * dokumen dari DB di dalam transaksi + lock, lalu mem-patch key `suket` saja.
+     */
+    public array $suket = [];
+
+    /** Tanggal kunjungan — dipakai getDefaultSuket() menghitung opsi Hari Ini/Besok. */
+    public ?string $rjDate = null;
+
+    /** Penanda dokumen sudah dimuat lewat open(). rendering() mengisi $suket dengan
+     *  default walau form belum pernah dibuka, jadi empty($suket) TIDAK sah jadi guard. */
+    public bool $dokumenTermuat = false;
 
     // Tab aktif (Suket Sehat / Suket Istirahat) — di-entangle ke Alpine supaya
     // tidak balik ke default saat re-render (incrementVersion) sesudah Simpan.
@@ -42,9 +57,7 @@ new class extends Component {
 
     public function rendering(): void
     {
-        $default = $this->getDefaultSuket();
-        $current = $this->dataDaftarPoliRJ['suket'] ?? [];
-        $this->dataDaftarPoliRJ['suket'] = array_replace_recursive($default, $current);
+        $this->suket = array_replace_recursive($this->getDefaultSuket(), $this->suket);
     }
 
     /* ===============================
@@ -63,26 +76,26 @@ new class extends Component {
         $this->resetValidation();
 
         // Ambil data kunjungan RJ
-        $dataDaftarPoliRJ = $this->findDataRJ($rjNo);
+        $data = $this->findDataRJ($rjNo);
 
-        if (!$dataDaftarPoliRJ) {
+        if (!$data) {
             $this->dispatch('toast', type: 'error', message: 'Data Rawat Jalan tidak ditemukan.');
             return;
         }
 
-        $this->dataDaftarPoliRJ = $dataDaftarPoliRJ;
-
-        // Initialize suket data jika belum ada
-        $this->dataDaftarPoliRJ['suket'] ??= $this->getDefaultSuket();
+        // rjDate DULU: getDefaultSuket() membacanya untuk opsi Hari Ini/Besok.
+        $this->rjDate = $data['rjDate'] ?? null;
+        $this->suket = $data['suket'] ?? $this->getDefaultSuket();
+        $this->dokumenTermuat = true;
 
         // Normalisasi data legacy:
         // - Regenerate mulaiIstirahatOptions ke struktur baru ([value, label])
         // - Strip suffix " (Hari Ini)"/" (Besok)" dari mulaiIstirahat agar Carbon parse aman
         $fresh = $this->getDefaultSuket();
-        $this->dataDaftarPoliRJ['suket']['suketIstirahat']['mulaiIstirahatOptions']
+        $this->suket['suketIstirahat']['mulaiIstirahatOptions']
             = $fresh['suketIstirahat']['mulaiIstirahatOptions'];
-        $mulai = (string) ($this->dataDaftarPoliRJ['suket']['suketIstirahat']['mulaiIstirahat'] ?? '');
-        $this->dataDaftarPoliRJ['suket']['suketIstirahat']['mulaiIstirahat']
+        $mulai = (string) ($this->suket['suketIstirahat']['mulaiIstirahat'] ?? '');
+        $this->suket['suketIstirahat']['mulaiIstirahat']
             = trim(preg_replace('/\s*\(.+?\)\s*$/', '', $mulai)) ?: $fresh['suketIstirahat']['mulaiIstirahat'];
 
         // 🔥 INCREMENT: Refresh seluruh modal suket
@@ -100,7 +113,7 @@ new class extends Component {
     private function getDefaultSuket(): array
     {
         try {
-            $rjDate = Carbon::createFromFormat('d/m/Y H:i:s', $this->dataDaftarPoliRJ['rjDate'] ?? '');
+            $rjDate = Carbon::createFromFormat('d/m/Y H:i:s', $this->rjDate ?? '');
         } catch (\Throwable) {
             $rjDate = Carbon::now(config('app.timezone'));
         }
@@ -134,22 +147,22 @@ new class extends Component {
     protected function rules(): array
     {
         return [
-            'dataDaftarPoliRJ.suket.suketIstirahat.suketIstirahatHari' => 'nullable|integer|min:1',
+            'suket.suketIstirahat.suketIstirahatHari' => 'nullable|integer|min:1',
         ];
     }
 
     protected function messages(): array
     {
         return [
-            'dataDaftarPoliRJ.suket.suketIstirahat.suketIstirahatHari.integer' => ':attribute harus berupa angka.',
-            'dataDaftarPoliRJ.suket.suketIstirahat.suketIstirahatHari.min' => ':attribute minimal 1 hari.',
+            'suket.suketIstirahat.suketIstirahatHari.integer' => ':attribute harus berupa angka.',
+            'suket.suketIstirahat.suketIstirahatHari.min' => ':attribute minimal 1 hari.',
         ];
     }
 
     protected function validationAttributes(): array
     {
         return [
-            'dataDaftarPoliRJ.suket.suketIstirahat.suketIstirahatHari' => 'Jumlah Hari Istirahat',
+            'suket.suketIstirahat.suketIstirahatHari' => 'Jumlah Hari Istirahat',
         ];
     }
 
@@ -166,7 +179,7 @@ new class extends Component {
         }
 
         // 2. Guard: properti lokal belum ter-load
-        if (empty($this->dataDaftarPoliRJ)) {
+        if (!$this->dokumenTermuat) {
             $this->dispatch('toast', type: 'error', message: 'Data kunjungan tidak ditemukan, silakan buka ulang form.');
             return;
         }
@@ -192,11 +205,10 @@ new class extends Component {
                 $isBaru = empty($data['suket']);
 
                 // 7. Set hanya key 'suket' — key lain tidak tersentuh
-                $data['suket'] = $this->dataDaftarPoliRJ['suket'] ?? [];
+                $data['suket'] = $this->suket;
 
                 // 8. Persist + sync properti lokal
                 $this->updateJsonRJ($this->rjNo, $data);
-                $this->dataDaftarPoliRJ = $data;
                 $this->appendAdminLogRJ((int) $this->rjNo, ($isBaru ? 'Buat' : 'Update') . ' Surat Keterangan — mulai istirahat ' . ($data['suket']['suketIstirahat']['mulaiIstirahat'] ?? '-'), 'MR');
             });
 
@@ -256,6 +268,7 @@ new class extends Component {
     {
         $this->resetVersion();
         $this->isFormLocked = false;
+        $this->dokumenTermuat = false;
     }
 };
 
@@ -294,7 +307,7 @@ new class extends Component {
             <div
                 class="w-full p-4 space-y-6 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
 
-                @if (isset($dataDaftarPoliRJ['suket']))
+                @if ($dokumenTermuat)
                     <div class="w-full">
                         <div id="SuketRawatJalan" x-data="{ activeTab: @entangle('suketActiveTab') }" class="w-full">
 
@@ -304,16 +317,16 @@ new class extends Component {
 
                                     {{-- SUKET SEHAT TAB --}}
                                     <x-tab variant="underline"
-                                        active-expr="activeTab === '{{ $dataDaftarPoliRJ['suket']['suketSehatTab'] ?? 'Suket Sehat' }}'"
-                                        x-on:click="activeTab = '{{ $dataDaftarPoliRJ['suket']['suketSehatTab'] ?? 'Suket Sehat' }}'">
-                                        {{ $dataDaftarPoliRJ['suket']['suketSehatTab'] ?? 'Suket Sehat' }}
+                                        active-expr="activeTab === '{{ $suket['suketSehatTab'] ?? 'Suket Sehat' }}'"
+                                        x-on:click="activeTab = '{{ $suket['suketSehatTab'] ?? 'Suket Sehat' }}'">
+                                        {{ $suket['suketSehatTab'] ?? 'Suket Sehat' }}
                                     </x-tab>
 
                                     {{-- SUKET ISTIRAHAT TAB --}}
                                     <x-tab variant="underline"
-                                        active-expr="activeTab === '{{ $dataDaftarPoliRJ['suket']['suketIstirahatTab'] ?? 'Suket Istirahat' }}'"
-                                        x-on:click="activeTab = '{{ $dataDaftarPoliRJ['suket']['suketIstirahatTab'] ?? 'Suket Istirahat' }}'">
-                                        {{ $dataDaftarPoliRJ['suket']['suketIstirahatTab'] ?? 'Suket Istirahat' }}
+                                        active-expr="activeTab === '{{ $suket['suketIstirahatTab'] ?? 'Suket Istirahat' }}'"
+                                        x-on:click="activeTab = '{{ $suket['suketIstirahatTab'] ?? 'Suket Istirahat' }}'">
+                                        {{ $suket['suketIstirahatTab'] ?? 'Suket Istirahat' }}
                                     </x-tab>
 
                                 </div>
@@ -323,17 +336,17 @@ new class extends Component {
                             <div class="w-full p-4">
 
                                 {{-- SUKET SEHAT TAB CONTENT --}}
-                                @if (isset($dataDaftarPoliRJ['suket']['suketSehatTab']))
+                                @if (isset($suket['suketSehatTab']))
                                     <div class="w-full"
-                                        x-show.transition.in.opacity.duration.600="activeTab === '{{ $dataDaftarPoliRJ['suket']['suketSehatTab'] ?? 'Suket Sehat' }}'">
+                                        x-show.transition.in.opacity.duration.600="activeTab === '{{ $suket['suketSehatTab'] ?? 'Suket Sehat' }}'">
                                         @include('pages.transaksi.rj.emr-rj.modul-dokumen.suket-rj.tabs.suket-sehat-rj-tab')
                                     </div>
                                 @endif
 
                                 {{-- SUKET ISTIRAHAT TAB CONTENT --}}
-                                @if (isset($dataDaftarPoliRJ['suket']['suketIstirahatTab']))
+                                @if (isset($suket['suketIstirahatTab']))
                                     <div class="w-full"
-                                        x-show.transition.in.opacity.duration.600="activeTab === '{{ $dataDaftarPoliRJ['suket']['suketIstirahatTab'] ?? 'Suket Istirahat' }}'">
+                                        x-show.transition.in.opacity.duration.600="activeTab === '{{ $suket['suketIstirahatTab'] ?? 'Suket Istirahat' }}'">
                                         @include('pages.transaksi.rj.emr-rj.modul-dokumen.suket-rj.tabs.suket-istirahat-rj-tab')
                                     </div>
                                 @endif

@@ -29,7 +29,23 @@ new class extends Component {
     public ?string $riHdrNo = null;
     public ?string $regNo = null;
     public bool $disabled = false;
-    public array $dataDaftarRi = [];
+    /**
+     * IRISAN dokumen: cabang `pelaporanEsoRI` + tiga nilai rekam medis yang dipotret
+     * sebagai isian awal formulir.
+     */
+    public array $daftarEso = [];
+    public string $entryDate = '';
+    public string $diagnosaMasuk = '';
+    public string $beratBadan = '';
+
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan + skalar yang disimpan. */
+    private function serapIrisan(array $data): void
+    {
+        $this->daftarEso = $data['pelaporanEsoRI'] ?? [];
+        $this->entryDate = (string) ($data['entryDate'] ?? '');
+        $this->diagnosaMasuk = (string) (data_get($data, 'pengkajianAwalPasienRawatInap.bagian1DataUmum.diagnosaMasuk') ?? '');
+        $this->beratBadan = (string) (data_get($data, 'pengkajianAwalPasienRawatInap.bagian4PemeriksaanFisik.tandaVital.bb') ?? '');
+    }
 
     public array $form = [];
 
@@ -73,9 +89,8 @@ new class extends Component {
         if ($this->riHdrNo) {
             $data = $this->findDataRI($this->riHdrNo);
             if ($data) {
-                $this->dataDaftarRi = $data;
+                $this->serapIrisan($data);
                 $this->regNo = $data['regNo'] ?? null;
-                $this->dataDaftarRi['pelaporanEsoRI'] ??= [];
                 $this->isFormLocked = $this->checkEmrRIStatus($this->riHdrNo) || $disabled;
             }
         }
@@ -89,9 +104,8 @@ new class extends Component {
 
         $data = $this->findDataRI($this->riHdrNo);
         if ($data) {
-            $this->dataDaftarRi = $data;
+            $this->serapIrisan($data);
             $this->regNo = $data['regNo'] ?? $this->regNo;
-            $this->dataDaftarRi['pelaporanEsoRI'] ??= [];
             $this->isFormLocked = $this->checkEmrRIStatus($this->riHdrNo) || $this->disabled;
         }
 
@@ -205,7 +219,7 @@ new class extends Component {
             $potretRekamMedis('penderita.kelamin', 'Wanita');
         }
 
-        $potretRekamMedis('penderita.tglMrs', data_get($this->dataDaftarRi, 'entryDate', ''));
+        $potretRekamMedis('penderita.tglMrs', $this->entryDate);
     }
 
     /**
@@ -220,8 +234,8 @@ new class extends Component {
             }
         };
 
-        $isiJikaKosong('penderita.penyakitUtama', (string) data_get($this->dataDaftarRi, 'pengkajianAwalPasienRawatInap.bagian1DataUmum.diagnosaMasuk', ''));
-        $isiJikaKosong('penderita.beratBadan', (string) data_get($this->dataDaftarRi, 'pengkajianAwalPasienRawatInap.bagian4PemeriksaanFisik.tandaVital.bb', ''));
+        $isiJikaKosong('penderita.penyakitUtama', (string) $this->diagnosaMasuk);
+        $isiJikaKosong('penderita.beratBadan', (string) $this->beratBadan);
 
         // Pengirim = petugas yang membuat laporan + identitas RS
         $identitasRs = DB::table('rsmst_identitases')->select('int_name', 'int_address', 'int_city', 'int_phone1')->first();
@@ -376,7 +390,7 @@ new class extends Component {
 
     private function buildEntry(string $id, bool $finalized): array
     {
-        $existing = collect($this->dataDaftarRi['pelaporanEsoRI'] ?? [])->firstWhere('id', $id);
+        $existing = collect($this->daftarEso ?? [])->firstWhere('id', $id);
 
         return [
             'id' => $id,
@@ -415,7 +429,7 @@ new class extends Component {
             $fresh['pelaporanEsoRI'] = array_values($daftarEntri);
 
             $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-            $this->dataDaftarRi = $fresh;
+            $this->daftarEso = $fresh['pelaporanEsoRI'] ?? [];
 
             $this->appendAdminLogRI((int) $this->riHdrNo, $logVerb . ' Pelaporan ESO — ' . ($entry['form']['tglLaporan'] ?? '-'), 'MR');
         });
@@ -495,7 +509,7 @@ new class extends Component {
 
     public function editEntry(string $id): void
     {
-        $entri = collect($this->dataDaftarRi['pelaporanEsoRI'] ?? [])->firstWhere('id', $id);
+        $entri = collect($this->daftarEso ?? [])->firstWhere('id', $id);
         if (!$entri) {
             $this->dispatch('toast', type: 'error', message: 'Entri tidak ditemukan.');
             return;
@@ -516,7 +530,7 @@ new class extends Component {
 
     public function viewEntry(string $id): void
     {
-        $entri = collect($this->dataDaftarRi['pelaporanEsoRI'] ?? [])->firstWhere('id', $id);
+        $entri = collect($this->daftarEso ?? [])->firstWhere('id', $id);
         if (!$entri) {
             $this->dispatch('toast', type: 'error', message: 'Entri tidak ditemukan.');
             return;
@@ -588,7 +602,7 @@ new class extends Component {
 
                 $fresh['pelaporanEsoRI'] = $daftarBaru;
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->dataDaftarRi = $fresh;
+                $this->daftarEso = $fresh['pelaporanEsoRI'] ?? [];
 
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Hapus Pelaporan ESO — ' . ($entriDihapus['form']['tglLaporan'] ?? '-'), 'MR');
             });
@@ -643,7 +657,7 @@ new class extends Component {
 
                 $fresh['pelaporanEsoRI'] = array_values($daftarEntri);
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->dataDaftarRi = $fresh;
+                $this->daftarEso = $fresh['pelaporanEsoRI'] ?? [];
 
                 $this->appendAdminLogRI(
                     (int) $this->riHdrNo,
@@ -663,7 +677,7 @@ new class extends Component {
 
     public function cetak(string $id)
     {
-        $entry = collect($this->dataDaftarRi['pelaporanEsoRI'] ?? [])->firstWhere('id', $id);
+        $entry = collect($this->daftarEso ?? [])->firstWhere('id', $id);
         if (!$entry) {
             $this->dispatch('toast', type: 'error', message: 'Data laporan tidak ditemukan.');
             return;
@@ -678,7 +692,7 @@ new class extends Component {
             $ttdPetugasPath = TtdUser::pathBerkasDariKode(data_get($entry, 'form.ttd.petugasCode'));
 
             $data = array_merge($pasien, [
-                'dataRi' => $this->dataDaftarRi,
+                'dataRi' => $this->findDataRI($this->riHdrNo) ?: [],
                 'entry' => $entry,
                 'identitasRs' => $identitasRs,
                 'ttdPetugasPath' => $ttdPetugasPath,
@@ -711,7 +725,7 @@ new class extends Component {
 
 <div>
     {{-- ══ RINGKASAN + TOMBOL ══ --}}
-    @php $esoCount = count($dataDaftarRi['pelaporanEsoRI'] ?? []); @endphp
+    @php $esoCount = count($daftarEso ?? []); @endphp
     <x-modul-dokumen.kartu judul="Pelaporan Efek Samping Obat"
         tombol="Buka Pelaporan ESO"
         :nonaktif="!$riHdrNo">
@@ -736,7 +750,7 @@ new class extends Component {
                     </tr>
                 </thead>
                 <tbody>
-                    @forelse (array_slice(collect($dataDaftarRi['pelaporanEsoRI'] ?? [])->sortByDesc(fn($entri) => strtotime(strtr((data_get($entri, 'form.tglLaporan') ?: ($entri['created_at'] ?? '')), '/', '-')))->values()->all(), 0, 3) as $indexEntri => $entri)
+                    @forelse (array_slice(collect($daftarEso ?? [])->sortByDesc(fn($entri) => strtotime(strtr((data_get($entri, 'form.tglLaporan') ?: ($entri['created_at'] ?? '')), '/', '-')))->values()->all(), 0, 3) as $indexEntri => $entri)
                         @php
                             $idEntri = $entri['id'] ?? null;
                             $isFinal = (bool) ($entri['finalized'] ?? false);
@@ -777,8 +791,8 @@ new class extends Component {
                 </tbody>
             </table>
         </div>
-        @if (count($dataDaftarRi['pelaporanEsoRI'] ?? []) > 3)
-            <p class="mt-2 text-xs italic text-muted-soft">+{{ count($dataDaftarRi['pelaporanEsoRI'] ?? []) - 3 }} entri lain — buka untuk melihat semua.</p>
+        @if (count($daftarEso ?? []) > 3)
+            <p class="mt-2 text-xs italic text-muted-soft">+{{ count($daftarEso ?? []) - 3 }} entri lain — buka untuk melihat semua.</p>
         @endif
     </x-modul-dokumen.kartu>
 
@@ -1270,7 +1284,7 @@ new class extends Component {
                 @endif
                 @unless ($this->diForm())
                 <x-modul-dokumen.tabel-daftar :kolom="['', 'Tgl. Laporan', 'Manifestasi ESO', 'Jml Obat' => 'w-24', 'Pelapor', 'Status' => 'w-24', 'Aksi' => 'w-56']">
-                                @forelse (collect($dataDaftarRi['pelaporanEsoRI'] ?? [])->sortByDesc(fn($entri) => strtotime(strtr((data_get($entri, 'form.tglLaporan') ?: ($entri['created_at'] ?? '')), '/', '-')))->values()->all() as $indexEntri => $entri)
+                                @forelse (collect($daftarEso ?? [])->sortByDesc(fn($entri) => strtotime(strtr((data_get($entri, 'form.tglLaporan') ?: ($entri['created_at'] ?? '')), '/', '-')))->values()->all() as $indexEntri => $entri)
                                     @php
                                         $idEntri = $entri['id'] ?? null;
                                         $isFinal = (bool) ($entri['finalized'] ?? false);

@@ -11,7 +11,17 @@ new class extends Component {
 
     public bool $isFormLocked = false;
     public ?int $rjNo = null;
-    public array $dataDaftarUGD = [];
+    /**
+     * IRISAN dokumen: empat cabang yang dikelola komponen ini. Dua terakhir sekaligus
+     * model form (`wire:model.live="diagnosisFreeText"`).
+     */
+    public array $diagnosis = [];
+    public array $procedure = [];
+    public string $diagnosisFreeText = '';
+    public string $procedureFreeText = '';
+
+    /** Penanda kunjungan sudah dimuat lewat open(). */
+    public bool $dokumenTermuat = false;
 
     public ?string $diagnosaId = null;
     public ?string $procedureId = null;
@@ -56,12 +66,11 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarUGD = $data;
-
-        $this->dataDaftarUGD['diagnosis'] = $this->normalisasiDiagnosis($this->dataDaftarUGD['diagnosis'] ?? []);
-        $this->dataDaftarUGD['procedure'] ??= [];
-        $this->dataDaftarUGD['diagnosisFreeText'] ??= '';
-        $this->dataDaftarUGD['procedureFreeText'] ??= '';
+        $this->diagnosis = $this->normalisasiDiagnosis($data['diagnosis'] ?? []);
+        $this->procedure = $data['procedure'] ?? [];
+        $this->diagnosisFreeText = (string) ($data['diagnosisFreeText'] ?? '');
+        $this->procedureFreeText = (string) ($data['procedureFreeText'] ?? '');
+        $this->dokumenTermuat = true;
 
         $this->isFormLocked = $this->checkEmrUGDStatus($rjNo);
         $this->incrementVersion('modal-diagnosis-ugd');
@@ -103,13 +112,12 @@ new class extends Component {
             throw new \RuntimeException('Data UGD tidak ditemukan, simpan dibatalkan.');
         }
 
-        $data['diagnosis'] = $this->dataDaftarUGD['diagnosis'] ?? [];
-        $data['procedure'] = $this->dataDaftarUGD['procedure'] ?? [];
-        $data['diagnosisFreeText'] = $this->dataDaftarUGD['diagnosisFreeText'] ?? '';
-        $data['procedureFreeText'] = $this->dataDaftarUGD['procedureFreeText'] ?? '';
+        $data['diagnosis'] = $this->diagnosis;
+        $data['procedure'] = $this->procedure;
+        $data['diagnosisFreeText'] = $this->diagnosisFreeText;
+        $data['procedureFreeText'] = $this->procedureFreeText;
 
         $this->updateJsonUGD($this->rjNo, $data);
-        $this->dataDaftarUGD = $data;
     }
 
     /* ===============================
@@ -122,7 +130,7 @@ new class extends Component {
             return;
         }
 
-        if (empty($this->dataDaftarUGD)) {
+        if (!$this->dokumenTermuat) {
             $this->dispatch('toast', type: 'error', message: 'Data kunjungan tidak ditemukan, silakan buka ulang form.');
             return;
         }
@@ -192,12 +200,12 @@ new class extends Component {
 
                 // 3. Tambah ke array lokal
                 //    Auto-Primary hanya kalau (belum ada Primary) AND (accpdx='Y'). User bisa ubah manual via dropdown.
-                $existing = collect($this->dataDaftarUGD['diagnosis'] ?? []);
+                $existing = collect($this->diagnosis ?? []);
                 $hasPrimary = $existing->where('kategoriDiagnosa', 'Primary')->isNotEmpty();
                 $accpdx = DB::table('rsmst_mstdiags')->where('diag_id', $diagnosaId)->value('accpdx');
                 $kategoriDiagnosa = (!$hasPrimary && $accpdx === 'Y') ? 'Primary' : 'Secondary';
 
-                $this->dataDaftarUGD['diagnosis'][] = [
+                $this->diagnosis[] = [
                     'diagId' => $diagnosaId,
                     'diagDesc' => $diagnosaDesc,
                     'icdX' => $icdx,
@@ -241,14 +249,14 @@ new class extends Component {
                 $this->lockUGDRow($this->rjNo);
 
                 // Tangkap identitas entri sebelum dihapus
-                $row = collect($this->dataDaftarUGD['diagnosis'] ?? [])->firstWhere('ugdDtlDtl', $ugdDtlDtl);
+                $row = collect($this->diagnosis ?? [])->firstWhere('ugdDtlDtl', $ugdDtlDtl);
                 $ket = trim(($row['icdX'] ?? ($row['diagId'] ?? '-')) . ' ' . ($row['diagDesc'] ?? ''));
 
                 // 2. Hapus dari tabel
                 DB::table('rstxn_ugddtls')->where('rjdtl_dtl', $ugdDtlDtl)->delete();
 
                 // 3. Hapus dari array lokal
-                $this->dataDaftarUGD['diagnosis'] = collect($this->dataDaftarUGD['diagnosis'] ?? [])
+                $this->diagnosis = collect($this->diagnosis ?? [])
                     ->where('ugdDtlDtl', '!=', $ugdDtlDtl)
                     ->values()
                     ->toArray();
@@ -281,7 +289,7 @@ new class extends Component {
         }
         $kategori = in_array($kategori, ['Primary', 'Secondary'], true) ? $kategori : 'Secondary';
 
-        $rows = $this->dataDaftarUGD['diagnosis'] ?? [];
+        $rows = $this->diagnosis ?? [];
         $targetIndex = null;
         foreach ($rows as $i => $r) {
             if ((int) ($r['ugdDtlDtl'] ?? 0) === (int) $ugdDtlDtl) {
@@ -314,7 +322,7 @@ new class extends Component {
         $rows[$targetIndex]['kategoriDiagnosa'] = $kategori;
         // Sort Primary di atas, Secondary di bawah (stable)
         usort($rows, fn($a, $b) => (($a['kategoriDiagnosa'] ?? '') === 'Primary' ? 0 : 1) - (($b['kategoriDiagnosa'] ?? '') === 'Primary' ? 0 : 1));
-        $this->dataDaftarUGD['diagnosis'] = array_values($rows);
+        $this->diagnosis = array_values($rows);
 
         $logCode = $rows[$targetIndex]['icdX'] ?? ($rows[$targetIndex]['diagId'] ?? '-');
         try {
@@ -360,7 +368,7 @@ new class extends Component {
                 $this->lockUGDRow($this->rjNo);
 
                 // 2. Tambah ke array lokal
-                $this->dataDaftarUGD['procedure'][] = [
+                $this->procedure[] = [
                     'procedureId' => $procedureId,
                     'procedureDesc' => $procedureDesc,
                     'ketProcedure' => 'Keterangan Procedure',
@@ -395,14 +403,14 @@ new class extends Component {
                 $this->lockUGDRow($this->rjNo);
 
                 // 2. Cek keberadaan
-                $procRow = collect($this->dataDaftarUGD['procedure'] ?? [])->firstWhere('procedureId', $procedureId);
+                $procRow = collect($this->procedure ?? [])->firstWhere('procedureId', $procedureId);
                 if (!$procRow) {
                     throw new \RuntimeException("Procedure {$procedureId} tidak ditemukan.");
                 }
                 $ket = trim($procedureId . ' ' . ($procRow['procedureDesc'] ?? ''));
 
                 // 3. Hapus dari array lokal
-                $this->dataDaftarUGD['procedure'] = collect($this->dataDaftarUGD['procedure'] ?? [])
+                $this->procedure = collect($this->procedure ?? [])
                     ->where('procedureId', '!=', $procedureId)
                     ->values()
                     ->toArray();
@@ -438,7 +446,11 @@ new class extends Component {
         $this->isFormLocked = false;
         $this->diagnosaId = null;
         $this->procedureId = null;
-        $this->dataDaftarUGD = [];
+        $this->diagnosis = [];
+        $this->procedure = [];
+        $this->diagnosisFreeText = '';
+        $this->procedureFreeText = '';
+        $this->dokumenTermuat = false;
     }
 };
 ?>
@@ -449,7 +461,7 @@ new class extends Component {
             <div
                 class="w-full p-4 space-y-6 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
 
-                @if (isset($dataDaftarUGD['diagnosis']))
+                @if ($dokumenTermuat)
                     <div class="space-y-4">
 
                         {{-- DIAGNOSIS ICD-10 --}}
@@ -463,7 +475,7 @@ new class extends Component {
 
                                 <div>
                                     <x-input-label value="Free Text Diagnosis" />
-                                    <x-textarea wire:model.live="dataDaftarUGD.diagnosisFreeText"
+                                    <x-textarea wire:model.live="diagnosisFreeText"
                                         placeholder="Masukkan diagnosa free text..." :disabled="$isFormLocked" rows="2"
                                         class="w-full mt-1" />
                                 </div>
@@ -472,7 +484,7 @@ new class extends Component {
                         </x-border-form>
 
                         {{-- List Diagnosa (di luar frame, seperti pola Risiko Jatuh) --}}
-                        @if (!empty($dataDaftarUGD['diagnosis']))
+                        @if (!empty($diagnosis))
                             <div class="overflow-x-auto rounded-lg border border-hairline dark:border-gray-700">
                                         <table class="w-full text-sm text-left text-muted dark:text-gray-300">
                                             <thead class="bg-surface-soft dark:bg-gray-700 text-muted dark:text-gray-400">
@@ -485,7 +497,7 @@ new class extends Component {
                                                 </tr>
                                             </thead>
                                             <tbody class="divide-y divide-hairline-soft dark:divide-gray-700">
-                                                @foreach ($dataDaftarUGD['diagnosis'] as $index => $diagnosa)
+                                                @foreach ($diagnosis as $index => $diagnosa)
                                                     <tr wire:key="diagnosa-ugd-{{ $diagnosa['ugdDtlDtl'] ?? $index }}"
                                                         class="bg-canvas hover:bg-surface-soft dark:bg-gray-800 dark:hover:bg-gray-700">
                                                         <td class="px-3 py-2 font-medium text-ink dark:text-white">
@@ -540,7 +552,7 @@ new class extends Component {
 
                                 <div>
                                     <x-input-label value="Free Text Procedure" />
-                                    <x-textarea wire:model.live="dataDaftarUGD.procedureFreeText"
+                                    <x-textarea wire:model.live="procedureFreeText"
                                         placeholder="Masukkan procedure free text..." :disabled="$isFormLocked" rows="2"
                                         class="w-full mt-1" />
                                 </div>
@@ -549,7 +561,7 @@ new class extends Component {
                         </x-border-form>
 
                         {{-- List Procedure (di luar frame, seperti pola Risiko Jatuh) --}}
-                        @if (!empty($dataDaftarUGD['procedure']))
+                        @if (!empty($procedure))
                             <div class="overflow-x-auto rounded-lg border border-hairline dark:border-gray-700">
                                         <table class="w-full text-sm text-left text-muted dark:text-gray-300">
                                             <thead class="bg-surface-soft dark:bg-gray-700 text-muted dark:text-gray-400">
@@ -561,7 +573,7 @@ new class extends Component {
                                                 </tr>
                                             </thead>
                                             <tbody class="divide-y divide-hairline-soft dark:divide-gray-700">
-                                                @foreach ($dataDaftarUGD['procedure'] as $index => $procedure)
+                                                @foreach ($procedure as $index => $procedure)
                                                     <tr wire:key="procedure-ugd-{{ $procedure['procedureId'] }}"
                                                         class="bg-canvas hover:bg-surface-soft dark:bg-gray-800 dark:hover:bg-gray-700">
                                                         <td class="px-3 py-2 font-medium text-ink dark:text-white">

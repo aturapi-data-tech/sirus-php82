@@ -19,7 +19,8 @@ new class extends Component {
     public ?string $riHdrNo = null;
     public ?string $regNo = null;
     public bool $disabled = false;
-    public array $dataDaftarRi = [];
+    /** Nama pasien untuk isian awal penanda tangan (dulu dibaca dari dokumen penuh). */
+    public ?string $regName = null;
 
     public array $renderVersions = [];
     protected array $renderAreas = ['modal-penundaan-pelayanan-ri'];
@@ -82,7 +83,6 @@ new class extends Component {
         if ($this->riHdrNo) {
             $data = $this->findDataRI($this->riHdrNo);
             if ($data) {
-                $this->dataDaftarRi = $data;
                 $this->regNo = $data['regNo'] ?? null;
                 $this->penundaanList = $data['penundaanPelayananRI'] ?? [];
                 $this->isFormLocked = $this->checkEmrRIStatus($this->riHdrNo) || $disabled;
@@ -111,13 +111,10 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarRi = $data;
         $this->regNo = $data['regNo'] ?? null;
-        if (!isset($this->dataDaftarRi['penundaanPelayananRI']) || !is_array($this->dataDaftarRi['penundaanPelayananRI'])) {
-            $this->dataDaftarRi['penundaanPelayananRI'] = [];
-        }
-        $this->penundaanList = $this->dataDaftarRi['penundaanPelayananRI'];
-        $this->newForm['namaPenanda'] = $this->dataDaftarRi['regName'] ?? '';
+        $this->penundaanList = is_array($data['penundaanPelayananRI'] ?? null) ? $data['penundaanPelayananRI'] : [];
+        $this->regName = $data['regName'] ?? null;
+        $this->newForm['namaPenanda'] = $this->regName ?? '';
         $this->isFormLocked = $this->checkEmrRIStatus($this->riHdrNo) || $this->disabled;
         $this->incrementVersion('modal-penundaan-pelayanan-ri');
 
@@ -243,7 +240,7 @@ new class extends Component {
         try {
             $this->persistEntry($key, true, 'Kunci (TTD Petugas)');
             $this->resetNewForm();
-            $this->newForm['namaPenanda'] = $this->dataDaftarRi['regName'] ?? '';
+            $this->newForm['namaPenanda'] = $this->regName ?? '';
             $this->signature = '';
             $this->editingKey = null;
             $this->viewOnly = false;
@@ -316,7 +313,6 @@ new class extends Component {
             $data['penundaanPelayananRI'] = array_values($list);
 
             $this->updateJsonRI((int) $this->riHdrNo, $data);
-            $this->dataDaftarRi = $data;
             $this->penundaanList = $data['penundaanPelayananRI'];
 
             $this->appendAdminLogRI((int) $this->riHdrNo, $logVerb . ' Penundaan Pelayanan RI — jenis "' . ($entry['jenis'] ?: ($entry['alasan'] ?: '-')) . '" (' . $key . ')', 'MR');
@@ -414,7 +410,7 @@ new class extends Component {
     public function cancelEdit(): void
     {
         $this->resetNewForm();
-        $this->newForm['namaPenanda'] = $this->dataDaftarRi['regName'] ?? '';
+        $this->newForm['namaPenanda'] = $this->regName ?? '';
         $this->signature = '';
         $this->editingKey = null;
         $this->viewOnly = false;
@@ -480,7 +476,7 @@ new class extends Component {
             }
 
             $data = array_merge($pasien, [
-                'dataRi' => $this->dataDaftarRi,
+                'dataRi' => $this->findDataRI($this->riHdrNo) ?: [],
                 'form' => $entry,
                 'identitasRs' => $identitasRs,
                 'ttdPemberiPath' => $ttdPemberiPath,
@@ -527,7 +523,6 @@ new class extends Component {
                     ->toArray();
 
                 $this->updateJsonRI((int) $this->riHdrNo, $data);
-                $this->dataDaftarRi = $data;
                 $this->penundaanList = $data['penundaanPelayananRI'];
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Hapus Pemberitahuan Penundaan/Kelambatan — TTD ' . $signatureDate, 'MR');
             });
@@ -569,7 +564,6 @@ new class extends Component {
                 $list[$index]['pemberiInfoDate'] = '';
                 $data['penundaanPelayananRI'] = array_values($list);
                 $this->updateJsonRI((int) $this->riHdrNo, $data);
-                $this->dataDaftarRi = $data;
                 $this->penundaanList = $data['penundaanPelayananRI'];
                 $pembukaKunci = auth()->user()->myuser_name ?? '-';
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Buka kunci Pemberitahuan Penundaan Pelayanan (' . $signatureDate . ') oleh ' . $pembukaKunci . ' — TTD petugas dicabut, entri kembali draft', 'MR');
@@ -608,7 +602,6 @@ new class extends Component {
     {
         $this->resetVersion();
         $this->isFormLocked = false;
-        $this->dataDaftarRi = [];
         $this->penundaanList = [];
         $this->resetNewForm();
         $this->signature = '';

@@ -30,7 +30,23 @@ new class extends Component {
     public ?int $rjNo = null;
     public ?string $regNo = null;
     public bool $disabled = false;
-    public array $dataDaftarUGD = [];
+    /**
+     * IRISAN dokumen: cabang `pelaporanEsoUGD` + beberapa nilai rekam medis yang dipotret
+     * sebagai isian awal formulir.
+     */
+    public array $daftarEso = [];
+    public string $rjDate = '';
+    public string $diagnosisFreeText = '';
+    public string $keluhanUtama = '';
+
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan + skalar yang disimpan. */
+    private function serapIrisan(array $data): void
+    {
+        $this->daftarEso = $data['pelaporanEsoUGD'] ?? [];
+        $this->rjDate = (string) ($data['rjDate'] ?? '');
+        $this->diagnosisFreeText = (string) ($data['diagnosisFreeText'] ?? '');
+        $this->keluhanUtama = (string) (data_get($data, 'anamnesa.keluhanUtama.keluhanUtama') ?? '');
+    }
 
     public array $form = [];
 
@@ -74,9 +90,8 @@ new class extends Component {
         if ($this->rjNo) {
             $data = $this->findDataUGD($this->rjNo);
             if ($data) {
-                $this->dataDaftarUGD = $data;
+                $this->serapIrisan($data);
                 $this->regNo = $data['regNo'] ?? null;
-                $this->dataDaftarUGD['pelaporanEsoUGD'] ??= [];
                 $this->isFormLocked = $this->checkEmrUGDStatus($this->rjNo) || $disabled;
             }
         }
@@ -90,9 +105,8 @@ new class extends Component {
 
         $data = $this->findDataUGD($this->rjNo);
         if ($data) {
-            $this->dataDaftarUGD = $data;
+            $this->serapIrisan($data);
             $this->regNo = $data['regNo'] ?? $this->regNo;
-            $this->dataDaftarUGD['pelaporanEsoUGD'] ??= [];
             $this->isFormLocked = $this->checkEmrUGDStatus($this->rjNo) || $this->disabled;
         }
 
@@ -206,7 +220,7 @@ new class extends Component {
             $potretRekamMedis('penderita.kelamin', 'Wanita');
         }
 
-        $potretRekamMedis('penderita.tglMrs', data_get($this->dataDaftarUGD, 'rjDate', ''));
+        $potretRekamMedis('penderita.tglMrs', $this->rjDate);
     }
 
     /**
@@ -225,7 +239,7 @@ new class extends Component {
         // utama adalah diagnosisFreeText (diagnosis ketikan dokter UGD); kalau kosong
         // dipakai keluhan utama. Berat badan SENGAJA tidak di-prefill: tandaVital UGD
         // tidak menyimpan berat badan sama sekali, jadi tetap diisi manual.
-        $isiJikaKosong('penderita.penyakitUtama', (string) (data_get($this->dataDaftarUGD, 'diagnosisFreeText') ?: data_get($this->dataDaftarUGD, 'anamnesa.keluhanUtama.keluhanUtama', '')));
+        $isiJikaKosong('penderita.penyakitUtama', (string) ($this->diagnosisFreeText ?: $this->keluhanUtama));
 
         // Pengirim = petugas yang membuat laporan + identitas RS
         $identitasRs = DB::table('rsmst_identitases')->select('int_name', 'int_address', 'int_city', 'int_phone1')->first();
@@ -380,7 +394,7 @@ new class extends Component {
 
     private function buildEntry(string $id, bool $finalized): array
     {
-        $existing = collect($this->dataDaftarUGD['pelaporanEsoUGD'] ?? [])->firstWhere('id', $id);
+        $existing = collect($this->daftarEso ?? [])->firstWhere('id', $id);
 
         return [
             'id' => $id,
@@ -419,7 +433,7 @@ new class extends Component {
             $fresh['pelaporanEsoUGD'] = array_values($daftarEntri);
 
             $this->updateJsonUGD($this->rjNo, $fresh);
-            $this->dataDaftarUGD = $fresh;
+            $this->daftarEso = $fresh['pelaporanEsoUGD'] ?? [];
 
             $this->appendAdminLogUGD($this->rjNo, $logVerb . ' Pelaporan ESO — ' . ($entry['form']['tglLaporan'] ?? '-'), 'MR');
         });
@@ -499,7 +513,7 @@ new class extends Component {
 
     public function editEntry(string $id): void
     {
-        $entri = collect($this->dataDaftarUGD['pelaporanEsoUGD'] ?? [])->firstWhere('id', $id);
+        $entri = collect($this->daftarEso ?? [])->firstWhere('id', $id);
         if (!$entri) {
             $this->dispatch('toast', type: 'error', message: 'Entri tidak ditemukan.');
             return;
@@ -520,7 +534,7 @@ new class extends Component {
 
     public function viewEntry(string $id): void
     {
-        $entri = collect($this->dataDaftarUGD['pelaporanEsoUGD'] ?? [])->firstWhere('id', $id);
+        $entri = collect($this->daftarEso ?? [])->firstWhere('id', $id);
         if (!$entri) {
             $this->dispatch('toast', type: 'error', message: 'Entri tidak ditemukan.');
             return;
@@ -592,7 +606,7 @@ new class extends Component {
 
                 $fresh['pelaporanEsoUGD'] = $daftarBaru;
                 $this->updateJsonUGD($this->rjNo, $fresh);
-                $this->dataDaftarUGD = $fresh;
+                $this->daftarEso = $fresh['pelaporanEsoUGD'] ?? [];
 
                 $this->appendAdminLogUGD($this->rjNo, 'Hapus Pelaporan ESO — ' . ($entriDihapus['form']['tglLaporan'] ?? '-'), 'MR');
             });
@@ -647,7 +661,7 @@ new class extends Component {
 
                 $fresh['pelaporanEsoUGD'] = array_values($daftarEntri);
                 $this->updateJsonUGD($this->rjNo, $fresh);
-                $this->dataDaftarUGD = $fresh;
+                $this->daftarEso = $fresh['pelaporanEsoUGD'] ?? [];
 
                 $this->appendAdminLogUGD(
                     (int) $this->rjNo,
@@ -667,7 +681,7 @@ new class extends Component {
 
     public function cetak(string $id)
     {
-        $entry = collect($this->dataDaftarUGD['pelaporanEsoUGD'] ?? [])->firstWhere('id', $id);
+        $entry = collect($this->daftarEso ?? [])->firstWhere('id', $id);
         if (!$entry) {
             $this->dispatch('toast', type: 'error', message: 'Data laporan tidak ditemukan.');
             return;
@@ -682,7 +696,7 @@ new class extends Component {
             $ttdPetugasPath = TtdUser::pathBerkasDariKode(data_get($entry, 'form.ttd.petugasCode'));
 
             $data = array_merge($pasien, [
-                'dataUgd' => $this->dataDaftarUGD,
+                'dataUgd' => $this->findDataUGD($this->rjNo) ?: [],
                 'entry' => $entry,
                 'identitasRs' => $identitasRs,
                 'ttdPetugasPath' => $ttdPetugasPath,
@@ -715,7 +729,7 @@ new class extends Component {
 
 <div>
     {{-- ══ RINGKASAN + TOMBOL ══ --}}
-    @php $esoCount = count($dataDaftarUGD['pelaporanEsoUGD'] ?? []); @endphp
+    @php $esoCount = count($daftarEso ?? []); @endphp
     <x-modul-dokumen.kartu judul="Pelaporan Efek Samping Obat"
         tombol="Buka Pelaporan ESO"
         :nonaktif="!$rjNo">
@@ -740,7 +754,7 @@ new class extends Component {
                     </tr>
                 </thead>
                 <tbody>
-                    @forelse (array_slice(collect($dataDaftarUGD['pelaporanEsoUGD'] ?? [])->sortByDesc(fn($entri) => strtotime(strtr((data_get($entri, 'form.tglLaporan') ?: ($entri['created_at'] ?? '')), '/', '-')))->values()->all(), 0, 3) as $indexEntri => $entri)
+                    @forelse (array_slice(collect($daftarEso ?? [])->sortByDesc(fn($entri) => strtotime(strtr((data_get($entri, 'form.tglLaporan') ?: ($entri['created_at'] ?? '')), '/', '-')))->values()->all(), 0, 3) as $indexEntri => $entri)
                         @php
                             $idEntri = $entri['id'] ?? null;
                             $isFinal = (bool) ($entri['finalized'] ?? false);
@@ -781,8 +795,8 @@ new class extends Component {
                 </tbody>
             </table>
         </div>
-        @if (count($dataDaftarUGD['pelaporanEsoUGD'] ?? []) > 3)
-            <p class="mt-2 text-xs italic text-muted-soft">+{{ count($dataDaftarUGD['pelaporanEsoUGD'] ?? []) - 3 }} entri lain — buka untuk melihat semua.</p>
+        @if (count($daftarEso ?? []) > 3)
+            <p class="mt-2 text-xs italic text-muted-soft">+{{ count($daftarEso ?? []) - 3 }} entri lain — buka untuk melihat semua.</p>
         @endif
     </x-modul-dokumen.kartu>
 
@@ -1274,7 +1288,7 @@ new class extends Component {
                 @endif
                 @unless ($this->diForm())
                 <x-modul-dokumen.tabel-daftar :kolom="['', 'Tgl. Laporan', 'Manifestasi ESO', 'Jml Obat' => 'w-24', 'Pelapor', 'Status' => 'w-24', 'Aksi' => 'w-56']">
-                                @forelse (collect($dataDaftarUGD['pelaporanEsoUGD'] ?? [])->sortByDesc(fn($entri) => strtotime(strtr((data_get($entri, 'form.tglLaporan') ?: ($entri['created_at'] ?? '')), '/', '-')))->values()->all() as $indexEntri => $entri)
+                                @forelse (collect($daftarEso ?? [])->sortByDesc(fn($entri) => strtotime(strtr((data_get($entri, 'form.tglLaporan') ?: ($entri['created_at'] ?? '')), '/', '-')))->values()->all() as $indexEntri => $entri)
                                     @php
                                         $idEntri = $entri['id'] ?? null;
                                         $isFinal = (bool) ($entri['finalized'] ?? false);

@@ -17,7 +17,21 @@ new class extends Component {
 
     public bool $isFormLocked = false;
     public ?string $riHdrNo = null;
-    public array $dataDaftarRi = [];
+    /**
+     * IRISAN dokumen: cabang `sbar` + baris DPJP Utama (dari Leveling Dokter di Pengkajian
+     * Awal — cabang milik komponen LAIN) + nomor RM untuk nama berkas cetak.
+     */
+    public array $daftarSbar = [];
+    public ?array $dpjpUtamaRow = null;
+    public string $regNoPasien = '';
+
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan + dua nilai yang disimpan. */
+    private function serapIrisan(array $data): void
+    {
+        $this->daftarSbar = $data['sbar'] ?? [];
+        $this->dpjpUtamaRow = $this->dpjpUtamaRow($data);
+        $this->regNoPasien = (string) ($data['regNo'] ?? '');
+    }
 
     public string $activeProfession = 'Semua';
     public array $professionTabs = ['Semua', 'Dokter', 'Perawat', 'Apoteker', 'Gizi', 'Penunjang'];
@@ -66,8 +80,7 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarRi = $data;
-        $this->dataDaftarRi['sbar'] ??= [];
+        $this->serapIrisan($data);
 
         $role = auth()->user()->profesiKlinis();
         $this->activeProfession = match (true) {
@@ -146,7 +159,7 @@ new class extends Component {
                 ]);
 
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->dataDaftarRi = $fresh;
+                $this->serapIrisan($fresh);
                 $inserted = true;
 
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Tambah SBAR — entri ' . $this->formEntrySBAR['tglSBAR'] . ' (' . ($this->formEntrySBAR['profession'] ?: '-') . ')', 'MR');
@@ -171,7 +184,7 @@ new class extends Component {
             return;
         }
 
-        $sbar = collect($this->dataDaftarRi['sbar'] ?? [])->first(fn($r) => ($r['sbarId'] ?? null) === $sbarId);
+        $sbar = collect($this->daftarSbar ?? [])->first(fn($r) => ($r['sbarId'] ?? null) === $sbarId);
         if (!$sbar) {
             $this->dispatch('toast', type: 'error', message: 'SBAR tidak ditemukan.');
             return;
@@ -267,7 +280,7 @@ new class extends Component {
                 $fresh['sbar'] = $list->values()->all();
 
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->dataDaftarRi = $fresh;
+                $this->serapIrisan($fresh);
                 $updated = true;
 
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Edit SBAR — entri ' . ($row['tglSBAR'] ?? '-') . ' (' . ($row['profession'] ?: '-') . ')', 'MR');
@@ -316,7 +329,7 @@ new class extends Component {
                 $fresh['sbar'] = $list->values()->all();
 
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->dataDaftarRi = $fresh;
+                $this->serapIrisan($fresh);
 
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Hapus SBAR — entri ' . ($row['tglSBAR'] ?? '-') . ' oleh ' . ($row['petugasSBAR'] ?? '-'), 'MR');
             });
@@ -344,7 +357,7 @@ new class extends Component {
             return;
         }
 
-        $dpjp = $this->dpjpUtamaRow($this->dataDaftarRi);
+        $dpjp = $this->dpjpUtamaRow;
         $dpjpId = (string) ($dpjp['drId'] ?? '');
         $isAdmin = auth()->user()->hasRole('Admin');
         if (!$isAdmin && $dpjpId !== auth()->user()->myuser_code) {
@@ -377,7 +390,7 @@ new class extends Component {
                 $fresh['sbar'] = $list->values()->all();
 
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->dataDaftarRi = $fresh;
+                $this->serapIrisan($fresh);
 
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Review SBAR — entri ' . ($row['tglSBAR'] ?? '-') . ' oleh DPJP ' . ($dpjp['drName'] ?? '-'), 'MR');
             });
@@ -398,7 +411,7 @@ new class extends Component {
             return;
         }
 
-        $dpjp = $this->dpjpUtamaRow($this->dataDaftarRi);
+        $dpjp = $this->dpjpUtamaRow;
         $dpjpId = (string) ($dpjp['drId'] ?? '');
         $isAdmin = auth()->user()->hasRole('Admin');
         if (!$isAdmin && $dpjpId !== auth()->user()->myuser_code) {
@@ -423,7 +436,7 @@ new class extends Component {
                 $fresh['sbar'] = $list->values()->all();
 
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->dataDaftarRi = $fresh;
+                $this->serapIrisan($fresh);
 
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Batal review SBAR — entri ' . ($row['tglSBAR'] ?? '-'), 'MR');
             });
@@ -439,13 +452,13 @@ new class extends Component {
     /* ── Cetak PDF satu entri SBAR ── */
     public function printSbar(string $sbarId): mixed
     {
-        $sbar = collect($this->dataDaftarRi['sbar'] ?? [])->first(fn($r) => ($r['sbarId'] ?? null) === $sbarId);
+        $sbar = collect($this->daftarSbar ?? [])->first(fn($r) => ($r['sbarId'] ?? null) === $sbarId);
         if (empty($sbar)) {
             $this->dispatch('toast', type: 'error', message: 'SBAR tidak ditemukan.');
             return null;
         }
 
-        $regNo = (string) ($this->dataDaftarRi['regNo'] ?? '');
+        $regNo = $this->regNoPasien;
         $pasienData = $regNo !== '' ? $this->findDataMasterPasien($regNo) : [];
         if (empty($pasienData)) {
             $this->dispatch('toast', type: 'error', message: 'Data pasien tidak ditemukan.');
@@ -455,7 +468,7 @@ new class extends Component {
         $pdf = Pdf::loadView('pages.components.rekam-medis.ri.cetak-sbar.cetak-sbar-ri-print', [
             'sbar' => $sbar,
             'dataPasien' => $pasienData,
-            'dataDaftarRi' => $this->dataDaftarRi,
+            'dataDaftarRi' => $this->findDataRI($this->riHdrNo) ?: [],
         ])->setPaper('A4');
 
         $filename = 'sbar-ri-' . ($regNo !== '' ? $regNo : $this->riHdrNo) . '-' . substr($sbarId, 0, 8) . '.pdf';
@@ -465,7 +478,7 @@ new class extends Component {
 
     public function copySBAR(string $sbarId): void
     {
-        $sbar = collect($this->dataDaftarRi['sbar'] ?? [])->first(fn($r) => ($r['sbarId'] ?? null) === $sbarId);
+        $sbar = collect($this->daftarSbar ?? [])->first(fn($r) => ($r['sbarId'] ?? null) === $sbarId);
 
         if (!$sbar) {
             $this->dispatch('toast', type: 'error', message: 'SBAR tidak ditemukan.');
@@ -500,7 +513,7 @@ new class extends Component {
 
     public function getSbarCount(string $profession): int
     {
-        $list = $this->dataDaftarRi['sbar'] ?? [];
+        $list = $this->daftarSbar ?? [];
         if ($profession === 'Semua') {
             return count($list);
         }
@@ -690,7 +703,7 @@ new class extends Component {
                 <div class="space-y-3">
                     @php
                         // Urut tanggal SBAR desc (terbaru di atas) untuk semua tab profesi.
-                        $allSbar = collect($dataDaftarRi['sbar'] ?? [])
+                        $allSbar = collect($daftarSbar ?? [])
                             ->sortByDesc(fn($c) => Carbon::createFromFormat('d/m/Y H:i:s', ($c['tglSBAR'] ?? '') ?: '01/01/2000 00:00:00')->timestamp)
                             ->values()
                             ->all();
@@ -702,8 +715,6 @@ new class extends Component {
                                 );
 
                         // DPJP Utama (leveling Pengkajian Awal). Hanya dia yang boleh review/TTD SBAR.
-                        $dpjpUtamaRow = collect($dataDaftarRi['pengkajianAwalPasienRawatInap']['levelingDokter'] ?? [])
-                            ->first(fn($r) => strcasecmp((string) ($r['levelDokter'] ?? ''), 'Utama') === 0);
                         $dpjpUtamaId = (string) ($dpjpUtamaRow['drId'] ?? '');
                         $isDpjpUtama = $dpjpUtamaId !== '' && $dpjpUtamaId === auth()->user()->myuser_code;
                         // DPJP Utama atau Admin boleh review; tetap perlu DPJP Utama terdefinisi (atribusi atas nama DPJP).

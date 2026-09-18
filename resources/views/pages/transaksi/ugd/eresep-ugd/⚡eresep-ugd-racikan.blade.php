@@ -13,7 +13,14 @@ new class extends Component {
 
     public bool $isFormLocked = false;
     public ?int $rjNo = null;
-    public array $dataDaftarUGD = [];
+    /**
+     * IRISAN dokumen: hanya cabang `eresepRacikan` — sekaligus model form
+     * (`wire:model="eresepRacikan.<i>.qty"`, diakses Alpine lewat `$wire.eresepRacikan[<i>]`).
+     */
+    public array $eresepRacikan = [];
+
+    /** Penanda kunjungan sudah dimuat. */
+    public bool $dokumenTermuat = false;
     public array $formEresepRacikan = [];
     public string $noRacikan = 'R1';
 
@@ -62,8 +69,8 @@ new class extends Component {
         }
 
         $this->rjNo = $rjNo;
-        $this->dataDaftarUGD = $data;
-        $this->dataDaftarUGD['eresepRacikan'] ??= [];
+        $this->eresepRacikan = $data['eresepRacikan'] ?? [];
+        $this->dokumenTermuat = true;
     }
 
     /* ===============================
@@ -78,10 +85,9 @@ new class extends Component {
             throw new \RuntimeException('Data UGD tidak ditemukan, simpan dibatalkan.');
         }
 
-        $data['eresepRacikan'] = $this->dataDaftarUGD['eresepRacikan'] ?? [];
+        $data['eresepRacikan'] = $this->eresepRacikan;
 
         $this->updateJsonUGD($this->rjNo, $data);
-        $this->dataDaftarUGD = $data;
     }
 
     /* ===============================
@@ -94,7 +100,7 @@ new class extends Component {
             return;
         }
 
-        if (empty($this->dataDaftarUGD)) {
+        if (!$this->dokumenTermuat) {
             $this->dispatch('toast', type: 'error', message: 'Data kunjungan tidak ditemukan.');
             return;
         }
@@ -196,7 +202,7 @@ new class extends Component {
                 ]);
 
                 // 3. Append ke array lokal
-                $this->dataDaftarUGD['eresepRacikan'][] = [
+                $this->eresepRacikan[] = [
                     'jenisKeterangan' => 'Racikan',
                     'productId' => $this->formEresepRacikan['productId'],
                     'productName' => $this->formEresepRacikan['productName'],
@@ -270,7 +276,7 @@ new class extends Component {
                     ]);
 
                 // 3. Update array lokal
-                foreach ($this->dataDaftarUGD['eresepRacikan'] as &$item) {
+                foreach ($this->eresepRacikan as &$item) {
                     if (($item['rjObatDtl'] ?? null) == $rjobatDtl) {
                         $item['qty'] = $qty;
                         $item['dosis'] = $dosis;
@@ -310,7 +316,7 @@ new class extends Component {
                 $this->lockUGDRow($this->rjNo);
 
                 // 2. Cek keberadaan
-                $exists = collect($this->dataDaftarUGD['eresepRacikan'] ?? [])->contains('rjObatDtl', $rjObatDtl);
+                $exists = collect($this->eresepRacikan ?? [])->contains('rjObatDtl', $rjObatDtl);
                 if (!$exists) {
                     throw new \RuntimeException("Obat racikan dengan ID {$rjObatDtl} tidak ditemukan.");
                 }
@@ -319,7 +325,7 @@ new class extends Component {
                 DB::table('rstxn_ugdobatracikans')->where('rjobat_dtl', $rjObatDtl)->delete();
 
                 // 4. Hapus dari array lokal
-                $this->dataDaftarUGD['eresepRacikan'] = collect($this->dataDaftarUGD['eresepRacikan'] ?? [])
+                $this->eresepRacikan = collect($this->eresepRacikan ?? [])
                     ->where('rjObatDtl', '!=', $rjObatDtl)
                     ->values()
                     ->toArray();
@@ -355,7 +361,8 @@ new class extends Component {
     {
         $this->resetVersion();
         $this->isFormLocked = false;
-        $this->dataDaftarUGD = [];
+        $this->eresepRacikan = [];
+        $this->dokumenTermuat = false;
         $this->formEresepRacikan = [];
         $this->noRacikan = 'R1';
     }
@@ -465,9 +472,9 @@ new class extends Component {
                                             </tr>
                                         </thead>
                                         <tbody class="bg-canvas dark:bg-gray-900">
-                                            @isset($dataDaftarUGD['eresepRacikan'])
+                                            @if (!empty($eresepRacikan))
                                                 @php $myPreviousRow = null; @endphp
-                                                @foreach ($dataDaftarUGD['eresepRacikan'] as $key => $eresep)
+                                                @foreach ($eresepRacikan as $key => $eresep)
                                                     @isset($eresep['jenisKeterangan'])
                                                         @php
                                                             $myRacikanBorder =
@@ -495,46 +502,46 @@ new class extends Component {
                                                                 <div class="flex items-center gap-1">
                                                                     <div class="w-20 shrink-0">
                                                                         <x-text-input placeholder="Dosis" :disabled="$isFormLocked"
-                                                                            wire:model="dataDaftarUGD.eresepRacikan.{{ $key }}.dosis"
+                                                                            wire:model="eresepRacikan.{{ $key }}.dosis"
                                                                             x-ref="dosis{{ $key }}"
                                                                             x-on:keydown.enter.prevent="$refs.takar{{ $key }}.focus()" />
                                                                     </div>
                                                                     <div class="w-20 shrink-0">
                                                                         <x-text-input placeholder="Satuan" :disabled="$isFormLocked"
-                                                                            wire:model="dataDaftarUGD.eresepRacikan.{{ $key }}.takar"
+                                                                            wire:model="eresepRacikan.{{ $key }}.takar"
                                                                             x-ref="takar{{ $key }}"
                                                                             x-on:keydown.enter.prevent="$refs.qty{{ $key }}.focus()" />
                                                                     </div>
                                                                     <div class="w-16 shrink-0">
                                                                         <x-text-input placeholder="Jml" :disabled="$isFormLocked"
-                                                                            wire:model="dataDaftarUGD.eresepRacikan.{{ $key }}.qty"
+                                                                            wire:model="eresepRacikan.{{ $key }}.qty"
                                                                             x-ref="qty{{ $key }}"
                                                                             x-on:keydown.enter.prevent="$refs.catatan{{ $key }}.focus()" />
                                                                     </div>
                                                                     <div class="flex-1">
                                                                         <x-text-input placeholder="Catatan" :disabled="$isFormLocked"
-                                                                            wire:model="dataDaftarUGD.eresepRacikan.{{ $key }}.catatan"
+                                                                            wire:model="eresepRacikan.{{ $key }}.catatan"
                                                                             x-ref="catatan{{ $key }}"
                                                                             x-on:keydown.enter.prevent="$refs.catatanKhusus{{ $key }}.focus()" />
                                                                     </div>
                                                                     <div class="flex-1">
                                                                         <x-text-input placeholder="Signa" :disabled="$isFormLocked"
-                                                                            wire:model="dataDaftarUGD.eresepRacikan.{{ $key }}.catatanKhusus"
+                                                                            wire:model="eresepRacikan.{{ $key }}.catatanKhusus"
                                                                             x-ref="catatanKhusus{{ $key }}"
                                                                             x-on:keydown.enter.prevent="
                                                                                 $wire.updateProduct(
                                                                                     '{{ $eresep['rjObatDtl'] }}',
-                                                                                    $wire.dataDaftarUGD.eresepRacikan[{{ $key }}].qty,
-                                                                                    $wire.dataDaftarUGD.eresepRacikan[{{ $key }}].dosis,
-                                                                                    $wire.dataDaftarUGD.eresepRacikan[{{ $key }}].takar,
-                                                                                    $wire.dataDaftarUGD.eresepRacikan[{{ $key }}].catatan,
-                                                                                    $wire.dataDaftarUGD.eresepRacikan[{{ $key }}].catatanKhusus
+                                                                                    $wire.eresepRacikan[{{ $key }}].qty,
+                                                                                    $wire.eresepRacikan[{{ $key }}].dosis,
+                                                                                    $wire.eresepRacikan[{{ $key }}].takar,
+                                                                                    $wire.eresepRacikan[{{ $key }}].catatan,
+                                                                                    $wire.eresepRacikan[{{ $key }}].catatanKhusus
                                                                                 );
                                                                                 $nextTick(() => $refs.dosis{{ $key }}.focus())
                                                                             " />
                                                                     </div>
                                                                 </div>
-                                                                @error("dataDaftarUGD.eresepRacikan.{{ $key }}.dosis")
+                                                                @error("eresepRacikan.{{ $key }}.dosis")
                                                                     <x-input-error :messages="$message" class="mt-1" />
                                                                 @enderror
                                                             </td>
@@ -547,7 +554,7 @@ new class extends Component {
                                                         @php $myPreviousRow = $eresep['noRacikan']; @endphp
                                                     @endisset
                                                 @endforeach
-                                            @endisset
+                                            @endif
                                         </tbody>
                                     </table>
                                 </div>

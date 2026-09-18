@@ -11,7 +11,18 @@ new class extends Component {
 
     public bool $isFormLocked = false;
     public ?int $rjNo = null;
-    public array $dataDaftarPoliRJ = [];
+    /**
+     * IRISAN dokumen: hanya cabang `eresep` — sekaligus model form
+     * (`wire:model="eresep.<i>.qty"`, dan diakses Alpine lewat `$wire.eresep[<i>]`).
+     *
+     * Dokumen `datadaftarpolirj_json` utuh tidak disimpan di properti publik — ikut snapshot
+     * Livewire tiap request. Penyimpanan tetap membaca ulang dokumen dari DB lalu mem-patch
+     * key `eresep` saja.
+     */
+    public array $eresep = [];
+
+    /** Penanda kunjungan sudah dimuat. */
+    public bool $dokumenTermuat = false;
     public array $formEresep = [];
     public array $signaCatatanOptions = [];
 
@@ -75,10 +86,8 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarPoliRJ = $data;
-
-        // Initialize eresep jika belum ada
-        $this->dataDaftarPoliRJ['eresep'] ??= [];
+        $this->eresep = $data['eresep'] ?? [];
+        $this->dokumenTermuat = true;
     }
 
     /* ===============================
@@ -95,10 +104,10 @@ new class extends Component {
         }
 
         // Patch hanya key 'eresep' — key lain tidak tersentuh
-        $data['eresep'] = $this->dataDaftarPoliRJ['eresep'] ?? [];
+        $data['eresep'] = $this->eresep;
 
         $this->updateJsonRJ($this->rjNo, $data);
-        $this->dataDaftarPoliRJ = $data;
+        $this->eresep = $data['eresep'];
     }
 
     /* ===============================
@@ -113,7 +122,7 @@ new class extends Component {
         }
 
         // 2. Guard: properti lokal belum ter-load
-        if (empty($this->dataDaftarPoliRJ)) {
+        if (!$this->dokumenTermuat) {
             $this->dispatch('toast', type: 'error', message: 'Data kunjungan tidak ditemukan, silakan buka ulang form.');
             return;
         }
@@ -214,7 +223,7 @@ new class extends Component {
                 ]);
 
                 // 3. Tambah ke array lokal
-                $this->dataDaftarPoliRJ['eresep'][] = [
+                $this->eresep[] = [
                     'productId' => $this->formEresep['productId'],
                     'productName' => $this->formEresep['productName'],
                     'jenisKeterangan' => 'NonRacikan',
@@ -279,7 +288,7 @@ new class extends Component {
                     ]);
 
                 // 3. Update array lokal
-                foreach ($this->dataDaftarPoliRJ['eresep'] as &$item) {
+                foreach ($this->eresep as &$item) {
                     if (($item['rjObatDtl'] ?? null) == $rjobatDtl) {
                         $item['qty'] = $qty;
                         $item['signaX'] = $signaX;
@@ -318,7 +327,7 @@ new class extends Component {
                 $this->lockRJRow($this->rjNo);
 
                 // 2. Validasi keberadaan obat
-                $obatExists = collect($this->dataDaftarPoliRJ['eresep'] ?? [])->contains('rjObatDtl', $rjObatDtl);
+                $obatExists = collect($this->eresep ?? [])->contains('rjObatDtl', $rjObatDtl);
 
                 if (!$obatExists) {
                     throw new \RuntimeException("Obat dengan ID {$rjObatDtl} tidak ditemukan.");
@@ -328,7 +337,7 @@ new class extends Component {
                 DB::table('rstxn_rjobats')->where('rjobat_dtl', $rjObatDtl)->delete();
 
                 // 4. Hapus dari array lokal
-                $this->dataDaftarPoliRJ['eresep'] = collect($this->dataDaftarPoliRJ['eresep'] ?? [])
+                $this->eresep = collect($this->eresep ?? [])
                     ->where('rjObatDtl', '!=', $rjObatDtl)
                     ->values()
                     ->toArray();
@@ -379,7 +388,8 @@ new class extends Component {
     {
         $this->resetVersion();
         $this->isFormLocked = false;
-        $this->dataDaftarPoliRJ = [];
+        $this->eresep = [];
+        $this->dokumenTermuat = false;
         $this->formEresep = [];
     }
 };
@@ -514,7 +524,7 @@ new class extends Component {
                                         </tr>
                                     </thead>
                                     <tbody class="bg-canvas dark:bg-gray-900">
-                                        @foreach ($dataDaftarPoliRJ['eresep'] ?? [] as $key => $eresep)
+                                        @foreach ($eresep ?? [] as $key => $eresep)
                                             <tr wire:key="eresep-rj-non-racikan-{{ $key }}"
                                                 class="border-b border-hairline dark:border-gray-700 hover:bg-surface-soft dark:hover:bg-gray-800/40 group" x-data>
                                                 <td class="hidden">
@@ -524,7 +534,7 @@ new class extends Component {
                                                 <td class="w-20 px-4 py-3">
                                                     <x-text-input placeholder="Jml" :disabled="$isFormLocked"
                                                         id="eresep-rj-qty-{{ $key }}"
-                                                        wire:model="dataDaftarPoliRJ.eresep.{{ $key }}.qty"
+                                                        wire:model="eresep.{{ $key }}.qty"
                                                         x-ref="qty{{ $key }}"
                                                         x-on:keydown.enter.prevent="$refs.signaX{{ $key }}.focus()" />
                                                 </td>
@@ -532,20 +542,20 @@ new class extends Component {
                                                     <div class="flex items-center gap-1">
                                                         <div class="w-16 shrink-0">
                                                             <x-text-input placeholder="Signa1" :disabled="$isFormLocked"
-                                                                wire:model="dataDaftarPoliRJ.eresep.{{ $key }}.signaX"
+                                                                wire:model="eresep.{{ $key }}.signaX"
                                                                 x-ref="signaX{{ $key }}"
                                                                 x-on:keydown.enter.prevent="$refs.signaHari{{ $key }}.focus()" />
                                                         </div>
                                                         <span class="text-sm text-muted shrink-0">dd</span>
                                                         <div class="w-16 shrink-0">
                                                             <x-text-input placeholder="Signa2" :disabled="$isFormLocked"
-                                                                wire:model="dataDaftarPoliRJ.eresep.{{ $key }}.signaHari"
+                                                                wire:model="eresep.{{ $key }}.signaHari"
                                                                 x-ref="signaHari{{ $key }}"
                                                                 x-on:keydown.enter.prevent="document.getElementById('eresep-rj-catatan-{{ $key }}')?.focus()" />
                                                         </div>
                                                         <div class="flex-1">
                                                             <x-catatan-signa-combobox
-                                                                wireModel="dataDaftarPoliRJ.eresep.{{ $key }}.catatanKhusus"
+                                                                wireModel="eresep.{{ $key }}.catatanKhusus"
                                                                 :options="$signaCatatanOptions"
                                                                 :disabled="$isFormLocked"
                                                                 inputId="eresep-rj-catatan-{{ $key }}"
@@ -553,10 +563,10 @@ new class extends Component {
                                                                 :maxlength="255"
                                                                 enterAction="$wire.updateProduct(
                                                                     '{{ $eresep['rjObatDtl'] }}',
-                                                                    $wire.dataDaftarPoliRJ.eresep[{{ $key }}].qty,
-                                                                    $wire.dataDaftarPoliRJ.eresep[{{ $key }}].signaX,
-                                                                    $wire.dataDaftarPoliRJ.eresep[{{ $key }}].signaHari,
-                                                                    $wire.dataDaftarPoliRJ.eresep[{{ $key }}].catatanKhusus
+                                                                    $wire.eresep[{{ $key }}].qty,
+                                                                    $wire.eresep[{{ $key }}].signaX,
+                                                                    $wire.eresep[{{ $key }}].signaHari,
+                                                                    $wire.eresep[{{ $key }}].catatanKhusus
                                                                 );
                                                                 $nextTick(() => document.getElementById('eresep-rj-qty-{{ $key }}')?.focus())" />
                                                         </div>

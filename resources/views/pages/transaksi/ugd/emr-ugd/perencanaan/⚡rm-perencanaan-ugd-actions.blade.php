@@ -15,7 +15,57 @@ new class extends Component {
 
     public bool $isFormLocked = false;
     public ?int $rjNo = null;
-    public array $dataDaftarUGD = [];
+    /**
+     * IRISAN dokumen: cabang `perencanaan` — sekaligus model form
+     * (jalur validasi & wire:model kini `perencanaan.*`).
+     */
+    public array $perencanaan = [];
+
+    /** Skalar identitas dokter (guard TTD-E & partial Petugas Medis). */
+    public string $drId = '';
+    public string $drDesc = '';
+
+    /**
+     * Cuplikan prasyarat TTD-E dokter: tujuh nilai milik cabang LAIN (pemeriksaan &
+     * anamnesa) yang divalidasi sebelum dokter menandatangani. Bentuknya sengaja BERSARANG
+     * seperti dokumen aslinya supaya jalur aturan validasi tetap sah.
+     *
+     * CATATAN (perilaku lama dipertahankan): cuplikan diambil saat open(), sedangkan
+     * pemeriksaan-ugd & anamnesa-ugd adalah SAUDARA yang mengedit dokumen yang sama —
+     * nilainya bisa basi. Sama seperti perencanaan-rj (85deee0f).
+     */
+    public array $prasyaratTtd = [];
+
+    /** Penanda kunjungan sudah dimuat lewat open(). */
+    public bool $dokumenTermuat = false;
+
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan + skalar + cuplikan disimpan. */
+    private function serapDokumen(array $data): void
+    {
+        $this->perencanaan = $data['perencanaan'] ?? [];
+        $this->drId = (string) ($data['drId'] ?? '');
+        $this->drDesc = (string) ($data['drDesc'] ?? '');
+        $this->prasyaratTtd = [
+            'pemeriksaan' => [
+                'tandaVital' => [
+                    'frekuensiNadi'  => $data['pemeriksaan']['tandaVital']['frekuensiNadi'] ?? null,
+                    'frekuensiNafas' => $data['pemeriksaan']['tandaVital']['frekuensiNafas'] ?? null,
+                    'suhu'           => $data['pemeriksaan']['tandaVital']['suhu'] ?? null,
+                ],
+                'nutrisi' => [
+                    'bb'  => $data['pemeriksaan']['nutrisi']['bb'] ?? null,
+                    'tb'  => $data['pemeriksaan']['nutrisi']['tb'] ?? null,
+                    'imt' => $data['pemeriksaan']['nutrisi']['imt'] ?? null,
+                ],
+            ],
+            'anamnesa' => [
+                'pengkajianPerawatan' => [
+                    'jamDatang' => $data['anamnesa']['pengkajianPerawatan']['jamDatang'] ?? null,
+                ],
+            ],
+        ];
+        $this->dokumenTermuat = true;
+    }
 
     public array $renderVersions = [];
     protected array $renderAreas = ['modal-perencanaan-ugd'];
@@ -45,8 +95,7 @@ new class extends Component {
     public function rendering(): void
     {
         $default = $this->getDefaultPerencanaan();
-        $current = $this->dataDaftarUGD['perencanaan'] ?? [];
-        $this->dataDaftarUGD['perencanaan'] = array_replace_recursive($default, $current);
+        $this->perencanaan = array_replace_recursive($default, $this->perencanaan);
 
         // Daftar Tindak Lanjut selalu ikut default. Data UGD lama menyimpan opsi
         // "PRB" di JSON-nya, dan array_replace_recursive menggabungkan array
@@ -56,11 +105,11 @@ new class extends Component {
         // dan tidak terhapus diam-diam saat disimpan ulang.
         $tindakLanjutOptions = $default['tindakLanjut']['tindakLanjutOptions'];
 
-        if (($this->dataDaftarUGD['perencanaan']['tindakLanjut']['tindakLanjut'] ?? '') === 'PRB') {
+        if (($this->perencanaan['tindakLanjut']['tindakLanjut'] ?? '') === 'PRB') {
             $tindakLanjutOptions[] = ['tindakLanjut' => 'PRB'];
         }
 
-        $this->dataDaftarUGD['perencanaan']['tindakLanjut']['tindakLanjutOptions'] = $tindakLanjutOptions;
+        $this->perencanaan['tindakLanjut']['tindakLanjutOptions'] = $tindakLanjutOptions;
     }
 
     /* ===============================
@@ -83,9 +132,8 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarUGD = $data;
-
-        $this->dataDaftarUGD['perencanaan'] ??= $this->getDefaultPerencanaan();
+        $this->serapDokumen($data);
+        $this->perencanaan = $this->perencanaan ?: $this->getDefaultPerencanaan();
 
         $this->incrementVersion('modal-perencanaan-ugd');
 
@@ -110,27 +158,27 @@ new class extends Component {
     protected function rules(): array
     {
         return [
-            'dataDaftarUGD.perencanaan.pengkajianMedis.waktuPemeriksaan' => 'nullable|date_format:d/m/Y H:i:s',
-            'dataDaftarUGD.perencanaan.pengkajianMedis.selesaiPemeriksaan' => 'nullable|date_format:d/m/Y H:i:s',
-            'dataDaftarUGD.perencanaan.rawatInap.tanggal' => 'nullable|date_format:d/m/Y',
+            'perencanaan.pengkajianMedis.waktuPemeriksaan' => 'nullable|date_format:d/m/Y H:i:s',
+            'perencanaan.pengkajianMedis.selesaiPemeriksaan' => 'nullable|date_format:d/m/Y H:i:s',
+            'perencanaan.rawatInap.tanggal' => 'nullable|date_format:d/m/Y',
         ];
     }
 
     protected function messages(): array
     {
         return [
-            'dataDaftarUGD.perencanaan.pengkajianMedis.waktuPemeriksaan.date_format' => ':attribute harus dalam format dd/mm/yyyy hh:mi:ss',
-            'dataDaftarUGD.perencanaan.pengkajianMedis.selesaiPemeriksaan.date_format' => ':attribute harus dalam format dd/mm/yyyy hh:mi:ss',
-            'dataDaftarUGD.perencanaan.rawatInap.tanggal.date_format' => ':attribute harus dalam format dd/mm/yyyy',
+            'perencanaan.pengkajianMedis.waktuPemeriksaan.date_format' => ':attribute harus dalam format dd/mm/yyyy hh:mi:ss',
+            'perencanaan.pengkajianMedis.selesaiPemeriksaan.date_format' => ':attribute harus dalam format dd/mm/yyyy hh:mi:ss',
+            'perencanaan.rawatInap.tanggal.date_format' => ':attribute harus dalam format dd/mm/yyyy',
         ];
     }
 
     protected function validationAttributes(): array
     {
         return [
-            'dataDaftarUGD.perencanaan.pengkajianMedis.waktuPemeriksaan' => 'Waktu Pemeriksaan',
-            'dataDaftarUGD.perencanaan.pengkajianMedis.selesaiPemeriksaan' => 'Selesai Pemeriksaan',
-            'dataDaftarUGD.perencanaan.rawatInap.tanggal' => 'Tanggal Rawat Inap',
+            'perencanaan.pengkajianMedis.waktuPemeriksaan' => 'Waktu Pemeriksaan',
+            'perencanaan.pengkajianMedis.selesaiPemeriksaan' => 'Selesai Pemeriksaan',
+            'perencanaan.rawatInap.tanggal' => 'Tanggal Rawat Inap',
         ];
     }
 
@@ -163,10 +211,10 @@ new class extends Component {
                 $isBaru = empty($data['perencanaan']);
 
                 // 3. Patch hanya key perencanaan
-                $data['perencanaan'] = $this->dataDaftarUGD['perencanaan'] ?? [];
+                $data['perencanaan'] = $this->perencanaan;
 
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->dataDaftarUGD = $data;
+                $this->serapDokumen($data);
 
                 // Audit log
                 $this->appendAdminLogUGD((int) $this->rjNo, ($isBaru ? 'Buat' : 'Update') . ' Perencanaan UGD — waktu pemeriksaan ' . ($data['perencanaan']['pengkajianMedis']['waktuPemeriksaan'] ?? '-'), 'MR');
@@ -201,7 +249,7 @@ new class extends Component {
             return;
         }
 
-        if (($this->dataDaftarUGD['drId'] ?? '') != $myUserCodeActive) {
+        if ($this->drId != $myUserCodeActive) {
             $this->dispatch('toast', type: 'error', message: "Anda tidak dapat melakukan TTD-E karena Bukan Pasien {$myUserNameActive}");
             return;
         }
@@ -214,17 +262,17 @@ new class extends Component {
             return;
         }
 
-        $drDesc = $this->dataDaftarUGD['drDesc'] ?? 'Dokter Pemeriksa';
+        $drDesc = $this->drDesc ?: 'Dokter Pemeriksa';
 
         // Set property lokal
-        $this->dataDaftarUGD['perencanaan']['pengkajianMedis']['drPemeriksa'] = $drDesc;
+        $this->perencanaan['pengkajianMedis']['drPemeriksa'] = $drDesc;
 
-        if (empty($this->dataDaftarUGD['perencanaan']['pengkajianMedis']['waktuPemeriksaan'])) {
-            $this->dataDaftarUGD['perencanaan']['pengkajianMedis']['waktuPemeriksaan'] = Carbon::now()->format('d/m/Y H:i:s');
+        if (empty($this->perencanaan['pengkajianMedis']['waktuPemeriksaan'])) {
+            $this->perencanaan['pengkajianMedis']['waktuPemeriksaan'] = Carbon::now()->format('d/m/Y H:i:s');
         }
 
-        if (empty($this->dataDaftarUGD['perencanaan']['pengkajianMedis']['selesaiPemeriksaan'])) {
-            $this->dataDaftarUGD['perencanaan']['pengkajianMedis']['selesaiPemeriksaan'] = Carbon::now()->format('d/m/Y H:i:s');
+        if (empty($this->perencanaan['pengkajianMedis']['selesaiPemeriksaan'])) {
+            $this->perencanaan['pengkajianMedis']['selesaiPemeriksaan'] = Carbon::now()->format('d/m/Y H:i:s');
         }
 
         try {
@@ -245,11 +293,11 @@ new class extends Component {
                     ->update(['erm_status' => 'L']);
 
                 // 4. Patch JSON dengan perencanaan terbaru + ermStatus
-                $data['perencanaan'] = $this->dataDaftarUGD['perencanaan'] ?? [];
+                $data['perencanaan'] = $this->perencanaan;
                 $data['ermStatus'] = 'L';
 
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->dataDaftarUGD = $data;
+                $this->serapDokumen($data);
 
                 // 5. Audit log
                 $this->appendAdminLogUGD((int) $this->rjNo, 'TTD-E Dokter Pemeriksa UGD — ' . $drDesc . ' (' . ($data['perencanaan']['pengkajianMedis']['waktuPemeriksaan'] ?? '-') . ')', 'MR');
@@ -292,7 +340,7 @@ new class extends Component {
             return;
         }
 
-        if (blank($this->dataDaftarUGD['perencanaan']['pengkajianMedis']['drPemeriksa'] ?? '')) {
+        if (blank($this->perencanaan['pengkajianMedis']['drPemeriksa'] ?? '')) {
             $this->dispatch('toast', type: 'error', message: 'Belum ada TTD-E yang perlu dibuka.');
 
             return;
@@ -302,7 +350,7 @@ new class extends Component {
             DB::transaction(function () {
                 $this->lockUGDRow($this->rjNo);
 
-                $drSebelumnya = $this->dataDaftarUGD['perencanaan']['pengkajianMedis']['drPemeriksa'];
+                $drSebelumnya = $this->perencanaan['pengkajianMedis']['drPemeriksa'];
 
                 // Baca data terkini SESUDAH lock — pola UGD (findDataUGD + updateJsonUGD),
                 // bukan syncPerencanaanJson() seperti RJ.
@@ -312,18 +360,18 @@ new class extends Component {
                     throw new \RuntimeException('Data UGD tidak ditemukan, buka kunci dibatalkan.');
                 }
 
-                $this->dataDaftarUGD['perencanaan']['pengkajianMedis']['drPemeriksa'] = '';
-                $this->dataDaftarUGD['perencanaan']['pengkajianMedis']['selesaiPemeriksaan'] = '';
+                $this->perencanaan['pengkajianMedis']['drPemeriksa'] = '';
+                $this->perencanaan['pengkajianMedis']['selesaiPemeriksaan'] = '';
 
                 DB::table('rstxn_ugdhdrs')
                     ->where('rj_no', $this->rjNo)
                     ->update(['erm_status' => 'A']);
 
-                $data['perencanaan'] = $this->dataDaftarUGD['perencanaan'] ?? [];
+                $data['perencanaan'] = $this->perencanaan;
                 $data['ermStatus'] = 'A';
 
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->dataDaftarUGD = $data;
+                $this->serapDokumen($data);
 
                 $this->appendAdminLogUGD((int) $this->rjNo, 'Buka Kunci TTD-E Dokter Pemeriksa — stempel ' . $drSebelumnya . ' dicabut oleh ' . (auth()->user()->myuser_name ?? '-'), 'MR');
             });
@@ -359,13 +407,13 @@ new class extends Component {
         try {
             $this->validateWithToast(
                 [
-                    'dataDaftarUGD.pemeriksaan.tandaVital.frekuensiNadi' => 'required|numeric',
-                    'dataDaftarUGD.pemeriksaan.tandaVital.frekuensiNafas' => 'required|numeric',
-                    'dataDaftarUGD.pemeriksaan.tandaVital.suhu' => 'required|numeric',
-                    'dataDaftarUGD.pemeriksaan.nutrisi.bb' => 'required|numeric',
-                    'dataDaftarUGD.pemeriksaan.nutrisi.tb' => 'required|numeric',
-                    'dataDaftarUGD.pemeriksaan.nutrisi.imt' => 'required|numeric',
-                    'dataDaftarUGD.anamnesa.pengkajianPerawatan.jamDatang' => 'required|date_format:d/m/Y H:i:s',
+                    'prasyaratTtd.pemeriksaan.tandaVital.frekuensiNadi' => 'required|numeric',
+                    'prasyaratTtd.pemeriksaan.tandaVital.frekuensiNafas' => 'required|numeric',
+                    'prasyaratTtd.pemeriksaan.tandaVital.suhu' => 'required|numeric',
+                    'prasyaratTtd.pemeriksaan.nutrisi.bb' => 'required|numeric',
+                    'prasyaratTtd.pemeriksaan.nutrisi.tb' => 'required|numeric',
+                    'prasyaratTtd.pemeriksaan.nutrisi.imt' => 'required|numeric',
+                    'prasyaratTtd.anamnesa.pengkajianPerawatan.jamDatang' => 'required|date_format:d/m/Y H:i:s',
                 ],
                 [
                     'required' => ':attribute wajib diisi.',
@@ -373,13 +421,13 @@ new class extends Component {
                     'date_format' => ':attribute harus dalam format dd/mm/yyyy hh:mi:ss.',
                 ],
                 [
-                    'dataDaftarUGD.pemeriksaan.tandaVital.frekuensiNadi' => 'Frekuensi Nadi',
-                    'dataDaftarUGD.pemeriksaan.tandaVital.frekuensiNafas' => 'Frekuensi Nafas',
-                    'dataDaftarUGD.pemeriksaan.tandaVital.suhu' => 'Suhu',
-                    'dataDaftarUGD.pemeriksaan.nutrisi.bb' => 'Berat Badan',
-                    'dataDaftarUGD.pemeriksaan.nutrisi.tb' => 'Tinggi Badan',
-                    'dataDaftarUGD.pemeriksaan.nutrisi.imt' => 'Indeks Massa Tubuh',
-                    'dataDaftarUGD.anamnesa.pengkajianPerawatan.jamDatang' => 'Waktu Datang',
+                    'prasyaratTtd.pemeriksaan.tandaVital.frekuensiNadi' => 'Frekuensi Nadi',
+                    'prasyaratTtd.pemeriksaan.tandaVital.frekuensiNafas' => 'Frekuensi Nafas',
+                    'prasyaratTtd.pemeriksaan.tandaVital.suhu' => 'Suhu',
+                    'prasyaratTtd.pemeriksaan.nutrisi.bb' => 'Berat Badan',
+                    'prasyaratTtd.pemeriksaan.nutrisi.tb' => 'Tinggi Badan',
+                    'prasyaratTtd.pemeriksaan.nutrisi.imt' => 'Indeks Massa Tubuh',
+                    'prasyaratTtd.anamnesa.pengkajianPerawatan.jamDatang' => 'Waktu Datang',
                 ],
             );
         } catch (ValidationException $e) {
@@ -447,24 +495,24 @@ new class extends Component {
             <div
                 class="w-full p-4 space-y-6 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
 
-                @if (isset($dataDaftarUGD['perencanaan']))
+                @if ($dokumenTermuat)
                     <div class="w-full">
-                        <div x-data="{ activeTab: '{{ $dataDaftarUGD['perencanaan']['pengkajianMedisTab'] ?? 'Petugas Medis' }}' }" class="w-full">
+                        <div x-data="{ activeTab: '{{ $perencanaan['pengkajianMedisTab'] ?? 'Petugas Medis' }}' }" class="w-full">
 
                             {{-- TAB NAVIGATION --}}
                             <x-scrollable-tabs class="w-full px-2 mb-2 border-b border-hairline dark:border-gray-700">
                                 <div class="flex flex-nowrap w-full gap-2 -mb-px">
 
                                     <x-tab variant="underline"
-                                        active-expr="activeTab === '{{ $dataDaftarUGD['perencanaan']['pengkajianMedisTab'] ?? 'Petugas Medis' }}'"
-                                        x-on:click="activeTab = '{{ $dataDaftarUGD['perencanaan']['pengkajianMedisTab'] ?? 'Petugas Medis' }}'">
-                                        {{ $dataDaftarUGD['perencanaan']['pengkajianMedisTab'] ?? 'Petugas Medis' }}
+                                        active-expr="activeTab === '{{ $perencanaan['pengkajianMedisTab'] ?? 'Petugas Medis' }}'"
+                                        x-on:click="activeTab = '{{ $perencanaan['pengkajianMedisTab'] ?? 'Petugas Medis' }}'">
+                                        {{ $perencanaan['pengkajianMedisTab'] ?? 'Petugas Medis' }}
                                     </x-tab>
 
                                     <x-tab variant="underline"
-                                        active-expr="activeTab === '{{ $dataDaftarUGD['perencanaan']['tindakLanjutTab'] ?? 'Tindak Lanjut' }}'"
-                                        x-on:click="activeTab = '{{ $dataDaftarUGD['perencanaan']['tindakLanjutTab'] ?? 'Tindak Lanjut' }}'">
-                                        {{ $dataDaftarUGD['perencanaan']['tindakLanjutTab'] ?? 'Tindak Lanjut' }}
+                                        active-expr="activeTab === '{{ $perencanaan['tindakLanjutTab'] ?? 'Tindak Lanjut' }}'"
+                                        x-on:click="activeTab = '{{ $perencanaan['tindakLanjutTab'] ?? 'Tindak Lanjut' }}'">
+                                        {{ $perencanaan['tindakLanjutTab'] ?? 'Tindak Lanjut' }}
                                     </x-tab>
 
                                 </div>
@@ -475,13 +523,13 @@ new class extends Component {
 
                                 {{-- PETUGAS MEDIS --}}
                                 <div class="w-full"
-                                    x-show.transition.in.opacity.duration.600="activeTab === '{{ $dataDaftarUGD['perencanaan']['pengkajianMedisTab'] ?? 'Petugas Medis' }}'">
+                                    x-show.transition.in.opacity.duration.600="activeTab === '{{ $perencanaan['pengkajianMedisTab'] ?? 'Petugas Medis' }}'">
                                     @include('pages.transaksi.ugd.emr-ugd.perencanaan.tabs.petugas-medis-tab')
                                 </div>
 
                                 {{-- TINDAK LANJUT --}}
                                 <div class="w-full"
-                                    x-show.transition.in.opacity.duration.600="activeTab === '{{ $dataDaftarUGD['perencanaan']['tindakLanjutTab'] ?? 'Tindak Lanjut' }}'">
+                                    x-show.transition.in.opacity.duration.600="activeTab === '{{ $perencanaan['tindakLanjutTab'] ?? 'Tindak Lanjut' }}'">
                                     @include('pages.transaksi.ugd.emr-ugd.perencanaan.tabs.tindak-lanjut-tab')
                                 </div>
 

@@ -21,7 +21,21 @@ new class extends Component {
     public ?string $riHdrNo = null;
     public ?string $regNo = null;
     public bool $disabled = false;
-    public array $dataDaftarRi = [];
+    /**
+     * IRISAN dokumen: cabang `edukasiPasienTerintegrasi` + `edukasiPasien` (warisan lama
+     * yang masih dibaca) + nama pasien untuk isian awal sasaran edukasi.
+     */
+    public array $edukasiTerintegrasi = [];
+    public array $edukasiLama = [];
+    public string $regName = '';
+
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan + regName yang disimpan. */
+    private function serapIrisan(array $data): void
+    {
+        $this->edukasiTerintegrasi = $data['edukasiPasienTerintegrasi'] ?? [];
+        $this->edukasiLama = $data['edukasiPasien'] ?? [];
+        $this->regName = (string) ($data['regName'] ?? '');
+    }
 
     // Signature dari <x-signature.signature-pad /> (TTD gambar pasien/keluarga)
     public string $sasaranEdukasiSignature = '';
@@ -73,9 +87,9 @@ new class extends Component {
         if ($this->riHdrNo) {
             $data = $this->findDataRI($this->riHdrNo);
             if ($data) {
-                $this->dataDaftarRi = $data;
+                $this->serapIrisan($data);
                 $this->regNo = $data['regNo'] ?? null;
-                $this->dataDaftarRi['edukasiPasienTerintegrasi'] ??= [];
+                $this->edukasiTerintegrasi ??= [];
                 $this->form['sasaran']['nama'] = $data['regName'] ?? '';
                 $this->form['ttd']['pasienKeluargaNama'] = $data['regName'] ?? '';
                 $this->isFormLocked = $this->checkEmrRIStatus($this->riHdrNo) || $disabled;
@@ -91,9 +105,9 @@ new class extends Component {
 
         $data = $this->findDataRI($this->riHdrNo);
         if ($data) {
-            $this->dataDaftarRi = $data;
+            $this->serapIrisan($data);
             $this->regNo = $data['regNo'] ?? $this->regNo;
-            $this->dataDaftarRi['edukasiPasienTerintegrasi'] ??= [];
+            $this->edukasiTerintegrasi ??= [];
             $this->isFormLocked = $this->checkEmrRIStatus($this->riHdrNo) || $this->disabled;
         }
 
@@ -234,7 +248,7 @@ new class extends Component {
             $form['ttd']['pasienKeluargaTTD'] = $this->sasaranEdukasiSignature;
         }
 
-        $existing = collect($this->dataDaftarRi['edukasiPasienTerintegrasi'] ?? [])->firstWhere('id', $edukasiId);
+        $existing = collect($this->edukasiTerintegrasi ?? [])->firstWhere('id', $edukasiId);
         $createdAt = $existing['created_at'] ?? Carbon::now(config('app.timezone'))->format('Y-m-d H:i:s');
         $createdBy = $existing['created_by'] ?? [
             'code' => auth()->user()->myuser_code ?? '',
@@ -276,7 +290,7 @@ new class extends Component {
             $fresh['edukasiPasienTerintegrasi'] = array_values($list);
 
             $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-            $this->dataDaftarRi = $fresh;
+            $this->serapIrisan($fresh);
 
             $this->appendAdminLogRI((int) $this->riHdrNo, $logVerb . ' Edukasi Terintegrasi — entri ' . ($entry['form']['tglEdukasi'] ?? '-'), 'MR');
         });
@@ -517,7 +531,7 @@ new class extends Component {
 
                 $fresh['edukasiPasienTerintegrasi'] = array_values($list);
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->dataDaftarRi = $fresh;
+                $this->serapIrisan($fresh);
 
                 $this->appendAdminLogRI(
                     (int) $this->riHdrNo,
@@ -560,7 +574,7 @@ new class extends Component {
             $this->dispatch('toast', type: 'error', message: 'Pasien sudah pulang.');
             return;
         }
-        $entri = collect($this->dataDaftarRi['edukasiPasienTerintegrasi'] ?? [])->firstWhere('id', $edukasiId);
+        $entri = collect($this->edukasiTerintegrasi ?? [])->firstWhere('id', $edukasiId);
         if (!$entri) {
             $this->dispatch('toast', type: 'error', message: 'Entri tidak ditemukan.');
             return;
@@ -578,7 +592,7 @@ new class extends Component {
 
     public function viewEntry(string $edukasiId): void
     {
-        $entri = collect($this->dataDaftarRi['edukasiPasienTerintegrasi'] ?? [])->firstWhere('id', $edukasiId);
+        $entri = collect($this->edukasiTerintegrasi ?? [])->firstWhere('id', $edukasiId);
         if (!$entri) {
             $this->dispatch('toast', type: 'error', message: 'Entri tidak ditemukan.');
             return;
@@ -640,7 +654,7 @@ new class extends Component {
 
                 $fresh['edukasiPasienTerintegrasi'] = $newList;
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->dataDaftarRi = $fresh;
+                $this->serapIrisan($fresh);
 
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Hapus Edukasi Terintegrasi — entri ' . ($deletedRow['form']['tglEdukasi'] ?? '-'), 'MR');
             });
@@ -659,7 +673,7 @@ new class extends Component {
 
     public function cetak(string $edukasiId)
     {
-        $list = $this->dataDaftarRi['edukasiPasienTerintegrasi'] ?? [];
+        $list = $this->edukasiTerintegrasi ?? [];
         $entry = collect($list)->firstWhere('id', $edukasiId);
         if (!$entry) {
             $this->dispatch('toast', type: 'error', message: 'Data edukasi tidak ditemukan.');
@@ -690,7 +704,7 @@ new class extends Component {
             }
 
             $data = array_merge($pasien, [
-                'dataRi' => $this->dataDaftarRi,
+                'dataRi' => $this->findDataRI($this->riHdrNo) ?: [],
                 'entry' => $entry,
                 'identitasRs' => $identitasRs,
                 'ttdPetugasPath' => $ttdPetugasPath,
@@ -792,8 +806,8 @@ new class extends Component {
     public function resetFormEdukasi(): void
     {
         $this->form = $this->defaultForm();
-        $this->form['sasaran']['nama'] = $this->dataDaftarRi['regName'] ?? '';
-        $this->form['ttd']['pasienKeluargaNama'] = $this->dataDaftarRi['regName'] ?? '';
+        $this->form['sasaran']['nama'] = $this->regName;
+        $this->form['ttd']['pasienKeluargaNama'] = $this->regName;
         $this->prefillHeader();
         $this->sasaranEdukasiSignature = '';
         $this->editingKey = null;
@@ -845,7 +859,7 @@ new class extends Component {
 
 <div>
     {{-- RINGKASAN + TOMBOL (pola General Consent) --}}
-    @php $jumlahEdukasiTerintegrasi = count($dataDaftarRi['edukasiPasienTerintegrasi'] ?? []); @endphp
+    @php $jumlahEdukasiTerintegrasi = count($edukasiTerintegrasi ?? []); @endphp
     <x-modul-dokumen.kartu judul="Edukasi Terintegrasi"
         :jumlah="$jumlahEdukasiTerintegrasi"
         satuan="entri"
@@ -853,13 +867,13 @@ new class extends Component {
         :nonaktif="!$riHdrNo">
         <x-slot:deskripsi>Pemberian informasi &amp; edukasi pasien/keluarga — satu formulir terintegrasi antar-PPA (dokter, perawat, gizi, farmasi, dll.), menggantikan form Edukasi Pasien lama.</x-slot:deskripsi>
         <x-slot:ringkasan>
-            @if (count($dataDaftarRi['edukasiPasien'] ?? []) > 0)
+            @if (count($edukasiLama ?? []) > 0)
                 <p class="text-sm text-muted-soft">
-                    + {{ count($dataDaftarRi['edukasiPasien']) }} entri form Edukasi Pasien lama — lihat &amp; cetak lewat display Rekam Medis.
+                    + {{ count($edukasiLama) }} entri form Edukasi Pasien lama — lihat &amp; cetak lewat display Rekam Medis.
                 </p>
             @endif
         </x-slot:ringkasan>
-        @php $list = $dataDaftarRi['edukasiPasienTerintegrasi'] ?? []; @endphp
+        @php $list = $edukasiTerintegrasi ?? []; @endphp
             <div class="overflow-x-auto rounded-2xl border border-hairline dark:border-gray-700">
                 <table class="min-w-full text-sm">
                     <thead class="bg-surface-card dark:bg-gray-800">
@@ -1413,7 +1427,7 @@ new class extends Component {
 
     {{-- ═══════════════ LIST RIWAYAT (layar 'daftar' saja) ═══════════════ --}}
     @unless ($this->diForm())
-    @php $list = $dataDaftarRi['edukasiPasienTerintegrasi'] ?? []; @endphp
+    @php $list = $edukasiTerintegrasi ?? []; @endphp
     <x-modul-dokumen.tabel-daftar :kolom="['', 'Tanggal', 'Pasien / Keluarga', 'Petugas (TTD)', 'Status' => 'text-center', 'Aksi' => 'text-center w-64']">
                 @forelse (collect($list)->sortByDesc(fn($entri) => strtotime(strtr(($entri['tanggal'] ?? '') ?: ($entri['createdAt'] ?? ''), '/', '-')))->values()->all() as $entri)
                     @php

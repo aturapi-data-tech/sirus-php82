@@ -16,12 +16,24 @@ new class extends Component {
     public bool $isFormLocked = false;
     public ?int $rjNo = null;
 
-    public array $dataDaftarPoliRJ = [];
+    /**
+     * SKALAR identitas & penjaminan saja — dokumen `datadaftarpolirj_json` utuh tidak
+     * disimpan di properti publik (ikut snapshot Livewire tiap request). Isian formnya
+     * sendiri sudah terpisah di $formPRB.
+     */
+    public string $regNoPasien = '';
+    public string $drId = '';
+    public string $drDesc = '';
+    public string $klaimStatus = '';
+    public string $klaimId = '';
+
+    /** Penanda kunjungan sudah dimuat lewat openPRB(). */
+    public bool $dokumenTermuat = false;
 
     public array $renderVersions = [];
     protected array $renderAreas = ['modal-prb-rj'];
 
-    // Form PRB — terpisah dari dataDaftarPoliRJ agar aman dari re-fetch
+    // Form PRB — terpisah dari dokumen EMR agar aman dari re-fetch
     public array $formPRB = [];
 
     // Step PRB: 1=Data Pasien & Program, 2=Obat, 3=Kirim
@@ -51,32 +63,36 @@ new class extends Component {
         $this->openPRB($this->rjNo);
     }
 
-    public function rendering(): void
-    {
-        $default = $this->getDefaultPRB();
-        $current = $this->dataDaftarPoliRJ['prb'] ?? [];
-        $this->dataDaftarPoliRJ['prb'] = array_replace_recursive($default, $current);
-    }
-
     /* ═══════════════════════════════════════
      | OPEN
     ═══════════════════════════════════════ */
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya skalar ini yang disimpan. */
+    private function serapSkalar(array $data): void
+    {
+        $this->regNoPasien = (string) ($data['regNo'] ?? '');
+        $this->drId = (string) ($data['drId'] ?? '');
+        $this->drDesc = (string) ($data['drDesc'] ?? '');
+        $this->klaimStatus = (string) ($data['klaimStatus'] ?? '');
+        $this->klaimId = (string) ($data['klaimId'] ?? '');
+        $this->dokumenTermuat = true;
+    }
+
     public function openPRB(int $rjNo): void
     {
         $this->resetFormEntry();
         $this->rjNo = $rjNo;
         $this->resetValidation();
 
-        $dataDaftarPoliRJ = $this->findDataRJ($rjNo);
-        if (!$dataDaftarPoliRJ) {
+        $data = $this->findDataRJ($rjNo);
+        if (!$data) {
             $this->dispatch('toast', type: 'error', message: 'Data Rawat Jalan tidak ditemukan.');
             return;
         }
 
-        $this->dataDaftarPoliRJ = $dataDaftarPoliRJ;
+        $this->serapSkalar($data);
 
-        $this->formPRB = !empty($dataDaftarPoliRJ['prb']) && is_array($dataDaftarPoliRJ['prb'])
-            ? $dataDaftarPoliRJ['prb']
+        $this->formPRB = !empty($data['prb']) && is_array($data['prb'])
+            ? $data['prb']
             : $this->getDefaultPRB();
 
         if ($this->checkEmrRJStatus($rjNo)) {
@@ -140,15 +156,15 @@ new class extends Component {
     {
         $noSEP = DB::table('rsview_rjkasir')->where('rj_no', $this->rjNo)->value('vno_sep') ?? '';
 
-        // Ambil data pasien dari dataDaftarPoliRJ
-        $regNo = $this->dataDaftarPoliRJ['regNo'] ?? '';
+        // Ambil data pasien dari skalar yang diserap saat open
+        $regNo = $this->regNoPasien;
         $pasien = $regNo ? DB::table('rsmst_pasiens')
             ->select('reg_no', 'nokartu_bpjs', 'address')
             ->where('reg_no', $regNo)
             ->first() : null;
 
         // Kode DPJP dari dokter RJ
-        $drId = $this->dataDaftarPoliRJ['drId'] ?? '';
+        $drId = $this->drId;
         $kodeDPJP = $drId ? (DB::table('rsmst_doctors')->where('dr_id', $drId)->value('kd_dr_bpjs') ?? '') : '';
 
         return [
@@ -160,7 +176,7 @@ new class extends Component {
             'programPRB' => '',
             'programPRBNama' => '',
             'kodeDPJP'   => $kodeDPJP,
-            'kodeDPJPNama' => $this->dataDaftarPoliRJ['drDesc'] ?? '',
+            'kodeDPJPNama' => $this->drDesc,
             'keterangan' => '',
             'saran'      => '',
             'obat'       => [],
@@ -305,7 +321,7 @@ new class extends Component {
     ═══════════════════════════════════════ */
     private function pushPRBtoBPJS(): void
     {
-        if (($this->dataDaftarPoliRJ['klaimStatus'] ?? '') !== 'BPJS' && ($this->dataDaftarPoliRJ['klaimId'] ?? '') !== 'JM') {
+        if ($this->klaimStatus !== 'BPJS' && $this->klaimId !== 'JM') {
             return;
         }
 
@@ -383,7 +399,6 @@ new class extends Component {
                     $data = $this->findDataRJ($this->rjNo) ?? [];
                     $data['prb'] = $this->formPRB;
                     $this->updateJsonRJ($this->rjNo, $data);
-                    $this->dataDaftarPoliRJ = $data;
                     $this->appendAdminLogRJ((int) $this->rjNo, 'Hapus PRB — SRB ' . ($srbDihapus ?: '-'), 'MR');
                 });
 
@@ -412,7 +427,7 @@ new class extends Component {
             return;
         }
 
-        if (empty($this->dataDaftarPoliRJ)) {
+        if (!$this->dokumenTermuat) {
             $this->dispatch('toast', type: 'error', message: 'Data kunjungan tidak ditemukan, silakan buka ulang form.');
             return;
         }
@@ -424,12 +439,12 @@ new class extends Component {
         }
 
         // Sync klaim status
-        $this->dataDaftarPoliRJ['klaimStatus'] = $freshData['klaimStatus'] ?? '';
-        $this->dataDaftarPoliRJ['klaimId'] = $freshData['klaimId'] ?? '';
+        $this->klaimStatus = (string) ($freshData['klaimStatus'] ?? '');
+        $this->klaimId = (string) ($freshData['klaimId'] ?? '');
 
         // Init jika belum pernah mount
         if (empty($this->formPRB['noSep'])) {
-            $this->dataDaftarPoliRJ = $freshData;
+            $this->serapSkalar($freshData);
             $this->formPRB = !empty($freshData['prb']) ? $freshData['prb'] : $this->getDefaultPRB();
         }
 
@@ -454,7 +469,6 @@ new class extends Component {
 
                 $data['prb'] = $this->formPRB;
                 $this->updateJsonRJ($this->rjNo, $data);
-                $this->dataDaftarPoliRJ = $data;
                 $this->appendAdminLogRJ((int) $this->rjNo, ($isBaru ? 'Buat' : 'Update') . ' PRB — program ' . ($this->formPRB['programPRB'] ?? '-') . ', SRB ' . ($this->formPRB['noSrb'] ?: '-'), 'MR');
             });
 

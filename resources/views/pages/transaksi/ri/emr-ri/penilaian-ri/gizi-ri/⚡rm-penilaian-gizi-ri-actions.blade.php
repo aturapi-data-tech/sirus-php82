@@ -15,7 +15,8 @@ new class extends Component {
 
     public bool $isFormLocked = false;
     public ?string $riHdrNo = null;
-    public array $dataDaftarRi = [];
+    /** IRISAN dokumen: hanya daftar `penilaian.gizi`. */
+    public array $daftarEntri = [];
 
     public array $renderVersions = [];
     protected array $renderAreas = ['modal-penilaian-gizi-ri'];
@@ -94,8 +95,7 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarRi = $data;
-        $this->dataDaftarRi['penilaian']['gizi'] ??= [];
+        $this->daftarEntri = $data['penilaian']['gizi'] ?? [];
 
         $this->isFormLocked = $this->checkEmrRIStatus($riHdrNo);
 
@@ -197,7 +197,7 @@ new class extends Component {
                 $fresh['penilaian']['gizi'][] = $this->formEntryGizi;
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Tambah Penilaian Gizi — ' . ($this->formEntryGizi['tglPenilaian'] ?? '-'), 'MR');
-                $this->dataDaftarRi = $fresh;
+                $this->daftarEntri = $fresh['penilaian']['gizi'] ?? [];
             });
             $this->reset(['formEntryGizi']);
             $this->afterSave('Penilaian Gizi berhasil disimpan.');
@@ -224,7 +224,7 @@ new class extends Component {
                 $fresh['penilaian']['gizi'] = array_values($fresh['penilaian']['gizi']);
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Hapus Penilaian Gizi — entri ' . $tglHapus, 'MR');
-                $this->dataDaftarRi = $fresh;
+                $this->daftarEntri = $fresh['penilaian']['gizi'] ?? [];
             });
             $this->afterSave('Gizi dihapus.');
         } catch (\RuntimeException $e) {
@@ -375,7 +375,7 @@ new class extends Component {
         </x-border-form>
     @endif
 
-    @if (collect($dataDaftarRi['penilaian']['gizi'] ?? [])->filter(fn($r) => filled(data_get($r, 'tglPenilaian')))->isNotEmpty())
+    @if (collect($daftarEntri)->filter(fn($r) => filled(data_get($r, 'tglPenilaian')))->isNotEmpty())
         <x-border-form title="Riwayat Penilaian Gizi" align="start" bgcolor="bg-canvas">
             <div class="mt-3 overflow-x-auto rounded-lg border border-hairline dark:border-gray-700">
                 <table class="w-full text-sm text-left text-muted dark:text-gray-300">
@@ -392,7 +392,7 @@ new class extends Component {
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-hairline-soft dark:divide-gray-700">
-                        @foreach (array_reverse(array_filter($dataDaftarRi['penilaian']['gizi'] ?? [], fn($r) => filled(data_get($r, 'tglPenilaian'))), true) as $i => $row)
+                        @foreach (array_reverse(array_filter($daftarEntri, fn($r) => filled(data_get($r, 'tglPenilaian'))), true) as $i => $row)
                             @php
                                 $kat = $row['gizi']['kategoriGizi'] ?? '-';
                                 $rowBg =

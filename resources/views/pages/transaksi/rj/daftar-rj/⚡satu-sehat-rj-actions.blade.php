@@ -11,7 +11,9 @@ new class extends Component {
     use EmrRJTrait;
 
     public ?string $rjNo = null;
-    public array $dataDaftarPoliRJ = [];
+    /** Identitas pasien untuk judul panel — bukan dokumennya. */
+    public string $regName = '';
+    public string $regNoPasien = '';
 
     /**
      * URUTAN KANONIK "Kirim Semua". Bukan sekadar urutan tampilan — ada
@@ -142,7 +144,8 @@ new class extends Component {
         $this->antrianKirim = [];
         $this->langkahAktif = '';
         $this->rjNo = null;
-        $this->dataDaftarPoliRJ = [];
+        $this->regName = '';
+        $this->regNoPasien = '';
         $this->dispatch('close-modal', name: 'rj-satu-sehat');
     }
 
@@ -165,7 +168,8 @@ new class extends Component {
             $this->dispatch('toast', type: 'error', message: 'Data Rawat Jalan tidak ditemukan.');
             return false;
         }
-        $this->dataDaftarPoliRJ = $data;
+        $this->regName = (string) ($data['regName'] ?? '');
+        $this->regNoPasien = (string) ($data['regNo'] ?? '');
         return true;
     }
 };
@@ -197,8 +201,8 @@ new class extends Component {
                                 <h2 class="font-semibold text-2xl text-ink dark:text-gray-100">Kirim Satu Sehat
                                 </h2>
                                 <p class="mt-0.5 text-sm text-muted dark:text-gray-400">
-                                    <span class="font-semibold">{{ $dataDaftarPoliRJ['regName'] ?? '-' }}</span>
-                                    &mdash; RM: {{ $dataDaftarPoliRJ['regNo'] ?? '-' }}
+                                    <span class="font-semibold">{{ $regName ?: '-' }}</span>
+                                    &mdash; RM: {{ $regNoPasien ?: '-' }}
                                     &mdash; RJ: {{ $rjNo ?? '-' }}
                                 </p>
                             </div>

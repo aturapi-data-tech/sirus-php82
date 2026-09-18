@@ -12,7 +12,14 @@ new class extends Component {
 
     public bool $isFormLocked = false;
     public ?int $rjNo = null;
-    public array $dataDaftarUGD = [];
+    /**
+     * IRISAN dokumen: hanya cabang `eresep` — sekaligus model form
+     * (`wire:model="eresep.<i>.qty"`, diakses Alpine lewat `$wire.eresep[<i>]`).
+     */
+    public array $eresep = [];
+
+    /** Penanda kunjungan sudah dimuat. */
+    public bool $dokumenTermuat = false;
     public array $formEresep = [];
     public array $signaCatatanOptions = [];
 
@@ -70,8 +77,8 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarUGD = $data;
-        $this->dataDaftarUGD['eresep'] ??= [];
+        $this->eresep = $data['eresep'] ?? [];
+        $this->dokumenTermuat = true;
     }
 
     /* ===============================
@@ -86,10 +93,9 @@ new class extends Component {
             throw new \RuntimeException('Data UGD tidak ditemukan, simpan dibatalkan.');
         }
 
-        $data['eresep'] = $this->dataDaftarUGD['eresep'] ?? [];
+        $data['eresep'] = $this->eresep;
 
         $this->updateJsonUGD($this->rjNo, $data);
-        $this->dataDaftarUGD = $data;
     }
 
     /* ===============================
@@ -193,7 +199,7 @@ new class extends Component {
                 ]);
 
                 // 3. Append ke array lokal
-                $this->dataDaftarUGD['eresep'][] = [
+                $this->eresep[] = [
                     'productId' => $this->formEresep['productId'],
                     'productName' => $this->formEresep['productName'],
                     'jenisKeterangan' => 'NonRacikan',
@@ -259,7 +265,7 @@ new class extends Component {
                     ]);
 
                 // 3. Update array lokal
-                foreach ($this->dataDaftarUGD['eresep'] as &$item) {
+                foreach ($this->eresep as &$item) {
                     if (($item['rjObatDtl'] ?? null) == $rjobatDtl) {
                         $item['qty'] = $qty;
                         $item['signaX'] = $signaX;
@@ -298,7 +304,7 @@ new class extends Component {
                 $this->lockUGDRow($this->rjNo);
 
                 // 2. Cek keberadaan
-                $exists = collect($this->dataDaftarUGD['eresep'] ?? [])->contains('rjObatDtl', $rjObatDtl);
+                $exists = collect($this->eresep ?? [])->contains('rjObatDtl', $rjObatDtl);
                 if (!$exists) {
                     throw new \RuntimeException("Obat dengan ID {$rjObatDtl} tidak ditemukan.");
                 }
@@ -307,7 +313,7 @@ new class extends Component {
                 DB::table('rstxn_ugdobats')->where('rjobat_dtl', $rjObatDtl)->delete();
 
                 // 4. Hapus dari array lokal
-                $this->dataDaftarUGD['eresep'] = collect($this->dataDaftarUGD['eresep'] ?? [])
+                $this->eresep = collect($this->eresep ?? [])
                     ->where('rjObatDtl', '!=', $rjObatDtl)
                     ->values()
                     ->toArray();
@@ -343,7 +349,8 @@ new class extends Component {
     {
         $this->resetVersion();
         $this->isFormLocked = false;
-        $this->dataDaftarUGD = [];
+        $this->eresep = [];
+        $this->dokumenTermuat = false;
         $this->formEresep = [];
     }
 };
@@ -445,7 +452,7 @@ new class extends Component {
                                         </tr>
                                     </thead>
                                     <tbody class="bg-canvas dark:bg-gray-900">
-                                        @foreach ($dataDaftarUGD['eresep'] ?? [] as $key => $eresep)
+                                        @foreach ($eresep ?? [] as $key => $eresep)
                                             <tr wire:key="eresep-ugd-non-racikan-{{ $key }}"
                                                 class="border-b border-hairline dark:border-gray-700 hover:bg-surface-soft dark:hover:bg-gray-800/40 group" x-data>
                                                 <td class="hidden">
@@ -454,7 +461,7 @@ new class extends Component {
                                                 <td class="w-20 px-4 py-3">
                                                     <x-text-input placeholder="Jml" :disabled="$isFormLocked"
                                                         id="eresep-ugd-qty-{{ $key }}"
-                                                        wire:model="dataDaftarUGD.eresep.{{ $key }}.qty"
+                                                        wire:model="eresep.{{ $key }}.qty"
                                                         x-ref="qty{{ $key }}"
                                                         x-on:keydown.enter.prevent="$refs.signaX{{ $key }}.focus()" />
                                                 </td>
@@ -462,20 +469,20 @@ new class extends Component {
                                                     <div class="flex items-center gap-1">
                                                         <div class="w-16 shrink-0">
                                                             <x-text-input placeholder="Signa1" :disabled="$isFormLocked"
-                                                                wire:model="dataDaftarUGD.eresep.{{ $key }}.signaX"
+                                                                wire:model="eresep.{{ $key }}.signaX"
                                                                 x-ref="signaX{{ $key }}"
                                                                 x-on:keydown.enter.prevent="$refs.signaHari{{ $key }}.focus()" />
                                                         </div>
                                                         <span class="text-sm text-muted shrink-0">dd</span>
                                                         <div class="w-16 shrink-0">
                                                             <x-text-input placeholder="Signa2" :disabled="$isFormLocked"
-                                                                wire:model="dataDaftarUGD.eresep.{{ $key }}.signaHari"
+                                                                wire:model="eresep.{{ $key }}.signaHari"
                                                                 x-ref="signaHari{{ $key }}"
                                                                 x-on:keydown.enter.prevent="document.getElementById('eresep-ugd-catatan-{{ $key }}')?.focus()" />
                                                         </div>
                                                         <div class="flex-1">
                                                             <x-catatan-signa-combobox
-                                                                wireModel="dataDaftarUGD.eresep.{{ $key }}.catatanKhusus"
+                                                                wireModel="eresep.{{ $key }}.catatanKhusus"
                                                                 :options="$signaCatatanOptions"
                                                                 :disabled="$isFormLocked"
                                                                 inputId="eresep-ugd-catatan-{{ $key }}"
@@ -483,10 +490,10 @@ new class extends Component {
                                                                 :maxlength="255"
                                                                 enterAction="$wire.updateProduct(
                                                                     '{{ $eresep['rjObatDtl'] }}',
-                                                                    $wire.dataDaftarUGD.eresep[{{ $key }}].qty,
-                                                                    $wire.dataDaftarUGD.eresep[{{ $key }}].signaX,
-                                                                    $wire.dataDaftarUGD.eresep[{{ $key }}].signaHari,
-                                                                    $wire.dataDaftarUGD.eresep[{{ $key }}].catatanKhusus
+                                                                    $wire.eresep[{{ $key }}].qty,
+                                                                    $wire.eresep[{{ $key }}].signaX,
+                                                                    $wire.eresep[{{ $key }}].signaHari,
+                                                                    $wire.eresep[{{ $key }}].catatanKhusus
                                                                 );
                                                                 $nextTick(() => document.getElementById('eresep-ugd-qty-{{ $key }}')?.focus())" />
                                                         </div>

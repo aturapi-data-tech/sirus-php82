@@ -24,7 +24,8 @@ new class extends Component {
     public ?string $riHdrNo = null;
     public ?string $regNo = null;
     public bool $disabled = false;
-    public array $dataDaftarRi = [];
+    /** Nama pasien untuk isian awal penanda tangan (dulu dibaca dari dokumen penuh). */
+    public ?string $regName = null;
 
     public array $renderVersions = [];
     protected array $renderAreas = ['modal-pulang-aps-ri'];
@@ -85,7 +86,6 @@ new class extends Component {
         if ($this->riHdrNo) {
             $data = $this->findDataRI($this->riHdrNo);
             if ($data) {
-                $this->dataDaftarRi = $data;
                 $this->regNo = $data['regNo'] ?? null;
                 $this->apsList = $data['pulangApsRI'] ?? [];
                 $this->isFormLocked = $this->checkEmrRIStatus($this->riHdrNo) || $disabled;
@@ -115,13 +115,10 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarRi = $data;
         $this->regNo = $data['regNo'] ?? null;
-        if (!isset($this->dataDaftarRi['pulangApsRI']) || !is_array($this->dataDaftarRi['pulangApsRI'])) {
-            $this->dataDaftarRi['pulangApsRI'] = [];
-        }
-        $this->apsList = $this->dataDaftarRi['pulangApsRI'];
-        $this->newForm['pembuatNama'] = $this->dataDaftarRi['regName'] ?? '';
+        $this->apsList = is_array($data['pulangApsRI'] ?? null) ? $data['pulangApsRI'] : [];
+        $this->regName = $data['regName'] ?? null;
+        $this->newForm['pembuatNama'] = $this->regName ?? '';
         $this->isFormLocked = $this->checkEmrRIStatus($this->riHdrNo) || $this->disabled;
         $this->incrementVersion('modal-pulang-aps-ri');
 
@@ -243,7 +240,7 @@ new class extends Component {
         try {
             $this->persistEntry($key, true, 'Kunci (TTD Petugas)');
             $this->resetNewForm();
-            $this->newForm['pembuatNama'] = $this->dataDaftarRi['regName'] ?? '';
+            $this->newForm['pembuatNama'] = $this->regName ?? '';
             $this->signature = '';
             $this->signatureSaksi = '';
             $this->editingKey = null;
@@ -315,7 +312,6 @@ new class extends Component {
             $data['pulangApsRI'] = array_values($list);
 
             $this->updateJsonRI((int) $this->riHdrNo, $data);
-            $this->dataDaftarRi = $data;
             $this->apsList = $data['pulangApsRI'];
 
             $this->appendAdminLogRI((int) $this->riHdrNo, $logVerb . ' Surat Pernyataan Pulang APS RI — oleh "' . ($entry['pembuatNama'] ?: '-') . '" (' . $key . ')', 'MR');
@@ -413,7 +409,7 @@ new class extends Component {
     public function cancelEdit(): void
     {
         $this->resetNewForm();
-        $this->newForm['pembuatNama'] = $this->dataDaftarRi['regName'] ?? '';
+        $this->newForm['pembuatNama'] = $this->regName ?? '';
         $this->signature = '';
         $this->signatureSaksi = '';
         $this->editingKey = null;
@@ -479,7 +475,6 @@ new class extends Component {
 
                 $fresh['pulangApsRI'] = array_values($list);
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->dataDaftarRi = $fresh;
                 $this->apsList = $fresh['pulangApsRI'];
 
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Buka kunci Surat Pernyataan Pulang APS — entri ' . $key . ' (oleh ' . (auth()->user()->myuser_name ?? auth()->user()->name ?? '-') . ')', 'MR');
@@ -529,7 +524,7 @@ new class extends Component {
             }
 
             $data = array_merge($pasien, [
-                'dataRi' => $this->dataDaftarRi,
+                'dataRi' => $this->findDataRI($this->riHdrNo) ?: [],
                 'form' => $entry,
                 'identitasRs' => $identitasRs,
                 'ttdPetugasPath' => $ttdPetugasPath,
@@ -577,7 +572,6 @@ new class extends Component {
                     ->toArray();
 
                 $this->updateJsonRI((int) $this->riHdrNo, $data);
-                $this->dataDaftarRi = $data;
                 $this->apsList = $data['pulangApsRI'];
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Hapus Surat Pernyataan Pulang APS — TTD ' . $signatureDate, 'MR');
             });
@@ -615,7 +609,6 @@ new class extends Component {
     {
         $this->resetVersion();
         $this->isFormLocked = false;
-        $this->dataDaftarRi = [];
         $this->apsList = [];
         $this->resetNewForm();
         $this->signature = '';

@@ -23,7 +23,6 @@ new class extends Component {
     public ?string $rjNo = null;
     public ?string $regNo = null;
     public bool $disabled = false;
-    public array $dataDaftarUGD = [];
 
     public array $renderVersions = [];
     protected array $renderAreas = ['modal-pasca-anestesi-ugd'];
@@ -130,7 +129,6 @@ new class extends Component {
         if ($this->rjNo) {
             $data = $this->findDataUGD($this->rjNo);
             if ($data) {
-                $this->dataDaftarUGD = $data;
                 $this->regNo = $data['regNo'] ?? null;
                 $this->pascaList = $data[$this->jsonKey] ?? [];
                 $this->isFormLocked = $this->checkEmrUGDStatus($this->rjNo) || $disabled;
@@ -158,12 +156,8 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarUGD = $data;
         $this->regNo = $data['regNo'] ?? null;
-        if (!isset($this->dataDaftarUGD[$this->jsonKey]) || !is_array($this->dataDaftarUGD[$this->jsonKey])) {
-            $this->dataDaftarUGD[$this->jsonKey] = [];
-        }
-        $this->pascaList = $this->dataDaftarUGD[$this->jsonKey];
+        $this->pascaList = is_array($data[$this->jsonKey] ?? null) ? $data[$this->jsonKey] : [];
         $this->isFormLocked = $this->checkEmrUGDStatus($this->rjNo) || $this->disabled;
         $this->incrementVersion('modal-pasca-anestesi-ugd');
 
@@ -339,7 +333,6 @@ new class extends Component {
             $fresh[$this->jsonKey] = array_values($list);
 
             $this->updateJsonUGD((int) $this->rjNo, $fresh);
-            $this->dataDaftarUGD = $fresh;
             $this->pascaList = $fresh[$this->jsonKey];
 
             $this->appendAdminLogUGD((int) $this->rjNo, $logVerb . ' Monitoring Pasca Anestesi — Aldrete ' . ($entry['totalAldrete'] ?? '-') . '/10 — ' . ($entry['jamMasuk'] ?: '-') . ' (' . $key . ')', 'MR');
@@ -451,7 +444,6 @@ new class extends Component {
                 $fresh[$this->jsonKey] = array_values($list);
 
                 $this->updateJsonUGD((int) $this->rjNo, $fresh);
-                $this->dataDaftarUGD = $fresh;
                 $this->pascaList = $fresh[$this->jsonKey];
 
                 $pembukaKunci = auth()->user()->myuser_name ?? '-';
@@ -600,7 +592,7 @@ new class extends Component {
             }
 
             $data = array_merge($pasien, [
-                'dataRi' => $this->dataDaftarUGD,
+                'dataRi' => $this->findDataUGD($this->rjNo) ?: [],
                 'form' => $entry,
                 'identitasRs' => $identitasRs,
                 'ttdPath' => $ttdPath,
@@ -645,7 +637,6 @@ new class extends Component {
                     ->toArray();
 
                 $this->updateJsonUGD((int) $this->rjNo, $fresh);
-                $this->dataDaftarUGD = $fresh;
                 $this->pascaList = $fresh[$this->jsonKey];
 
                 $this->appendAdminLogUGD((int) $this->rjNo, 'Hapus Monitoring Pasca Anestesi — ' . $createdAt, 'MR');
@@ -780,7 +771,6 @@ new class extends Component {
     {
         $this->resetVersion();
         $this->isFormLocked = false;
-        $this->dataDaftarUGD = [];
         $this->pascaList = [];
         $this->resetNewForm();
         $this->editingKey = null;

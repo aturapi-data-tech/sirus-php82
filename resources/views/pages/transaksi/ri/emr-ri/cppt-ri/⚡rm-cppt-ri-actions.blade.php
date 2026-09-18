@@ -17,7 +17,25 @@ new class extends Component {
 
     public bool $isFormLocked = false;
     public ?string $riHdrNo = null;
-    public array $dataDaftarRi = [];
+    /**
+     * IRISAN dokumen: cabang `cppt` + `formMPP` (tab MPP bersumber dari Case Manager)
+     * + baris DPJP Utama + diagnosa awal + nomor RM.
+     */
+    public array $daftarCppt = [];
+    public array $formMPP = [];
+    public ?array $dpjpUtamaRow = null;
+    public string $diagnosaAwal = '';
+    public string $regNoPasien = '';
+
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan + skalar yang disimpan. */
+    private function serapIrisan(array $data): void
+    {
+        $this->daftarCppt = $data['cppt'] ?? [];
+        $this->formMPP = $data['formMPP'] ?? [];
+        $this->dpjpUtamaRow = $this->dpjpUtamaRow($data);
+        $this->diagnosaAwal = trim((string) data_get($data, 'pengkajianDokter.diagnosaAssesment.diagnosaAwal', ''));
+        $this->regNoPasien = (string) ($data['regNo'] ?? '');
+    }
 
     // cpptId entri yang sedang diedit (null = mode tambah baru)
     public ?string $editingCpptId = null;
@@ -69,15 +87,15 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarRi = $data;
-        $this->dataDaftarRi['cppt'] ??= [];
+        $this->serapIrisan($data);
+        $this->daftarCppt ??= [];
 
         if (
             auth()
                 ->user()
                 ->hasAnyRole(['Dokter', 'Admin'])
         ) {
-            $diagnosaAwal = trim((string) data_get($this->dataDaftarRi, 'pengkajianDokter.diagnosaAssesment.diagnosaAwal', ''));
+            $diagnosaAwal = $this->diagnosaAwal;
             if ($diagnosaAwal !== '' && empty($this->formEntryCPPT['soap']['assessment'])) {
                 $this->formEntryCPPT['soap']['assessment'] = $diagnosaAwal;
             }
@@ -103,11 +121,11 @@ new class extends Component {
     /* ── Lengkapi cpptId yang hilang (entri lama). Persist bila pasien belum pulang. ── */
     private function backfillCpptIds(): void
     {
-        $list = $this->dataDaftarRi['cppt'] ?? [];
+        $list = $this->daftarCppt ?? [];
         $missing = false;
         foreach ($list as $i => $row) {
             if (empty($row['cpptId'])) {
-                $this->dataDaftarRi['cppt'][$i]['cpptId'] = (string) Str::uuid();
+                $this->daftarCppt[$i]['cpptId'] = (string) Str::uuid();
                 $missing = true;
             }
         }
@@ -123,11 +141,11 @@ new class extends Component {
                 $fresh['cppt'] ??= [];
                 foreach ($fresh['cppt'] as $i => $row) {
                     if (empty($row['cpptId'])) {
-                        $fresh['cppt'][$i]['cpptId'] = $this->dataDaftarRi['cppt'][$i]['cpptId'] ?? (string) Str::uuid();
+                        $fresh['cppt'][$i]['cpptId'] = $this->daftarCppt[$i]['cpptId'] ?? (string) Str::uuid();
                     }
                 }
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->dataDaftarRi = $fresh;
+                $this->serapIrisan($fresh);
             });
         } catch (\Throwable $e) {
             // Persist gagal — tampilan tetap pakai id in-memory agar tidak error.
@@ -197,7 +215,7 @@ new class extends Component {
                 ]);
 
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->dataDaftarRi = $fresh;
+                $this->serapIrisan($fresh);
                 $inserted = true;
 
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Tambah CPPT — entri ' . $this->formEntryCPPT['tglCPPT'] . ' (' . ($this->formEntryCPPT['profession'] ?: '-') . ')', 'MR');
@@ -222,7 +240,7 @@ new class extends Component {
             return;
         }
 
-        $cppt = collect($this->dataDaftarRi['cppt'] ?? [])->first(fn($r) => ($r['cpptId'] ?? null) === $cpptId);
+        $cppt = collect($this->daftarCppt ?? [])->first(fn($r) => ($r['cpptId'] ?? null) === $cpptId);
         if (!$cppt) {
             $this->dispatch('toast', type: 'error', message: 'CPPT tidak ditemukan.');
             return;
@@ -331,7 +349,7 @@ new class extends Component {
                 $fresh['cppt'] = $cppts->values()->all();
 
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->dataDaftarRi = $fresh;
+                $this->serapIrisan($fresh);
                 $updated = true;
 
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Edit CPPT — entri ' . ($row['tglCPPT'] ?? '-') . ' (' . ($row['profession'] ?: '-') . ')', 'MR');
@@ -396,7 +414,7 @@ new class extends Component {
                 }
 
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->dataDaftarRi = $fresh;
+                $this->serapIrisan($fresh);
 
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Hapus CPPT — entri ' . ($cpptRow['tglCPPT'] ?? '-') . ' oleh ' . ($cpptRow['petugasCPPT'] ?? '-'), 'MR');
             });
@@ -424,7 +442,7 @@ new class extends Component {
             return;
         }
 
-        $dpjp = $this->dpjpUtamaRow($this->dataDaftarRi);
+        $dpjp = $this->dpjpUtamaRow;
         $dpjpId = (string) ($dpjp['drId'] ?? '');
         $isAdmin = auth()->user()->hasRole('Admin');
         if (!$isAdmin && $dpjpId !== auth()->user()->myuser_code) {
@@ -457,7 +475,7 @@ new class extends Component {
                 $fresh['cppt'] = $cppts->values()->all();
 
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->dataDaftarRi = $fresh;
+                $this->serapIrisan($fresh);
 
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Review CPPT — entri ' . ($row['tglCPPT'] ?? '-') . ' oleh DPJP ' . ($dpjp['drName'] ?? '-'), 'MR');
             });
@@ -478,7 +496,7 @@ new class extends Component {
             return;
         }
 
-        $dpjp = $this->dpjpUtamaRow($this->dataDaftarRi);
+        $dpjp = $this->dpjpUtamaRow;
         $dpjpId = (string) ($dpjp['drId'] ?? '');
         $isAdmin = auth()->user()->hasRole('Admin');
         if (!$isAdmin && $dpjpId !== auth()->user()->myuser_code) {
@@ -503,7 +521,7 @@ new class extends Component {
                 $fresh['cppt'] = $cppts->values()->all();
 
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->dataDaftarRi = $fresh;
+                $this->serapIrisan($fresh);
 
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Batal review CPPT — entri ' . ($row['tglCPPT'] ?? '-'), 'MR');
             });
@@ -519,13 +537,13 @@ new class extends Component {
     /* ── Cetak PDF satu entri CPPT ── */
     public function printCppt(string $cpptId): mixed
     {
-        $cppt = collect($this->dataDaftarRi['cppt'] ?? [])->first(fn($r) => ($r['cpptId'] ?? null) === $cpptId);
+        $cppt = collect($this->daftarCppt ?? [])->first(fn($r) => ($r['cpptId'] ?? null) === $cpptId);
         if (empty($cppt)) {
             $this->dispatch('toast', type: 'error', message: 'CPPT tidak ditemukan.');
             return null;
         }
 
-        $regNo = (string) ($this->dataDaftarRi['regNo'] ?? '');
+        $regNo = $this->regNoPasien;
         $pasienData = $regNo !== '' ? $this->findDataMasterPasien($regNo) : [];
         if (empty($pasienData)) {
             $this->dispatch('toast', type: 'error', message: 'Data pasien tidak ditemukan.');
@@ -535,7 +553,7 @@ new class extends Component {
         $pdf = Pdf::loadView('pages.components.rekam-medis.ri.cetak-cppt.cetak-cppt-ri-print', [
             'cppt' => $cppt,
             'dataPasien' => $pasienData,
-            'dataDaftarRi' => $this->dataDaftarRi,
+            'dataDaftarRi' => $this->findDataRI($this->riHdrNo) ?: [],
         ])->setPaper('A4');
 
         $filename = 'cppt-ri-' . ($regNo !== '' ? $regNo : $this->riHdrNo) . '-' . substr($cpptId, 0, 8) . '.pdf';
@@ -564,7 +582,7 @@ new class extends Component {
 
     public function copyCPPT(string $cpptId): void
     {
-        $cppt = collect($this->dataDaftarRi['cppt'] ?? [])->first(fn($r) => ($r['cpptId'] ?? null) === $cpptId);
+        $cppt = collect($this->daftarCppt ?? [])->first(fn($r) => ($r['cpptId'] ?? null) === $cpptId);
 
         if (!$cppt) {
             $this->dispatch('toast', type: 'error', message: 'CPPT tidak ditemukan.');
@@ -600,13 +618,13 @@ new class extends Component {
 
     public function getCpptCount(string $profession): int
     {
-        $list = $this->dataDaftarRi['cppt'] ?? [];
+        $list = $this->daftarCppt ?? [];
         if ($profession === 'Semua') {
             return count($list);
         }
         // Tab MPP sumbernya dari case-manager (formMPP), bukan entri CPPT
         if ($profession === 'MPP') {
-            $mpp = $this->dataDaftarRi['formMPP'] ?? [];
+            $mpp = $this->formMPP ?? [];
             return count($mpp['formA'] ?? []) + count($mpp['formB'] ?? []);
         }
         return collect($list)->where('profession', $profession)->count();
@@ -630,7 +648,7 @@ new class extends Component {
         }
         $fresh = $this->findDataRI($this->riHdrNo);
         if ($fresh) {
-            $this->dataDaftarRi = $fresh;
+            $this->serapIrisan($fresh);
             $this->incrementVersion('modal-cppt-ri');
         }
     }
@@ -823,7 +841,7 @@ new class extends Component {
                     @php
                         // Urut tanggal CPPT desc (terbaru di atas) untuk semua tab profesi.
                         // Pakai sort eksplisit by tglCPPT, bukan sekadar urutan input.
-                        $allCppt = collect($dataDaftarRi['cppt'] ?? [])
+                        $allCppt = collect($daftarCppt ?? [])
                             ->sortByDesc(fn($c) => Carbon::createFromFormat('d/m/Y H:i:s', ($c['tglCPPT'] ?? '') ?: '01/01/2000 00:00:00')->timestamp)
                             ->values()
                             ->all();
@@ -835,8 +853,6 @@ new class extends Component {
                                 );
 
                         // DPJP Utama (leveling Pengkajian Awal). Hanya dia yang boleh review/TTD CPPT.
-                        $dpjpUtamaRow = collect($dataDaftarRi['pengkajianAwalPasienRawatInap']['levelingDokter'] ?? [])
-                            ->first(fn($r) => strcasecmp((string) ($r['levelDokter'] ?? ''), 'Utama') === 0);
                         $dpjpUtamaId = (string) ($dpjpUtamaRow['drId'] ?? '');
                         $isDpjpUtama = $dpjpUtamaId !== '' && $dpjpUtamaId === auth()->user()->myuser_code;
                         // DPJP Utama atau Admin boleh review; tetap perlu DPJP Utama terdefinisi (atribusi atas nama DPJP).
@@ -855,7 +871,7 @@ new class extends Component {
                                 ];
                             @endphp
 
-                            @forelse (array_reverse($dataDaftarRi['formMPP']['formA'] ?? [], true) as $index => $entriFormA)
+                            @forelse (array_reverse($formMPP['formA'] ?? [], true) as $index => $entriFormA)
                                 <div wire:key="cppt-mpp-fa-{{ $entriFormA['formA_id'] ?? $index }}"
                                     class="border rounded-lg overflow-hidden bg-canvas dark:bg-gray-800 border-hairline dark:border-gray-700">
                                     {{-- Header Form A --}}
@@ -889,7 +905,7 @@ new class extends Component {
 
                                         {{-- Form B milik Form A ini — buka/tutup, tabel data --}}
                                         @php
-                                            $formBList = collect($dataDaftarRi['formMPP']['formB'] ?? [])->where('formA_id', $entriFormA['formA_id'])->values();
+                                            $formBList = collect($formMPP['formB'] ?? [])->where('formA_id', $entriFormA['formA_id'])->values();
                                         @endphp
                                         @if ($formBList->count() > 0)
                                             <div x-data="{ openB: false }"

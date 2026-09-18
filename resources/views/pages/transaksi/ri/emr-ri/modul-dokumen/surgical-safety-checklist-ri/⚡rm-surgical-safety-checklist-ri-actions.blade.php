@@ -24,7 +24,6 @@ new class extends Component {
     public ?string $riHdrNo = null;
     public ?string $regNo = null;
     public bool $disabled = false;
-    public array $dataDaftarRi = [];
 
     public array $renderVersions = [];
     protected array $renderAreas = ['modal-surgical-safety-checklist-ri'];
@@ -123,7 +122,6 @@ new class extends Component {
         if ($this->riHdrNo) {
             $data = $this->findDataRI($this->riHdrNo);
             if ($data) {
-                $this->dataDaftarRi = $data;
                 $this->regNo = $data['regNo'] ?? null;
                 $this->surgicalSafetyChecklistList = $data[$this->jsonKey] ?? [];
                 $this->isFormLocked = $this->checkEmrRIStatus($this->riHdrNo) || $disabled;
@@ -146,12 +144,8 @@ new class extends Component {
             $this->dispatch('toast', type: 'error', message: 'Data RI tidak ditemukan.');
             return;
         }
-        $this->dataDaftarRi = $data;
         $this->regNo = $data['regNo'] ?? null;
-        if (!isset($this->dataDaftarRi[$this->jsonKey]) || !is_array($this->dataDaftarRi[$this->jsonKey])) {
-            $this->dataDaftarRi[$this->jsonKey] = [];
-        }
-        $this->surgicalSafetyChecklistList = $this->dataDaftarRi[$this->jsonKey];
+        $this->surgicalSafetyChecklistList = is_array($data[$this->jsonKey] ?? null) ? $data[$this->jsonKey] : [];
         $this->isFormLocked = $this->checkEmrRIStatus($this->riHdrNo) || $this->disabled;
         $this->incrementVersion('modal-surgical-safety-checklist-ri');
         $this->layar = 'daftar';
@@ -338,7 +332,6 @@ new class extends Component {
             $fresh[$this->jsonKey] = array_values($list);
 
             $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-            $this->dataDaftarRi = $fresh;
             $this->surgicalSafetyChecklistList = $fresh[$this->jsonKey];
 
             $this->appendAdminLogRI((int) $this->riHdrNo, $logVerb . ' Surgical Safety Checklist — ' . ($entry['tindakan'] ?: '-') . ' (' . $key . ')', 'MR');
@@ -461,7 +454,6 @@ new class extends Component {
                 $fresh[$this->jsonKey] = array_values($list);
 
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->dataDaftarRi = $fresh;
                 $this->surgicalSafetyChecklistList = $fresh[$this->jsonKey];
 
                 $pelaku = auth()->user()->myuser_name ?? '-';
@@ -586,7 +578,7 @@ new class extends Component {
             }
 
             $data = array_merge($pasien, [
-                'dataRi' => $this->dataDaftarRi, 'form' => $entry, 'identitasRs' => $identitasRs,
+                'dataRi' => $this->findDataRI($this->riHdrNo) ?: [], 'form' => $entry, 'identitasRs' => $identitasRs,
                 'ttdPath' => $ttdPath, 'tglCetak' => Carbon::now(config('app.timezone'))->translatedFormat('d F Y'),
             ]);
             set_time_limit(300);
@@ -617,7 +609,6 @@ new class extends Component {
                 }
                 $fresh[$this->jsonKey] = collect($fresh[$this->jsonKey])->reject(fn($item) => ($item['createdAt'] ?? '') === $createdAt)->values()->toArray();
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->dataDaftarRi = $fresh;
                 $this->surgicalSafetyChecklistList = $fresh[$this->jsonKey];
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Hapus Surgical Safety Checklist — ' . $createdAt, 'MR');
             });
@@ -663,7 +654,6 @@ new class extends Component {
     {
         $this->resetVersion();
         $this->isFormLocked = false;
-        $this->dataDaftarRi = [];
         $this->surgicalSafetyChecklistList = [];
         $this->resetNewForm();
         $this->editingKey = null;

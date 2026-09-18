@@ -31,7 +31,32 @@ new class extends Component {
 
     public ?string $rjNo = null;
     public ?string $kronisNotice = null;
-    public array $dataDaftarPoliRJ = ['passStatus' => 'O'];
+    /**
+     * MODEL FORM pendaftaran — bukan dokumen EMR.
+     *
+     * Saat `create` isinya memang cuma template header (getDefaultRJTemplate). Saat `edit`
+     * dulu diisi dokumen `datadaftarpolirj_json` UTUH, padahal updateJsonData() hanya
+     * menyalin balik $allowedFields; sisanya (anamnesa, pemeriksaan, cppt, modul dokumen …)
+     * cuma menumpang di snapshot Livewire dan dikirim bolak-balik tiap ketikan.
+     * Kini muatan edit disaring ke KUNCI_FORM.
+     */
+    public array $formDaftar = ['passStatus' => 'O'];
+
+    /**
+     * Kunci yang boleh tinggal di model form = union dari:
+     * (a) $allowedFields di updateJsonData(), (b) kunci getDefaultRJTemplate(),
+     * (c) tiga kunci yang hanya DIBACA untuk tampilan (poliPrice, rjAdmin, rsAdmin).
+     * Menyimpan di luar daftar ini berarti menyeret EMR ke dalam form pendaftaran.
+     */
+    private const KUNCI_FORM = [
+        'regNo', 'regName', 'drId', 'drDesc', 'poliId', 'poliDesc', 'klaimId', 'klaimStatus',
+        'kunjunganId', 'rjDate', 'rjNo', 'shift', 'noAntrian', 'noBooking', 'slCodeFrom',
+        'passStatus', 'rjStatus', 'txnStatus', 'ermStatus', 'cekLab', 'kunjunganInternalStatus',
+        'noReferensi', 'postInap', 'internal12', 'internal12Desc', 'internal12Options',
+        'kontrol12', 'kontrol12Desc', 'kontrol12Options', 'taskIdPelayanan', 'tambahPendaftaran',
+        'taskId1', 'taskId1Status', 'taskId2', 'taskId2Status', 'taskId3', 'taskId3Status',
+        'kddrbpjs', 'kdpolibpjs', 'sep', 'poliPrice', 'rjAdmin', 'rsAdmin',
+    ];
     public array $dataPasien = [];
 
     public array $renderVersions = [];
@@ -70,12 +95,12 @@ new class extends Component {
         $this->formMode = 'create';
         $this->resetValidation();
 
-        $this->dataDaftarPoliRJ = $this->getDefaultRJTemplate();
+        $this->formDaftar = $this->getDefaultRJTemplate();
         $this->reqSepTersimpan = [];
 
         $now = Carbon::now();
-        $this->dataDaftarPoliRJ['rjDate'] = $now->format('d/m/Y H:i:s');
-        $this->dataDaftarPoliRJ['shift'] = $this->resolveShiftByTime($now->format('H:i:s'));
+        $this->formDaftar['rjDate'] = $now->format('d/m/Y H:i:s');
+        $this->formDaftar['shift'] = $this->resolveShiftByTime($now->format('H:i:s'));
 
         $this->modalTerbuka = true;
         $this->incrementVersion('modal');
@@ -106,16 +131,17 @@ new class extends Component {
             $this->dispatch('toast', type: 'warning', message: 'Data Rawat Jalan ini sudah selesai dan tidak bisa diubah.');
         }
 
-        $this->dataDaftarPoliRJ = $data;
+        // Hanya kunci milik form yang ditahan — cabang EMR tidak ikut ke snapshot.
+        $this->formDaftar = array_intersect_key($data, array_flip(self::KUNCI_FORM));
         $this->reqSepTersimpan = $data['sep']['reqSep'] ?? [];
-        $this->dataPasien = $this->findDataMasterPasien($this->dataDaftarPoliRJ['regNo'] ?? '');
+        $this->dataPasien = $this->findDataMasterPasien($this->formDaftar['regNo'] ?? '');
         $this->syncFromDataDaftarPoliRJ();
 
         $this->modalTerbuka = true;
         $this->incrementVersion('modal');
         $this->dispatch('open-modal', name: 'rj-actions');
 
-        if (empty($this->dataDaftarPoliRJ['regNo'])) {
+        if (empty($this->formDaftar['regNo'])) {
             $this->dispatch('focus-cari-pasien');
         }
     }
@@ -143,7 +169,7 @@ new class extends Component {
         $this->setDataPrimer();
         $this->validateDataRJ();
 
-        $rjNo = $this->dataDaftarPoliRJ['rjNo'] ?? null;
+        $rjNo = $this->formDaftar['rjNo'] ?? null;
 
         if (!$rjNo) {
             $this->dispatch('toast', type: 'error', message: 'Nomor RJ tidak valid.');
@@ -169,27 +195,27 @@ new class extends Component {
             // ============================================================
             // 1. QUERY isPoliSpesialis SEKALI — dipakai di step 2 & 3
             // ============================================================
-            $isPoliSpesialis = DB::table('rsmst_polis')->where('poli_id', $this->dataDaftarPoliRJ['poliId'])->where('spesialis_status', '1')->exists();
+            $isPoliSpesialis = DB::table('rsmst_polis')->where('poli_id', $this->formDaftar['poliId'])->where('spesialis_status', '1')->exists();
 
             // ============================================================
             // 1b. CEK KUOTA — hanya untuk poli spesialis, warning saja
             // ============================================================
             if ($isPoliSpesialis && $this->formMode === 'create') {
-                $jadwal = $this->getJadwalPraktek(Carbon::createFromFormat('d/m/Y H:i:s', $this->dataDaftarPoliRJ['rjDate']));
+                $jadwal = $this->getJadwalPraktek(Carbon::createFromFormat('d/m/Y H:i:s', $this->formDaftar['rjDate']));
 
                 if ($jadwal['_not_found'] ?? false) {
                     $this->dispatch('toast', type: 'warning', message: 'Jadwal praktek dokter tidak ditemukan untuk hari ini. Data tetap disimpan.', title: 'Jadwal Tidak Ditemukan', position: 'top-end', duration: 7000);
                 } else {
-                    $rjDateCarbon = Carbon::createFromFormat('d/m/Y H:i:s', $this->dataDaftarPoliRJ['rjDate']);
+                    $rjDateCarbon = Carbon::createFromFormat('d/m/Y H:i:s', $this->formDaftar['rjDate']);
 
                     $jumlahRjhdrs = DB::table('rstxn_rjhdrs')
-                        ->where('dr_id', $this->dataDaftarPoliRJ['drId'])
-                        ->where('poli_id', $this->dataDaftarPoliRJ['poliId'])
+                        ->where('dr_id', $this->formDaftar['drId'])
+                        ->where('poli_id', $this->formDaftar['poliId'])
                         ->where('klaim_id', '!=', 'KR')
                         ->whereRaw("to_char(rj_date,'ddmmyyyy') = ?", [$rjDateCarbon->format('dmY')])
                         ->count();
 
-                    $jumlahBooking = DB::table('referensi_mobilejkn_bpjs as b')->join('rsmst_doctors as d', 'd.kd_dr_bpjs', '=', 'b.kodedokter')->where('d.dr_id', $this->dataDaftarPoliRJ['drId'])->where('b.tanggalperiksa', $rjDateCarbon->format('Y-m-d'))->where('b.status', 'Belum')->count();
+                    $jumlahBooking = DB::table('referensi_mobilejkn_bpjs as b')->join('rsmst_doctors as d', 'd.kd_dr_bpjs', '=', 'b.kodedokter')->where('d.dr_id', $this->formDaftar['drId'])->where('b.tanggalperiksa', $rjDateCarbon->format('Y-m-d'))->where('b.status', 'Belum')->count();
 
                     $jumlahTerdaftar = $jumlahRjhdrs + $jumlahBooking;
 
@@ -202,7 +228,7 @@ new class extends Component {
             // ============================================================
             // 2. BPJS ANTRIAN — hanya untuk poli spesialis, bukan KR
             // ============================================================
-            if ($this->dataDaftarPoliRJ['klaimId'] !== 'KR' && $isPoliSpesialis) {
+            if ($this->formDaftar['klaimId'] !== 'KR' && $isPoliSpesialis) {
                 $this->pushDataAntrian($isPoliSpesialis);
             }
 
@@ -216,8 +242,8 @@ new class extends Component {
             $message = '';
 
             if ($this->formMode === 'create') {
-                $drId = $this->dataDaftarPoliRJ['drId'];
-                $rjDateCarbon = Carbon::createFromFormat('d/m/Y H:i:s', $this->dataDaftarPoliRJ['rjDate']);
+                $drId = $this->formDaftar['drId'];
+                $rjDateCarbon = Carbon::createFromFormat('d/m/Y H:i:s', $this->formDaftar['rjDate']);
 
                 // Global lock + retry: cegah rj_no kembar antar request (PK RS.RR1_PK)
                 // dan toleransi race lintas-sistem (legacy Oracle Dev 6i bypass app-lock).
@@ -234,11 +260,11 @@ new class extends Component {
                                     throw new \RuntimeException("Pasien sudah terdaftar di dokter yang sama hari ini (No. RJ {$rjNoDuplikat}). Pendaftaran ganda dibatalkan.");
                                 }
 
-                                if (!empty($this->dataDaftarPoliRJ['klaimId']) && $this->dataDaftarPoliRJ['klaimId'] !== 'KR') {
-                                    $this->dataDaftarPoliRJ['noAntrian'] = $this->hitungNoAntrian($drId, $rjDateCarbon);
+                                if (!empty($this->formDaftar['klaimId']) && $this->formDaftar['klaimId'] !== 'KR') {
+                                    $this->formDaftar['noAntrian'] = $this->hitungNoAntrian($drId, $rjDateCarbon);
                                 }
                                 $rjNo = (string) ((int) DB::table('rstxn_rjhdrs')->max('rj_no') + 1);
-                                $this->dataDaftarPoliRJ['rjNo'] = $rjNo;
+                                $this->formDaftar['rjNo'] = $rjNo;
                                 DB::table('rstxn_rjhdrs')->insert($this->buildPayload($rjNo));
                                 $this->updateJsonData($rjNo);
                                 $message = 'Data Rawat Jalan berhasil disimpan.';
@@ -267,11 +293,11 @@ new class extends Component {
             //    langsung di-persist sendiri (persistSepNode) sehingga SEP
             //    tidak pernah yatim walau ada kegagalan lain setelahnya.
             // ============================================================
-            $isBpjs = ($this->dataDaftarPoliRJ['klaimStatus'] ?? '') === 'BPJS' || ($this->dataDaftarPoliRJ['klaimId'] ?? '') === 'JM';
+            $isBpjs = ($this->formDaftar['klaimStatus'] ?? '') === 'BPJS' || ($this->formDaftar['klaimId'] ?? '') === 'JM';
 
             if ($isBpjs) {
-                $statusTambahPendaftaran = $this->dataDaftarPoliRJ['taskIdPelayanan']['tambahPendaftaran'] ?? '';
-                $statusTaskId3 = $this->dataDaftarPoliRJ['taskIdPelayanan']['taskId3Status'] ?? '';
+                $statusTambahPendaftaran = $this->formDaftar['taskIdPelayanan']['tambahPendaftaran'] ?? '';
+                $statusTaskId3 = $this->formDaftar['taskIdPelayanan']['taskId3Status'] ?? '';
                 $antrianSudahOk = $statusTambahPendaftaran == 200 || $statusTambahPendaftaran == 208 || $statusTaskId3 == 200 || $statusTaskId3 == 208;
 
                 // SEP diblok HANYA jika poli spesialis DAN antrian belum berhasil
@@ -304,7 +330,7 @@ new class extends Component {
  =============================== */
     private function pushDataAntrian(bool $isPoliSpesialis = false): void
     {
-        if ($this->dataDaftarPoliRJ['klaimId'] === 'KR') {
+        if ($this->formDaftar['klaimId'] === 'KR') {
             return;
         }
 
@@ -313,8 +339,8 @@ new class extends Component {
         }
 
         // Skip jika sudah berhasil sebelumnya (cek tambahPendaftaran ATAU taskId3Status)
-        $statusTambahPendaftaran = $this->dataDaftarPoliRJ['taskIdPelayanan']['tambahPendaftaran'] ?? '';
-        $statusTaskId3 = $this->dataDaftarPoliRJ['taskIdPelayanan']['taskId3Status'] ?? '';
+        $statusTambahPendaftaran = $this->formDaftar['taskIdPelayanan']['tambahPendaftaran'] ?? '';
+        $statusTaskId3 = $this->formDaftar['taskIdPelayanan']['taskId3Status'] ?? '';
         if ($statusTambahPendaftaran == 200 || $statusTambahPendaftaran == 208 || $statusTaskId3 == 200 || $statusTaskId3 == 208) {
             return;
         }
@@ -327,11 +353,11 @@ new class extends Component {
             $isSuccess = $code == 200 || $code == 208;
 
             // Simpan kode ke taskIdPelayanan
-            $this->dataDaftarPoliRJ['taskIdPelayanan']['tambahPendaftaran'] = $code;
+            $this->formDaftar['taskIdPelayanan']['tambahPendaftaran'] = $code;
 
             // Log selalu — sukses maupun gagal — untuk audit trail
             \Log::info('BPJS Antrian tambah_antrean', [
-                'rjNo' => $this->dataDaftarPoliRJ['rjNo'] ?? null,
+                'rjNo' => $this->formDaftar['rjNo'] ?? null,
                 'noBooking' => $dataAntrian['kodebooking'] ?? null,
                 'poliId' => $dataAntrian['kodepoli'] ?? null,
                 'code' => $code,
@@ -356,14 +382,14 @@ new class extends Component {
  =============================== */
     private function prepareDataAntrian(): array
     {
-        $rjDate = Carbon::createFromFormat('d/m/Y H:i:s', $this->dataDaftarPoliRJ['rjDate']);
+        $rjDate = Carbon::createFromFormat('d/m/Y H:i:s', $this->formDaftar['rjDate']);
 
         $jadwalPraktek = $this->getJadwalPraktek($rjDate);
         $jamPraktek = substr($jadwalPraktek['mulai_praktek'], 0, 5) . '-' . substr($jadwalPraktek['selesai_praktek'], 0, 5);
         $estimasiDilayani = $rjDate->copy()->valueOf();
 
         $kuotaTotal = $jadwalPraktek['kuota'];
-        $noAntrian = (int) $this->dataDaftarPoliRJ['noAntrian'];
+        $noAntrian = (int) $this->formDaftar['noAntrian'];
         $sisaKuota = max(0, $kuotaTotal - $noAntrian);
 
         if ($sisaKuota <= 0) {
@@ -386,29 +412,29 @@ new class extends Component {
         if (empty($nohp)) {
             $nohp = '0';
             \Log::warning('BPJS Antrian: nomor HP pasien kosong', [
-                'regNo' => $this->dataDaftarPoliRJ['regNo'] ?? null,
+                'regNo' => $this->formDaftar['regNo'] ?? null,
                 'rawNohp' => $rawNohp,
             ]);
         }
 
         return [
-            'kodebooking' => $this->dataDaftarPoliRJ['noBooking'],
+            'kodebooking' => $this->formDaftar['noBooking'],
             'jenispasien' => $this->getJenisPasien(),
             'nomorkartu' => $this->getNomorKartu(),
             'nik' => $nik,
             'nohp' => $nohp,
             'kodepoli' => $this->getKodePoli(),
-            'namapoli' => $this->dataDaftarPoliRJ['poliDesc'],
-            'pasienbaru' => (int) ($this->dataDaftarPoliRJ['passStatus'] === 'N'),
-            'norm' => $this->dataDaftarPoliRJ['regNo'],
+            'namapoli' => $this->formDaftar['poliDesc'],
+            'pasienbaru' => (int) ($this->formDaftar['passStatus'] === 'N'),
+            'norm' => $this->formDaftar['regNo'],
             'tanggalperiksa' => $rjDate->format('Y-m-d'),
             'kodedokter' => $this->getKodeDokter(),
-            'namadokter' => $this->dataDaftarPoliRJ['drDesc'],
+            'namadokter' => $this->formDaftar['drDesc'],
             'jampraktek' => $jamPraktek,
             'jeniskunjungan' => $this->getJenisKunjunganBPJS(),
-            'nomorreferensi' => $this->dataDaftarPoliRJ['noReferensi'] ?? '',
-            'nomorantrean' => ($this->dataDaftarPoliRJ['kdpolibpjs'] ?? $this->dataDaftarPoliRJ['poliId']) . '-' . $this->dataDaftarPoliRJ['noAntrian'],
-            'angkaantrean' => (int) $this->dataDaftarPoliRJ['noAntrian'],
+            'nomorreferensi' => $this->formDaftar['noReferensi'] ?? '',
+            'nomorantrean' => ($this->formDaftar['kdpolibpjs'] ?? $this->formDaftar['poliId']) . '-' . $this->formDaftar['noAntrian'],
+            'angkaantrean' => (int) $this->formDaftar['noAntrian'],
             'estimasidilayani' => $estimasiDilayani,
             'sisakuotajkn' => $sisaKuota,
             'kuotajkn' => $kuotaTotal,
@@ -425,23 +451,23 @@ new class extends Component {
     {
         $payload = [
             'rj_no' => $rjNo,
-            'rj_date' => DB::raw("to_date('" . $this->dataDaftarPoliRJ['rjDate'] . "','dd/mm/yyyy hh24:mi:ss')"),
-            'reg_no' => $this->dataDaftarPoliRJ['regNo'],
-            'nobooking' => $this->dataDaftarPoliRJ['noBooking'],
-            'no_antrian' => $this->dataDaftarPoliRJ['noAntrian'],
-            'klaim_id' => $this->dataDaftarPoliRJ['klaimId'],
-            'poli_id' => $this->dataDaftarPoliRJ['poliId'],
-            'dr_id' => $this->dataDaftarPoliRJ['drId'],
-            'shift' => $this->dataDaftarPoliRJ['shift'],
-            'txn_status' => $this->dataDaftarPoliRJ['txnStatus'] ?? 'A',
-            'rj_status' => $this->dataDaftarPoliRJ['rjStatus'] ?? 'A',
-            'erm_status' => $this->dataDaftarPoliRJ['ermStatus'] ?? 'A',
-            'pass_status' => $this->dataDaftarPoliRJ['passStatus'] ?? 'O',
-            'cek_lab' => $this->dataDaftarPoliRJ['cekLab'] ?? '0',
-            'sl_codefrom' => $this->dataDaftarPoliRJ['slCodeFrom'] ?? '02',
-            'kunjungan_internal_status' => $this->dataDaftarPoliRJ['kunjunganInternalStatus'] ?? '0',
-            'waktu_masuk_pelayanan' => DB::raw("to_date('" . $this->dataDaftarPoliRJ['rjDate'] . "','dd/mm/yyyy hh24:mi:ss')"),
-            'vno_sep' => $this->dataDaftarPoliRJ['sep']['noSep'] ?? '',
+            'rj_date' => DB::raw("to_date('" . $this->formDaftar['rjDate'] . "','dd/mm/yyyy hh24:mi:ss')"),
+            'reg_no' => $this->formDaftar['regNo'],
+            'nobooking' => $this->formDaftar['noBooking'],
+            'no_antrian' => $this->formDaftar['noAntrian'],
+            'klaim_id' => $this->formDaftar['klaimId'],
+            'poli_id' => $this->formDaftar['poliId'],
+            'dr_id' => $this->formDaftar['drId'],
+            'shift' => $this->formDaftar['shift'],
+            'txn_status' => $this->formDaftar['txnStatus'] ?? 'A',
+            'rj_status' => $this->formDaftar['rjStatus'] ?? 'A',
+            'erm_status' => $this->formDaftar['ermStatus'] ?? 'A',
+            'pass_status' => $this->formDaftar['passStatus'] ?? 'O',
+            'cek_lab' => $this->formDaftar['cekLab'] ?? '0',
+            'sl_codefrom' => $this->formDaftar['slCodeFrom'] ?? '02',
+            'kunjungan_internal_status' => $this->formDaftar['kunjunganInternalStatus'] ?? '0',
+            'waktu_masuk_pelayanan' => DB::raw("to_date('" . $this->formDaftar['rjDate'] . "','dd/mm/yyyy hh24:mi:ss')"),
+            'vno_sep' => $this->formDaftar['sep']['noSep'] ?? '',
         ];
 
         // Mode CREATE: include admin prices dari JSON (sudah di-set oleh
@@ -451,19 +477,19 @@ new class extends Component {
         if ($this->formMode === 'create') {
             // Safety: re-compute kalau JSON belum punya (mis. user lompat ke save
             // tanpa trigger LOV dokter — jarang terjadi, tapi defensive).
-            if (!isset($this->dataDaftarPoliRJ['rsAdmin'])) {
+            if (!isset($this->formDaftar['rsAdmin'])) {
                 $this->recomputeAdminPrices();
             }
-            $payload['rs_admin']   = (int) ($this->dataDaftarPoliRJ['rsAdmin'] ?? 0);
-            $payload['rj_admin']   = (int) ($this->dataDaftarPoliRJ['rjAdmin'] ?? 0);
-            $payload['poli_price'] = (int) ($this->dataDaftarPoliRJ['poliPrice'] ?? 0);
+            $payload['rs_admin']   = (int) ($this->formDaftar['rsAdmin'] ?? 0);
+            $payload['rj_admin']   = (int) ($this->formDaftar['rjAdmin'] ?? 0);
+            $payload['poli_price'] = (int) ($this->formDaftar['poliPrice'] ?? 0);
         }
 
         return $payload;
     }
 
     /**
-     * Hitung & sync admin prices ke JSON ($this->dataDaftarPoliRJ) berdasarkan
+     * Hitung & sync admin prices ke JSON ($this->formDaftar) berdasarkan
      * state current (drId, klaimId, klaimStatus, passStatus). Tidak menulis ke DB.
      *
      * Dipanggil saat user pilih dokter (rjFormDokter) dan saat klaimId berubah
@@ -473,15 +499,15 @@ new class extends Component {
      */
     private function recomputeAdminPrices(): void
     {
-        $klaimId    = $this->dataDaftarPoliRJ['klaimId'] ?? 'UM';
-        $passStatus = $this->dataDaftarPoliRJ['passStatus'] ?? 'O';
-        $drId       = $this->dataDaftarPoliRJ['drId'] ?? '';
+        $klaimId    = $this->formDaftar['klaimId'] ?? 'UM';
+        $passStatus = $this->formDaftar['passStatus'] ?? 'O';
+        $drId       = $this->formDaftar['drId'] ?? '';
 
         // Kronis ATAU dokter belum dipilih → 0 semua
         if ($klaimId === 'KR' || empty($drId)) {
-            $this->dataDaftarPoliRJ['rsAdmin']   = 0;
-            $this->dataDaftarPoliRJ['rjAdmin']   = 0;
-            $this->dataDaftarPoliRJ['poliPrice'] = 0;
+            $this->formDaftar['rsAdmin']   = 0;
+            $this->formDaftar['rjAdmin']   = 0;
+            $this->formDaftar['poliPrice'] = 0;
             return;
         }
 
@@ -490,17 +516,17 @@ new class extends Component {
             ->where('dr_id', $drId)
             ->first();
 
-        $klaimStatus = $this->dataDaftarPoliRJ['klaimStatus']
+        $klaimStatus = $this->formDaftar['klaimStatus']
             ?? (DB::table('rsmst_klaimtypes')->where('klaim_id', $klaimId)->value('klaim_status') ?? 'UMUM');
 
-        $this->dataDaftarPoliRJ['rsAdmin'] = (int) ($dokter->rs_admin ?? 0);
+        $this->formDaftar['rsAdmin'] = (int) ($dokter->rs_admin ?? 0);
 
         // pass_status 'N' = boleh charge admin OB; selain N (mis. 'O' = Owner) → 0
-        $this->dataDaftarPoliRJ['rjAdmin'] = $passStatus === 'N'
+        $this->formDaftar['rjAdmin'] = $passStatus === 'N'
             ? (int) (DB::table('rsmst_parameters')->where('par_id', 1)->value('par_value') ?? 0)
             : 0;
 
-        $this->dataDaftarPoliRJ['poliPrice'] = (int) ($klaimStatus === 'BPJS'
+        $this->formDaftar['poliPrice'] = (int) ($klaimStatus === 'BPJS'
             ? ($dokter->poli_price_bpjs ?? 0)
             : ($dokter->poli_price ?? 0));
     }
@@ -517,9 +543,9 @@ new class extends Component {
      */
     private function cekDuplikatPendaftaran(): ?string
     {
-        $regNo  = $this->dataDaftarPoliRJ['regNo'] ?? '';
-        $drId   = $this->dataDaftarPoliRJ['drId'] ?? '';
-        $rjDate = $this->dataDaftarPoliRJ['rjDate'] ?? '';
+        $regNo  = $this->formDaftar['regNo'] ?? '';
+        $drId   = $this->formDaftar['drId'] ?? '';
+        $rjDate = $this->formDaftar['rjDate'] ?? '';
 
         if (empty($regNo) || empty($drId) || empty($rjDate)) return null;
 
@@ -531,7 +557,7 @@ new class extends Component {
             ->whereRaw("NVL(txn_status,'A') != 'H'")
             ->whereRaw("to_char(rj_date,'ddmmyyyy') = ?", [$rjDateCarbon->format('dmY')]);
 
-        if (($this->dataDaftarPoliRJ['klaimId'] ?? '') === 'KR') {
+        if (($this->formDaftar['klaimId'] ?? '') === 'KR') {
             $query->where('klaim_id', 'KR');
         } else {
             $query->whereRaw("NVL(klaim_id,'UM') != 'KR'");
@@ -547,7 +573,7 @@ new class extends Component {
      =============================== */
     private function setDataPrimer(): void
     {
-        $data = &$this->dataDaftarPoliRJ;
+        $data = &$this->formDaftar;
 
         if (!empty($data['kunjunganId']) && $data['kunjunganId'] == 2) {
             $data['kunjunganInternalStatus'] = '1';
@@ -589,51 +615,51 @@ new class extends Component {
     private function validateDataRJ(): array
     {
         $attributes = [
-            'dataDaftarPoliRJ.regNo' => 'Nomor Registrasi Pasien',
-            'dataDaftarPoliRJ.drId' => 'ID Dokter',
-            'dataDaftarPoliRJ.drDesc' => 'Nama Dokter',
-            'dataDaftarPoliRJ.poliId' => 'ID Poli',
-            'dataDaftarPoliRJ.poliDesc' => 'Nama Poli',
-            'dataDaftarPoliRJ.rjDate' => 'Tanggal Kunjungan',
-            'dataDaftarPoliRJ.rjNo' => 'Nomor Kunjungan',
-            'dataDaftarPoliRJ.shift' => 'Shift',
-            'dataDaftarPoliRJ.noAntrian' => 'Nomor Antrian',
-            'dataDaftarPoliRJ.noBooking' => 'Nomor Booking',
-            'dataDaftarPoliRJ.slCodeFrom' => 'Kode Sumber',
-            'dataDaftarPoliRJ.noReferensi' => 'Nomor Referensi',
-            'dataDaftarPoliRJ.klaimId' => 'ID Klaim',
+            'formDaftar.regNo' => 'Nomor Registrasi Pasien',
+            'formDaftar.drId' => 'ID Dokter',
+            'formDaftar.drDesc' => 'Nama Dokter',
+            'formDaftar.poliId' => 'ID Poli',
+            'formDaftar.poliDesc' => 'Nama Poli',
+            'formDaftar.rjDate' => 'Tanggal Kunjungan',
+            'formDaftar.rjNo' => 'Nomor Kunjungan',
+            'formDaftar.shift' => 'Shift',
+            'formDaftar.noAntrian' => 'Nomor Antrian',
+            'formDaftar.noBooking' => 'Nomor Booking',
+            'formDaftar.slCodeFrom' => 'Kode Sumber',
+            'formDaftar.noReferensi' => 'Nomor Referensi',
+            'formDaftar.klaimId' => 'ID Klaim',
         ];
 
         $rules = [
-            'dataDaftarPoliRJ.regNo' => 'bail|required|exists:rsmst_pasiens,reg_no',
-            'dataDaftarPoliRJ.drId' => 'required|exists:rsmst_doctors,dr_id',
-            'dataDaftarPoliRJ.drDesc' => 'required|string',
-            'dataDaftarPoliRJ.poliId' => 'required|exists:rsmst_polis,poli_id',
-            'dataDaftarPoliRJ.poliDesc' => 'required|string',
-            'dataDaftarPoliRJ.kddrbpjs' => 'nullable|string',
-            'dataDaftarPoliRJ.kdpolibpjs' => 'nullable|string',
-            'dataDaftarPoliRJ.rjDate' => 'required|date_format:d/m/Y H:i:s',
-            'dataDaftarPoliRJ.rjNo' => 'required|numeric',
-            'dataDaftarPoliRJ.shift' => 'required|in:1,2,3',
-            'dataDaftarPoliRJ.noAntrian' => 'required|numeric|min:1|max:999',
-            'dataDaftarPoliRJ.noBooking' => 'required|string',
-            'dataDaftarPoliRJ.slCodeFrom' => 'required|in:01,02',
-            'dataDaftarPoliRJ.passStatus' => 'nullable|in:N,O',
-            'dataDaftarPoliRJ.rjStatus' => 'required|in:A,L,I,F',
-            'dataDaftarPoliRJ.txnStatus' => 'required|in:A,L,H',
-            'dataDaftarPoliRJ.ermStatus' => 'required|in:A,L',
-            'dataDaftarPoliRJ.cekLab' => 'required|in:0,1',
-            'dataDaftarPoliRJ.kunjunganInternalStatus' => 'required|in:0,1',
-            'dataDaftarPoliRJ.noReferensi' => 'nullable|string|min:3|max:19',
-            'dataDaftarPoliRJ.klaimId' => 'required|exists:rsmst_klaimtypes,klaim_id',
+            'formDaftar.regNo' => 'bail|required|exists:rsmst_pasiens,reg_no',
+            'formDaftar.drId' => 'required|exists:rsmst_doctors,dr_id',
+            'formDaftar.drDesc' => 'required|string',
+            'formDaftar.poliId' => 'required|exists:rsmst_polis,poli_id',
+            'formDaftar.poliDesc' => 'required|string',
+            'formDaftar.kddrbpjs' => 'nullable|string',
+            'formDaftar.kdpolibpjs' => 'nullable|string',
+            'formDaftar.rjDate' => 'required|date_format:d/m/Y H:i:s',
+            'formDaftar.rjNo' => 'required|numeric',
+            'formDaftar.shift' => 'required|in:1,2,3',
+            'formDaftar.noAntrian' => 'required|numeric|min:1|max:999',
+            'formDaftar.noBooking' => 'required|string',
+            'formDaftar.slCodeFrom' => 'required|in:01,02',
+            'formDaftar.passStatus' => 'nullable|in:N,O',
+            'formDaftar.rjStatus' => 'required|in:A,L,I,F',
+            'formDaftar.txnStatus' => 'required|in:A,L,H',
+            'formDaftar.ermStatus' => 'required|in:A,L',
+            'formDaftar.cekLab' => 'required|in:0,1',
+            'formDaftar.kunjunganInternalStatus' => 'required|in:0,1',
+            'formDaftar.noReferensi' => 'nullable|string|min:3|max:19',
+            'formDaftar.klaimId' => 'required|exists:rsmst_klaimtypes,klaim_id',
         ];
 
-        if (($this->dataDaftarPoliRJ['klaimStatus'] ?? '') === 'BPJS' || ($this->dataDaftarPoliRJ['klaimId'] ?? '') === 'JM') {
-            $rules['dataDaftarPoliRJ.noReferensi'] = 'bail|required|string|min:3|max:19';
+        if (($this->formDaftar['klaimStatus'] ?? '') === 'BPJS' || ($this->formDaftar['klaimId'] ?? '') === 'JM') {
+            $rules['formDaftar.noReferensi'] = 'bail|required|string|min:3|max:19';
         }
 
-        if (($this->dataDaftarPoliRJ['klaimStatus'] ?? '') === 'KRONIS') {
-            $rules['dataDaftarPoliRJ.noAntrian'] = 'required|numeric';
+        if (($this->formDaftar['klaimStatus'] ?? '') === 'KRONIS') {
+            $rules['formDaftar.noAntrian'] = 'required|numeric';
         }
 
         return $this->validate($rules, [], $attributes);
@@ -663,15 +689,15 @@ new class extends Component {
         $allowedFields = ['regNo', 'drId', 'drDesc', 'poliId', 'poliDesc', 'kddrbpjs', 'kdpolibpjs', 'klaimId', 'kunjunganId', 'rjDate', 'shift', 'noAntrian', 'noBooking', 'slCodeFrom', 'passStatus', 'rjStatus', 'txnStatus', 'ermStatus', 'cekLab', 'kunjunganInternalStatus', 'noReferensi', 'postInap', 'internal12', 'internal12Desc', 'kontrol12', 'kontrol12Desc', 'taskIdPelayanan', 'sep', 'klaimStatus'];
 
         if ($this->formMode === 'create') {
-            $this->updateJsonRJ($rjNo, $this->dataDaftarPoliRJ);
+            $this->updateJsonRJ($rjNo, $this->formDaftar);
 
             // Dipanggil dari dalam DB::transaction milik save() dan sesudah JSON
             // terbentuk, jadi appendAdminLogRJ (yang membaca lalu menulis ulang
             // JSON yang sama) aman di sini.
             $this->appendAdminLogRJ((int) $rjNo, 'Pendaftaran RJ - '
-                . ($this->dataDaftarPoliRJ['poliDesc'] ?? '-') . ', '
-                . ($this->dataDaftarPoliRJ['drDesc'] ?? '-') . ', klaim '
-                . ($this->dataDaftarPoliRJ['klaimId'] ?? '-'));
+                . ($this->formDaftar['poliDesc'] ?? '-') . ', '
+                . ($this->formDaftar['drDesc'] ?? '-') . ', klaim '
+                . ($this->formDaftar['klaimId'] ?? '-'));
 
             return;
         }
@@ -703,8 +729,8 @@ new class extends Component {
         $sebelum = $existingData;
 
         foreach ($allowedFields as $field) {
-            if (array_key_exists($field, $this->dataDaftarPoliRJ)) {
-                $existingData[$field] = $this->dataDaftarPoliRJ[$field];
+            if (array_key_exists($field, $this->formDaftar)) {
+                $existingData[$field] = $this->formDaftar[$field];
             }
         }
 
@@ -727,12 +753,12 @@ new class extends Component {
         // Jika create → switch ke edit mode, tetap di modal
         if ($this->formMode === 'create') {
             $this->formMode = 'edit';
-            $this->rjNo = $this->dataDaftarPoliRJ['rjNo'];
+            $this->rjNo = $this->formDaftar['rjNo'];
         }
 
         $this->syncFromDataDaftarPoliRJ();
 
-        $noSep = $this->dataDaftarPoliRJ['sep']['noSep'] ?? '';
+        $noSep = $this->formDaftar['sep']['noSep'] ?? '';
         $sepInfo = $noSep ? " | SEP: {$noSep}" : '';
 
         $this->dispatch('toast', type: 'success', message: $message . $sepInfo);
@@ -758,7 +784,7 @@ new class extends Component {
         $this->dispatch('toast', type: 'error', message: $message);
 
         \Log::error('Database error in save: ' . $e->getMessage(), [
-            'rjNo' => $this->dataDaftarPoliRJ['rjNo'] ?? null,
+            'rjNo' => $this->formDaftar['rjNo'] ?? null,
             'formMode' => $this->formMode,
         ]);
     }
@@ -768,7 +794,7 @@ new class extends Component {
         $dayMapping = ['Monday' => 1, 'Tuesday' => 2, 'Wednesday' => 3, 'Thursday' => 4, 'Friday' => 5, 'Saturday' => 6, 'Sunday' => 7];
         $dayId = $dayMapping[$rjDate->format('l')] ?? 8;
 
-        $jadwal = DB::table('scmst_scpolis')->select('scmst_scpolis.dr_id', DB::raw("nvl(mulai_praktek, '07:00:00') as mulai_praktek"), DB::raw("nvl(selesai_praktek, '13:00:00') as selesai_praktek"), DB::raw('nvl(kuota, 30) as kuota'))->where('dr_id', $this->dataDaftarPoliRJ['drId'])->where('poli_id', $this->dataDaftarPoliRJ['poliId'])->where('day_id', $dayId)->where('sc_poli_status_', 1)->orderBy('no_urut')->first();
+        $jadwal = DB::table('scmst_scpolis')->select('scmst_scpolis.dr_id', DB::raw("nvl(mulai_praktek, '07:00:00') as mulai_praktek"), DB::raw("nvl(selesai_praktek, '13:00:00') as selesai_praktek"), DB::raw('nvl(kuota, 30) as kuota'))->where('dr_id', $this->formDaftar['drId'])->where('poli_id', $this->formDaftar['poliId'])->where('day_id', $dayId)->where('sc_poli_status_', 1)->orderBy('no_urut')->first();
 
         if (!$jadwal) {
             return ['mulai_praktek' => '07:00:00', 'selesai_praktek' => '13:00:00', 'kuota' => 30, '_not_found' => true];
@@ -779,8 +805,8 @@ new class extends Component {
 
     public function shiftMismatchMessage(): ?string
     {
-        $rjDate = $this->dataDaftarPoliRJ['rjDate'] ?? '';
-        $shift = (string) ($this->dataDaftarPoliRJ['shift'] ?? '');
+        $rjDate = $this->formDaftar['rjDate'] ?? '';
+        $shift = (string) ($this->formDaftar['shift'] ?? '');
         if (empty($rjDate) || empty($shift)) return null;
 
         try {
@@ -811,27 +837,27 @@ new class extends Component {
 
     private function getJenisPasien(): string
     {
-        return $this->dataDaftarPoliRJ['klaimId'] === 'JM' ? 'JKN' : 'NON JKN';
+        return $this->formDaftar['klaimId'] === 'JM' ? 'JKN' : 'NON JKN';
     }
 
     private function getNomorKartu(): string
     {
-        return $this->dataDaftarPoliRJ['klaimId'] === 'JM' ? $this->dataPasien['pasien']['identitas']['idbpjs'] ?? '' : '';
+        return $this->formDaftar['klaimId'] === 'JM' ? $this->dataPasien['pasien']['identitas']['idbpjs'] ?? '' : '';
     }
 
     private function getKodePoli(): string
     {
-        return $this->dataDaftarPoliRJ['kdpolibpjs'] ?? $this->dataDaftarPoliRJ['poliId'];
+        return $this->formDaftar['kdpolibpjs'] ?? $this->formDaftar['poliId'];
     }
 
     private function getKodeDokter(): string
     {
-        return $this->dataDaftarPoliRJ['kddrbpjs'] ?? $this->dataDaftarPoliRJ['drId'];
+        return $this->formDaftar['kddrbpjs'] ?? $this->formDaftar['drId'];
     }
 
     private function getJenisKunjunganBPJS(): string
     {
-        return match ($this->dataDaftarPoliRJ['kunjunganId'] ?? '1') {
+        return match ($this->formDaftar['kunjunganId'] ?? '1') {
             '2' => '2',
             '3' => '3',
             '4' => '4',
@@ -841,18 +867,18 @@ new class extends Component {
 
     private function resolveNoReferensi(array $reqSep): ?string
     {
-        $kunjunganId = $this->dataDaftarPoliRJ['kunjunganId'] ?? ($this->kunjunganId ?? '1');
+        $kunjunganId = $this->formDaftar['kunjunganId'] ?? ($this->kunjunganId ?? '1');
 
         if ($kunjunganId === '3') {
-            return $reqSep['request']['t_sep']['skdp']['noSurat'] ?? ($this->dataDaftarPoliRJ['noReferensi'] ?? null);
+            return $reqSep['request']['t_sep']['skdp']['noSurat'] ?? ($this->formDaftar['noReferensi'] ?? null);
         }
 
-        return $reqSep['request']['t_sep']['rujukan']['noRujukan'] ?? ($this->dataDaftarPoliRJ['noReferensi'] ?? null);
+        return $reqSep['request']['t_sep']['rujukan']['noRujukan'] ?? ($this->formDaftar['noReferensi'] ?? null);
     }
 
     private function hitungNoAntrian(string $drId, Carbon $rjDateCarbon): int
     {
-        $poliId = $this->dataDaftarPoliRJ['poliId'] ?? null;
+        $poliId = $this->formDaftar['poliId'] ?? null;
 
         $maxAntrianRjhdrs = (int) DB::table('rstxn_rjhdrs')
             ->where('dr_id', $drId)
@@ -874,34 +900,34 @@ new class extends Component {
 
     private function updateTaskId3(): void
     {
-        if (empty($this->dataDaftarPoliRJ['taskIdPelayanan']['taskId3'])) {
-            $this->dataDaftarPoliRJ['taskIdPelayanan']['taskId3'] = $this->dataDaftarPoliRJ['rjDate'];
+        if (empty($this->formDaftar['taskIdPelayanan']['taskId3'])) {
+            $this->formDaftar['taskIdPelayanan']['taskId3'] = $this->formDaftar['rjDate'];
         }
 
-        $status = $this->dataDaftarPoliRJ['taskIdPelayanan']['taskId3Status'] ?? '';
+        $status = $this->formDaftar['taskIdPelayanan']['taskId3Status'] ?? '';
         if ($status == 200 || $status == 208) {
             $this->dispatch('toast', type: 'info', message: 'TaskId 3 sudah pernah dikirim ke BPJS.');
             return;
         }
 
-        $waktu = Carbon::createFromFormat('d/m/Y H:i:s', $this->dataDaftarPoliRJ['taskIdPelayanan']['taskId3'], config('app.timezone'))->timestamp * 1000;
-        $code3 = $this->pushDataTaskId($this->dataDaftarPoliRJ['noBooking'], 3, $waktu);
-        $this->dataDaftarPoliRJ['taskIdPelayanan']['taskId3Status'] = $code3;
+        $waktu = Carbon::createFromFormat('d/m/Y H:i:s', $this->formDaftar['taskIdPelayanan']['taskId3'], config('app.timezone'))->timestamp * 1000;
+        $code3 = $this->pushDataTaskId($this->formDaftar['noBooking'], 3, $waktu);
+        $this->formDaftar['taskIdPelayanan']['taskId3Status'] = $code3;
     }
 
     private function handleSepCreation(): void
     {
-        $isBpjs = ($this->dataDaftarPoliRJ['klaimStatus'] ?? '') === 'BPJS' || ($this->dataDaftarPoliRJ['klaimId'] ?? '') === 'JM';
+        $isBpjs = ($this->formDaftar['klaimStatus'] ?? '') === 'BPJS' || ($this->formDaftar['klaimId'] ?? '') === 'JM';
         if (!$isBpjs) {
             return;
         }
 
-        $sudahAdaSEP = !empty($this->dataDaftarPoliRJ['sep']['noSep']);
+        $sudahAdaSEP = !empty($this->formDaftar['sep']['noSep']);
 
-        if (!$sudahAdaSEP && !empty($this->dataDaftarPoliRJ['sep']['reqSep'])) {
-            $this->pushInsertSEP($this->dataDaftarPoliRJ['sep']['reqSep']);
-        } elseif ($sudahAdaSEP && !empty($this->dataDaftarPoliRJ['sep']['reqSep']) && $this->reqSepBerubah()) {
-            $this->pushUpdateSEP($this->dataDaftarPoliRJ['sep']['reqSep']);
+        if (!$sudahAdaSEP && !empty($this->formDaftar['sep']['reqSep'])) {
+            $this->pushInsertSEP($this->formDaftar['sep']['reqSep']);
+        } elseif ($sudahAdaSEP && !empty($this->formDaftar['sep']['reqSep']) && $this->reqSepBerubah()) {
+            $this->pushUpdateSEP($this->formDaftar['sep']['reqSep']);
         }
     }
 
@@ -911,7 +937,7 @@ new class extends Component {
      */
     private function reqSepBerubah(): bool
     {
-        return ($this->dataDaftarPoliRJ['sep']['reqSep'] ?? []) != $this->reqSepTersimpan;
+        return ($this->formDaftar['sep']['reqSep'] ?? []) != $this->reqSepTersimpan;
     }
 
     private function updateTaskId1And2(): void
@@ -921,20 +947,20 @@ new class extends Component {
         }
 
         try {
-            $rjFormatted = Carbon::createFromFormat('d/m/Y H:i:s', $this->dataDaftarPoliRJ['rjDate'])->format('Ymd');
+            $rjFormatted = Carbon::createFromFormat('d/m/Y H:i:s', $this->formDaftar['rjDate'])->format('Ymd');
             $regFormatted = Carbon::createFromFormat('d/m/Y H:i:s', $this->dataPasien['pasien']['regDate'])->format('Ymd');
 
             if ($rjFormatted === $regFormatted) {
-                $this->dataDaftarPoliRJ['taskIdPelayanan']['taskId1'] = $this->dataPasien['pasien']['regDate'];
-                $waktu1 = Carbon::createFromFormat('d/m/Y H:i:s', $this->dataDaftarPoliRJ['taskIdPelayanan']['taskId1'], config('app.timezone'))->timestamp * 1000;
-                $code1 = $this->pushDataTaskId($this->dataDaftarPoliRJ['noBooking'], 1, $waktu1);
-                $this->dataDaftarPoliRJ['taskIdPelayanan']['taskId1Status'] = $code1;
+                $this->formDaftar['taskIdPelayanan']['taskId1'] = $this->dataPasien['pasien']['regDate'];
+                $waktu1 = Carbon::createFromFormat('d/m/Y H:i:s', $this->formDaftar['taskIdPelayanan']['taskId1'], config('app.timezone'))->timestamp * 1000;
+                $code1 = $this->pushDataTaskId($this->formDaftar['noBooking'], 1, $waktu1);
+                $this->formDaftar['taskIdPelayanan']['taskId1Status'] = $code1;
 
                 if (!empty($this->dataPasien['pasien']['regDateStore'])) {
-                    $this->dataDaftarPoliRJ['taskIdPelayanan']['taskId2'] = $this->dataPasien['pasien']['regDateStore'];
-                    $waktu2 = Carbon::createFromFormat('d/m/Y H:i:s', $this->dataDaftarPoliRJ['taskIdPelayanan']['taskId2'], config('app.timezone'))->timestamp * 1000;
-                    $code2 = $this->pushDataTaskId($this->dataDaftarPoliRJ['noBooking'], 2, $waktu2);
-                    $this->dataDaftarPoliRJ['taskIdPelayanan']['taskId2Status'] = $code2;
+                    $this->formDaftar['taskIdPelayanan']['taskId2'] = $this->dataPasien['pasien']['regDateStore'];
+                    $waktu2 = Carbon::createFromFormat('d/m/Y H:i:s', $this->formDaftar['taskIdPelayanan']['taskId2'], config('app.timezone'))->timestamp * 1000;
+                    $code2 = $this->pushDataTaskId($this->formDaftar['noBooking'], 2, $waktu2);
+                    $this->formDaftar['taskIdPelayanan']['taskId2Status'] = $code2;
                 }
             }
         } catch (\Exception $e) {
@@ -995,14 +1021,14 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarPoliRJ['sep'] = [
+        $this->formDaftar['sep'] = [
             'noSep' => $sepData['noSep'] ?? '',
             'reqSep' => $reqSep,
             'resSep' => $sepData,
             'created_at' => Carbon::now()->format('d/m/Y H:i:s'),
         ];
 
-        $this->dataDaftarPoliRJ['noReferensi'] = $this->resolveNoReferensi($reqSep);
+        $this->formDaftar['noReferensi'] = $this->resolveNoReferensi($reqSep);
         $this->reqSepTersimpan = $reqSep;
 
         // Persist SEGERA — jangan menunggu alur simpan lain; SEP di BPJS
@@ -1021,10 +1047,10 @@ new class extends Component {
      */
     private function persistSepNode(string $konteks = 'tercipta'): void
     {
-        $rjNo = $this->dataDaftarPoliRJ['rjNo'] ?? null;
+        $rjNo = $this->formDaftar['rjNo'] ?? null;
         if (empty($rjNo)) {
             // Row RJ belum ada — seharusnya tak terjadi setelah reorder simpan-dulu.
-            $this->dispatch('toast', type: 'warning', message: 'SEP ' . $konteks . ' tapi No. RJ belum ada — noSep: ' . ($this->dataDaftarPoliRJ['sep']['noSep'] ?? '-') . '. Simpan ulang pendaftaran.');
+            $this->dispatch('toast', type: 'warning', message: 'SEP ' . $konteks . ' tapi No. RJ belum ada — noSep: ' . ($this->formDaftar['sep']['noSep'] ?? '-') . '. Simpan ulang pendaftaran.');
             return;
         }
 
@@ -1032,20 +1058,20 @@ new class extends Component {
             DB::transaction(function () use ($rjNo) {
                 $this->lockRJRow($rjNo);
 
-                $fresh = $this->findDataRJ($rjNo) ?: $this->dataDaftarPoliRJ;
-                $fresh['sep'] = $this->dataDaftarPoliRJ['sep'] ?? [];
-                if (array_key_exists('noReferensi', $this->dataDaftarPoliRJ)) {
-                    $fresh['noReferensi'] = $this->dataDaftarPoliRJ['noReferensi'];
+                $fresh = $this->findDataRJ($rjNo) ?: $this->formDaftar;
+                $fresh['sep'] = $this->formDaftar['sep'] ?? [];
+                if (array_key_exists('noReferensi', $this->formDaftar)) {
+                    $fresh['noReferensi'] = $this->formDaftar['noReferensi'];
                 }
                 $this->updateJsonRJ($rjNo, $fresh);
 
                 DB::table('rstxn_rjhdrs')
                     ->where('rj_no', $rjNo)
-                    ->update(['vno_sep' => $this->dataDaftarPoliRJ['sep']['noSep'] ?? '']);
+                    ->update(['vno_sep' => $this->formDaftar['sep']['noSep'] ?? '']);
             });
         } catch (\Throwable $e) {
             // SEP sudah ada di BPJS — beri tahu noSep-nya supaya bisa dicatat manual.
-            $this->dispatch('toast', type: 'error', message: 'SEP ' . ($this->dataDaftarPoliRJ['sep']['noSep'] ?? '-') . ' ' . $konteks . ' di BPJS tapi GAGAL tercatat lokal: ' . $e->getMessage() . ' — ulangi Simpan tanpa menutup form.', duration: 10000);
+            $this->dispatch('toast', type: 'error', message: 'SEP ' . ($this->formDaftar['sep']['noSep'] ?? '-') . ' ' . $konteks . ' di BPJS tapi GAGAL tercatat lokal: ' . $e->getMessage() . ' — ulangi Simpan tanpa menutup form.', duration: 10000);
         }
     }
 
@@ -1099,8 +1125,8 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarPoliRJ['sep']['reqSep'] = $this->reqSepTersimpan;
-        $this->dataDaftarPoliRJ['noReferensi'] = $this->resolveNoReferensi($this->reqSepTersimpan);
+        $this->formDaftar['sep']['reqSep'] = $this->reqSepTersimpan;
+        $this->formDaftar['noReferensi'] = $this->resolveNoReferensi($this->reqSepTersimpan);
         $this->persistSepNode('ditolak perubahannya');
         $this->incrementVersion('modal');
         $this->dispatch('toast', type: 'warning', message: $alasan . ' — perubahan SEP dibatalkan, isi lokal dikembalikan sesuai yang tercatat di BPJS.', duration: 10000);
@@ -1108,7 +1134,7 @@ new class extends Component {
 
     private function formatUpdateSepRequest(array $reqSepUpdate): array
     {
-        $noSep = $reqSepUpdate['request']['t_sep']['noSep'] ?? ($this->dataDaftarPoliRJ['sep']['noSep'] ?? '');
+        $noSep = $reqSepUpdate['request']['t_sep']['noSep'] ?? ($this->formDaftar['sep']['noSep'] ?? '');
 
         if (empty($noSep)) {
             throw new \RuntimeException('Nomor SEP tidak ditemukan untuk update.');
@@ -1161,8 +1187,8 @@ new class extends Component {
         $code = $response['metadata']['code'] ?? 200;
         $message = $response['metadata']['message'] ?? 'SEP berhasil diupdate';
         $this->dispatch('toast', type: 'success', message: "Update SEP ({$code}): {$message}");
-        $this->dataDaftarPoliRJ['sep']['updated_at'] = Carbon::now()->format('d/m/Y H:i:s');
-        $this->reqSepTersimpan = $this->dataDaftarPoliRJ['sep']['reqSep'] ?? [];
+        $this->formDaftar['sep']['updated_at'] = Carbon::now()->format('d/m/Y H:i:s');
+        $this->reqSepTersimpan = $this->formDaftar['sep']['reqSep'] ?? [];
         $this->persistSepNode();
     }
 
@@ -1179,9 +1205,9 @@ new class extends Component {
     #[On('lov.selected.rjFormPasien')]
     public function rjFormPasien(string $target, array $payload): void
     {
-        $this->dataDaftarPoliRJ['regNo'] = $payload['reg_no'] ?? '';
-        $this->dataDaftarPoliRJ['regName'] = $payload['reg_name'] ?? '';
-        $this->dataPasien = $this->findDataMasterPasien($this->dataDaftarPoliRJ['regNo'] ?? '');
+        $this->formDaftar['regNo'] = $payload['reg_no'] ?? '';
+        $this->formDaftar['regName'] = $payload['reg_name'] ?? '';
+        $this->dataPasien = $this->findDataMasterPasien($this->formDaftar['regNo'] ?? '');
         $this->incrementVersion('pasien');
         $this->incrementVersion('modal');
         $this->dispatch('focus-cari-dokter');
@@ -1190,12 +1216,12 @@ new class extends Component {
     #[On('lov.selected.rjFormDokter')]
     public function rjFormDokter(string $target, array $payload): void
     {
-        $this->dataDaftarPoliRJ['drId'] = $payload['dr_id'] ?? '';
-        $this->dataDaftarPoliRJ['drDesc'] = $payload['dr_name'] ?? '';
-        $this->dataDaftarPoliRJ['poliId'] = $payload['poli_id'] ?? '';
-        $this->dataDaftarPoliRJ['poliDesc'] = $payload['poli_desc'] ?? '';
-        $this->dataDaftarPoliRJ['kddrbpjs'] = $payload['kd_dr_bpjs'] ?? '';
-        $this->dataDaftarPoliRJ['kdpolibpjs'] = $payload['kd_poli_bpjs'] ?? '';
+        $this->formDaftar['drId'] = $payload['dr_id'] ?? '';
+        $this->formDaftar['drDesc'] = $payload['dr_name'] ?? '';
+        $this->formDaftar['poliId'] = $payload['poli_id'] ?? '';
+        $this->formDaftar['poliDesc'] = $payload['poli_desc'] ?? '';
+        $this->formDaftar['kddrbpjs'] = $payload['kd_dr_bpjs'] ?? '';
+        $this->formDaftar['kdpolibpjs'] = $payload['kd_poli_bpjs'] ?? '';
 
         // Auto-set tarif admin dari master dokter (rs_admin, poli_price/poli_price_bpjs)
         $this->recomputeAdminPrices();
@@ -1215,7 +1241,7 @@ new class extends Component {
     #[On('sep-deleted')]
     public function handleSepDeleted(): void
     {
-        $this->dataDaftarPoliRJ['sep'] = ['noSep' => '', 'reqSep' => [], 'resSep' => []];
+        $this->formDaftar['sep'] = ['noSep' => '', 'reqSep' => [], 'resSep' => []];
         $this->reqSepTersimpan = [];
         $this->persistSepNode('terhapus');
         $this->incrementVersion('modal');
@@ -1224,37 +1250,37 @@ new class extends Component {
     #[On('sep-generated')]
     public function handleSepGenerated($reqSep): void
     {
-        $this->dataDaftarPoliRJ['sep']['reqSep'] = $reqSep;
-        $this->dataDaftarPoliRJ['noReferensi'] = $this->resolveNoReferensi($reqSep);
+        $this->formDaftar['sep']['reqSep'] = $reqSep;
+        $this->formDaftar['noReferensi'] = $this->resolveNoReferensi($reqSep);
         $this->incrementVersion('modal');
         $this->dispatch('toast', type: 'success', message: 'Request SEP berhasil diterima');
     }
 
     public function openVclaimModal(): void
     {
-        if (empty($this->dataDaftarPoliRJ['regNo'])) {
+        if (empty($this->formDaftar['regNo'])) {
             $this->dispatch('toast', type: 'error', message: 'Silakan pilih pasien terlebih dahulu.');
             return;
         }
 
-        $isBpjs = ($this->dataDaftarPoliRJ['klaimStatus'] ?? '') === 'BPJS' || ($this->dataDaftarPoliRJ['klaimId'] ?? '') === 'JM';
+        $isBpjs = ($this->formDaftar['klaimStatus'] ?? '') === 'BPJS' || ($this->formDaftar['klaimId'] ?? '') === 'JM';
 
         if (!$isBpjs) {
             $this->dispatch('toast', type: 'error', message: 'Fitur SEP hanya untuk pasien BPJS (Jenis Klaim JM).');
             return;
         }
 
-        if (empty($this->dataDaftarPoliRJ['drId'])) {
+        if (empty($this->formDaftar['drId'])) {
             $this->dispatch('toast', type: 'error', message: 'Silakan pilih dokter/poli terlebih dahulu.');
             return;
         }
 
-        $this->dispatch('open-vclaim-modal', rjNo: $this->rjNo, regNo: $this->dataDaftarPoliRJ['regNo'], drId: $this->dataDaftarPoliRJ['drId'], drDesc: $this->dataDaftarPoliRJ['drDesc'], poliId: $this->dataDaftarPoliRJ['poliId'], poliDesc: $this->dataDaftarPoliRJ['poliDesc'], kdpolibpjs: $this->dataDaftarPoliRJ['kdpolibpjs'] ?? null, kunjunganId: $this->kunjunganId, kontrol12: $this->kontrol12, internal12: $this->internal12, postInap: $this->dataDaftarPoliRJ['postInap'] ?? false, noReferensi: $this->dataDaftarPoliRJ['noReferensi'] ?? null, sepData: $this->dataDaftarPoliRJ['sep'] ?? []);
+        $this->dispatch('open-vclaim-modal', rjNo: $this->rjNo, regNo: $this->formDaftar['regNo'], drId: $this->formDaftar['drId'], drDesc: $this->formDaftar['drDesc'], poliId: $this->formDaftar['poliId'], poliDesc: $this->formDaftar['poliDesc'], kdpolibpjs: $this->formDaftar['kdpolibpjs'] ?? null, kunjunganId: $this->kunjunganId, kontrol12: $this->kontrol12, internal12: $this->internal12, postInap: $this->formDaftar['postInap'] ?? false, noReferensi: $this->formDaftar['noReferensi'] ?? null, sepData: $this->formDaftar['sep'] ?? []);
     }
 
     public function cetakSEP(): void
     {
-        if (empty($this->dataDaftarPoliRJ['sep']['noSep'])) {
+        if (empty($this->formDaftar['sep']['noSep'])) {
             $this->dispatch('toast', type: 'error', message: 'Tidak ada SEP untuk dicetak.');
             return;
         }
@@ -1265,7 +1291,7 @@ new class extends Component {
        via global event. Pakai No. Registrasi pasien yang sedang dibuka. */
     public function cetakEtiket(): void
     {
-        $regNo = $this->dataDaftarPoliRJ['regNo'] ?? '';
+        $regNo = $this->formDaftar['regNo'] ?? '';
         if (trim($regNo) === '') {
             $this->dispatch('toast', type: 'error', message: 'Pilih pasien terlebih dahulu.');
             return;
@@ -1277,7 +1303,7 @@ new class extends Component {
        <cetak-etiket-auto> page-level via global event ke printer "etiket". */
     public function autoPrintEtiket(): void
     {
-        $regNo = $this->dataDaftarPoliRJ['regNo'] ?? '';
+        $regNo = $this->formDaftar['regNo'] ?? '';
         if (trim($regNo) === '') {
             $this->dispatch('toast', type: 'error', message: 'Pilih pasien terlebih dahulu.');
             return;
@@ -1289,7 +1315,7 @@ new class extends Component {
        <scan-wajah-frista> page-level via global event. */
     public function scanWajahFrista(): void
     {
-        $regNo = $this->dataDaftarPoliRJ['regNo'] ?? '';
+        $regNo = $this->formDaftar['regNo'] ?? '';
         if (trim($regNo) === '') {
             $this->dispatch('toast', type: 'error', message: 'Pilih pasien terlebih dahulu.');
             return;
@@ -1317,21 +1343,21 @@ new class extends Component {
      =============================== */
     public function updated($name, $value): void
     {
-        if ($name === 'dataDaftarPoliRJ.rjDate' && !empty($value)) {
+        if ($name === 'formDaftar.rjDate' && !empty($value)) {
             try {
                 $time = Carbon::createFromFormat('d/m/Y H:i:s', $value)->format('H:i:s');
-                $this->dataDaftarPoliRJ['shift'] = $this->resolveShiftByTime($time);
+                $this->formDaftar['shift'] = $this->resolveShiftByTime($time);
             } catch (\Throwable $e) {
                 // Format belum valid (user masih mengetik) — biarkan shift apa adanya
             }
         }
 
-        if (in_array($name, ['dataDaftarPoliRJ.regNo'])) {
+        if (in_array($name, ['formDaftar.regNo'])) {
             $this->incrementVersion('pasien');
             $this->incrementVersion('modal');
         }
 
-        if ($name === 'dataDaftarPoliRJ.drId') {
+        if ($name === 'formDaftar.drId') {
             $this->incrementVersion('dokter');
             $this->incrementVersion('modal');
         }
@@ -1342,10 +1368,10 @@ new class extends Component {
 
         if ($name === 'klaimId') {
             $this->klaimId = $value;
-            $this->dataDaftarPoliRJ['klaimId'] = $value;
-            $this->dataDaftarPoliRJ['klaimStatus'] = DB::table('rsmst_klaimtypes')->where('klaim_id', $value)->value('klaim_status') ?? 'UMUM';
+            $this->formDaftar['klaimId'] = $value;
+            $this->formDaftar['klaimStatus'] = DB::table('rsmst_klaimtypes')->where('klaim_id', $value)->value('klaim_status') ?? 'UMUM';
             $this->kunjunganId = '1';
-            $this->dataDaftarPoliRJ['kunjunganId'] = '1';
+            $this->formDaftar['kunjunganId'] = '1';
             $this->resetKontrolInternal();
 
             // Re-hitung tarif admin: Kronis → 0, BPJS pakai poli_price_bpjs, dst.
@@ -1354,22 +1380,22 @@ new class extends Component {
 
         if ($name === 'kunjunganId') {
             $this->kunjunganId = $value;
-            $this->dataDaftarPoliRJ['kunjunganId'] = $value;
-            $this->dataDaftarPoliRJ['postInap'] = false;
+            $this->formDaftar['kunjunganId'] = $value;
+            $this->formDaftar['postInap'] = false;
             $this->resetKontrolInternal();
             $this->dispatch('focus-no-referensi');
         }
 
         if ($name === 'kontrol12') {
             $this->kontrol12 = $value;
-            $this->dataDaftarPoliRJ['kontrol12'] = $value;
-            $this->dataDaftarPoliRJ['kontrol12Desc'] = collect($this->kontrol12Options)->first(fn($o) => $o['kontrol12'] === $value)['kontrol12Desc'] ?? '-';
+            $this->formDaftar['kontrol12'] = $value;
+            $this->formDaftar['kontrol12Desc'] = collect($this->kontrol12Options)->first(fn($o) => $o['kontrol12'] === $value)['kontrol12Desc'] ?? '-';
         }
 
         if ($name === 'internal12') {
             $this->internal12 = $value;
-            $this->dataDaftarPoliRJ['internal12'] = $value;
-            $this->dataDaftarPoliRJ['internal12Desc'] = collect($this->internal12Options)->first(fn($o) => $o['internal12'] === $value)['internal12Desc'] ?? '-';
+            $this->formDaftar['internal12'] = $value;
+            $this->formDaftar['internal12Desc'] = collect($this->internal12Options)->first(fn($o) => $o['internal12'] === $value)['internal12Desc'] ?? '-';
         }
     }
 
@@ -1380,27 +1406,27 @@ new class extends Component {
     {
         $this->kontrol12 = '1';
         $this->internal12 = '1';
-        $this->dataDaftarPoliRJ['kontrol12'] = '1';
-        $this->dataDaftarPoliRJ['internal12'] = '1';
-        $this->dataDaftarPoliRJ['kontrol12Desc'] = collect($this->kontrol12Options)->first(fn($o) => $o['kontrol12'] === '1')['kontrol12Desc'] ?? '-';
-        $this->dataDaftarPoliRJ['internal12Desc'] = collect($this->internal12Options)->first(fn($o) => $o['internal12'] === '1')['internal12Desc'] ?? '-';
+        $this->formDaftar['kontrol12'] = '1';
+        $this->formDaftar['internal12'] = '1';
+        $this->formDaftar['kontrol12Desc'] = collect($this->kontrol12Options)->first(fn($o) => $o['kontrol12'] === '1')['kontrol12Desc'] ?? '-';
+        $this->formDaftar['internal12Desc'] = collect($this->internal12Options)->first(fn($o) => $o['internal12'] === '1')['internal12Desc'] ?? '-';
     }
 
     private function syncFromDataDaftarPoliRJ(): void
     {
-        $this->klaimId = $this->dataDaftarPoliRJ['klaimId'] ?? 'UM';
-        $this->kunjunganId = $this->dataDaftarPoliRJ['kunjunganId'] ?? '1';
-        $this->kontrol12 = $this->dataDaftarPoliRJ['kontrol12'] ?? '1';
-        $this->internal12 = $this->dataDaftarPoliRJ['internal12'] ?? '1';
+        $this->klaimId = $this->formDaftar['klaimId'] ?? 'UM';
+        $this->kunjunganId = $this->formDaftar['kunjunganId'] ?? '1';
+        $this->kontrol12 = $this->formDaftar['kontrol12'] ?? '1';
+        $this->internal12 = $this->formDaftar['internal12'] ?? '1';
 
-        $this->dataDaftarPoliRJ['kontrol12Desc'] = collect($this->kontrol12Options)->first(fn($o) => $o['kontrol12'] === $this->kontrol12)['kontrol12Desc'] ?? '-';
-        $this->dataDaftarPoliRJ['internal12Desc'] = collect($this->internal12Options)->first(fn($o) => $o['internal12'] === $this->internal12)['internal12Desc'] ?? '-';
+        $this->formDaftar['kontrol12Desc'] = collect($this->kontrol12Options)->first(fn($o) => $o['kontrol12'] === $this->kontrol12)['kontrol12Desc'] ?? '-';
+        $this->formDaftar['internal12Desc'] = collect($this->internal12Options)->first(fn($o) => $o['internal12'] === $this->internal12)['internal12Desc'] ?? '-';
     }
 
     protected function resetForm(): void
     {
         $this->modalTerbuka = false;
-        $this->reset(['rjNo', 'dataDaftarPoliRJ']);
+        $this->reset(['rjNo', 'formDaftar']);
         $this->resetVersion();
         $this->klaimId = 'UM';
         $this->kunjunganId = '1';
@@ -1408,14 +1434,14 @@ new class extends Component {
         $this->internal12 = '1';
         $this->formMode = 'create';
 
-        $this->dataDaftarPoliRJ['rjDate'] = Carbon::now()->format('d/m/Y H:i:s');
-        $this->dataDaftarPoliRJ['regNo'] = '';
-        $this->dataDaftarPoliRJ['regName'] = '';
-        $this->dataDaftarPoliRJ['drId'] = null;
-        $this->dataDaftarPoliRJ['drDesc'] = '';
-        $this->dataDaftarPoliRJ['poliId'] = null;
-        $this->dataDaftarPoliRJ['poliDesc'] = '';
-        $this->dataDaftarPoliRJ['passStatus'] = 'O';
+        $this->formDaftar['rjDate'] = Carbon::now()->format('d/m/Y H:i:s');
+        $this->formDaftar['regNo'] = '';
+        $this->formDaftar['regName'] = '';
+        $this->formDaftar['drId'] = null;
+        $this->formDaftar['drDesc'] = '';
+        $this->formDaftar['poliId'] = null;
+        $this->formDaftar['poliDesc'] = '';
+        $this->formDaftar['passStatus'] = 'O';
     }
 };
 ?>
@@ -1465,20 +1491,20 @@ new class extends Component {
                     <div class="flex gap-4">
                         <div class="flex-1">
                             <x-input-label value="Tanggal RJ" />
-                            <x-text-input wire:model.live="dataDaftarPoliRJ.rjDate" class="block w-full"
-                                :error="$errors->has('dataDaftarPoliRJ.rjDate')" :disabled="$isFormLocked" />
-                            <x-input-error :messages="$errors->get('dataDaftarPoliRJ.rjDate')" class="mt-1" />
+                            <x-text-input wire:model.live="formDaftar.rjDate" class="block w-full"
+                                :error="$errors->has('formDaftar.rjDate')" :disabled="$isFormLocked" />
+                            <x-input-error :messages="$errors->get('formDaftar.rjDate')" class="mt-1" />
                         </div>
                         <div class="w-36">
                             <x-input-label value="Shift" />
-                            <x-select-input wire:model.live="dataDaftarPoliRJ.shift" class="w-full mt-1 sm:w-36"
-                                :error="$errors->has('dataDaftarPoliRJ.shift')" :disabled="$isFormLocked">
+                            <x-select-input wire:model.live="formDaftar.shift" class="w-full mt-1 sm:w-36"
+                                :error="$errors->has('formDaftar.shift')" :disabled="$isFormLocked">
                                 <option value="">-- Pilih Shift --</option>
                                 <option value="1">Shift 1</option>
                                 <option value="2">Shift 2</option>
                                 <option value="3">Shift 3</option>
                             </x-select-input>
-                            <x-input-error :messages="$errors->get('dataDaftarPoliRJ.shift')" class="mt-1" />
+                            <x-input-error :messages="$errors->get('formDaftar.shift')" class="mt-1" />
                             @if ($shiftMsg = $this->shiftMismatchMessage())
                                 <p class="mt-1 text-xs font-medium text-red-600 dark:text-red-400">{{ $shiftMsg }}</p>
                             @endif
@@ -1509,25 +1535,25 @@ new class extends Component {
                                 class="p-6 space-y-6 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
                                 <div>
                                     <div class="mt-2">
-                                        <x-toggle wire:model.live="dataDaftarPoliRJ.passStatus" trueValue="N"
+                                        <x-toggle wire:model.live="formDaftar.passStatus" trueValue="N"
                                             falseValue="O" label="Pasien Baru" :disabled="$isFormLocked" />
                                     </div>
                                     <p class="mt-1 text-xs text-muted dark:text-gray-400">Jika tidak dicentang maka
                                         dianggap Pasien Lama.</p>
-                                    <x-input-error :messages="$errors->get('dataDaftarPoliRJ.passStatus')" class="mt-1" />
+                                    <x-input-error :messages="$errors->get('formDaftar.passStatus')" class="mt-1" />
                                 </div>
                                 <div class="mt-2" x-ref="lovPasien">
-                                    <livewire:lov.pasien.lov-pasien target="rjFormPasien" :initialRegNo="$dataDaftarPoliRJ['regNo'] ?? ''"
+                                    <livewire:lov.pasien.lov-pasien target="rjFormPasien" :initialRegNo="$formDaftar['regNo'] ?? ''"
                                         :disabled="$isFormLocked" />
-                                    <x-input-error :messages="$errors->get('dataDaftarPoliRJ.regNo')" class="mt-1" />
+                                    <x-input-error :messages="$errors->get('formDaftar.regNo')" class="mt-1" />
                                 </div>
                                 <div class="mt-2" x-ref="lovDokter">
                                     <livewire:lov.dokter.lov-dokter label="Cari Dokter - Poli" target="rjFormDokter"
-                                        :initialDrId="$dataDaftarPoliRJ['drId'] ?? null" :disabled="$isFormLocked" />
-                                    <x-input-error :messages="$errors->get('dataDaftarPoliRJ.drId')" class="mt-1" />
-                                    <x-input-error :messages="$errors->get('dataDaftarPoliRJ.drDesc')" class="mt-1" />
-                                    <x-input-error :messages="$errors->get('dataDaftarPoliRJ.poliId')" class="mt-1" />
-                                    <x-input-error :messages="$errors->get('dataDaftarPoliRJ.poliDesc')" class="mt-1" />
+                                        :initialDrId="$formDaftar['drId'] ?? null" :disabled="$isFormLocked" />
+                                    <x-input-error :messages="$errors->get('formDaftar.drId')" class="mt-1" />
+                                    <x-input-error :messages="$errors->get('formDaftar.drDesc')" class="mt-1" />
+                                    <x-input-error :messages="$errors->get('formDaftar.poliId')" class="mt-1" />
+                                    <x-input-error :messages="$errors->get('formDaftar.poliDesc')" class="mt-1" />
                                 </div>
                                 <div x-ref="klaimOptions">
                                     <x-input-label value="Jenis Klaim" />
@@ -1537,14 +1563,14 @@ new class extends Component {
                                                 wire:model.live="klaimId" :disabled="$isFormLocked" />
                                         @endforeach
                                     </div>
-                                    <x-input-error :messages="$errors->get('dataDaftarPoliRJ.klaimId')" class="mt-1" />
+                                    <x-input-error :messages="$errors->get('formDaftar.klaimId')" class="mt-1" />
                                 </div>
                             </div>
 
                             {{-- KOLOM KANAN --}}
                             <div
                                 class="p-6 space-y-6 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
-                                @if (($dataDaftarPoliRJ['klaimStatus'] ?? '') === 'BPJS' || ($dataDaftarPoliRJ['klaimId'] ?? '') === 'JM')
+                                @if (($formDaftar['klaimStatus'] ?? '') === 'BPJS' || ($formDaftar['klaimId'] ?? '') === 'JM')
                                     <div>
                                         <x-input-label value="Jenis Kunjungan" />
                                         <div class="grid grid-cols-4 gap-2">
@@ -1554,8 +1580,8 @@ new class extends Component {
                                             @endforeach
                                         </div>
                                         <div class="mt-2">
-                                            @if (($dataDaftarPoliRJ['kunjunganId'] ?? '') === '3')
-                                                <x-toggle wire:model.live="dataDaftarPoliRJ.postInap" trueValue="1"
+                                            @if (($formDaftar['kunjunganId'] ?? '') === '3')
+                                                <x-toggle wire:model.live="formDaftar.postInap" trueValue="1"
                                                     falseValue="0" label="Post Inap" :disabled="$isFormLocked" />
                                             @endif
                                             <div class="grid grid-cols-2 gap-2 mt-2">
@@ -1579,9 +1605,9 @@ new class extends Component {
                                     <div class="space-y-3">
                                         <div class="grid" x-ref="inputNoReferensi">
                                             <x-input-label value="No Referensi" />
-                                            <x-text-input wire:model.live="dataDaftarPoliRJ.noReferensi"
+                                            <x-text-input wire:model.live="formDaftar.noReferensi"
                                                 :disabled="$isFormLocked" />
-                                            <x-input-error :messages="$errors->get('dataDaftarPoliRJ.noReferensi')" />
+                                            <x-input-error :messages="$errors->get('formDaftar.noReferensi')" />
                                             <p class="mt-1 text-xs text-muted dark:text-gray-400">di isi dgn : (No
                                                 Rujukan untuk FKTP/FKTL) (SKDP untuk Kontrol/Rujukan Internal)</p>
                                         </div>
@@ -1596,7 +1622,7 @@ new class extends Component {
                                                 </svg>
                                                 Kelola SEP BPJS
                                             </x-info-button>
-                                            @if (!empty($dataDaftarPoliRJ['sep']['noSep']))
+                                            @if (!empty($formDaftar['sep']['noSep']))
                                                 <div
                                                     class="flex items-center gap-2 px-3 py-1 text-xs text-green-700 bg-green-100 rounded-full dark:bg-green-900/30 dark:text-green-300">
                                                     <svg class="w-4 h-4" fill="none" stroke="currentColor"
@@ -1605,10 +1631,10 @@ new class extends Component {
                                                             stroke-width="2"
                                                             d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                                     </svg>
-                                                    SEP: {{ $dataDaftarPoliRJ['sep']['noSep'] }}
+                                                    SEP: {{ $formDaftar['sep']['noSep'] }}
                                                 </div>
                                                 <x-cetak-button wire:click="cetakSEP" title="Cetak SEP" />
-                                            @elseif (!empty($dataDaftarPoliRJ['sep']['reqSep']))
+                                            @elseif (!empty($formDaftar['sep']['reqSep']))
                                                 {{-- Insert SEP gagal / belum dicoba: reqSep tersimpan sebagai draft, dicoba lagi tiap Simpan --}}
                                                 <div
                                                     class="flex items-center gap-2 px-3 py-1 text-xs text-amber-800 bg-amber-100 rounded-full dark:bg-amber-900/30 dark:text-amber-300">
@@ -1620,7 +1646,7 @@ new class extends Component {
                                                 </div>
                                             @endif
                                         </div>
-                                        @if (!empty($dataDaftarPoliRJ['sep']['noSep']))
+                                        @if (!empty($formDaftar['sep']['noSep']))
                                             <div
                                                 class="flex items-center gap-2 px-3 py-2 mt-1 text-sm border border-blue-200 rounded-lg bg-blue-50 dark:bg-blue-900/20 dark:border-blue-800">
                                                 <svg class="w-5 h-5 text-blue-500" fill="none"
@@ -1634,19 +1660,19 @@ new class extends Component {
                                                         class="text-xs font-medium text-blue-700 dark:text-blue-300">SEP
                                                         Aktif:</span>
                                                     <span
-                                                        class="ml-2 font-mono text-sm font-semibold text-blue-800 dark:text-blue-200">{{ $dataDaftarPoliRJ['sep']['noSep'] }}</span>
+                                                        class="ml-2 font-mono text-sm font-semibold text-blue-800 dark:text-blue-200">{{ $formDaftar['sep']['noSep'] }}</span>
                                                 </div>
                                                 <span
-                                                    class="text-xs text-blue-600 dark:text-blue-400">{{ Carbon::parse($dataDaftarPoliRJ['sep']['resSep']['tglSEP'] ?? now())->format('d/m/Y') }}</span>
+                                                    class="text-xs text-blue-600 dark:text-blue-400">{{ Carbon::parse($formDaftar['sep']['resSep']['tglSEP'] ?? now())->format('d/m/Y') }}</span>
                                             </div>
                                         @endif
                                         <livewire:pages::transaksi.rj.daftar-rj.vclaim-rj-actions :initialRjNo="$rjNo ?? null"
                                             wire:key="vclaim-rj-actions-{{ $rjNo ?? 'new' }}" />
                                         <div class="grid">
                                             <x-input-label value="No SEP" />
-                                            <x-text-input wire:model.live="dataDaftarPoliRJ.sep.noSep"
+                                            <x-text-input wire:model.live="formDaftar.sep.noSep"
                                                 :disabled="$isFormLocked" x-ref="inputNoSep" />
-                                            <x-input-error :messages="$errors->get('dataDaftarPoliRJ.sep.noSep')" class="mt-1" />
+                                            <x-input-error :messages="$errors->get('formDaftar.sep.noSep')" class="mt-1" />
                                         </div>
                                     </div>
                                 @endif
@@ -1674,7 +1700,7 @@ new class extends Component {
 
                         {{-- Cetak Etiket (download PDF) — pindahan dari aksi per-baris Daftar RJ.
                              Tampil hanya jika pasien sudah dipilih (ada No. Registrasi). --}}
-                        @if (trim($dataDaftarPoliRJ['regNo'] ?? '') !== '')
+                        @if (trim($formDaftar['regNo'] ?? '') !== '')
                             <x-cetak-button wire:click="cetakEtiket" label="Etiket" />
 
                             {{-- Print Etiket via sirus-print-agent (silent, langsung ke printer "etiket") --}}
@@ -1700,7 +1726,7 @@ new class extends Component {
 
                         {{-- Scan Wajah (FRISTA) — HANYA pasien BPJS yang punya No. Kartu.
                              Via sirus-frista-agent (localhost:9998): buka FRISTA + auto-login + ketik No. Kartu. --}}
-                        @if ((($dataDaftarPoliRJ['klaimStatus'] ?? '') === 'BPJS' || ($dataDaftarPoliRJ['klaimId'] ?? '') === 'JM') && trim($dataPasien['pasien']['identitas']['idbpjs'] ?? '') !== '')
+                        @if ((($formDaftar['klaimStatus'] ?? '') === 'BPJS' || ($formDaftar['klaimId'] ?? '') === 'JM') && trim($dataPasien['pasien']['identitas']['idbpjs'] ?? '') !== '')
                             <x-secondary-button type="button" wire:click="scanWajahFrista"
                                 wire:loading.attr="disabled" wire:target="scanWajahFrista"
                                 title="Buka FRISTA & masukkan No. Kartu BPJS peserta untuk scan wajah">

@@ -16,7 +16,14 @@ new class extends Component {
 
     public bool $isFormLocked = false;
     public ?int $riHdrNo = null;
-    public array $dataDaftarRI = [];
+    /**
+     * Daftar baris RiJasaDokter hasil query DB — BUKAN dokumen EMR.
+     *
+     * Dulu dibungkus di properti yang dinamai seperti dokumen `datadaftarri_json`,
+     * padahal komponen ini tidak pernah membaca dokumen itu sama sekali. Namanya
+     * diluruskan supaya tidak menyesatkan.
+     */
+    public array $daftarJasaDokter = [];
 
     /** Status klaim ('BPJS' atau lainnya) — dipakai untuk pricing pas LOV select. */
     public string $klaimStatus = 'UMUM';
@@ -65,7 +72,7 @@ new class extends Component {
             $this->loadRIMeta($this->riHdrNo);
             $this->findData($this->riHdrNo);
         } else {
-            $this->dataDaftarRI['RiJasaDokter'] = [];
+            $this->daftarJasaDokter = [];
         }
     }
 
@@ -100,7 +107,7 @@ new class extends Component {
             ->orderByDesc('rstxn_riactdocs.actd_date')
             ->get();
 
-        $this->dataDaftarRI['RiJasaDokter'] = $rows->map(fn($r) => (array) $r)->toArray();
+        $this->daftarJasaDokter = $rows->map(fn($r) => (array) $r)->toArray();
     }
 
     /* ===============================
@@ -572,7 +579,7 @@ new class extends Component {
         <div class="overflow-hidden bg-canvas border border-hairline rounded-2xl dark:border-gray-700 dark:bg-gray-900">
             <div class="flex items-center justify-between px-4 py-3 border-b border-hairline dark:border-gray-700">
                 <h3 class="text-sm font-semibold text-body dark:text-gray-300">Daftar Jasa Dokter</h3>
-                <x-badge variant="gray">{{ count($dataDaftarRI['RiJasaDokter'] ?? []) }} item</x-badge>
+                <x-badge variant="gray">{{ count($daftarJasaDokter ?? []) }} item</x-badge>
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full text-sm text-left">
@@ -589,7 +596,7 @@ new class extends Component {
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-hairline-soft dark:divide-gray-800">
-                        @forelse ($dataDaftarRI['RiJasaDokter'] ?? [] as $item)
+                        @forelse ($daftarJasaDokter ?? [] as $item)
                             <tr wire:key="jasa-dokter-ri-{{ $item['actd_no'] ?? $loop->index }}" class="transition hover:bg-surface-soft dark:hover:bg-gray-800/40">
                                 <td class="px-4 py-1.5 font-mono text-sm text-muted whitespace-nowrap">{{ $item['actd_date'] ?? '-' }}</td>
                                 <td class="px-4 py-1.5 text-sm text-muted dark:text-gray-400 whitespace-nowrap">{{ $item['dr_name'] ?? '-' }}</td>
@@ -615,12 +622,12 @@ new class extends Component {
                             </tr>
                         @endforelse
                     </tbody>
-                    @if (!empty($dataDaftarRI['RiJasaDokter']))
+                    @if (!empty($daftarJasaDokter))
                         <tfoot class="border-t border-hairline bg-surface-soft dark:bg-gray-800/50 dark:border-gray-700">
                             <tr>
                                 <td colspan="6" class="px-4 py-3 text-sm font-semibold text-muted dark:text-gray-400">Total</td>
                                 <td class="px-4 py-3 text-sm font-bold text-right text-ink dark:text-white">
-                                    Rp {{ number_format(collect($dataDaftarRI['RiJasaDokter'])->sum(fn($i) => ($i['actd_price'] ?? 0) * ($i['actd_qty'] ?? 1))) }}
+                                    Rp {{ number_format(collect($daftarJasaDokter)->sum(fn($i) => ($i['actd_price'] ?? 0) * ($i['actd_qty'] ?? 1))) }}
                                 </td>
                                 @if (!$isFormLocked) <td></td> @endif
                             </tr>

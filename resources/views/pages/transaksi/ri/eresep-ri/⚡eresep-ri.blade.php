@@ -12,7 +12,12 @@ new class extends Component {
 
     public bool $isFormLocked = false;
     public ?int $riHdrNo = null;
-    public array $dataDaftarRI = [];
+    /**
+     * IRISAN dokumen: hanya cabang `eresepHdr` (daftar lembar resep RI) — sekaligus model
+     * form. Indeks lembar (`$resepIndex`) tetap seperti semula, jadi jalur wire:model hanya
+     * kehilangan awalan dokumennya.
+     */
+    public array $eresepHdr = [];
     public string $activeTab = 'NonRacikan';
     public ?int $activeResepIndex = null;
     public array $apotekStatuses = []; // [slsNo => status] dari imtxn_slshdrs
@@ -50,15 +55,14 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarRI = $data;
-        $this->dataDaftarRI['eresepHdr'] ??= [];
+        $this->eresepHdr = $data['eresepHdr'] ?? [];
 
         if ($this->checkRIStatus($riHdrNo)) {
             $this->isFormLocked = true;
         }
         // Set active resep ke header terakhir
-        if (!empty($this->dataDaftarRI['eresepHdr'])) {
-            $this->activeResepIndex = count($this->dataDaftarRI['eresepHdr']) - 1;
+        if (!empty($this->eresepHdr)) {
+            $this->activeResepIndex = count($this->eresepHdr) - 1;
         }
 
         $this->loadApotekStatuses();
@@ -90,8 +94,7 @@ new class extends Component {
         }
         $data = $this->findDataRI($this->riHdrNo);
         if ($data) {
-            $this->dataDaftarRI = $data;
-            $this->dataDaftarRI['eresepHdr'] ??= [];
+            $this->eresepHdr = $data['eresepHdr'] ?? [];
         }
         $this->loadApotekStatuses();
         $this->incrementVersion('hdr-list');
@@ -102,7 +105,7 @@ new class extends Component {
      =============================== */
     private function loadApotekStatuses(): void
     {
-        $slsNos = collect($this->dataDaftarRI['eresepHdr'] ?? [])
+        $slsNos = collect($this->eresepHdr ?? [])
             ->pluck('slsNo')
             ->filter()
             ->values()
@@ -165,7 +168,7 @@ new class extends Component {
                 ];
 
                 $this->updateJsonRI($this->riHdrNo, $data);
-                $this->dataDaftarRI = $data;
+                $this->eresepHdr = $data['eresepHdr'] ?? [];
                 $this->activeResepIndex = count($data['eresepHdr']) - 1;
             });
 
@@ -209,7 +212,7 @@ new class extends Component {
                 $data['eresepHdr'][$resepIndex]['cito'] = $cito;
 
                 $this->updateJsonRI($this->riHdrNo, $data);
-                $this->dataDaftarRI = $data;
+                $this->eresepHdr = $data['eresepHdr'] ?? [];
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Resep #' . ($hdr['resepNo'] ?? '-') . ($cito === '1' ? ' ditandai CITO' : ' — tanda CITO dicabut'), 'MR');
             });
 
@@ -231,7 +234,7 @@ new class extends Component {
             return;
         }
 
-        $hdr = $this->dataDaftarRI['eresepHdr'][$resepIndex] ?? null;
+        $hdr = $this->eresepHdr[$resepIndex] ?? null;
         if (!$hdr) {
             $this->dispatch('toast', type: 'error', message: 'Resep tidak ditemukan.');
             return;
@@ -254,7 +257,7 @@ new class extends Component {
                 array_splice($data['eresepHdr'], $resepIndex, 1);
 
                 $this->updateJsonRI($this->riHdrNo, $data);
-                $this->dataDaftarRI = $data;
+                $this->eresepHdr = $data['eresepHdr'] ?? [];
 
                 $total = count($data['eresepHdr']);
                 $this->activeResepIndex = $total > 0 ? min($this->activeResepIndex ?? 0, $total - 1) : null;
@@ -289,7 +292,7 @@ new class extends Component {
             return;
         }
 
-        $hdr = $this->dataDaftarRI['eresepHdr'][$resepIndex] ?? null;
+        $hdr = $this->eresepHdr[$resepIndex] ?? null;
         if (!$hdr) {
             $this->dispatch('toast', type: 'error', message: 'Resep tidak ditemukan.');
             return;
@@ -337,7 +340,7 @@ new class extends Component {
                 $data['eresepHdr'][$resepIndex]['slsNo'] = $slsNo;
 
                 $this->updateJsonRI($this->riHdrNo, $data);
-                $this->dataDaftarRI = $data;
+                $this->eresepHdr = $data['eresepHdr'] ?? [];
             });
 
             $this->incrementVersion('modal');
@@ -364,7 +367,7 @@ new class extends Component {
             return;
         }
 
-        $hdr = $this->dataDaftarRI['eresepHdr'][$resepIndex] ?? null;
+        $hdr = $this->eresepHdr[$resepIndex] ?? null;
         if (!$hdr) {
             $this->dispatch('toast', type: 'error', message: 'Resep tidak ditemukan.');
             return;
@@ -412,7 +415,7 @@ new class extends Component {
                 unset($data['eresepHdr'][$resepIndex]['slsNo']);
 
                 $this->updateJsonRI($this->riHdrNo, $data);
-                $this->dataDaftarRI = $data;
+                $this->eresepHdr = $data['eresepHdr'] ?? [];
             });
 
             $this->incrementVersion('modal');
@@ -440,7 +443,7 @@ new class extends Component {
             return;
         }
 
-        $resepHdrSumber = $this->dataDaftarRI['eresepHdr'][$sumberIndex] ?? null;
+        $resepHdrSumber = $this->eresepHdr[$sumberIndex] ?? null;
         if (!$resepHdrSumber) {
             $this->dispatch('toast', type: 'error', message: 'Resep sumber tidak ditemukan.');
             return;
@@ -476,7 +479,7 @@ new class extends Component {
                 ];
 
                 $this->updateJsonRI($this->riHdrNo, $data);
-                $this->dataDaftarRI = $data;
+                $this->eresepHdr = $data['eresepHdr'] ?? [];
                 $this->activeResepIndex = count($data['eresepHdr']) - 1;
             });
 
@@ -495,7 +498,7 @@ new class extends Component {
      =============================== */
     public function simpanPlanCppt(int $resepIndex): void
     {
-        $hdr = $this->dataDaftarRI['eresepHdr'][$resepIndex] ?? null;
+        $hdr = $this->eresepHdr[$resepIndex] ?? null;
 
         if (!$hdr) {
             $this->dispatch('toast', type: 'warning', message: 'Data resep tidak ditemukan.');
@@ -543,7 +546,7 @@ new class extends Component {
      =============================== */
     public function cetakEresep(int $resepIndex): void
     {
-        $hdr = $this->dataDaftarRI['eresepHdr'][$resepIndex] ?? null;
+        $hdr = $this->eresepHdr[$resepIndex] ?? null;
         if (!$hdr) {
             $this->dispatch('toast', type: 'error', message: 'Resep tidak ditemukan.');
             return;
@@ -634,7 +637,7 @@ new class extends Component {
      =============================== */
     protected function resetForm(): void
     {
-        $this->reset(['riHdrNo', 'dataDaftarRI', 'activeTab', 'activeResepIndex', 'formResepHdr', 'apotekStatuses']);
+        $this->reset(['riHdrNo', 'eresepHdr', 'activeTab', 'activeResepIndex', 'formResepHdr', 'apotekStatuses']);
         $this->resetVersion();
         $this->isFormLocked = false;
     }
@@ -723,7 +726,7 @@ new class extends Component {
 
                             {{-- List Resep — urutan terbaru di atas (key asli dipertahankan untuk selectResep/removeResepHdr/setDokterPeresep) --}}
                             <div wire:key="{{ $this->renderKey('hdr-list', [$riHdrNo ?? 'new']) }}" class="space-y-2">
-                                @forelse (array_reverse($dataDaftarRI['eresepHdr'] ?? [], true) as $resepIndex => $hdr)
+                                @forelse (array_reverse($eresepHdr ?? [], true) as $resepIndex => $hdr)
                                     <div
                                         class="p-4 text-sm border rounded-lg cursor-pointer {{ $activeResepIndex === $resepIndex ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-hairline bg-surface-soft hover:bg-surface-soft dark:border-gray-700 dark:bg-gray-800/50' }}">
 
@@ -881,18 +884,18 @@ new class extends Component {
                     <div class="lg:col-span-3 space-y-4">
 
                         {{-- Konten Resep Aktif --}}
-                        @if ($activeResepIndex !== null && isset($dataDaftarRI['eresepHdr'][$activeResepIndex]))
+                        @if ($activeResepIndex !== null && isset($eresepHdr[$activeResepIndex]))
                             <div
                                 class="p-4 space-y-2.5 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
 
                                 {{-- Info Resep Aktif --}}
                                 <div class="flex items-center gap-2 text-sm text-muted dark:text-gray-400">
                                     <span class="font-medium">
-                                        Resep #{{ $dataDaftarRI['eresepHdr'][$activeResepIndex]['resepNo'] }}
+                                        Resep #{{ $eresepHdr[$activeResepIndex]['resepNo'] }}
                                     </span>
                                     <span>—</span>
-                                    <span>{{ $dataDaftarRI['eresepHdr'][$activeResepIndex]['resepDate'] }}</span>
-                                    @if (!empty($dataDaftarRI['eresepHdr'][$activeResepIndex]['slsNo']))
+                                    <span>{{ $eresepHdr[$activeResepIndex]['resepDate'] }}</span>
+                                    @if (!empty($eresepHdr[$activeResepIndex]['slsNo']))
                                         <x-badge variant="success">
                                             Terkirim ke Apotek
                                         </x-badge>

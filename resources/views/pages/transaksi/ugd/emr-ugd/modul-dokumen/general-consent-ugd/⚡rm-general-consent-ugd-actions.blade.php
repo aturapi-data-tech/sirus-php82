@@ -16,7 +16,19 @@ new class extends Component {
     public bool $isFormLocked = false;
     public ?int $rjNo = null;
     public bool $disabled = false;
-    public array $dataDaftarUGD = [];
+
+    /**
+     * IRISAN dokumen: hanya cabang `generalConsentPasienUGD`.
+     *
+     * Dokumen `datadaftar*_json` utuh sengaja TIDAK disimpan di properti publik — properti
+     * publik ikut snapshot Livewire dan dikirim bolak-balik tiap request, dan TTD pasien di
+     * cabang ini berupa data-URL base64 yang membuat dokumen membengkak. Untuk MENYIMPAN,
+     * dokumen utuh tetap dibaca ulang dari DB di dalam transaksi + lock.
+     */
+    public array $generalConsent = [];
+
+    /** Nama pasien untuk isian awal Nama Pasien/Wali (dulu dibaca dari dokumen penuh). */
+    public ?string $regName = null;
 
     public array $renderVersions = [];
     protected array $renderAreas = ['modal-general-consent-ugd'];
@@ -58,7 +70,8 @@ new class extends Component {
         if ($this->rjNo) {
             $data = $this->findDataUGD($this->rjNo);
             if ($data) {
-                $this->dataDaftarUGD = $data;
+                $this->generalConsent = $data['generalConsentPasienUGD'] ?? $this->getDefaultGeneralConsent();
+                $this->regName = $data['regName'] ?? null;
                 // Terkunci bila EMR terkunci, dinonaktifkan, ATAU sudah di-TTD petugas (final).
                 $this->isFormLocked = $this->checkEmrUGDStatus($this->rjNo) || $disabled
                     || !empty($data['generalConsentPasienUGD']['petugasPemeriksa'] ?? '');
@@ -68,9 +81,7 @@ new class extends Component {
 
     public function rendering(): void
     {
-        $default = $this->getDefaultGeneralConsent();
-        $current = $this->dataDaftarUGD['generalConsentPasienUGD'] ?? [];
-        $this->dataDaftarUGD['generalConsentPasienUGD'] = array_replace_recursive($default, $current);
+        $this->generalConsent = array_replace_recursive($this->getDefaultGeneralConsent(), $this->generalConsent);
     }
 
     /* ===============================
@@ -90,12 +101,12 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarUGD = $data;
-        $this->dataDaftarUGD['generalConsentPasienUGD'] ??= $this->getDefaultGeneralConsent();
+        $this->generalConsent = $data['generalConsentPasienUGD'] ?? $this->getDefaultGeneralConsent();
+        $this->regName = $data['regName'] ?? null;
 
-        $consent = $this->dataDaftarUGD['generalConsentPasienUGD'];
+        $consent = $this->generalConsent;
         // Default Nama Pasien/Wali = nama pasien & hubungan = Pasien Sendiri bila belum diisi (pola penundaan)
-        $this->wali = ($consent['wali'] ?? '') ?: ($this->dataDaftarUGD['regName'] ?? '');
+        $this->wali = ($consent['wali'] ?? '') ?: ($this->regName ?? '');
         $this->waliHubungan = ($consent['waliHubungan'] ?? '') ?: 'pasien';
         $this->agreement = $consent['agreement'] ?? '1';
         $this->signature = $consent['signature'] ?? '';
@@ -170,12 +181,12 @@ new class extends Component {
             'agreement' => 'agreement',
         ];
         if (isset($map[$name])) {
-            $this->dataDaftarUGD['generalConsentPasienUGD'][$map[$name]] = $value;
+            $this->generalConsent[$map[$name]] = $value;
         }
 
         // Sync pihakInfoMedis (nested wire:model live)
         if (str_starts_with($name, 'pihakInfoMedis.')) {
-            $this->dataDaftarUGD['generalConsentPasienUGD']['pihakInfoMedis'] = $this->pihakInfoMedis;
+            $this->generalConsent['pihakInfoMedis'] = $this->pihakInfoMedis;
         }
 
         if ($name === 'agreement') {
@@ -206,7 +217,7 @@ new class extends Component {
             unset($this->pihakInfoMedis[$index]);
             $this->pihakInfoMedis = array_values($this->pihakInfoMedis);
         }
-        $this->dataDaftarUGD['generalConsentPasienUGD']['pihakInfoMedis'] = $this->pihakInfoMedis;
+        $this->generalConsent['pihakInfoMedis'] = $this->pihakInfoMedis;
     }
 
     /* ===============================
@@ -219,8 +230,8 @@ new class extends Component {
         }
 
         $this->signature = $dataUrl;
-        $this->dataDaftarUGD['generalConsentPasienUGD']['signature'] = $dataUrl;
-        $this->dataDaftarUGD['generalConsentPasienUGD']['signatureDate'] = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
+        $this->generalConsent['signature'] = $dataUrl;
+        $this->generalConsent['signatureDate'] = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
     }
 
     public function clearSignature(): void
@@ -230,8 +241,8 @@ new class extends Component {
         }
 
         $this->signature = '';
-        $this->dataDaftarUGD['generalConsentPasienUGD']['signature'] = '';
-        $this->dataDaftarUGD['generalConsentPasienUGD']['signatureDate'] = '';
+        $this->generalConsent['signature'] = '';
+        $this->generalConsent['signatureDate'] = '';
         $this->incrementVersion('modal-general-consent-ugd');
     }
 
@@ -245,7 +256,7 @@ new class extends Component {
             return;
         }
 
-        if (!empty($this->dataDaftarUGD['generalConsentPasienUGD']['petugasPemeriksa'])) {
+        if (!empty($this->generalConsent['petugasPemeriksa'])) {
             $this->dispatch('toast', type: 'error', message: 'Tanda tangan petugas pemberi penjelasan sudah ada.');
             return;
         }
@@ -263,11 +274,11 @@ new class extends Component {
             ->filter(fn($pihak) => !empty(trim($pihak['nama'] ?? '')) || !empty(trim($pihak['hubungan'] ?? '')) || !empty(trim($pihak['noHp'] ?? '')))
             ->values()
             ->toArray();
-        $this->dataDaftarUGD['generalConsentPasienUGD']['pihakInfoMedis'] = $cleanPihak;
+        $this->generalConsent['pihakInfoMedis'] = $cleanPihak;
         // Sync field prop top-level (pre-fill wali/hubungan/agreement tak ter-updated bila user tak mengedit)
-        $this->dataDaftarUGD['generalConsentPasienUGD']['wali'] = $this->wali;
-        $this->dataDaftarUGD['generalConsentPasienUGD']['waliHubungan'] = $this->waliHubungan;
-        $this->dataDaftarUGD['generalConsentPasienUGD']['agreement'] = $this->agreement;
+        $this->generalConsent['wali'] = $this->wali;
+        $this->generalConsent['waliHubungan'] = $this->waliHubungan;
+        $this->generalConsent['agreement'] = $this->agreement;
 
         try {
             DB::transaction(function () {
@@ -281,14 +292,14 @@ new class extends Component {
                 // Simpan seluruh isian form (in-memory) sekaligus stempel TTD petugas → kunci.
                 $data['generalConsentPasienUGD'] = array_replace(
                     $data['generalConsentPasienUGD'] ?? $this->getDefaultGeneralConsent(),
-                    $this->dataDaftarUGD['generalConsentPasienUGD'] ?? []
+                    $this->generalConsent ?? []
                 );
                 $data['generalConsentPasienUGD']['petugasPemeriksa'] = auth()->user()->myuser_name ?? '';
                 $data['generalConsentPasienUGD']['petugasPemeriksaCode'] = auth()->user()->myuser_code ?? '';
                 $data['generalConsentPasienUGD']['petugasPemeriksaDate'] = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
 
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->dataDaftarUGD = $data;
+                $this->generalConsent = $data['generalConsentPasienUGD'] ?? [];
 
                 $this->appendAdminLogUGD((int) $this->rjNo, 'TTD Petugas + kunci General Consent UGD — ' . ($data['generalConsentPasienUGD']['petugasPemeriksaDate'] ?? '-'), 'MR');
             });
@@ -334,12 +345,12 @@ new class extends Component {
                 $gc['petugasPemeriksaDate'] = '';
                 $data['generalConsentPasienUGD'] = $gc;
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->dataDaftarUGD = $data;
+                $this->generalConsent = $data['generalConsentPasienUGD'] ?? [];
                 $this->appendAdminLogUGD((int) $this->rjNo, 'Buka kunci General Consent — TTD petugas dicabut (oleh ' . (auth()->user()->myuser_name ?? auth()->user()->name ?? '-') . ')', 'MR');
             });
 
             $this->isFormLocked = $this->checkEmrUGDStatus($this->rjNo) || $this->disabled
-                || !empty($this->dataDaftarUGD['generalConsentPasienUGD']['petugasPemeriksa'] ?? '');
+                || !empty($this->generalConsent['petugasPemeriksa'] ?? '');
             $this->incrementVersion('modal-general-consent-ugd');
             $this->dispatch('toast', type: 'success', message: 'Kunci dibuka — TTD petugas dicabut. Silakan koreksi lalu TTD & kunci ulang.');
             $this->dispatch('refresh-modul-dokumen-ugd-data', rjNo: $this->rjNo);
@@ -365,11 +376,11 @@ new class extends Component {
             ->filter(fn($pihak) => !empty(trim($pihak['nama'] ?? '')) || !empty(trim($pihak['hubungan'] ?? '')) || !empty(trim($pihak['noHp'] ?? '')))
             ->values()
             ->toArray();
-        $this->dataDaftarUGD['generalConsentPasienUGD']['pihakInfoMedis'] = $cleanPihak;
+        $this->generalConsent['pihakInfoMedis'] = $cleanPihak;
         // Sync field prop top-level (pre-fill wali/hubungan/agreement tak ter-updated bila user tak mengedit)
-        $this->dataDaftarUGD['generalConsentPasienUGD']['wali'] = $this->wali;
-        $this->dataDaftarUGD['generalConsentPasienUGD']['waliHubungan'] = $this->waliHubungan;
-        $this->dataDaftarUGD['generalConsentPasienUGD']['agreement'] = $this->agreement;
+        $this->generalConsent['wali'] = $this->wali;
+        $this->generalConsent['waliHubungan'] = $this->waliHubungan;
+        $this->generalConsent['agreement'] = $this->agreement;
 
         try {
             DB::transaction(function () {
@@ -383,10 +394,10 @@ new class extends Component {
                 // Tangkap status sebelum overwrite (untuk verb log Buat/Update)
                 $isBaru = empty($data['generalConsentPasienUGD']);
 
-                $data['generalConsentPasienUGD'] = array_replace($data['generalConsentPasienUGD'] ?? $this->getDefaultGeneralConsent(), $this->dataDaftarUGD['generalConsentPasienUGD'] ?? []);
+                $data['generalConsentPasienUGD'] = array_replace($data['generalConsentPasienUGD'] ?? $this->getDefaultGeneralConsent(), $this->generalConsent ?? []);
 
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->dataDaftarUGD = $data;
+                $this->generalConsent = $data['generalConsentPasienUGD'] ?? [];
 
                 $this->appendAdminLogUGD((int) $this->rjNo, ($isBaru ? 'Buat' : 'Update') . ' General Consent UGD — TTD ' . ($data['generalConsentPasienUGD']['signatureDate'] ?? '-'), 'MR');
             });
@@ -438,7 +449,8 @@ new class extends Component {
     {
         $this->resetVersion();
         $this->isFormLocked = false;
-        $this->dataDaftarUGD = [];
+        $this->generalConsent = [];
+        $this->regName = null;
         $this->signature = '';
         $this->wali = '';
         $this->waliHubungan = '';
@@ -451,7 +463,7 @@ new class extends Component {
 <div>
     {{-- ══ SUMMARY CARD (inline di tab) ══ --}}
     @php
-        $gc = $dataDaftarUGD['generalConsentPasienUGD'] ?? [];
+        $gc = $generalConsent ?? [];
         $gcSigned = !empty($gc['signature']);
     @endphp
 
@@ -514,7 +526,7 @@ new class extends Component {
                          langsung di bawah paragraf izin akses info medis --}}
                     <x-consent.general-consent-ugd mode="screen"
                         :consent="['wali' => $wali, 'waliHubungan' => $waliHubungan, 'agreement' => $agreement, 'pihakInfoMedis' => $pihakInfoMedis]"
-                        :version="$dataDaftarUGD['generalConsentPasienUGD']['clauseVersion'] ?? null">
+                        :version="$generalConsent['clauseVersion'] ?? null">
 
                         {{-- Tabel entry bergaris tipis — selaras tabel di cetakan (No/Nama/Hubungan/No. HP) --}}
                         <div class="overflow-hidden border border-hairline rounded-lg dark:border-gray-700">
@@ -577,8 +589,8 @@ new class extends Component {
                             <x-modul-dokumen.banner jenis="terkunci" />
                         @endif
 
-                        @if (isset($dataDaftarUGD['generalConsentPasienUGD']))
-                            @php $consent = $dataDaftarUGD['generalConsentPasienUGD']; @endphp
+                        @if (!empty($generalConsent))
+                            @php $consent = $generalConsent; @endphp
 
                             {{-- ══ DATA PERSETUJUAN ══ --}}
                             <section class="space-y-4">

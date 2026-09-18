@@ -11,7 +11,49 @@ new class extends Component {
 
     public bool $isFormLocked = false;
     public ?int $rjNo = null;
-    public array $dataDaftarUGD = [];
+    /**
+     * RINGKASAN status dokumen, bukan isinya.
+     *
+     * Hub ini memang perlu tahu keadaan SEMUA dokumen untuk menyalakan badge — tapi cukup
+     * benar/salah dan hitungannya. Menyimpan `datadaftarugd_json` utuh berarti mengirim
+     * seluruh dokumen bolak-balik tiap request hanya demi belasan badge.
+     */
+    public bool $adaSuket = false;
+    public bool $adaTrfUgd = false;
+    public bool $adaGeneralConsent = false;
+    public bool $adaBedah = false;
+    public bool $adaSuratKematianFinal = false;
+    public string $triaseSaran = '';
+    public int $jumlahInformConsent = 0;
+    public int $jumlahPenjaminan = 0;
+    public int $jumlahPenundaan = 0;
+    public int $jumlahPenolakanObat = 0;
+    public int $jumlahPenolakanResusitasi = 0;
+    public int $jumlahSecondOpinion = 0;
+    public int $jumlahEso = 0;
+    public int $jumlahAkhirHayat = 0;
+
+    /** Dokumen dibaca sebagai variabel LOKAL, diperas jadi penanda, lalu dilepas. */
+    private function hitungRingkasan(array $data): void
+    {
+        $this->adaSuket = !empty($data['suket']['suketSehat']) || !empty($data['suket']['suketIstirahat']);
+        $this->adaTrfUgd = !empty($data['trfUgd']['petugasPengirim']);
+        $this->adaGeneralConsent = !empty($data['generalConsentPasienUGD']['signature']);
+        $this->adaSuratKematianFinal = !empty($data['suratKematianUGD']['isFinal']);
+        $this->triaseSaran = (string) ($data['screening']['triaseSaran'] ?? '');
+        $this->jumlahInformConsent = count($data['informConsentPasienUGD'] ?? []);
+        $this->jumlahPenjaminan = count($data['formPenjaminanOrientasiKamar'] ?? []);
+        $this->jumlahPenundaan = count($data['penundaanPelayananUGD'] ?? []);
+        $this->jumlahPenolakanObat = count($data['penolakanObatUGD'] ?? []);
+        $this->jumlahPenolakanResusitasi = count($data['penolakanResusitasiUGD'] ?? []);
+        $this->jumlahSecondOpinion = count($data['secondOpinionUGD'] ?? []);
+        $this->jumlahEso = count($data['pelaporanEsoUGD'] ?? []);
+        $this->jumlahAkhirHayat = count($data['pengkajianAkhirHayatUGD'] ?? []);
+        $this->adaBedah = collect([
+            'pengkajianPreOpUGD', 'praAnestesiUGD', 'praInduksiUGD', 'surgicalSafetyChecklistUGD',
+            'laporanOperasiUGD', 'laporanAnestesiUGD', 'pascaAnestesiUGD', 'instruksiPascaBedahUGD',
+        ])->contains(fn($k) => !empty($data[$k]));
+    }
 
     public array $renderVersions = [];
     protected array $renderAreas = ['modal'];
@@ -48,7 +90,7 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarUGD = $data;
+        $this->hitungRingkasan($data);
 
         if ($this->checkEmrUGDStatus($rjNo)) {
             $this->isFormLocked = true;
@@ -80,14 +122,19 @@ new class extends Component {
 
         $data = $this->findDataUGD($rjNo);
         if ($data) {
-            $this->dataDaftarUGD = $data;
+            $this->hitungRingkasan($data);
         }
     }
 
     protected function resetForm(): void
     {
         $this->tabAwal = 'suket';
-        $this->reset(['rjNo', 'dataDaftarUGD']);
+        $this->reset([
+            'rjNo', 'adaSuket', 'adaTrfUgd', 'adaGeneralConsent', 'adaBedah',
+            'adaSuratKematianFinal', 'triaseSaran', 'jumlahInformConsent', 'jumlahPenjaminan',
+            'jumlahPenundaan', 'jumlahPenolakanObat', 'jumlahPenolakanResusitasi',
+            'jumlahSecondOpinion', 'jumlahEso', 'jumlahAkhirHayat',
+        ]);
         $this->resetVersion();
         $this->isFormLocked = false;
     }
@@ -134,7 +181,7 @@ new class extends Component {
                                                 d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                         </svg>
                                         Surat Keterangan
-                                        @if (!empty($dataDaftarUGD['suket']['suketSehat']) || !empty($dataDaftarUGD['suket']['suketIstirahat']))
+                                        @if ($adaSuket)
                                             <x-badge variant="success" class="text-[10px] px-1.5 py-0">&#10003;</x-badge>
                                         @endif
                                     </x-tab>
@@ -148,7 +195,7 @@ new class extends Component {
                                                 d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                                         </svg>
                                         Form Transfer UGD &rarr; RI
-                                        @if (!empty($dataDaftarUGD['trfUgd']['petugasPengirim']))
+                                        @if ($adaTrfUgd)
                                             <x-badge variant="success" class="text-[10px] px-1.5 py-0">&#10003;</x-badge>
                                         @endif
                                     </x-tab>
@@ -162,7 +209,7 @@ new class extends Component {
                                                 d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 012.828 2.828L11.828 15.828a4 4 0 01-2.828 1.172H7v-2a4 4 0 011.172-2.828z" />
                                         </svg>
                                         General Consent
-                                        @if (!empty($dataDaftarUGD['generalConsentPasienUGD']['signature']))
+                                        @if ($adaGeneralConsent)
                                             <x-badge variant="success"
                                                 class="text-[10px] px-1.5 py-0">&#10003;</x-badge>
                                         @endif
@@ -177,9 +224,9 @@ new class extends Component {
                                                 d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                                         </svg>
                                         Inform Consent
-                                        @if (!empty($dataDaftarUGD['informConsentPasienUGD']) && count($dataDaftarUGD['informConsentPasienUGD']) > 0)
+                                        @if ($jumlahInformConsent > 0)
                                             <x-badge variant="success"
-                                                class="text-[10px] px-1.5 py-0">{{ count($dataDaftarUGD['informConsentPasienUGD']) }}</x-badge>
+                                                class="text-[10px] px-1.5 py-0">{{ $jumlahInformConsent }}</x-badge>
                                         @endif
                                     </x-tab>
 
@@ -192,9 +239,9 @@ new class extends Component {
                                                 d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                         </svg>
                                         Form Penjaminan & Orientasi Kamar
-                                        @if (!empty($dataDaftarUGD['formPenjaminanOrientasiKamar']) && count($dataDaftarUGD['formPenjaminanOrientasiKamar']) > 0)
+                                        @if ($jumlahPenjaminan > 0)
                                             <x-badge variant="success"
-                                                class="text-[10px] px-1.5 py-0">{{ count($dataDaftarUGD['formPenjaminanOrientasiKamar']) }}</x-badge>
+                                                class="text-[10px] px-1.5 py-0">{{ $jumlahPenjaminan }}</x-badge>
                                         @endif
                                     </x-tab>
 
@@ -207,9 +254,9 @@ new class extends Component {
                                                 d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                                         </svg>
                                         Penundaan Pelayanan
-                                        @if (!empty($dataDaftarUGD['penundaanPelayananUGD']) && count($dataDaftarUGD['penundaanPelayananUGD']) > 0)
+                                        @if ($jumlahPenundaan > 0)
                                             <x-badge variant="success"
-                                                class="text-[10px] px-1.5 py-0">{{ count($dataDaftarUGD['penundaanPelayananUGD']) }}</x-badge>
+                                                class="text-[10px] px-1.5 py-0">{{ $jumlahPenundaan }}</x-badge>
                                         @endif
                                     </x-tab>
 
@@ -222,9 +269,9 @@ new class extends Component {
                                                 d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
                                         </svg>
                                         Penolakan Obat
-                                        @if (!empty($dataDaftarUGD['penolakanObatUGD']) && count($dataDaftarUGD['penolakanObatUGD']) > 0)
+                                        @if ($jumlahPenolakanObat > 0)
                                             <x-badge variant="success"
-                                                class="text-[10px] px-1.5 py-0">{{ count($dataDaftarUGD['penolakanObatUGD']) }}</x-badge>
+                                                class="text-[10px] px-1.5 py-0">{{ $jumlahPenolakanObat }}</x-badge>
                                         @endif
                                     </x-tab>
 
@@ -238,9 +285,9 @@ new class extends Component {
                                                 d="M3 3l18 18" />
                                         </svg>
                                         Penolakan Resusitasi (DNR)
-                                        @if (!empty($dataDaftarUGD['penolakanResusitasiUGD']) && count($dataDaftarUGD['penolakanResusitasiUGD']) > 0)
+                                        @if ($jumlahPenolakanResusitasi > 0)
                                             <x-badge variant="success"
-                                                class="text-[10px] px-1.5 py-0">{{ count($dataDaftarUGD['penolakanResusitasiUGD']) }}</x-badge>
+                                                class="text-[10px] px-1.5 py-0">{{ $jumlahPenolakanResusitasi }}</x-badge>
                                         @endif
                                     </x-tab>
 
@@ -253,9 +300,9 @@ new class extends Component {
                                                 d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
                                         </svg>
                                         Second Opinion
-                                        @if (count($dataDaftarUGD['secondOpinionUGD'] ?? []) > 0)
+                                        @if ($jumlahSecondOpinion > 0)
                                             <x-badge variant="success"
-                                                class="text-[10px] px-1.5 py-0">{{ count($dataDaftarUGD['secondOpinionUGD']) }}</x-badge>
+                                                class="text-[10px] px-1.5 py-0">{{ $jumlahSecondOpinion }}</x-badge>
                                         @endif
                                     </x-tab>
 
@@ -267,7 +314,7 @@ new class extends Component {
                                                 d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                         </svg>
                                         Pelayanan Bedah
-                                        @if (collect(['pengkajianPreOpUGD', 'praAnestesiUGD', 'praInduksiUGD', 'surgicalSafetyChecklistUGD', 'laporanOperasiUGD', 'laporanAnestesiUGD', 'pascaAnestesiUGD', 'instruksiPascaBedahUGD'])->first(fn($k) => !empty($dataDaftarUGD[$k])))
+                                        @if ($adaBedah)
                                             <x-badge variant="success" class="text-[10px] px-1.5 py-0">&#10003;</x-badge>
                                         @endif
                                     </x-tab>
@@ -281,9 +328,9 @@ new class extends Component {
                                                 d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
                                         </svg>
                                         Pelaporan ESO
-                                        @if (!empty($dataDaftarUGD['pelaporanEsoUGD']) && count($dataDaftarUGD['pelaporanEsoUGD']) > 0)
+                                        @if ($jumlahEso > 0)
                                             <x-badge variant="success"
-                                                class="text-[10px] px-1.5 py-0">{{ count($dataDaftarUGD['pelaporanEsoUGD']) }}</x-badge>
+                                                class="text-[10px] px-1.5 py-0">{{ $jumlahEso }}</x-badge>
                                         @endif
                                     </x-tab>
 
@@ -296,15 +343,15 @@ new class extends Component {
                                                 d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                                         </svg>
                                         Akhir Hayat
-                                        @if (!empty($dataDaftarUGD['pengkajianAkhirHayatUGD']) && count($dataDaftarUGD['pengkajianAkhirHayatUGD']) > 0)
+                                        @if ($jumlahAkhirHayat > 0)
                                             <x-badge variant="success"
-                                                class="text-[10px] px-1.5 py-0">{{ count($dataDaftarUGD['pengkajianAkhirHayatUGD']) }}</x-badge>
+                                                class="text-[10px] px-1.5 py-0">{{ $jumlahAkhirHayat }}</x-badge>
                                         @endif
                                     </x-tab>
 
                                     {{-- Surat Keterangan Kematian — tab hanya muncul bila Screening UGD
                                          menyimpulkan P0, supaya tak jadi tab permanen di tiap pasien. --}}
-                                    @if (($dataDaftarUGD['screening']['triaseSaran'] ?? '') === 'P0')
+                                    @if ($triaseSaran === 'P0')
                                         <x-tab variant="underline" active-expr="activeTab === 'surat-kematian'"
                                             x-on:click="activeTab = 'surat-kematian'"
                                             class="inline-flex items-center gap-2">
@@ -313,7 +360,7 @@ new class extends Component {
                                                     d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                             </svg>
                                             Surat Kematian
-                                            @if (!empty($dataDaftarUGD['suratKematianUGD']['isFinal']))
+                                            @if ($adaSuratKematianFinal)
                                                 <x-badge variant="success" class="text-[10px] px-1.5 py-0">TTD</x-badge>
                                             @else
                                                 <x-badge variant="danger" class="text-[10px] px-1.5 py-0">P0</x-badge>
@@ -405,7 +452,7 @@ new class extends Component {
                             </div>
 
                             {{-- Panel: Surat Keterangan Kematian --}}
-                            @if (($dataDaftarUGD['screening']['triaseSaran'] ?? '') === 'P0')
+                            @if ($triaseSaran === 'P0')
                                 <div x-show="activeTab === 'surat-kematian'" x-transition.opacity.duration.300ms>
                                     <livewire:pages::transaksi.ugd.emr-ugd.modul-dokumen.surat-kematian-ugd.rm-surat-kematian-ugd-actions
                                         :rjNo="$rjNo" :disabled="$isFormLocked"

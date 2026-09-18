@@ -11,7 +11,21 @@ new class extends Component {
 
     public bool $isFormLocked = false;
     public ?int $rjNo = null;
-    public array $dataDaftarPoliRJ = [];
+    /**
+     * IRISAN dokumen: empat cabang yang memang dikelola komponen ini. Dua terakhir
+     * sekaligus model form (`wire:model.live="diagnosisFreeText"`).
+     *
+     * Dokumen `datadaftarpolirj_json` utuh tidak disimpan di properti publik — ikut snapshot
+     * Livewire tiap request. Penyimpanan tetap mem-patch keempat key ini di atas dokumen
+     * yang baru dibaca dari DB.
+     */
+    public array $diagnosis = [];
+    public array $procedure = [];
+    public string $diagnosisFreeText = '';
+    public string $procedureFreeText = '';
+
+    /** Penanda kunjungan sudah dimuat lewat open(). */
+    public bool $dokumenTermuat = false;
 
     // Data untuk diagnosa terpilih dari LOV
     public ?string $diagnosaId = null;
@@ -54,22 +68,22 @@ new class extends Component {
         $this->resetValidation();
 
         // Ambil data kunjungan RJ
-        $dataDaftarPoliRJ = $this->findDataRJ($rjNo);
+        $data = $this->findDataRJ($rjNo);
 
-        if (!$dataDaftarPoliRJ) {
+        if (!$data) {
             $this->dispatch('toast', type: 'error', message: 'Data Rawat Jalan tidak ditemukan.');
             return;
         }
 
-        $this->dataDaftarPoliRJ = $dataDaftarPoliRJ;
         $this->diagnosaId = null;
         $this->procedureId = null;
 
         // Initialize diagnosis & procedure jika belum ada
-        $this->dataDaftarPoliRJ['diagnosis'] ??= [];
-        $this->dataDaftarPoliRJ['procedure'] ??= [];
-        $this->dataDaftarPoliRJ['diagnosisFreeText'] ??= '';
-        $this->dataDaftarPoliRJ['procedureFreeText'] ??= '';
+        $this->diagnosis = $data['diagnosis'] ?? [];
+        $this->procedure = $data['procedure'] ?? [];
+        $this->diagnosisFreeText = (string) ($data['diagnosisFreeText'] ?? '');
+        $this->procedureFreeText = (string) ($data['procedureFreeText'] ?? '');
+        $this->dokumenTermuat = true;
 
         // 🔥 INCREMENT: Refresh seluruh modal diagnosis
         $this->incrementVersion('modal-diagnosis-rj');
@@ -95,13 +109,12 @@ new class extends Component {
         }
 
         // Set hanya key milik komponen ini — key lain tidak tersentuh
-        $data['diagnosis'] = $this->dataDaftarPoliRJ['diagnosis'] ?? [];
-        $data['procedure'] = $this->dataDaftarPoliRJ['procedure'] ?? [];
-        $data['diagnosisFreeText'] = $this->dataDaftarPoliRJ['diagnosisFreeText'] ?? '';
-        $data['procedureFreeText'] = $this->dataDaftarPoliRJ['procedureFreeText'] ?? '';
+        $data['diagnosis'] = $this->diagnosis;
+        $data['procedure'] = $this->procedure;
+        $data['diagnosisFreeText'] = $this->diagnosisFreeText;
+        $data['procedureFreeText'] = $this->procedureFreeText;
 
         $this->updateJsonRJ($this->rjNo, $data);
-        $this->dataDaftarPoliRJ = $data;
     }
 
     /* ===============================
@@ -117,7 +130,7 @@ new class extends Component {
         }
 
         // 2. Guard: properti lokal belum ter-load
-        if (empty($this->dataDaftarPoliRJ)) {
+        if (!$this->dokumenTermuat) {
             $this->dispatch('toast', type: 'error', message: 'Data kunjungan tidak ditemukan, silakan buka ulang form.');
             return;
         }
@@ -204,13 +217,13 @@ new class extends Component {
 
                 // 5. Tentukan kategori: kalau belum ada Primary DAN accpdx='Y' → Primary, lainnya Secondary.
                 //    User bisa ubah manual lewat dropdown nanti via setKategoriDiagnosa().
-                $existing = collect($this->dataDaftarPoliRJ['diagnosis'] ?? []);
+                $existing = collect($this->diagnosis ?? []);
                 $hasPrimary = $existing->where('kategoriDiagnosa', 'Primary')->isNotEmpty();
                 $accpdx = DB::table('rsmst_mstdiags')->where('diag_id', $diagnosaId)->value('accpdx');
                 $kategoriDiagnosa = (!$hasPrimary && $accpdx === 'Y') ? 'Primary' : 'Secondary';
 
                 // 6. Tambah ke array lokal
-                $this->dataDaftarPoliRJ['diagnosis'][] = [
+                $this->diagnosis[] = [
                     'diagId' => $diagnosaId,
                     'diagDesc' => $diagnosaDesc,
                     'icdX' => $icdx,
@@ -251,14 +264,14 @@ new class extends Component {
                 $this->lockRJRow($this->rjNo);
 
                 // Tangkap identitas diagnosa sebelum dihapus (untuk audit log)
-                $removed = collect($this->dataDaftarPoliRJ['diagnosis'] ?? [])->firstWhere('rjDtlDtl', $rjDtlDtl);
+                $removed = collect($this->diagnosis ?? [])->firstWhere('rjDtlDtl', $rjDtlDtl);
                 $removedLabel = $removed ? trim(($removed['icdX'] ?? $removed['diagId'] ?? '') . ' ' . ($removed['diagDesc'] ?? '')) : ('rjDtlDtl ' . $rjDtlDtl);
 
                 // 2. Hapus dari tabel transaksi
                 DB::table('rstxn_rjdtls')->where('rjdtl_dtl', $rjDtlDtl)->delete();
 
                 // 3. Hapus dari array lokal
-                $this->dataDaftarPoliRJ['diagnosis'] = collect($this->dataDaftarPoliRJ['diagnosis'] ?? [])
+                $this->diagnosis = collect($this->diagnosis ?? [])
                     ->where('rjDtlDtl', '!=', $rjDtlDtl)
                     ->values()
                     ->toArray();
@@ -291,7 +304,7 @@ new class extends Component {
         }
         $kategori = in_array($kategori, ['Primary', 'Secondary'], true) ? $kategori : 'Secondary';
 
-        $rows = $this->dataDaftarPoliRJ['diagnosis'] ?? [];
+        $rows = $this->diagnosis ?? [];
         $targetIndex = null;
         foreach ($rows as $i => $r) {
             if ((int) ($r['rjDtlDtl'] ?? 0) === (int) $rjDtlDtl) {
@@ -326,7 +339,7 @@ new class extends Component {
         $rows[$targetIndex]['kategoriDiagnosa'] = $kategori;
         // Sort Primary di atas, Secondary di bawah (stable)
         usort($rows, fn($a, $b) => (($a['kategoriDiagnosa'] ?? '') === 'Primary' ? 0 : 1) - (($b['kategoriDiagnosa'] ?? '') === 'Primary' ? 0 : 1));
-        $this->dataDaftarPoliRJ['diagnosis'] = array_values($rows);
+        $this->diagnosis = array_values($rows);
 
         $katLabel = trim(($rows[$targetIndex]['icdX'] ?? $rows[$targetIndex]['diagId'] ?? '') . ' ' . ($rows[$targetIndex]['diagDesc'] ?? ''));
 
@@ -380,7 +393,7 @@ new class extends Component {
                 $this->lockRJRow($this->rjNo);
 
                 // 2. Tambah ke array lokal
-                $this->dataDaftarPoliRJ['procedure'][] = [
+                $this->procedure[] = [
                     'procedureId' => $procedureId,
                     'procedureDesc' => $procedureDesc,
                     'ketProcedure' => 'Keterangan Procedure',
@@ -418,18 +431,18 @@ new class extends Component {
                 $this->lockRJRow($this->rjNo);
 
                 // 2. Validasi keberadaan procedure
-                $procedureExists = collect($this->dataDaftarPoliRJ['procedure'] ?? [])->contains('procedureId', $procedureId);
+                $procedureExists = collect($this->procedure ?? [])->contains('procedureId', $procedureId);
 
                 if (!$procedureExists) {
                     throw new \RuntimeException("Procedure dengan ID {$procedureId} tidak ditemukan.");
                 }
 
                 // Tangkap deskripsi prosedur sebelum dihapus (untuk audit log)
-                $removedProc = collect($this->dataDaftarPoliRJ['procedure'] ?? [])->firstWhere('procedureId', $procedureId);
+                $removedProc = collect($this->procedure ?? [])->firstWhere('procedureId', $procedureId);
                 $removedProcLabel = trim($procedureId . ' ' . ($removedProc['procedureDesc'] ?? ''));
 
                 // 3. Hapus dari array lokal
-                $this->dataDaftarPoliRJ['procedure'] = collect($this->dataDaftarPoliRJ['procedure'] ?? [])
+                $this->procedure = collect($this->procedure ?? [])
                     ->where('procedureId', '!=', $procedureId)
                     ->values()
                     ->toArray();
@@ -500,7 +513,7 @@ new class extends Component {
                 <x-input-label for="diagnosis_freetext" value="Free Text Diagnosis" />
                 <x-textarea id="diagnosis_freetext"
                     wire:key="diagnosis-freetext-{{ $this->renderKey('modal-diagnosis-rj') }}"
-                    wire:model.live="dataDaftarPoliRJ.diagnosisFreeText" :error="$errors->has('dataDaftarPoliRJ.diagnosisFreeText')"
+                    wire:model.live="diagnosisFreeText" :error="$errors->has('diagnosisFreeText')"
                     placeholder="Masukkan diagnosa free text..." :disabled="$isFormLocked" rows="2" class="w-full mt-1" />
             </div>
 
@@ -508,7 +521,7 @@ new class extends Component {
     </x-border-form>
 
     {{-- List Diagnosa (di luar frame, seperti pola Risiko Jatuh) --}}
-    @if (!empty($dataDaftarPoliRJ['diagnosis']))
+    @if (!empty($diagnosis))
         <div class="overflow-x-auto rounded-lg border border-hairline dark:border-gray-700">
                     <table class="w-full text-sm text-left text-muted dark:text-gray-300">
                         <thead class="bg-surface-soft dark:bg-gray-700 text-muted dark:text-gray-400">
@@ -521,7 +534,7 @@ new class extends Component {
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-hairline-soft dark:divide-gray-700">
-                            @foreach ($dataDaftarPoliRJ['diagnosis'] as $index => $diagnosa)
+                            @foreach ($diagnosis as $index => $diagnosa)
                                 <tr wire:key="diagnosa-row-{{ $diagnosa['rjDtlDtl'] ?? $index }}-{{ $this->renderKey('modal-diagnosis-rj') }}"
                                     class="bg-canvas hover:bg-surface-soft dark:bg-gray-800 dark:hover:bg-gray-700">
                                     <td class="px-3 py-2 font-medium text-ink dark:text-white">
@@ -580,7 +593,7 @@ new class extends Component {
                 <x-input-label for="procedure_freetext" value="Free Text Procedure" />
                 <x-textarea id="procedure_freetext"
                     wire:key="procedure-freetext-{{ $this->renderKey('modal-diagnosis-rj') }}"
-                    wire:model.live="dataDaftarPoliRJ.procedureFreeText" :error="$errors->has('dataDaftarPoliRJ.procedureFreeText')"
+                    wire:model.live="procedureFreeText" :error="$errors->has('procedureFreeText')"
                     placeholder="Masukkan procedure free text..." :disabled="$isFormLocked" rows="2"
                     class="w-full mt-1" />
             </div>
@@ -589,7 +602,7 @@ new class extends Component {
     </x-border-form>
 
     {{-- List Procedure (di luar frame, seperti pola Risiko Jatuh) --}}
-    @if (!empty($dataDaftarPoliRJ['procedure']))
+    @if (!empty($procedure))
         <div class="overflow-x-auto rounded-lg border border-hairline dark:border-gray-700">
                     <table class="w-full text-sm text-left text-muted dark:text-gray-300">
                         <thead class="bg-surface-soft dark:bg-gray-700 text-muted dark:text-gray-400">
@@ -601,7 +614,7 @@ new class extends Component {
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-hairline-soft dark:divide-gray-700">
-                            @foreach ($dataDaftarPoliRJ['procedure'] as $index => $procedure)
+                            @foreach ($procedure as $index => $procedure)
                                 <tr wire:key="procedure-row-{{ $procedure['procedureId'] }}-{{ $this->renderKey('modal-diagnosis-rj') }}"
                                     class="bg-canvas hover:bg-surface-soft dark:bg-gray-800 dark:hover:bg-gray-700">
                                     <td class="px-3 py-2 font-medium text-ink dark:text-white">

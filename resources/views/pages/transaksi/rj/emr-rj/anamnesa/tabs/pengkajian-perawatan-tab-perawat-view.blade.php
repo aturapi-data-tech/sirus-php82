@@ -4,19 +4,19 @@
         {{-- Perawat Penerima (Waktu Datang otomatis saat TTD) --}}
         <div>
             <x-signature.ttd-petugas :framed="false" :allowClear="false"
-                :ttd="$dataDaftarPoliRJ['anamnesa']['pengkajianPerawatan']['perawatPenerima'] ?? ''"
-                :date="$dataDaftarPoliRJ['anamnesa']['pengkajianPerawatan']['jamDatang'] ?? ''"
-                :code="$dataDaftarPoliRJ['anamnesa']['pengkajianPerawatan']['perawatPenerimaCode'] ?? ''"
+                :ttd="$anamnesa['pengkajianPerawatan']['perawatPenerima'] ?? ''"
+                :date="$anamnesa['pengkajianPerawatan']['jamDatang'] ?? ''"
+                :code="$anamnesa['pengkajianPerawatan']['perawatPenerimaCode'] ?? ''"
                 :locked="$isFormLocked ?? false"
                 sign="setPerawatPenerima" nameLabel="Perawat Penerima" dateLabel="Waktu Datang" signLabel="Ttd Perawat" />
-            <x-input-error :messages="$errors->get('dataDaftarPoliRJ.anamnesa.pengkajianPerawatan.perawatPenerima')" class="mt-1" />
+            <x-input-error :messages="$errors->get('anamnesa.pengkajianPerawatan.perawatPenerima')" class="mt-1" />
 
             {{-- Buka Kunci TTD Perawat — muncul hanya bila SUDAH ter-TTD dan untuk role
                  berhak (Gate dokumen.bukaKunci, sama dengan Buka Kunci Screening &
                  modul dokumen). Tombol TTD sendiri hilang begitu stempel terisi. --}}
-            @if (filled($dataDaftarPoliRJ['anamnesa']['pengkajianPerawatan']['perawatPenerima'] ?? ''))
+            @if (filled($anamnesa['pengkajianPerawatan']['perawatPenerima'] ?? ''))
                 @can('dokumen.bukaKunci')
-                    @if (filled($dataDaftarPoliRJ['perencanaan']['pengkajianMedis']['drPemeriksa'] ?? ''))
+                    @if ($adaDrPemeriksa)
                         {{-- Dokter menandatangani TERAKHIR dan TTD-nya mengesahkan seluruh
                              rekaman. Selagi stempelnya berdiri, stempel perawat tak boleh
                              dicabut — jadi tombolnya diganti keterangan, bukan disembunyikan
@@ -46,14 +46,14 @@
 
         {{-- Keluhan Utama --}}
         <div>
-            <x-input-label for="dataDaftarPoliRJ.anamnesa.keluhanUtama.keluhanUtama" value="Keluhan Utama"
+            <x-input-label for="anamnesa.keluhanUtama.keluhanUtama" value="Keluhan Utama"
                 :required="true" />
 
-            <x-textarea id="dataDaftarPoliRJ.anamnesa.keluhanUtama.keluhanUtama"
-                wire:model.live="dataDaftarPoliRJ.anamnesa.keluhanUtama.keluhanUtama" placeholder="Keluhan Utama"
-                :error="$errors->has('dataDaftarPoliRJ.anamnesa.keluhanUtama.keluhanUtama')" :disabled="$isFormLocked" :rows="3" class="w-full mt-1" />
+            <x-textarea id="anamnesa.keluhanUtama.keluhanUtama"
+                wire:model.live="anamnesa.keluhanUtama.keluhanUtama" placeholder="Keluhan Utama"
+                :error="$errors->has('anamnesa.keluhanUtama.keluhanUtama')" :disabled="$isFormLocked" :rows="3" class="w-full mt-1" />
 
-            <x-input-error :messages="$errors->get('dataDaftarPoliRJ.anamnesa.keluhanUtama.keluhanUtama')" class="mt-1" />
+            <x-input-error :messages="$errors->get('anamnesa.keluhanUtama.keluhanUtama')" class="mt-1" />
         </div>
 
         {{-- SNOMED CT — Keluhan Utama (untuk Satu Sehat) --}}
@@ -63,7 +63,7 @@
                 label="Kode SNOMED Keluhan Utama (Satu Sehat)"
                 placeholder="Ketik keluhan dalam Bahasa Indonesia / Inggris..."
                 valueSet="condition-code"
-                :initialSnomedCode="$dataDaftarPoliRJ['anamnesa']['keluhanUtama']['snomedCode'] ?? null"
+                :initialSnomedCode="$anamnesa['keluhanUtama']['snomedCode'] ?? null"
                 :disabled="$isFormLocked"
                 wire:key="lov-snomed-keluhan-{{ $rjNo ?? 'new' }}-{{ $renderVersions['modal-anamnesa-rj'] ?? 0 }}"
             />

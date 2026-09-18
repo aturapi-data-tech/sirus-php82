@@ -21,7 +21,15 @@ new class extends Component {
 
     public bool $isFormLocked = false;
     public ?int $riHdrNo = null;
-    public array $dataDaftarRi = [];
+
+    /**
+     * IRISAN dokumen: hanya `observasi.alatInvasif.alatInvasifData`.
+     *
+     * Dokumen `datadaftarri_json` utuh sengaja TIDAK disimpan di properti publik — properti
+     * publik ikut snapshot Livewire dan dikirim bolak-balik tiap request. Untuk MENYIMPAN,
+     * dokumen utuh tetap dibaca ulang dari DB di dalam transaksi + lock.
+     */
+    public array $daftarAlatInvasif = [];
 
     public array $formEntryAlat = [
         'jenisAlat' => 'ivPerifer',
@@ -54,12 +62,7 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarRi = $data;
-        $this->dataDaftarRi['observasi'] ??= [];
-        $this->dataDaftarRi['observasi']['alatInvasif'] ??= [
-            'alatInvasifTab' => 'Alat Invasif',
-            'alatInvasifData' => [],
-        ];
+        $this->daftarAlatInvasif = $data['observasi']['alatInvasif']['alatInvasifData'] ?? [];
 
         $this->isFormLocked = $this->checkEmrRIStatus($riHdrNo);
         $this->setWaktuMulaiAlat();
@@ -133,7 +136,7 @@ new class extends Component {
                 ]);
 
                 $this->updateJsonRI($this->riHdrNo, $data);
-                $this->dataDaftarRi = $data;
+                $this->daftarAlatInvasif = $data['observasi']['alatInvasif']['alatInvasifData'];
 
                 $this->appendAdminLogRI(
                     (int) $this->riHdrNo,
@@ -213,7 +216,7 @@ new class extends Component {
 
                 $data['observasi']['alatInvasif']['alatInvasifData'] = array_values($daftar);
                 $this->updateJsonRI($this->riHdrNo, $data);
-                $this->dataDaftarRi = $data;
+                $this->daftarAlatInvasif = $data['observasi']['alatInvasif']['alatInvasifData'];
 
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Set waktu lepas Alat Invasif — ' . $waktuLepas, 'MR');
             });
@@ -250,7 +253,7 @@ new class extends Component {
                     ->all();
 
                 $this->updateJsonRI($this->riHdrNo, $data);
-                $this->dataDaftarRi = $data;
+                $this->daftarAlatInvasif = $data['observasi']['alatInvasif']['alatInvasifData'];
 
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Hapus Alat Invasif — pasang ' . $waktuPasang, 'MR');
             });
@@ -269,7 +272,7 @@ new class extends Component {
     {
         $this->resetVersion();
         $this->isFormLocked = false;
-        $this->dataDaftarRi = [];
+        $this->daftarAlatInvasif = [];
         $this->reset(['formEntryAlat']);
     }
 };
@@ -380,7 +383,7 @@ new class extends Component {
 
             {{-- TABEL DATA --}}
             @php
-                $daftarAlat = $dataDaftarRi['observasi']['alatInvasif']['alatInvasifData'] ?? [];
+                $daftarAlat = $daftarAlatInvasif;
                 $alatTersusun = collect($daftarAlat)
                     ->sortByDesc(fn($baris) => Carbon::createFromFormat('d/m/Y H:i:s', $baris['tanggalWaktuMulai'] ?? '01/01/2000 00:00:00')->timestamp)
                     ->values();

@@ -2,8 +2,8 @@
 {{-- @use wajib: partial TIDAK mewarisi import dari berkas induknya. --}}
 @use('App\Support\RekonsiliasiObat')
 @php
-    $daftarRekonsiliasiObat = $dataDaftarUGD['anamnesa']['rekonsiliasiObat'] ?? [];
-    $statusRekonsiliasi = $dataDaftarUGD['anamnesa'][RekonsiliasiObat::STATUS_KEY] ?? null;
+    $daftarRekonsiliasiObat = $anamnesa['rekonsiliasiObat'] ?? [];
+    $statusRekonsiliasi = $anamnesa[RekonsiliasiObat::STATUS_KEY] ?? null;
     $sudahDirekonsiliasi = RekonsiliasiObat::sudahDirekonsiliasi($statusRekonsiliasi);
 @endphp
 

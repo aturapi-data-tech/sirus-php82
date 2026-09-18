@@ -15,7 +15,8 @@ new class extends Component {
 
     public bool $isFormLocked = false;
     public ?int $rjNo = null;
-    public array $dataDaftarUGD = [];
+    /** Penanda kunjungan sudah dimuat. Dokumennya sendiri tidak pernah dibaca di sini. */
+    public bool $dokumenTermuat = false;
 
     // ── Ringkasan Biaya ──
     public int $rjTotal = 0;
@@ -92,9 +93,9 @@ new class extends Component {
         $this->rjNo = $rjNo;
         $this->resetValidation();
 
-        $this->dataDaftarUGD = $this->findDataUGD($rjNo) ?? [];
+        $this->dokumenTermuat = filled($this->findDataUGD($rjNo) ?? []);
 
-        if (empty($this->dataDaftarUGD)) {
+        if (!$this->dokumenTermuat) {
             $this->dispatch('toast', type: 'error', message: 'Data UGD tidak ditemukan.');
             return;
         }
@@ -124,7 +125,7 @@ new class extends Component {
 
     private function resetKasir(): void
     {
-        $this->reset(['rjNo', 'dataDaftarUGD', 'bayar', 'accId', 'accName', 'txnStatus']);
+        $this->reset(['rjNo', 'dokumenTermuat', 'bayar', 'accId', 'accName', 'txnStatus']);
         $this->resetVersion();
         $this->isFormLocked = false;
         $this->rjTotal = 0;

@@ -12,7 +12,17 @@ new class extends Component {
 
     public bool $isFormLocked = false;
     public ?string $riHdrNo = null;
-    public array $dataDaftarRi = [];
+    /**
+     * IRISAN dokumen: empat cabang yang dikelola komponen ini. Dua terakhir sekaligus
+     * model form (`wire:model.live="diagnosisFreeText"`).
+     */
+    public array $diagnosis = [];
+    public array $procedure = [];
+    public string $diagnosisFreeText = '';
+    public string $procedureFreeText = '';
+
+    /** Penanda kunjungan sudah dimuat lewat open(). */
+    public bool $dokumenTermuat = false;
 
     public ?string $diagnosaId = null;
     public ?string $procedureId = null;
@@ -45,17 +55,17 @@ new class extends Component {
         $this->resetForm();
         $this->resetValidation();
 
-        $dataDaftarRi = $this->findDataRI($riHdrNo);
-        if (!$dataDaftarRi) {
+        $data = $this->findDataRI($riHdrNo);
+        if (!$data) {
             $this->dispatch('toast', type: 'error', message: 'Data Rawat Inap tidak ditemukan.');
             return;
         }
 
-        $this->dataDaftarRi = $dataDaftarRi;
-        $this->dataDaftarRi['diagnosis'] ??= [];
-        $this->dataDaftarRi['procedure'] ??= [];
-        $this->dataDaftarRi['diagnosisFreeText'] ??= '';
-        $this->dataDaftarRi['procedureFreeText'] ??= '';
+        $this->diagnosis = $data['diagnosis'] ?? [];
+        $this->procedure = $data['procedure'] ?? [];
+        $this->diagnosisFreeText = (string) ($data['diagnosisFreeText'] ?? '');
+        $this->procedureFreeText = (string) ($data['procedureFreeText'] ?? '');
+        $this->dokumenTermuat = true;
 
         $this->isFormLocked = $this->checkEmrRIStatus($riHdrNo); // ← trait
 
@@ -71,13 +81,12 @@ new class extends Component {
 
         $isBaru = empty($data['diagnosis']) && empty($data['procedure']) && empty($data['diagnosisFreeText']) && empty($data['procedureFreeText']);
 
-        $data['diagnosis'] = $this->dataDaftarRi['diagnosis'] ?? [];
-        $data['procedure'] = $this->dataDaftarRi['procedure'] ?? [];
-        $data['diagnosisFreeText'] = $this->dataDaftarRi['diagnosisFreeText'] ?? '';
-        $data['procedureFreeText'] = $this->dataDaftarRi['procedureFreeText'] ?? '';
+        $data['diagnosis'] = $this->diagnosis ?? [];
+        $data['procedure'] = $this->procedure ?? [];
+        $data['diagnosisFreeText'] = $this->diagnosisFreeText ?? '';
+        $data['procedureFreeText'] = $this->procedureFreeText ?? '';
 
         $this->updateJsonRI((int) $this->riHdrNo, $data);
-        $this->dataDaftarRi = $data;
 
         return $isBaru;
     }
@@ -90,7 +99,7 @@ new class extends Component {
             return;
         }
 
-        if (empty($this->dataDaftarRi)) {
+        if (!$this->dokumenTermuat) {
             $this->dispatch('toast', type: 'error', message: 'Data kunjungan tidak ditemukan, silakan buka ulang form.');
             return;
         }
@@ -100,7 +109,7 @@ new class extends Component {
                 // ← trait pattern
                 $this->lockRIRow($this->riHdrNo);
                 $isBaru = $this->syncDiagnosaJson();
-                $this->appendAdminLogRI((int) $this->riHdrNo, ($isBaru ? 'Buat' : 'Update') . ' Diagnosis & Prosedur — ' . count($this->dataDaftarRi['diagnosis'] ?? []) . ' diagnosa, ' . count($this->dataDaftarRi['procedure'] ?? []) . ' prosedur', 'MR');
+                $this->appendAdminLogRI((int) $this->riHdrNo, ($isBaru ? 'Buat' : 'Update') . ' Diagnosis & Prosedur — ' . count($this->diagnosis ?? []) . ' diagnosa, ' . count($this->procedure ?? []) . ' prosedur', 'MR');
             });
 
             $this->afterSave('Diagnosis berhasil disimpan.');
@@ -154,12 +163,12 @@ new class extends Component {
                     'diag_id' => $diagnosaId,
                 ]);
 
-                $sudahAdaPrimary = collect($this->dataDaftarRi['diagnosis'] ?? [])->contains(fn($d) => ($d['kategoriDiagnosa'] ?? '') === 'Primary');
+                $sudahAdaPrimary = collect($this->diagnosis ?? [])->contains(fn($d) => ($d['kategoriDiagnosa'] ?? '') === 'Primary');
                 // Auto-Primary hanya kalau (belum ada Primary) AND (accpdx='Y'). User bisa ubah manual via dropdown.
                 $accpdx = DB::table('rsmst_mstdiags')->where('diag_id', $diagnosaId)->value('accpdx');
                 $kategori = (!$sudahAdaPrimary && $accpdx === 'Y') ? 'Primary' : 'Secondary';
 
-                $this->dataDaftarRi['diagnosis'][] = [
+                $this->diagnosis[] = [
                     'diagId' => $diagnosaId,
                     'diagDesc' => $diagnosaDesc,
                     'icdX' => $icdx,
@@ -193,26 +202,26 @@ new class extends Component {
                 // ← trait pattern
                 $this->lockRIRow($this->riHdrNo);
 
-                $idx = collect($this->dataDaftarRi['diagnosis'] ?? [])->search(fn($d) => (int) ($d['riDtlDtl'] ?? 0) === $riDtlDtl);
+                $idx = collect($this->diagnosis ?? [])->search(fn($d) => (int) ($d['riDtlDtl'] ?? 0) === $riDtlDtl);
 
                 if ($idx === false) {
                     throw new \RuntimeException('Diagnosis tidak ditemukan di data.');
                 }
 
-                $deletedWasPrimary = ($this->dataDaftarRi['diagnosis'][$idx]['kategoriDiagnosa'] ?? '') === 'Primary';
-                $diagRow = $this->dataDaftarRi['diagnosis'][$idx] ?? [];
+                $deletedWasPrimary = ($this->diagnosis[$idx]['kategoriDiagnosa'] ?? '') === 'Primary';
+                $diagRow = $this->diagnosis[$idx] ?? [];
 
                 DB::table('rstxn_ridtls')->where('rihdr_no', $this->riHdrNo)->where('ridtl_dtl', $riDtlDtl)->delete();
 
-                array_splice($this->dataDaftarRi['diagnosis'], $idx, 1);
-                $this->dataDaftarRi['diagnosis'] = array_values($this->dataDaftarRi['diagnosis']);
+                array_splice($this->diagnosis, $idx, 1);
+                $this->diagnosis = array_values($this->diagnosis);
 
-                if ($deletedWasPrimary && count($this->dataDaftarRi['diagnosis']) > 0) {
-                    foreach ($this->dataDaftarRi['diagnosis'] as &$d) {
+                if ($deletedWasPrimary && count($this->diagnosis) > 0) {
+                    foreach ($this->diagnosis as &$d) {
                         $d['kategoriDiagnosa'] = 'Secondary';
                     }
                     unset($d);
-                    $this->dataDaftarRi['diagnosis'][0]['kategoriDiagnosa'] = 'Primary';
+                    $this->diagnosis[0]['kategoriDiagnosa'] = 'Primary';
                 }
 
                 $this->syncDiagnosaJson();
@@ -240,7 +249,7 @@ new class extends Component {
         }
         $kategori = in_array($kategori, ['Primary', 'Secondary'], true) ? $kategori : 'Secondary';
 
-        $rows = $this->dataDaftarRi['diagnosis'] ?? [];
+        $rows = $this->diagnosis ?? [];
         $targetIndex = null;
         foreach ($rows as $i => $r) {
             if ((int) ($r['riDtlDtl'] ?? 0) === (int) $riDtlDtl) {
@@ -273,13 +282,13 @@ new class extends Component {
         $rows[$targetIndex]['kategoriDiagnosa'] = $kategori;
         // Sort Primary di atas, Secondary di bawah (stable)
         usort($rows, fn($a, $b) => (($a['kategoriDiagnosa'] ?? '') === 'Primary' ? 0 : 1) - (($b['kategoriDiagnosa'] ?? '') === 'Primary' ? 0 : 1));
-        $this->dataDaftarRi['diagnosis'] = array_values($rows);
+        $this->diagnosis = array_values($rows);
 
         try {
             DB::transaction(function () use ($riDtlDtl, $kategori) {
                 $this->lockRIRow($this->riHdrNo);
                 $this->syncDiagnosaJson();
-                $target = collect($this->dataDaftarRi['diagnosis'] ?? [])->firstWhere('riDtlDtl', (int) $riDtlDtl);
+                $target = collect($this->diagnosis ?? [])->firstWhere('riDtlDtl', (int) $riDtlDtl);
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Ubah Kategori Diagnosa ICD-10 — ' . ($target['icdX'] ?? $target['diagId'] ?? '-') . ' menjadi ' . $kategori, 'MR');
             });
             $this->afterSave('Kategori diagnosa diperbarui.');
@@ -315,13 +324,13 @@ new class extends Component {
                 // ← trait pattern
                 $this->lockRIRow($this->riHdrNo);
 
-                $dup = collect($this->dataDaftarRi['procedure'] ?? [])->contains(fn($p) => ($p['procedureId'] ?? '') === $procedureId);
+                $dup = collect($this->procedure ?? [])->contains(fn($p) => ($p['procedureId'] ?? '') === $procedureId);
 
                 if ($dup) {
                     throw new \RuntimeException("Prosedur {$procedureId} sudah tercatat untuk pasien ini.");
                 }
 
-                $this->dataDaftarRi['procedure'][] = [
+                $this->procedure[] = [
                     'procedureId' => $procedureId,
                     'procedureDesc' => $procedureDesc,
                     'ketProcedure' => 'Keterangan Procedure',
@@ -352,15 +361,15 @@ new class extends Component {
                 // ← trait pattern
                 $this->lockRIRow($this->riHdrNo);
 
-                $exists = collect($this->dataDaftarRi['procedure'] ?? [])->contains('procedureId', $procedureId);
+                $exists = collect($this->procedure ?? [])->contains('procedureId', $procedureId);
 
                 if (!$exists) {
                     throw new \RuntimeException("Procedure {$procedureId} tidak ditemukan.");
                 }
 
-                $procRow = collect($this->dataDaftarRi['procedure'] ?? [])->firstWhere('procedureId', $procedureId) ?? [];
+                $procRow = collect($this->procedure ?? [])->firstWhere('procedureId', $procedureId) ?? [];
 
-                $this->dataDaftarRi['procedure'] = collect($this->dataDaftarRi['procedure'] ?? [])
+                $this->procedure = collect($this->procedure ?? [])
                     ->reject(fn($p) => ($p['procedureId'] ?? '') === $procedureId)
                     ->values()
                     ->toArray();
@@ -441,7 +450,7 @@ new class extends Component {
                 <x-input-label for="ri_diagnosis_freetext" value="Free Text Diagnosis" />
                 <x-textarea id="ri_diagnosis_freetext"
                     wire:key="ri-diagnosis-freetext-{{ $this->renderKey('modal-diagnosis-ri') }}"
-                    wire:model.live="dataDaftarRi.diagnosisFreeText" :error="$errors->has('dataDaftarRi.diagnosisFreeText')"
+                    wire:model.live="diagnosisFreeText" :error="$errors->has('diagnosisFreeText')"
                     placeholder="Masukkan diagnosa free text..." :disabled="$isFormLocked" rows="2" class="w-full mt-1" />
             </x-border-form>
 
@@ -453,7 +462,7 @@ new class extends Component {
             </x-border-form>
 
             {{-- List Diagnosa --}}
-            @if (!empty($dataDaftarRi['diagnosis']))
+            @if (!empty($diagnosis))
                 <div class="overflow-x-auto rounded-lg border border-hairline dark:border-gray-700">
                     <table class="w-full text-sm text-left text-muted dark:text-gray-300">
                         <thead class="bg-surface-soft dark:bg-gray-700 text-muted dark:text-gray-400 text-xs">
@@ -466,7 +475,7 @@ new class extends Component {
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-hairline-soft dark:divide-gray-700">
-                            @foreach ($dataDaftarRi['diagnosis'] as $index => $diagnosa)
+                            @foreach ($diagnosis as $index => $diagnosa)
                                 <tr wire:key="ri-diagnosa-row-{{ $diagnosa['riDtlDtl'] ?? $index }}-{{ $this->renderKey('modal-diagnosis-ri') }}"
                                     class="bg-canvas hover:bg-surface-soft dark:bg-gray-800 dark:hover:bg-gray-700">
                                     <td class="px-3 py-3 text-ink dark:text-white">
@@ -524,7 +533,7 @@ new class extends Component {
                 <x-input-label for="ri_procedure_freetext" value="Free Text Procedure" />
                 <x-textarea id="ri_procedure_freetext"
                     wire:key="ri-procedure-freetext-{{ $this->renderKey('modal-diagnosis-ri') }}"
-                    wire:model.live="dataDaftarRi.procedureFreeText" :error="$errors->has('dataDaftarRi.procedureFreeText')"
+                    wire:model.live="procedureFreeText" :error="$errors->has('procedureFreeText')"
                     placeholder="Masukkan procedure free text..." :disabled="$isFormLocked" rows="2"
                     class="w-full mt-1" />
             </x-border-form>
@@ -536,7 +545,7 @@ new class extends Component {
             </x-border-form>
 
             {{-- List Procedure --}}
-            @if (!empty($dataDaftarRi['procedure']))
+            @if (!empty($procedure))
                 <div class="overflow-x-auto rounded-lg border border-hairline dark:border-gray-700">
                     <table class="w-full text-sm text-left text-muted dark:text-gray-300">
                         <thead class="bg-surface-soft dark:bg-gray-700 text-muted dark:text-gray-400 text-xs">
@@ -548,7 +557,7 @@ new class extends Component {
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-hairline-soft dark:divide-gray-700">
-                            @foreach ($dataDaftarRi['procedure'] as $index => $procedure)
+                            @foreach ($procedure as $index => $procedure)
                                 <tr wire:key="ri-procedure-row-{{ $procedure['procedureId'] }}-{{ $this->renderKey('modal-diagnosis-ri') }}"
                                     class="bg-canvas hover:bg-surface-soft dark:bg-gray-800 dark:hover:bg-gray-700">
                                     <td class="px-3 py-3 text-ink dark:text-white">

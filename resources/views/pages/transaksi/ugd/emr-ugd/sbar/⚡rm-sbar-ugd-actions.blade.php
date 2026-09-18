@@ -22,7 +22,20 @@ new class extends Component {
 
     public bool $isFormLocked = false;
     public ?int $rjNo = null;
-    public array $dataDaftarUGD = [];
+
+    /**
+     * IRISAN dokumen: hanya cabang `sbar`.
+     *
+     * Dokumen `datadaftarugd_json` utuh sengaja TIDAK disimpan di properti publik — properti
+     * publik ikut snapshot Livewire dan dikirim bolak-balik tiap request. Untuk MENYIMPAN,
+     * dokumen utuh tetap dibaca ulang dari DB di dalam withUgdLock().
+     */
+    public array $daftarSbar = [];
+
+    /** Skalar identitas yang ikut dipakai komponen ini (dulu dibaca dari dokumen penuh). */
+    public ?string $regNoPasien = null;
+    public string $dpjpId = '';
+    public string $dpjpDesc = '';
 
     public string $activeProfession = 'Semua';
     public array $professionTabs = ['Semua', 'Dokter', 'Perawat', 'Apoteker', 'Gizi', 'Penunjang'];
@@ -71,8 +84,10 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarUGD = $data;
-        $this->dataDaftarUGD['sbar'] ??= [];
+        $this->daftarSbar = $data['sbar'] ?? [];
+        $this->regNoPasien = $data['regNo'] ?? null;
+        $this->dpjpId = (string) ($data['drId'] ?? '');
+        $this->dpjpDesc = (string) ($data['drDesc'] ?? '');
 
         $role = $this->profesiSaya();
         $this->activeProfession = in_array($role, ['Dokter', 'Perawat', 'Apoteker', 'Gizi'], true) ? $role : 'Semua';
@@ -83,11 +98,11 @@ new class extends Component {
     }
 
     /* ── Simpan SOAP mem-morph parent EMR → komponen pasif ikut ter-wipe.
-       Muat ulang HANYA bila memang ter-wipe (regNo hilang) agar entri berjalan tak reset. ── */
+       Muat ulang HANYA bila memang ter-wipe (regNoPasien hilang) agar entri berjalan tak reset. ── */
     #[On('refresh-after-ugd.saved')]
     public function reloadAfterUgdSaved(): void
     {
-        if (empty($this->rjNo) || !empty($this->dataDaftarUGD['regNo'])) {
+        if (empty($this->rjNo) || !empty($this->regNoPasien)) {
             return;
         }
 
@@ -145,7 +160,7 @@ new class extends Component {
                 ]);
 
                 $this->updateJsonUGD((int) $this->rjNo, $fresh);
-                $this->dataDaftarUGD = $fresh;
+                $this->daftarSbar = $fresh['sbar'] ?? [];
                 $inserted = true;
 
                 $this->appendAdminLogUGD((int) $this->rjNo, 'Tambah SBAR UGD — entri ' . $this->formEntrySBAR['tglSBAR'] . ' (' . ($this->formEntrySBAR['profession'] ?: '-') . ')', 'MR');
@@ -170,7 +185,7 @@ new class extends Component {
             return;
         }
 
-        $sbar = collect($this->dataDaftarUGD['sbar'] ?? [])->first(fn($r) => ($r['sbarId'] ?? null) === $sbarId);
+        $sbar = collect($this->daftarSbar)->first(fn($r) => ($r['sbarId'] ?? null) === $sbarId);
         if (!$sbar) {
             $this->dispatch('toast', type: 'error', message: 'SBAR tidak ditemukan.');
             return;
@@ -248,7 +263,7 @@ new class extends Component {
                 $fresh['sbar'] = $list->values()->all();
 
                 $this->updateJsonUGD((int) $this->rjNo, $fresh);
-                $this->dataDaftarUGD = $fresh;
+                $this->daftarSbar = $fresh['sbar'] ?? [];
                 $updated = true;
 
                 $this->appendAdminLogUGD((int) $this->rjNo, 'Edit SBAR UGD — entri ' . ($row['tglSBAR'] ?? '-') . ' (' . ($row['profession'] ?: '-') . ')', 'MR');
@@ -297,7 +312,7 @@ new class extends Component {
                 $fresh['sbar'] = $list->values()->all();
 
                 $this->updateJsonUGD((int) $this->rjNo, $fresh);
-                $this->dataDaftarUGD = $fresh;
+                $this->daftarSbar = $fresh['sbar'] ?? [];
 
                 $this->appendAdminLogUGD((int) $this->rjNo, 'Hapus SBAR UGD — entri ' . ($row['tglSBAR'] ?? '-') . ' oleh ' . ($row['petugasSBAR'] ?? '-'), 'MR');
             });
@@ -313,7 +328,7 @@ new class extends Component {
     /* ── DPJP UGD = dokter kunjungan (rsview_ugdkasir.dr_id). drId === User.myuser_code ── */
     private function dpjpUgdId(): string
     {
-        return (string) ($this->dataDaftarUGD['drId'] ?? '');
+        return $this->dpjpId;
     }
 
     /* ── Review/TTD SBAR — HANYA DPJP (dokter UGD) / Admin ── */
@@ -325,7 +340,7 @@ new class extends Component {
         }
 
         $dpjpId = $this->dpjpUgdId();
-        $dpjpName = (string) ($this->dataDaftarUGD['drDesc'] ?? '');
+        $dpjpName = $this->dpjpDesc;
         $isAdmin = auth()->user()->hasRole('Admin');
 
         if ($dpjpId === '') {
@@ -358,7 +373,7 @@ new class extends Component {
                 $fresh['sbar'] = $list->values()->all();
 
                 $this->updateJsonUGD((int) $this->rjNo, $fresh);
-                $this->dataDaftarUGD = $fresh;
+                $this->daftarSbar = $fresh['sbar'] ?? [];
 
                 $this->appendAdminLogUGD((int) $this->rjNo, 'Review SBAR UGD — entri ' . ($row['tglSBAR'] ?? '-') . ' oleh DPJP ' . ($dpjpName ?: '-'), 'MR');
             });
@@ -403,7 +418,7 @@ new class extends Component {
                 $fresh['sbar'] = $list->values()->all();
 
                 $this->updateJsonUGD((int) $this->rjNo, $fresh);
-                $this->dataDaftarUGD = $fresh;
+                $this->daftarSbar = $fresh['sbar'] ?? [];
 
                 $this->appendAdminLogUGD((int) $this->rjNo, 'Batal review SBAR UGD — entri ' . ($row['tglSBAR'] ?? '-'), 'MR');
             });
@@ -419,13 +434,13 @@ new class extends Component {
     /* ── Cetak PDF satu entri SBAR ── */
     public function printSbar(string $sbarId): mixed
     {
-        $sbar = collect($this->dataDaftarUGD['sbar'] ?? [])->first(fn($r) => ($r['sbarId'] ?? null) === $sbarId);
+        $sbar = collect($this->daftarSbar)->first(fn($r) => ($r['sbarId'] ?? null) === $sbarId);
         if (empty($sbar)) {
             $this->dispatch('toast', type: 'error', message: 'SBAR tidak ditemukan.');
             return null;
         }
 
-        $regNo = (string) ($this->dataDaftarUGD['regNo'] ?? '');
+        $regNo = (string) ($this->regNoPasien ?? '');
         $pasienData = $regNo !== '' ? $this->findDataMasterPasien($regNo) : [];
         if (empty($pasienData)) {
             $this->dispatch('toast', type: 'error', message: 'Data pasien tidak ditemukan.');
@@ -435,7 +450,9 @@ new class extends Component {
         $pdf = Pdf::loadView('pages.components.rekam-medis.ugd.cetak-sbar.cetak-sbar-ugd-print', [
             'sbar' => $sbar,
             'dataPasien' => $pasienData,
-            'dataDaftarUGD' => $this->dataDaftarUGD,
+            // Dokumen dibaca ULANG di sini, bukan disimpan di properti publik: cetak itu aksi
+            // jarang, dan nilainya justru paling segar. Cetakan hanya perlu rjDate & drDesc.
+            'dataDaftarUGD' => $this->findDataUGD($this->rjNo) ?? [],
         ])->setPaper('A4');
 
         $filename = 'sbar-ugd-' . ($regNo !== '' ? $regNo : $this->rjNo) . '-' . substr($sbarId, 0, 8) . '.pdf';
@@ -445,7 +462,7 @@ new class extends Component {
 
     public function copySBAR(string $sbarId): void
     {
-        $sbar = collect($this->dataDaftarUGD['sbar'] ?? [])->first(fn($r) => ($r['sbarId'] ?? null) === $sbarId);
+        $sbar = collect($this->daftarSbar)->first(fn($r) => ($r['sbarId'] ?? null) === $sbarId);
 
         if (!$sbar) {
             $this->dispatch('toast', type: 'error', message: 'SBAR tidak ditemukan.');
@@ -477,7 +494,7 @@ new class extends Component {
 
     public function getSbarCount(string $profession): int
     {
-        $list = $this->dataDaftarUGD['sbar'] ?? [];
+        $list = $this->daftarSbar;
         if ($profession === 'Semua') {
             return count($list);
         }
@@ -523,6 +540,10 @@ new class extends Component {
     {
         $this->resetVersion();
         $this->isFormLocked = false;
+        $this->daftarSbar = [];
+        $this->regNoPasien = null;
+        $this->dpjpId = '';
+        $this->dpjpDesc = '';
         $this->activeProfession = 'Semua';
         $this->editingSbarId = null;
         $this->reset(['formEntrySBAR']);
@@ -690,7 +711,7 @@ new class extends Component {
                 <div class="space-y-3">
                     @php
                         // Urut tanggal SBAR desc (terbaru di atas) untuk semua tab profesi.
-                        $allSbar = collect($dataDaftarUGD['sbar'] ?? [])
+                        $allSbar = collect($daftarSbar)
                             ->sortByDesc(fn($c) => Carbon::createFromFormat('d/m/Y H:i:s', ($c['tglSBAR'] ?? '') ?: '01/01/2000 00:00:00')->timestamp)
                             ->values()
                             ->all();
@@ -702,7 +723,7 @@ new class extends Component {
                                 );
 
                         // DPJP UGD = dokter kunjungan. Hanya dia (atau Admin) yang boleh review/TTD SBAR.
-                        $dpjpUgdId = (string) ($dataDaftarUGD['drId'] ?? '');
+                        $dpjpUgdId = $dpjpId;
                         $isDpjpUgd = $dpjpUgdId !== '' && $dpjpUgdId === auth()->user()->myuser_code;
                         $canReviewDpjp = $dpjpUgdId !== '' && ($isDpjpUgd || auth()->user()->hasRole('Admin'));
                     @endphp

@@ -23,7 +23,6 @@ new class extends Component {
     public ?string $rjNo = null;
     public ?string $regNo = null;
     public bool $disabled = false;
-    public array $dataDaftarPoliRJ = [];
 
     public array $renderVersions = [];
     protected array $renderAreas = ['modal-pra-induksi-rj'];
@@ -107,7 +106,6 @@ new class extends Component {
         if ($this->rjNo) {
             $data = $this->findDataRJ($this->rjNo);
             if ($data) {
-                $this->dataDaftarPoliRJ = $data;
                 $this->regNo = $data['regNo'] ?? null;
                 $this->praInduksiList = $data[$this->jsonKey] ?? [];
                 $this->isFormLocked = $this->checkEmrRJStatus($this->rjNo) || $disabled;
@@ -130,12 +128,8 @@ new class extends Component {
             $this->dispatch('toast', type: 'error', message: 'Data RJ tidak ditemukan.');
             return;
         }
-        $this->dataDaftarPoliRJ = $data;
         $this->regNo = $data['regNo'] ?? null;
-        if (!isset($this->dataDaftarPoliRJ[$this->jsonKey]) || !is_array($this->dataDaftarPoliRJ[$this->jsonKey])) {
-            $this->dataDaftarPoliRJ[$this->jsonKey] = [];
-        }
-        $this->praInduksiList = $this->dataDaftarPoliRJ[$this->jsonKey];
+        $this->praInduksiList = is_array($data[$this->jsonKey] ?? null) ? $data[$this->jsonKey] : [];
         $this->isFormLocked = $this->checkEmrRJStatus($this->rjNo) || $this->disabled;
         $this->prefillTimDariOk();
         $this->incrementVersion('modal-pra-induksi-rj');
@@ -361,7 +355,6 @@ new class extends Component {
             $fresh[$this->jsonKey] = array_values($list);
 
             $this->updateJsonRJ((int) $this->rjNo, $fresh);
-            $this->dataDaftarPoliRJ = $fresh;
             $this->praInduksiList = $fresh[$this->jsonKey];
 
             $this->appendAdminLogRJ((int) $this->rjNo, $logVerb . ' Asesmen Pra Induksi — ASA ' . ($entry['klasifikasiAsa'] ?: '-') . ' — ' . ($entry['tanggal'] ?: '-') . ' (' . $key . ')', 'MR');
@@ -476,7 +469,6 @@ new class extends Component {
                 $fresh[$this->jsonKey] = array_values($list);
 
                 $this->updateJsonRJ((int) $this->rjNo, $fresh);
-                $this->dataDaftarPoliRJ = $fresh;
                 $this->praInduksiList = $fresh[$this->jsonKey];
 
                 $pembukaKunci = auth()->user()->myuser_name ?? '-';
@@ -649,7 +641,7 @@ new class extends Component {
                 }
             }
             $data = array_merge($pasien, [
-                'dataRi' => $this->dataDaftarPoliRJ, 'form' => $entry, 'identitasRs' => $identitasRs,
+                'dataRi' => $this->findDataRJ($this->rjNo) ?: [], 'form' => $entry, 'identitasRs' => $identitasRs,
                 'ttdPath' => $ttdPath, 'tglCetak' => Carbon::now(config('app.timezone'))->translatedFormat('d F Y'),
             ]);
             set_time_limit(300);
@@ -680,7 +672,6 @@ new class extends Component {
                 }
                 $fresh[$this->jsonKey] = collect($fresh[$this->jsonKey])->reject(fn($item) => ($item['createdAt'] ?? '') === $createdAt)->values()->toArray();
                 $this->updateJsonRJ((int) $this->rjNo, $fresh);
-                $this->dataDaftarPoliRJ = $fresh;
                 $this->praInduksiList = $fresh[$this->jsonKey];
                 $this->appendAdminLogRJ((int) $this->rjNo, 'Hapus Asesmen Pra Induksi — ' . $createdAt, 'MR');
             });
@@ -720,7 +711,6 @@ new class extends Component {
     {
         $this->resetVersion();
         $this->isFormLocked = false;
-        $this->dataDaftarPoliRJ = [];
         $this->praInduksiList = [];
         $this->resetNewForm();
         $this->editingKey = null;

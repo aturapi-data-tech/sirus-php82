@@ -12,7 +12,14 @@ new class extends Component {
 
     public bool $isFormLocked  = false;
     public ?int $riHdrNo       = null;
-    public array $dataDaftarRI = [];
+    /**
+     * Daftar baris RiRoom hasil query DB — BUKAN dokumen EMR.
+     *
+     * Dulu dibungkus di properti yang dinamai seperti dokumen `datadaftarri_json`,
+     * padahal komponen ini tidak pernah membaca dokumen itu sama sekali. Namanya
+     * diluruskan supaya tidak menyesatkan.
+     */
+    public array $daftarRoom = [];
     public ?array $activeRoom  = null;
 
     /* ===============================
@@ -36,7 +43,7 @@ new class extends Component {
         if ($this->riHdrNo) {
             $this->findData($this->riHdrNo);
         } else {
-            $this->dataDaftarRI['RiRoom'] = [];
+            $this->daftarRoom = [];
         }
     }
 
@@ -56,7 +63,7 @@ new class extends Component {
             ->orderByDesc('t.start_date')
             ->get();
 
-        $this->dataDaftarRI['RiRoom'] = $rows->map(fn($r) => (array) $r)->toArray();
+        $this->daftarRoom = $rows->map(fn($r) => (array) $r)->toArray();
 
         $active = DB::table('rsmst_trfrooms as t')
             ->leftJoin('rsmst_rooms as r', 'r.room_id', '=', 't.room_id')
@@ -296,8 +303,8 @@ new class extends Component {
      =============================== */
     public function updated($property, $value): void
     {
-        // Hanya tangani edit tarif inline: dataDaftarRI.RiRoom.{idx}.{kolom}
-        if (!preg_match('/^dataDaftarRI\.RiRoom\.(\d+)\.(room_price|perawatan_price|common_service)$/', $property, $m)) {
+        // Hanya tangani edit tarif inline: daftarRoom.{idx}.{kolom}
+        if (!preg_match('/^daftarRoom\.(\d+)\.(room_price|perawatan_price|common_service)$/', $property, $m)) {
             return;
         }
 
@@ -308,7 +315,7 @@ new class extends Component {
             'common_service'  => 'CS',
         };
 
-        $trfrNo = (int) ($this->dataDaftarRI['RiRoom'][(int) $idx]['trfr_no'] ?? 0);
+        $trfrNo = (int) ($this->daftarRoom[(int) $idx]['trfr_no'] ?? 0);
         if (!$trfrNo) {
             return;
         }
@@ -433,7 +440,7 @@ new class extends Component {
     <div class="overflow-hidden bg-canvas border border-hairline rounded-2xl dark:border-gray-700 dark:bg-gray-900">
         <div class="flex items-center justify-between px-4 py-3 border-b border-hairline dark:border-gray-700">
             <h3 class="text-sm font-semibold text-body dark:text-gray-300">Riwayat Kamar</h3>
-            <x-badge variant="gray">{{ count($dataDaftarRI['RiRoom'] ?? []) }} record</x-badge>
+            <x-badge variant="gray">{{ count($daftarRoom ?? []) }} record</x-badge>
         </div>
         <div class="overflow-x-auto">
             <table class="w-full text-sm text-left">
@@ -452,12 +459,12 @@ new class extends Component {
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-hairline-soft dark:divide-gray-800">
-                    @forelse ($dataDaftarRI['RiRoom'] ?? [] as $item)
+                    @forelse ($daftarRoom ?? [] as $item)
                         @php
                             $isActive = empty($item['end_date']);
                             $day      = (int) ($item['day'] ?? 1);
                             $subtotal = (($item['room_price'] ?? 0) + ($item['perawatan_price'] ?? 0) + ($item['common_service'] ?? 0)) * $day;
-                            $nextTrfr = $dataDaftarRI['RiRoom'][$loop->index + 1]['trfr_no'] ?? null;
+                            $nextTrfr = $daftarRoom[$loop->index + 1]['trfr_no'] ?? null;
                             // Enter di CS/Hr → fokus Kamar/Hr baris berikutnya (directive @if dilarang di atribut komponen)
                             $nextFocusJs = $nextTrfr
                                 ? "setTimeout(() => document.getElementById('harga-kamar-{$nextTrfr}')?.focus(), 100)"
@@ -516,7 +523,7 @@ new class extends Component {
                                 @if (!$isFormLocked)
                                     <x-text-input-number
                                         id="harga-kamar-{{ $item['trfr_no'] }}"
-                                        wire:model="dataDaftarRI.RiRoom.{{ $loop->index }}.room_price"
+                                        wire:model="daftarRoom.{{ $loop->index }}.room_price"
                                         x-on:keydown.enter.prevent="$el.blur(); setTimeout(() => document.getElementById('harga-prwtn-{{ $item['trfr_no'] }}')?.focus(), 100)"
                                         class="!w-24 px-2 py-1 text-xs font-semibold" />
                                 @else
@@ -527,7 +534,7 @@ new class extends Component {
                                 @if (!$isFormLocked)
                                     <x-text-input-number
                                         id="harga-prwtn-{{ $item['trfr_no'] }}"
-                                        wire:model="dataDaftarRI.RiRoom.{{ $loop->index }}.perawatan_price"
+                                        wire:model="daftarRoom.{{ $loop->index }}.perawatan_price"
                                         x-on:keydown.enter.prevent="$el.blur(); setTimeout(() => document.getElementById('harga-cs-{{ $item['trfr_no'] }}')?.focus(), 100)"
                                         class="!w-24 px-2 py-1 text-xs font-semibold" />
                                 @else
@@ -538,7 +545,7 @@ new class extends Component {
                                 @if (!$isFormLocked)
                                     <x-text-input-number
                                         id="harga-cs-{{ $item['trfr_no'] }}"
-                                        wire:model="dataDaftarRI.RiRoom.{{ $loop->index }}.common_service"
+                                        wire:model="daftarRoom.{{ $loop->index }}.common_service"
                                         x-on:keydown.enter.prevent="$el.blur(); {{ $nextFocusJs }}"
                                         class="!w-24 px-2 py-1 text-xs font-semibold" />
                                 @else
@@ -563,12 +570,12 @@ new class extends Component {
                         </tr>
                     @endforelse
                 </tbody>
-                @if (!empty($dataDaftarRI['RiRoom']))
+                @if (!empty($daftarRoom))
                     <tfoot class="border-t border-hairline bg-surface-soft dark:bg-gray-800/50 dark:border-gray-700">
                         <tr>
                             <td colspan="8" class="px-4 py-3 text-sm font-semibold text-muted dark:text-gray-400">Total</td>
                             <td class="px-4 py-3 text-sm font-bold text-right text-ink dark:text-white">
-                                Rp {{ number_format(collect($dataDaftarRI['RiRoom'])->sum(function ($r) {
+                                Rp {{ number_format(collect($daftarRoom)->sum(function ($r) {
                                     $d = (int)($r['day'] ?? 1);
                                     return (($r['room_price'] ?? 0) + ($r['perawatan_price'] ?? 0) + ($r['common_service'] ?? 0)) * $d;
                                 })) }}
