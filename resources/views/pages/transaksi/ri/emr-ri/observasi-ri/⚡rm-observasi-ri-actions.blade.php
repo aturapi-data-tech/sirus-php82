@@ -11,7 +11,20 @@ new class extends Component {
 
     public bool $isFormLocked = false;
     public ?string $riHdrNo = null;
-    public array $dataDaftarRi = [];
+
+    /**
+     * Hanya JUMLAH entri tiap sub-tab, bukan dokumen EMR-nya.
+     *
+     * Dokumen `datadaftarri_json` sengaja TIDAK disimpan di properti publik: properti publik
+     * ikut snapshot Livewire dan dikirim bolak-balik tiap request, sedangkan induk ini cuma
+     * butuh lima angka untuk badge tab. Dokumen dibaca sebagai variabel lokal di open(),
+     * dihitung, lalu dilepas.
+     */
+    public int $countObat = 0;
+    public int $countPengeluaran = 0;
+    public int $countOksigen = 0;
+    public int $countAlatInvasif = 0;
+    public int $countTTV = 0;
 
     public string $subTab = 'obat-cairan';
 
@@ -56,30 +69,12 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarRi = $data;
-
-        // Inisialisasi struktur array jika belum ada
-        $this->dataDaftarRi['observasi'] ??= [];
-        $this->dataDaftarRi['observasi']['obatDanCairan'] ??= [
-            'pemberianObatDanCairanTab' => 'Pemberian Obat Dan Cairan',
-            'pemberianObatDanCairan' => [],
-        ];
-        $this->dataDaftarRi['observasi']['pengeluaranCairan'] ??= [
-            'pengeluaranCairanTab' => 'Pengeluaran Cairan',
-            'pengeluaranCairan' => [],
-        ];
-        $this->dataDaftarRi['observasi']['pemakaianOksigen'] ??= [
-            'pemakaianOksigenTab' => 'Pemakaian Oksigen',
-            'pemakaianOksigenData' => [],
-        ];
-        $this->dataDaftarRi['observasi']['alatInvasif'] ??= [
-            'alatInvasifTab' => 'Alat Invasif',
-            'alatInvasifData' => [],
-        ];
-        $this->dataDaftarRi['observasi']['observasiLanjutan'] ??= [
-            'tandaVitalTab' => 'Observasi Lanjutan',
-            'tandaVital' => [],
-        ];
+        // $data TIDAK disimpan ke properti — cukup diambil jumlah entri tiap sub-tab.
+        $this->countObat = count($data['observasi']['obatDanCairan']['pemberianObatDanCairan'] ?? []);
+        $this->countPengeluaran = count($data['observasi']['pengeluaranCairan']['pengeluaranCairan'] ?? []);
+        $this->countOksigen = count($data['observasi']['pemakaianOksigen']['pemakaianOksigenData'] ?? []);
+        $this->countAlatInvasif = count($data['observasi']['alatInvasif']['alatInvasifData'] ?? []);
+        $this->countTTV = count($data['observasi']['observasiLanjutan']['tandaVital'] ?? []);
 
         // Gunakan trait untuk cek status
         $this->isFormLocked = $this->checkEmrRIStatus($riHdrNo);
@@ -98,7 +93,11 @@ new class extends Component {
     {
         $this->resetVersion();
         $this->isFormLocked = false;
-        $this->dataDaftarRi = [];
+        $this->countObat = 0;
+        $this->countPengeluaran = 0;
+        $this->countOksigen = 0;
+        $this->countAlatInvasif = 0;
+        $this->countTTV = 0;
         $this->subDirty = ['obat-cairan' => false, 'pengeluaran' => false, 'oksigen' => false, 'alat-invasif' => false, 'ttv' => false];
     }
 
@@ -131,31 +130,6 @@ new class extends Component {
         }
     }
 
-    // Helper untuk mengambil count tiap tab
-    public function getCountObatProperty(): int
-    {
-        return count($this->dataDaftarRi['observasi']['obatDanCairan']['pemberianObatDanCairan'] ?? []);
-    }
-
-    public function getCountPengeluaranProperty(): int
-    {
-        return count($this->dataDaftarRi['observasi']['pengeluaranCairan']['pengeluaranCairan'] ?? []);
-    }
-
-    public function getCountOksigenProperty(): int
-    {
-        return count($this->dataDaftarRi['observasi']['pemakaianOksigen']['pemakaianOksigenData'] ?? []);
-    }
-
-    public function getCountAlatInvasifProperty(): int
-    {
-        return count($this->dataDaftarRi['observasi']['alatInvasif']['alatInvasifData'] ?? []);
-    }
-
-    public function getCountTTVProperty(): int
-    {
-        return count($this->dataDaftarRi['observasi']['observasiLanjutan']['tandaVital'] ?? []);
-    }
 };
 ?>
 

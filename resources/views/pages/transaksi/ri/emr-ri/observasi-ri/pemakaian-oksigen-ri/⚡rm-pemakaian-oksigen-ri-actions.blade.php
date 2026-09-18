@@ -15,7 +15,15 @@ new class extends Component {
 
     public bool $isFormLocked = false;
     public ?int $riHdrNo = null;
-    public array $dataDaftarRi = [];
+
+    /**
+     * IRISAN dokumen: hanya `observasi.pemakaianOksigen.pemakaianOksigenData`.
+     *
+     * Dokumen `datadaftarri_json` utuh sengaja TIDAK disimpan di properti publik — properti
+     * publik ikut snapshot Livewire dan dikirim bolak-balik tiap request. Untuk MENYIMPAN,
+     * dokumen utuh tetap dibaca ulang dari DB di dalam transaksi + lock.
+     */
+    public array $daftarPemakaianOksigen = [];
 
     public array $formEntryOksigen = [
         'jenisAlatOksigen' => 'Nasal Kanul',
@@ -51,12 +59,7 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarRi = $data;
-        $this->dataDaftarRi['observasi'] ??= [];
-        $this->dataDaftarRi['observasi']['pemakaianOksigen'] ??= [
-            'pemakaianOksigenTab' => 'Pemakaian Oksigen',
-            'pemakaianOksigenData' => [],
-        ];
+        $this->daftarPemakaianOksigen = $data['observasi']['pemakaianOksigen']['pemakaianOksigenData'] ?? [];
 
         $this->isFormLocked = $this->checkEmrRIStatus($riHdrNo);
         $this->setWaktuMulaiOksigen();
@@ -144,7 +147,7 @@ new class extends Component {
                 ]);
 
                 $this->updateJsonRI($this->riHdrNo, $data);
-                $this->dataDaftarRi = $data;
+                $this->daftarPemakaianOksigen = $data['observasi']['pemakaianOksigen']['pemakaianOksigenData'];
 
                 // Audit log
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Tambah Pemakaian Oksigen — mulai ' . ($this->formEntryOksigen['tanggalWaktuMulai'] ?? '-'), 'MR');
@@ -230,7 +233,7 @@ new class extends Component {
 
                 $data['observasi']['pemakaianOksigen']['pemakaianOksigenData'] = array_values($list);
                 $this->updateJsonRI($this->riHdrNo, $data);
-                $this->dataDaftarRi = $data;
+                $this->daftarPemakaianOksigen = $data['observasi']['pemakaianOksigen']['pemakaianOksigenData'];
 
                 // Audit log
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Update selesai Pemakaian Oksigen — ' . $waktuSelesai, 'MR');
@@ -267,7 +270,7 @@ new class extends Component {
                     ->all();
 
                 $this->updateJsonRI($this->riHdrNo, $data);
-                $this->dataDaftarRi = $data;
+                $this->daftarPemakaianOksigen = $data['observasi']['pemakaianOksigen']['pemakaianOksigenData'];
 
                 // Audit log
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Hapus Pemakaian Oksigen — mulai ' . $waktuMulai, 'MR');
@@ -287,7 +290,7 @@ new class extends Component {
     {
         $this->resetVersion();
         $this->isFormLocked = false;
-        $this->dataDaftarRi = [];
+        $this->daftarPemakaianOksigen = [];
         $this->reset(['formEntryOksigen']);
     }
 };
@@ -409,7 +412,7 @@ new class extends Component {
 
             {{-- TABEL DATA --}}
             @php
-                $daftarOksigen = $dataDaftarRi['observasi']['pemakaianOksigen']['pemakaianOksigenData'] ?? [];
+                $daftarOksigen = $daftarPemakaianOksigen;
                 $sortedOksigen = collect($daftarOksigen)
                     ->sortByDesc(
                         fn($item) => Carbon::createFromFormat(

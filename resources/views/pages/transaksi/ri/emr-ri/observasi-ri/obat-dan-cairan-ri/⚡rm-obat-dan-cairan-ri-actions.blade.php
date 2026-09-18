@@ -14,7 +14,16 @@ new class extends Component {
 
     public bool $isFormLocked = false;
     public ?int $riHdrNo = null;
-    public array $dataDaftarRI = [];
+
+    /**
+     * IRISAN dokumen: hanya `observasi.obatDanCairan.pemberianObatDanCairan`.
+     *
+     * Dokumen `datadaftarri_json` utuh sengaja TIDAK disimpan di properti publik — properti
+     * publik ikut snapshot Livewire dan dikirim bolak-balik tiap request, dan dokumen EMR RI
+     * satu episode bisa ratusan KB (PayloadTooLargeException). Untuk MENYIMPAN, dokumen utuh
+     * tetap dibaca ulang dari DB di dalam transaksi + lock (lihat addObatDanCairan()).
+     */
+    public array $daftarObatCairan = [];
 
     public array $renderVersions = [];
     protected array $renderAreas = ['modal-obat-cairan-ri'];
@@ -81,14 +90,7 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarRI = $data;
-
-        // Inisialisasi struktur jika belum ada
-        $this->dataDaftarRI['observasi']['obatDanCairan'] ??= [
-            'pemberianObatDanCairanTab' => 'Pemberian Obat Dan Cairan',
-            'pemberianObatDanCairan' => [],
-        ];
-        $this->dataDaftarRI['observasi']['obatDanCairan']['pemberianObatDanCairan'] ??= [];
+        $this->daftarObatCairan = $data['observasi']['obatDanCairan']['pemberianObatDanCairan'] ?? [];
 
         // Generate ID untuk data lama yang belum ada ID
         $this->generateIds();
@@ -184,7 +186,8 @@ new class extends Component {
 
                 // 6. Simpan JSON
                 $this->updateJsonRI($this->riHdrNo, $data);
-                $this->dataDaftarRI = $data;
+                $this->daftarObatCairan = $data['observasi']['obatDanCairan']['pemberianObatDanCairan'];
+                $this->generateIds();
 
                 // 7. Audit log
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Tambah Obat & Cairan — ' . ($this->obatDanCairan['namaObatAtauJenisCairan'] ?? '-') . ' @ ' . ($this->obatDanCairan['waktuPemberian'] ?? '-'), 'MR');
@@ -240,7 +243,8 @@ new class extends Component {
 
                 // 5. Simpan JSON
                 $this->updateJsonRI($this->riHdrNo, $data);
-                $this->dataDaftarRI = $data;
+                $this->daftarObatCairan = $data['observasi']['obatDanCairan']['pemberianObatDanCairan'];
+                $this->generateIds();
 
                 // 6. Audit log
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Hapus Obat & Cairan — ' . ($deletedRow['namaObatAtauJenisCairan'] ?? '-') . ' @ ' . $waktuPemberian, 'MR');
@@ -269,7 +273,7 @@ new class extends Component {
             return;
         }
 
-        $row = collect($this->dataDaftarRI['observasi']['obatDanCairan']['pemberianObatDanCairan'] ?? [])
+        $row = collect($this->daftarObatCairan)
             ->first(fn($r) => (string) ($r['id'] ?? '') === (string) $id);
 
         if (!$row) {
@@ -313,18 +317,17 @@ new class extends Component {
 
     private function generateIds(): void
     {
-        if (isset($this->dataDaftarRI['observasi']['obatDanCairan']['pemberianObatDanCairan'])) {
-            foreach ($this->dataDaftarRI['observasi']['obatDanCairan']['pemberianObatDanCairan'] as &$item) {
-                $item['id'] ??= uniqid('obat_');
-            }
+        foreach ($this->daftarObatCairan as &$item) {
+            $item['id'] ??= uniqid('obat_');
         }
+        unset($item);
     }
 
     protected function resetForm(): void
     {
         $this->resetVersion();
         $this->isFormLocked = false;
-        $this->dataDaftarRI = [];
+        $this->daftarObatCairan = [];
         $this->reset(['obatDanCairan']);
     }
 };
@@ -428,7 +431,7 @@ new class extends Component {
 
             {{-- TABEL DATA --}}
             @php
-                $daftarObat = $dataDaftarRI['observasi']['obatDanCairan']['pemberianObatDanCairan'] ?? [];
+                $daftarObat = $daftarObatCairan;
                 $sortedObat = collect($daftarObat)
                     ->sortByDesc(
                         fn($item) => Carbon::createFromFormat(

@@ -17,7 +17,15 @@ new class extends Component {
 
     public bool $isFormLocked = false;
     public ?int $riHdrNo = null; // konsisten dengan komponen obat & cairan
-    public array $dataDaftarRi = [];
+
+    /**
+     * IRISAN dokumen: hanya `observasi.observasiLanjutan.tandaVital`.
+     *
+     * Dokumen `datadaftarri_json` utuh sengaja TIDAK disimpan di properti publik — properti
+     * publik ikut snapshot Livewire dan dikirim bolak-balik tiap request. Untuk MENYIMPAN,
+     * dokumen utuh tetap dibaca ulang dari DB di dalam transaksi + lock.
+     */
+    public array $daftarObservasiLanjutan = [];
 
     /*
      | Satu entri = TTV + parameter EWS. Kunci EWS (kesadaran, oksigen, dst.) ikut
@@ -129,7 +137,7 @@ new class extends Component {
         $this->umurTahun = $umur['tahun'];
 
         // Varian mengikuti umur; entri terakhir yang sudah memilih varian (mis. MEOWS) lebih diutamakan.
-        $terakhir = collect($this->dataDaftarRi['observasi']['observasiLanjutan']['tandaVital'] ?? [])
+        $terakhir = collect($this->daftarObservasiLanjutan)
             ->sortByDesc(fn($item) => strtotime(str_replace('/', '-', $item['waktuPemeriksaan'] ?? '')) ?: 0)
             ->first();
         $varianTerakhir = $terakhir['ewsVarian'] ?? null;
@@ -205,12 +213,8 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarRi = $data;
-        $this->dataDaftarRi['observasi'] ??= [];
-        $this->dataDaftarRi['observasi']['observasiLanjutan'] ??= [
-            'tandaVitalTab' => 'Observasi Lanjutan',
-            'tandaVital' => [],
-        ];
+        // Diisi SEBELUM tentukanUmurDanVarian() — fungsi itu membaca entri terakhir dari sini.
+        $this->daftarObservasiLanjutan = $data['observasi']['observasiLanjutan']['tandaVital'] ?? [];
 
         $this->isFormLocked = $this->checkEmrRIStatus($riHdrNo);
         $this->tentukanUmurDanVarian($data['regNo'] ?? null);
@@ -310,7 +314,7 @@ new class extends Component {
 
                 // 6. Simpan JSON
                 $this->updateJsonRI($this->riHdrNo, $data);
-                $this->dataDaftarRi = $data;
+                $this->daftarObservasiLanjutan = $data['observasi']['observasiLanjutan']['tandaVital'];
 
                 // 7. Audit log
                 $ringkasEws = $hasilEws === null ? '' : ' - EWS ' . $hasilEws['total'] . ' (' . ($hasilEws['kategori'] ?? '-') . ')';
@@ -354,7 +358,7 @@ new class extends Component {
                     ->all();
 
                 $this->updateJsonRI($this->riHdrNo, $data);
-                $this->dataDaftarRi = $data;
+                $this->daftarObservasiLanjutan = $data['observasi']['observasiLanjutan']['tandaVital'];
 
                 // Audit log
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Hapus Observasi Lanjutan — entri ' . $waktuPemeriksaan, 'MR');
@@ -374,7 +378,7 @@ new class extends Component {
     {
         $this->resetVersion();
         $this->isFormLocked = false;
-        $this->dataDaftarRi = [];
+        $this->daftarObservasiLanjutan = [];
         $this->reset(['formEntryObservasi', 'ewsPratinjau']);
     }
 };
@@ -608,7 +612,7 @@ new class extends Component {
 
             {{-- TABEL DATA --}}
             @php
-                $daftarObs = $dataDaftarRi['observasi']['observasiLanjutan']['tandaVital'] ?? [];
+                $daftarObs = $daftarObservasiLanjutan;
                 $sortedObs = collect($daftarObs)
                     ->sortByDesc(
                         fn($item) => Carbon::createFromFormat(
