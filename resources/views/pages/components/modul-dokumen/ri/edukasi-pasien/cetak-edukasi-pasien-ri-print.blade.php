@@ -137,7 +137,7 @@
                             <p class="font-bold mb-1">Sasaran Edukasi</p>
                             <div class="text-center my-1">
                                 @if (!empty($sasaranTTD))
-                                    <img src="{{ $sasaranTTD }}" class="h-16" alt="Tanda Tangan Sasaran" />
+                                    <img src="{{ \App\Support\TtdPasien::sumberGambar($sasaranTTD) }}" class="h-16" alt="Tanda Tangan Sasaran" />
                                 @else
                                     <div class="h-16">&nbsp;</div>
                                 @endif

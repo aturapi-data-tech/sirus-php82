@@ -218,14 +218,14 @@
         <tr>
             <td style="height:64px; text-align:center;">
                 @if (!empty(data_get($form, 'ttd.keluargaTTD')))
-                    <img src="{{ data_get($form, 'ttd.keluargaTTD') }}" style="height:56px;" alt="TTD Pasien/Keluarga">
+                    <img src="{{ \App\Support\TtdPasien::sumberGambar(data_get($form, 'ttd.keluargaTTD')) }}" style="height:56px;" alt="TTD Pasien/Keluarga">
                 @else
                     &nbsp;
                 @endif
             </td>
             <td style="height:64px; text-align:center;">
                 @if (!empty(data_get($form, 'ttd.saksiTTD')))
-                    <img src="{{ data_get($form, 'ttd.saksiTTD') }}" style="height:56px;" alt="TTD Saksi">
+                    <img src="{{ \App\Support\TtdPasien::sumberGambar(data_get($form, 'ttd.saksiTTD')) }}" style="height:56px;" alt="TTD Saksi">
                 @else
                     &nbsp;
                 @endif

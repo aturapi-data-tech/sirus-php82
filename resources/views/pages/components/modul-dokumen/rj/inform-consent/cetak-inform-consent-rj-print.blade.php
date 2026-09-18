@@ -174,7 +174,7 @@
 
                             <div class="text-center my-1">
                                 @if (!empty($consent['signature']))
-                                    <img src="{{ $consent['signature'] }}" class="h-16" alt="TTD Pasien/Wali" />
+                                    <img src="{{ \App\Support\TtdPasien::sumberGambar($consent['signature']) }}" class="h-16" alt="TTD Pasien/Wali" />
                                 @else
                                     <div class="h-16">&nbsp;</div>
                                 @endif
@@ -197,7 +197,7 @@
 
                             <div class="text-center my-1">
                                 @if (!empty($consent['signatureSaksi']))
-                                    <img src="{{ $consent['signatureSaksi'] }}" class="h-16" alt="TTD Saksi" />
+                                    <img src="{{ \App\Support\TtdPasien::sumberGambar($consent['signatureSaksi']) }}" class="h-16" alt="TTD Saksi" />
                                 @else
                                     <div class="h-16">&nbsp;</div>
                                 @endif

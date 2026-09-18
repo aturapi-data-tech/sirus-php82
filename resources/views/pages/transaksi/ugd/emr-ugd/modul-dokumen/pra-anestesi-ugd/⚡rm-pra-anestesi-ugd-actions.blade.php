@@ -17,6 +17,7 @@ use Illuminate\Support\Str;
 use Carbon\Carbon;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Support\TtdUser;
+use App\Support\TtdPasien;
 
 new class extends Component {
     use EmrUGDTrait, MasterPasienTrait, WithRenderVersioningTrait, WithValidationToastTrait;
@@ -410,7 +411,7 @@ new class extends Component {
         if ($this->isFormLocked || $this->viewOnly) {
             return;
         }
-        $this->signaturePasien = $dataUrl;
+        $this->signaturePasien = TtdPasien::simpan($dataUrl, $this->regNo);   // gambar ke RSTXN_TTDS; di sini cukup referensi "TTD:<no>"
 
         // Belum ada isi inti → cukup tersimpan di form, ikut Simpan Draft nanti.
         if (!$this->adaIsiInti()) {

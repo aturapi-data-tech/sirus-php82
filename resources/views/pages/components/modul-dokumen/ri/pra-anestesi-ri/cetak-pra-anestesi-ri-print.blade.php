@@ -114,7 +114,7 @@
                             <p class="text-[9px] text-gray-500 mb-2">&nbsp;</p>
                             <div class="text-center my-1">
                                 @if (!empty($form['signaturePasien']))
-                                    <img src="{{ $form['signaturePasien'] }}" class="h-16" alt="TTD Pasien" />
+                                    <img src="{{ \App\Support\TtdPasien::sumberGambar($form['signaturePasien']) }}" class="h-16" alt="TTD Pasien" />
                                 @else
                                     <div class="h-16">&nbsp;</div>
                                 @endif
