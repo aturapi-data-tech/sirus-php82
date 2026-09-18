@@ -14,8 +14,29 @@ new class extends Component {
     public bool $isFormLocked = false;
     public ?int $rjNo = null;
 
-    // dataDaftarUGD — key 'rujukanAntarRS' di-bind ke form
-    public array $dataDaftarUGD = [];
+    /**
+     * IRISAN dokumen: cabang `rujukanAntarRS` (model form) + tiga nilai dari cabang lain
+     * yang dipakai sebagai isian awal / penentu tombol BPJS.
+     */
+    public array $rujukanAntarRS = [];
+    public string $noSepKunjungan = '';
+    public string $diagAwalSep = '';
+    public string $klaimStatus = '';
+    public string $klaimId = '';
+
+    /** Penanda kunjungan sudah dimuat lewat open(). */
+    public bool $dokumenTermuat = false;
+
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan + skalar yang disimpan. */
+    private function serapDokumen(array $data): void
+    {
+        $this->rujukanAntarRS = $data['rujukanAntarRS'] ?? [];
+        $this->noSepKunjungan = (string) ($data['sep']['noSep'] ?? '');
+        $this->diagAwalSep = (string) ($data['sep']['reqSep']['request']['t_sep']['diagAwal'] ?? '');
+        $this->klaimStatus = (string) ($data['klaimStatus'] ?? '');
+        $this->klaimId = (string) ($data['klaimId'] ?? '');
+        $this->dokumenTermuat = true;
+    }
 
     // renderVersions
     public array $renderVersions = [];
@@ -47,8 +68,8 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarUGD = $data;
-        $this->dataDaftarUGD['rujukanAntarRS'] ??= $this->getDefaultRujukanAntarRS();
+        $this->serapDokumen($data);
+        $this->rujukanAntarRS = $this->rujukanAntarRS ?: $this->getDefaultRujukanAntarRS();
 
         $this->incrementVersion('modal-rujukan-rs');
 
@@ -71,7 +92,7 @@ new class extends Component {
      =============================== */
     private function getDefaultRujukanAntarRS(): array
     {
-        $noSep = $this->dataDaftarUGD['sep']['noSep'] ?? (DB::table('rsview_rjkasir')->where('rj_no', $this->rjNo)->value('vno_sep') ?? '');
+        $noSep = $this->noSepKunjungan ?: (DB::table('rsview_rjkasir')->where('rj_no', $this->rjNo)->value('vno_sep') ?? '');
 
         return [
             'noSep' => $noSep,
@@ -81,7 +102,7 @@ new class extends Component {
             'ppkDirujukNama' => '',
             'jnsPelayanan' => '2',
             'catatan' => '',
-            'diagRujukan' => $this->dataDaftarUGD['sep']['reqSep']['request']['t_sep']['diagAwal'] ?? '',
+            'diagRujukan' => $this->diagAwalSep,
             'diagRujukanNama' => '',
             'tipeRujukan' => '0', // 0=Penuh, 1=Partial, 2=Balik PRB
             'poliRujukan' => '',
@@ -129,8 +150,8 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarUGD['rujukanAntarRS']['ppkDirujuk'] = $faskes['kode'] ?? '';
-        $this->dataDaftarUGD['rujukanAntarRS']['ppkDirujukNama'] = $faskes['nama'] ?? '';
+        $this->rujukanAntarRS['ppkDirujuk'] = $faskes['kode'] ?? '';
+        $this->rujukanAntarRS['ppkDirujukNama'] = $faskes['nama'] ?? '';
         $this->showFaskesLov = false;
         $this->listFaskes = [];
 
@@ -146,7 +167,7 @@ new class extends Component {
      =============================== */
     public function fetchListSpesialistik(): void
     {
-        $rujukan = $this->dataDaftarUGD['rujukanAntarRS'] ?? [];
+        $rujukan = $this->rujukanAntarRS ?? [];
         $ppk = $rujukan['ppkDirujuk'] ?? '';
         if (empty($ppk)) {
             $this->dispatch('toast', type: 'warning', message: 'Pilih PPK tujuan terlebih dahulu.');
@@ -185,17 +206,17 @@ new class extends Component {
     protected function rules(): array
     {
         $rules = [
-            'dataDaftarUGD.rujukanAntarRS.tglRujukan' => 'required|date_format:d/m/Y',
-            'dataDaftarUGD.rujukanAntarRS.tglRencanaKunjungan' => 'required|date_format:d/m/Y',
-            'dataDaftarUGD.rujukanAntarRS.ppkDirujuk' => 'required',
-            'dataDaftarUGD.rujukanAntarRS.jnsPelayanan' => 'required|in:1,2',
-            'dataDaftarUGD.rujukanAntarRS.diagRujukan' => 'required',
-            'dataDaftarUGD.rujukanAntarRS.tipeRujukan' => 'required|in:0,1,2',
+            'rujukanAntarRS.tglRujukan' => 'required|date_format:d/m/Y',
+            'rujukanAntarRS.tglRencanaKunjungan' => 'required|date_format:d/m/Y',
+            'rujukanAntarRS.ppkDirujuk' => 'required',
+            'rujukanAntarRS.jnsPelayanan' => 'required|in:1,2',
+            'rujukanAntarRS.diagRujukan' => 'required',
+            'rujukanAntarRS.tipeRujukan' => 'required|in:0,1,2',
         ];
 
-        $tipe = $this->dataDaftarUGD['rujukanAntarRS']['tipeRujukan'] ?? '0';
+        $tipe = $this->rujukanAntarRS['tipeRujukan'] ?? '0';
         if (in_array($tipe, ['0', '1'])) {
-            $rules['dataDaftarUGD.rujukanAntarRS.poliRujukan'] = 'required';
+            $rules['rujukanAntarRS.poliRujukan'] = 'required';
         }
 
         return $rules;
@@ -204,15 +225,15 @@ new class extends Component {
     protected function messages(): array
     {
         return [
-            'dataDaftarUGD.rujukanAntarRS.tglRujukan.required' => 'Tanggal rujukan harus diisi.',
-            'dataDaftarUGD.rujukanAntarRS.tglRujukan.date_format' => 'Format tanggal rujukan harus dd/mm/yyyy.',
-            'dataDaftarUGD.rujukanAntarRS.tglRencanaKunjungan.required' => 'Tanggal rencana kunjungan harus diisi.',
-            'dataDaftarUGD.rujukanAntarRS.tglRencanaKunjungan.date_format' => 'Format tanggal rencana kunjungan harus dd/mm/yyyy.',
-            'dataDaftarUGD.rujukanAntarRS.ppkDirujuk.required' => 'PPK tujuan rujukan harus diisi.',
-            'dataDaftarUGD.rujukanAntarRS.jnsPelayanan.required' => 'Jenis pelayanan harus dipilih.',
-            'dataDaftarUGD.rujukanAntarRS.diagRujukan.required' => 'Diagnosis rujukan harus diisi.',
-            'dataDaftarUGD.rujukanAntarRS.tipeRujukan.required' => 'Tipe rujukan harus dipilih.',
-            'dataDaftarUGD.rujukanAntarRS.poliRujukan.required' => 'Poli rujukan wajib diisi untuk tipe Penuh/Partial.',
+            'rujukanAntarRS.tglRujukan.required' => 'Tanggal rujukan harus diisi.',
+            'rujukanAntarRS.tglRujukan.date_format' => 'Format tanggal rujukan harus dd/mm/yyyy.',
+            'rujukanAntarRS.tglRencanaKunjungan.required' => 'Tanggal rencana kunjungan harus diisi.',
+            'rujukanAntarRS.tglRencanaKunjungan.date_format' => 'Format tanggal rencana kunjungan harus dd/mm/yyyy.',
+            'rujukanAntarRS.ppkDirujuk.required' => 'PPK tujuan rujukan harus diisi.',
+            'rujukanAntarRS.jnsPelayanan.required' => 'Jenis pelayanan harus dipilih.',
+            'rujukanAntarRS.diagRujukan.required' => 'Diagnosis rujukan harus diisi.',
+            'rujukanAntarRS.tipeRujukan.required' => 'Tipe rujukan harus dipilih.',
+            'rujukanAntarRS.poliRujukan.required' => 'Poli rujukan wajib diisi untuk tipe Penuh/Partial.',
         ];
     }
 
@@ -249,10 +270,10 @@ new class extends Component {
                 $isBaru = empty($data['rujukanAntarRS']);
 
                 // 3. Patch hanya key rujukanAntarRS
-                $data['rujukanAntarRS'] = $this->dataDaftarUGD['rujukanAntarRS'] ?? [];
+                $data['rujukanAntarRS'] = $this->rujukanAntarRS ?? [];
 
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->dataDaftarUGD = $data;
+                $this->serapDokumen($data);
 
                 // 4. Audit log (rekam medis)
                 $this->appendAdminLogUGD((int) $this->rjNo, ($isBaru ? 'Buat' : 'Update') . ' Rujukan Antar RS UGD: tujuan ' . ($data['rujukanAntarRS']['ppkDirujukNama'] ?: ($data['rujukanAntarRS']['ppkDirujuk'] ?: '-')) . ' (tgl rujukan ' . ($data['rujukanAntarRS']['tglRujukan'] ?: '-') . ')', 'MR');
@@ -272,7 +293,7 @@ new class extends Component {
      =============================== */
     public function kirimBPJS(): void
     {
-        $rujukan = $this->dataDaftarUGD['rujukanAntarRS'] ?? [];
+        $rujukan = $this->rujukanAntarRS ?? [];
 
         if (empty($rujukan['noSep'])) {
             $this->dispatch('toast', type: 'error', message: 'No. SEP belum terisi. Buat SEP terlebih dahulu.');
@@ -309,16 +330,16 @@ new class extends Component {
 
             if ($code == 200) {
                 if (!$isUpdate) {
-                    $this->dataDaftarUGD['rujukanAntarRS']['noRujukan'] = $response['response']['rujukan']['noRujukan'] ?? '';
+                    $this->rujukanAntarRS['noRujukan'] = $response['response']['rujukan']['noRujukan'] ?? '';
                 }
 
                 // Persist noRujukan ke JSON DB
                 DB::transaction(function () use ($label) {
                     $this->lockUGDRow($this->rjNo);
                     $data = $this->findDataUGD($this->rjNo) ?? [];
-                    $data['rujukanAntarRS'] = $this->dataDaftarUGD['rujukanAntarRS'];
+                    $data['rujukanAntarRS'] = $this->rujukanAntarRS;
                     $this->updateJsonUGD($this->rjNo, $data);
-                    $this->dataDaftarUGD = $data;
+                    $this->serapDokumen($data);
 
                     $this->appendAdminLogUGD((int) $this->rjNo, $label . ' Rujukan Antar RS UGD ke BPJS: noRujukan ' . ($data['rujukanAntarRS']['noRujukan'] ?: '-') . ' (tujuan ' . ($data['rujukanAntarRS']['ppkDirujukNama'] ?: ($data['rujukanAntarRS']['ppkDirujuk'] ?: '-')) . ')', 'MR');
                 });
@@ -337,7 +358,7 @@ new class extends Component {
      =============================== */
     public function hapusRujukan(): void
     {
-        $noRujukan = $this->dataDaftarUGD['rujukanAntarRS']['noRujukan'] ?? '';
+        $noRujukan = $this->rujukanAntarRS['noRujukan'] ?? '';
         if (empty($noRujukan)) {
             $this->dispatch('toast', type: 'error', message: 'Tidak ada rujukan untuk dihapus.');
             return;
@@ -353,14 +374,14 @@ new class extends Component {
             $msg = $response['metadata']['message'] ?? '-';
 
             if ($code == 200) {
-                $this->dataDaftarUGD['rujukanAntarRS']['noRujukan'] = '';
+                $this->rujukanAntarRS['noRujukan'] = '';
 
                 DB::transaction(function () use ($noRujukan) {
                     $this->lockUGDRow($this->rjNo);
                     $data = $this->findDataUGD($this->rjNo) ?? [];
-                    $data['rujukanAntarRS'] = $this->dataDaftarUGD['rujukanAntarRS'];
+                    $data['rujukanAntarRS'] = $this->rujukanAntarRS;
                     $this->updateJsonUGD($this->rjNo, $data);
-                    $this->dataDaftarUGD = $data;
+                    $this->serapDokumen($data);
 
                     $this->appendAdminLogUGD((int) $this->rjNo, 'Hapus Rujukan Antar RS UGD dari BPJS: noRujukan ' . $noRujukan, 'MR');
                 });
@@ -399,8 +420,8 @@ new class extends Component {
     public function rendering(): void
     {
         $default = $this->getDefaultRujukanAntarRS();
-        $current = $this->dataDaftarUGD['rujukanAntarRS'] ?? [];
-        $this->dataDaftarUGD['rujukanAntarRS'] = array_replace_recursive($default, $current);
+        $current = $this->rujukanAntarRS ?? [];
+        $this->rujukanAntarRS = array_replace_recursive($default, $current);
     }
 };
 ?>
@@ -417,9 +438,9 @@ new class extends Component {
                     {{-- Header --}}
                     <div class="flex items-center justify-between mb-4">
                         <h3 class="text-base font-semibold text-body dark:text-gray-300">Rujukan Antar RS</h3>
-                        @if (!empty($dataDaftarUGD['rujukanAntarRS']['noRujukan']))
+                        @if (!empty($rujukanAntarRS['noRujukan']))
                             <x-badge variant="success">BPJS:
-                                {{ $dataDaftarUGD['rujukanAntarRS']['noRujukan'] }}</x-badge>
+                                {{ $rujukanAntarRS['noRujukan'] }}</x-badge>
                         @else
                             <x-badge variant="warning">Belum dikirim ke BPJS</x-badge>
                         @endif
@@ -433,9 +454,9 @@ new class extends Component {
                             {{-- No SEP (readonly) --}}
                             <div>
                                 <x-input-label value="No. SEP" class="mb-1" />
-                                <x-text-input wire:model="dataDaftarUGD.rujukanAntarRS.noSep" :disabled="true"
+                                <x-text-input wire:model="rujukanAntarRS.noSep" :disabled="true"
                                     class="w-full" />
-                                @if (empty($dataDaftarUGD['rujukanAntarRS']['noSep']))
+                                @if (empty($rujukanAntarRS['noSep']))
                                     <p class="mt-1 text-sm text-amber-500">SEP belum terbit.</p>
                                 @endif
                             </div>
@@ -443,24 +464,24 @@ new class extends Component {
                             {{-- No Rujukan BPJS (readonly) --}}
                             <div>
                                 <x-input-label value="No. Rujukan BPJS" class="mb-1" />
-                                <x-text-input wire:model="dataDaftarUGD.rujukanAntarRS.noRujukan"
+                                <x-text-input wire:model="rujukanAntarRS.noRujukan"
                                     placeholder="Terisi setelah kirim ke BPJS" :disabled="true" class="w-full" />
                             </div>
 
                             {{-- Tanggal Rujukan --}}
                             <div>
                                 <x-input-label value="Tanggal Rujukan *" class="mb-1" />
-                                <x-text-input wire:model.live="dataDaftarUGD.rujukanAntarRS.tglRujukan"
-                                    placeholder="dd/mm/yyyy" :disabled="$isFormLocked" :error="$errors->has('dataDaftarUGD.rujukanAntarRS.tglRujukan')" class="w-full" />
-                                <x-input-error :messages="$errors->get('dataDaftarUGD.rujukanAntarRS.tglRujukan')" class="mt-1" />
+                                <x-text-input wire:model.live="rujukanAntarRS.tglRujukan"
+                                    placeholder="dd/mm/yyyy" :disabled="$isFormLocked" :error="$errors->has('rujukanAntarRS.tglRujukan')" class="w-full" />
+                                <x-input-error :messages="$errors->get('rujukanAntarRS.tglRujukan')" class="mt-1" />
                             </div>
 
                             {{-- Tanggal Rencana Kunjungan --}}
                             <div>
                                 <x-input-label value="Tanggal Rencana Kunjungan *" class="mb-1" />
-                                <x-text-input wire:model.live="dataDaftarUGD.rujukanAntarRS.tglRencanaKunjungan"
-                                    placeholder="dd/mm/yyyy" :disabled="$isFormLocked" :error="$errors->has('dataDaftarUGD.rujukanAntarRS.tglRencanaKunjungan')" class="w-full" />
-                                <x-input-error :messages="$errors->get('dataDaftarUGD.rujukanAntarRS.tglRencanaKunjungan')" class="mt-1" />
+                                <x-text-input wire:model.live="rujukanAntarRS.tglRencanaKunjungan"
+                                    placeholder="dd/mm/yyyy" :disabled="$isFormLocked" :error="$errors->has('rujukanAntarRS.tglRencanaKunjungan')" class="w-full" />
+                                <x-input-error :messages="$errors->get('rujukanAntarRS.tglRencanaKunjungan')" class="mt-1" />
                             </div>
 
                         </div>
@@ -472,13 +493,13 @@ new class extends Component {
                             <div>
                                 <x-input-label value="PPK Tujuan Rujukan *" class="mb-1" />
                                 <div class="flex gap-2">
-                                    <x-text-input wire:model.live="dataDaftarUGD.rujukanAntarRS.ppkDirujuk"
+                                    <x-text-input wire:model.live="rujukanAntarRS.ppkDirujuk"
                                         class="w-40" :disabled="true" placeholder="Kode PPK"
-                                        :error="$errors->has('dataDaftarUGD.rujukanAntarRS.ppkDirujuk')" />
-                                    <x-text-input wire:model="dataDaftarUGD.rujukanAntarRS.ppkDirujukNama"
+                                        :error="$errors->has('rujukanAntarRS.ppkDirujuk')" />
+                                    <x-text-input wire:model="rujukanAntarRS.ppkDirujukNama"
                                         class="flex-1" :disabled="true" placeholder="Pilih faskes via tombol Cari" />
                                 </div>
-                                <x-input-error :messages="$errors->get('dataDaftarUGD.rujukanAntarRS.ppkDirujuk')" class="mt-1" />
+                                <x-input-error :messages="$errors->get('rujukanAntarRS.ppkDirujuk')" class="mt-1" />
 
                                 {{-- Cari Faskes BPJS --}}
                                 @if (!$isFormLocked)
@@ -523,7 +544,7 @@ new class extends Component {
                             {{-- Jenis Pelayanan --}}
                             <div>
                                 <x-input-label value="Jenis Pelayanan *" class="mb-1" />
-                                <x-select-input wire:model="dataDaftarUGD.rujukanAntarRS.jnsPelayanan" class="w-full"
+                                <x-select-input wire:model="rujukanAntarRS.jnsPelayanan" class="w-full"
                                     :disabled="$isFormLocked">
                                     <option value="1">1 - Rawat Inap</option>
                                     <option value="2">2 - Rawat Jalan</option>
@@ -533,7 +554,7 @@ new class extends Component {
                             {{-- Tipe Rujukan --}}
                             <div>
                                 <x-input-label value="Tipe Rujukan *" class="mb-1" />
-                                <x-select-input wire:model.live="dataDaftarUGD.rujukanAntarRS.tipeRujukan"
+                                <x-select-input wire:model.live="rujukanAntarRS.tipeRujukan"
                                     class="w-full" :disabled="$isFormLocked">
                                     <option value="0">0 - Penuh</option>
                                     <option value="1">1 - Partial</option>
@@ -545,20 +566,20 @@ new class extends Component {
                             <div>
                                 <x-input-label value="Diagnosis Rujukan *" class="mb-1" />
                                 <div class="flex gap-2">
-                                    <x-text-input wire:model.live="dataDaftarUGD.rujukanAntarRS.diagRujukan"
-                                        class="w-32" :disabled="$isFormLocked" placeholder="Kode ICD" :error="$errors->has('dataDaftarUGD.rujukanAntarRS.diagRujukan')" />
-                                    <x-text-input wire:model="dataDaftarUGD.rujukanAntarRS.diagRujukanNama"
+                                    <x-text-input wire:model.live="rujukanAntarRS.diagRujukan"
+                                        class="w-32" :disabled="$isFormLocked" placeholder="Kode ICD" :error="$errors->has('rujukanAntarRS.diagRujukan')" />
+                                    <x-text-input wire:model="rujukanAntarRS.diagRujukanNama"
                                         class="flex-1" :disabled="true" placeholder="Nama diagnosa" />
                                 </div>
-                                <x-input-error :messages="$errors->get('dataDaftarUGD.rujukanAntarRS.diagRujukan')" class="mt-1" />
+                                <x-input-error :messages="$errors->get('rujukanAntarRS.diagRujukan')" class="mt-1" />
                             </div>
 
                             {{-- Poli Rujukan (wajib tipe 0/1, kosong tipe 2) --}}
-                            @if (in_array($dataDaftarUGD['rujukanAntarRS']['tipeRujukan'] ?? '0', ['0', '1']))
+                            @if (in_array($rujukanAntarRS['tipeRujukan'] ?? '0', ['0', '1']))
                                 <div>
                                     <x-input-label value="Poli Rujukan *" class="mb-1" />
                                     @if (!empty($listSpesialistik))
-                                        <x-select-input wire:model="dataDaftarUGD.rujukanAntarRS.poliRujukan"
+                                        <x-select-input wire:model="rujukanAntarRS.poliRujukan"
                                             class="w-full" :disabled="$isFormLocked">
                                             <option value="">-- Pilih Poli --</option>
                                             @foreach ($listSpesialistik as $poli)
@@ -569,14 +590,14 @@ new class extends Component {
                                         </x-select-input>
                                     @else
                                         <div class="flex gap-2">
-                                            <x-text-input wire:model.live="dataDaftarUGD.rujukanAntarRS.poliRujukan"
+                                            <x-text-input wire:model.live="rujukanAntarRS.poliRujukan"
                                                 class="w-32" :disabled="$isFormLocked" placeholder="Kode poli"
-                                                :error="$errors->has('dataDaftarUGD.rujukanAntarRS.poliRujukan')" />
-                                            <x-text-input wire:model="dataDaftarUGD.rujukanAntarRS.poliRujukanNama"
+                                                :error="$errors->has('rujukanAntarRS.poliRujukan')" />
+                                            <x-text-input wire:model="rujukanAntarRS.poliRujukanNama"
                                                 class="flex-1" :disabled="true" placeholder="Nama poli" />
                                         </div>
                                     @endif
-                                    @if (!$isFormLocked && !empty($dataDaftarUGD['rujukanAntarRS']['ppkDirujuk']))
+                                    @if (!$isFormLocked && !empty($rujukanAntarRS['ppkDirujuk']))
                                         <x-secondary-button type="button" wire:click="fetchListSpesialistik"
                                             wire:loading.attr="disabled" class="mt-1 text-sm">
                                             <span wire:loading.remove wire:target="fetchListSpesialistik">Muat Poli
@@ -584,14 +605,14 @@ new class extends Component {
                                             <span wire:loading wire:target="fetchListSpesialistik"><x-loading /></span>
                                         </x-secondary-button>
                                     @endif
-                                    <x-input-error :messages="$errors->get('dataDaftarUGD.rujukanAntarRS.poliRujukan')" class="mt-1" />
+                                    <x-input-error :messages="$errors->get('rujukanAntarRS.poliRujukan')" class="mt-1" />
                                 </div>
                             @endif
 
                             {{-- Catatan --}}
                             <div>
                                 <x-input-label value="Catatan" class="mb-1" />
-                                <x-text-input wire:model.live="dataDaftarUGD.rujukanAntarRS.catatan" class="w-full"
+                                <x-text-input wire:model.live="rujukanAntarRS.catatan" class="w-full"
                                     :disabled="$isFormLocked" placeholder="Catatan rujukan" />
                             </div>
 
@@ -601,16 +622,12 @@ new class extends Component {
 
                 {{-- Tombol Kirim ke BPJS / Hapus --}}
                 @if (!$isFormLocked)
-                    @php
-                        $klaimStatus = $dataDaftarUGD['klaimStatus'] ?? '';
-                        $klaimId = $dataDaftarUGD['klaimId'] ?? '';
-                        $isBPJS = $klaimStatus === 'BPJS' || $klaimId === 'JM';
-                    @endphp
+                    @php $isBPJS = $klaimStatus === 'BPJS' || $klaimId === 'JM'; @endphp
 
                     @if ($isBPJS)
                         <div class="flex items-center justify-end gap-2 pt-2">
-                            @if (!empty($dataDaftarUGD['rujukanAntarRS']['noRujukan']))
-                                <x-hapus-button wire:click="hapusRujukan" confirm="Yakin hapus rujukan {{ $dataDaftarUGD['rujukanAntarRS']['noRujukan'] }} dari BPJS?" label="Hapus Rujukan BPJS" />
+                            @if (!empty($rujukanAntarRS['noRujukan']))
+                                <x-hapus-button wire:click="hapusRujukan" confirm="Yakin hapus rujukan {{ $rujukanAntarRS['noRujukan'] }} dari BPJS?" label="Hapus Rujukan BPJS" />
                             @endif
 
                             <x-success-button type="button" wire:click="kirimBPJS" wire:loading.attr="disabled">
@@ -621,11 +638,11 @@ new class extends Component {
                                         <path stroke-linecap="round" stroke-linejoin="round"
                                             d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
                                     </svg>
-                                    {{ !empty($dataDaftarUGD['rujukanAntarRS']['noRujukan']) ? 'Update Rujukan BPJS' : 'Kirim Rujukan ke BPJS' }}
+                                    {{ !empty($rujukanAntarRS['noRujukan']) ? 'Update Rujukan BPJS' : 'Kirim Rujukan ke BPJS' }}
                                 </span>
                                 <span wire:loading wire:target="kirimBPJS" class="inline-flex items-center gap-2">
                                     <x-loading />
-                                    {{ !empty($dataDaftarUGD['rujukanAntarRS']['noRujukan']) ? 'Mengupdate...' : 'Mengirim...' }}
+                                    {{ !empty($rujukanAntarRS['noRujukan']) ? 'Mengupdate...' : 'Mengirim...' }}
                                 </span>
                             </x-success-button>
                         </div>

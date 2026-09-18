@@ -17,7 +17,14 @@ new class extends Component {
     public bool $screeningTerbuka = false;
     public bool $isEmrLocked = false;   // kunci EMR-level (kunjungan selesai) — tak bisa dibuka dari sini
     public ?int $rjNo = null;
-    public array $dataDaftarUGD = [];
+    /**
+     * IRISAN dokumen: hanya cabang `screening` — sekaligus model form
+     * (jalur validasi & wire:model kini `screening.*`).
+     *
+     * Komponen ini memang SUDAH menahan irisan saja (dulu dibungkus
+     * ['screening' => ...] di dalam properti dokumen); pembungkusnya kini dilepas.
+     */
+    public array $screening = [];
 
     // Radio properties — sync terpisah seperti klaimId
     public string $pernafasan = '';
@@ -45,9 +52,7 @@ new class extends Component {
 
     public function rendering(): void
     {
-        $default = $this->getDefaultScreening();
-        $current = $this->dataDaftarUGD['screening'] ?? [];
-        $this->dataDaftarUGD['screening'] = array_replace_recursive($default, $current);
+        $this->screening = array_replace_recursive($this->getDefaultScreening(), $this->screening);
     }
 
     /* ===============================
@@ -73,17 +78,15 @@ new class extends Component {
         // Tahan HANYA slice screening — record UGD penuh tidak dipakai blade & di-baca ulang
         // saat save(); menahannya bikin tiap roundtrip .live re-serialize payload besar (lag).
         $screeningData = $data['screening'] ?? null;
-        $this->dataDaftarUGD = [
-            'screening' => is_array($screeningData) ? $screeningData : $this->getDefaultScreening(),
-        ];
+        $this->screening = is_array($screeningData) ? $screeningData : $this->getDefaultScreening();
 
         // Kunci berlapis: (a) EMR-level (kunjungan selesai) → tak bisa dibuka dari sini;
         // (b) sudah TTD petugas → terkunci, TAPI bisa "Buka Kunci" (Admin/Manager).
         $this->isEmrLocked = $this->checkEmrUGDStatus($rjNo);
-        $this->isFormLocked = $this->isEmrLocked || filled($this->dataDaftarUGD['screening']['petugasPelayanan'] ?? '');
+        $this->isFormLocked = $this->isEmrLocked || filled($this->screening['petugasPelayanan'] ?? '');
 
         // Sync radio properties dari data
-        $sc = $this->dataDaftarUGD['screening'];
+        $sc = $this->screening;
         $this->pernafasan = $sc['pernafasan'] ?? '';
         $this->kesadaran = $sc['kesadaran'] ?? '';
         $this->nadi = $sc['nadi'] ?? '';
@@ -197,27 +200,27 @@ new class extends Component {
     protected function rules(): array
     {
         $rules = [
-            'dataDaftarUGD.screening.keluhanUtama' => 'required',
-            'dataDaftarUGD.screening.pernafasan' => 'required',
-            'dataDaftarUGD.screening.kesadaran' => 'required',
-            'dataDaftarUGD.screening.nadi' => 'required',
-            'dataDaftarUGD.screening.nyeriDada' => 'required',
-            'dataDaftarUGD.screening.prioritasPelayanan' => 'required',
+            'screening.keluhanUtama' => 'required',
+            'screening.pernafasan' => 'required',
+            'screening.kesadaran' => 'required',
+            'screening.nadi' => 'required',
+            'screening.nyeriDada' => 'required',
+            'screening.prioritasPelayanan' => 'required',
         ];
 
         // Gerbang P0 bergantung dua field sekaligus — required_if tak cukup, jadi dibranch di sini.
         if ($this->isHentiJantungNafas()) {
-            $rules['dataDaftarUGD.screening.tandaKematianPasti'] = 'required';
-            $rules['dataDaftarUGD.screening.tindakanResusitasi'] = 'required';
-            $rules['dataDaftarUGD.screening.dinyatakanMeninggal'] = 'required';
+            $rules['screening.tandaKematianPasti'] = 'required';
+            $rules['screening.tindakanResusitasi'] = 'required';
+            $rules['screening.dinyatakanMeninggal'] = 'required';
 
             if ($this->tandaKematianPasti === 'Ada') {
-                $rules['dataDaftarUGD.screening.tandaKematianKeterangan'] = 'required';
+                $rules['screening.tandaKematianKeterangan'] = 'required';
             }
 
             if ($this->dinyatakanMeninggal === 'Ya') {
-                $rules['dataDaftarUGD.screening.waktuMeninggal'] = 'required';
-                $rules['dataDaftarUGD.screening.dokterPenyataMeninggal'] = 'required';
+                $rules['screening.waktuMeninggal'] = 'required';
+                $rules['screening.dokterPenyataMeninggal'] = 'required';
             }
         }
 
@@ -232,18 +235,18 @@ new class extends Component {
     protected function validationAttributes(): array
     {
         return [
-            'dataDaftarUGD.screening.keluhanUtama' => 'Keluhan Utama',
-            'dataDaftarUGD.screening.pernafasan' => 'Pernafasan',
-            'dataDaftarUGD.screening.kesadaran' => 'Kesadaran',
-            'dataDaftarUGD.screening.nadi' => 'Nadi',
-            'dataDaftarUGD.screening.nyeriDada' => 'Nyeri Dada',
-            'dataDaftarUGD.screening.prioritasPelayanan' => 'Prioritas Pelayanan',
-            'dataDaftarUGD.screening.tandaKematianPasti' => 'Tanda Kematian Pasti',
-            'dataDaftarUGD.screening.tandaKematianKeterangan' => 'Keterangan Tanda Kematian',
-            'dataDaftarUGD.screening.tindakanResusitasi' => 'Tindakan Resusitasi',
-            'dataDaftarUGD.screening.dinyatakanMeninggal' => 'Dinyatakan Meninggal',
-            'dataDaftarUGD.screening.waktuMeninggal' => 'Waktu Meninggal',
-            'dataDaftarUGD.screening.dokterPenyataMeninggal' => 'Dokter yang Menyatakan',
+            'screening.keluhanUtama' => 'Keluhan Utama',
+            'screening.pernafasan' => 'Pernafasan',
+            'screening.kesadaran' => 'Kesadaran',
+            'screening.nadi' => 'Nadi',
+            'screening.nyeriDada' => 'Nyeri Dada',
+            'screening.prioritasPelayanan' => 'Prioritas Pelayanan',
+            'screening.tandaKematianPasti' => 'Tanda Kematian Pasti',
+            'screening.tandaKematianKeterangan' => 'Keterangan Tanda Kematian',
+            'screening.tindakanResusitasi' => 'Tindakan Resusitasi',
+            'screening.dinyatakanMeninggal' => 'Dinyatakan Meninggal',
+            'screening.waktuMeninggal' => 'Waktu Meninggal',
+            'screening.dokterPenyataMeninggal' => 'Dokter yang Menyatakan',
         ];
     }
 
@@ -285,7 +288,7 @@ new class extends Component {
                 $triaseTersimpan = $data['screening']['triaseSaran'] ?? '';
 
                 // 3. Patch hanya key screening
-                $data['screening'] = $this->dataDaftarUGD['screening'] ?? [];
+                $data['screening'] = $this->screening ?? [];
 
                 // Saran triase ikut disimpan — sebelumnya dihitung di blade lalu hilang saat
                 // modal ditutup, sehingga cetakan & laporan tak pernah tahu hasil screening.
@@ -308,7 +311,7 @@ new class extends Component {
                 // nol. $sinkron['setDeathStatus'] sudah menyediakan keputusannya — tinggal
                 // dipasang penulisnya bila konsep ini disetujui.
                 // Simpan hanya slice screening (lihat catatan di openScreening).
-                $this->dataDaftarUGD = ['screening' => $data['screening']];
+                $this->screening = $data['screening'];
 
                 // 4. Audit log — penetapan MAUPUN pencabutan P0 dicatat eksplisit.
                 $logText = ($isBaru ? 'Buat' : 'Update') . ' Screening UGD (' . $verb . ') — prioritas ' . ($data['screening']['prioritasPelayanan'] ?? '-') . ' — saran triase ' . ($triaseSaran ?? '-');
@@ -356,9 +359,9 @@ new class extends Component {
         // validate() melempar bila gagal → stempel & simpan di bawah tak jalan.
         $this->validateWithToast();
 
-        $this->dataDaftarUGD['screening']['petugasPelayanan'] = auth()->user()->myuser_name;
-        $this->dataDaftarUGD['screening']['petugasPelayananCode'] = auth()->user()->myuser_code;
-        $this->dataDaftarUGD['screening']['tanggalPelayanan'] = now()->format('d/m/Y H:i:s');
+        $this->screening['petugasPelayanan'] = auth()->user()->myuser_name;
+        $this->screening['petugasPelayananCode'] = auth()->user()->myuser_code;
+        $this->screening['tanggalPelayanan'] = now()->format('d/m/Y H:i:s');
 
         $this->persistScreening('TTD Petugas');
 
@@ -405,7 +408,7 @@ new class extends Component {
                 $data['screening']['tanggalPelayanan'] = '';
 
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->dataDaftarUGD = ['screening' => $data['screening']];
+                $this->screening = $data['screening'];
 
                 $this->appendAdminLogUGD(
                     (int) $this->rjNo,
@@ -430,7 +433,7 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarUGD['screening']['waktuMeninggal'] = now()->format('d/m/Y H:i:s');
+        $this->screening['waktuMeninggal'] = now()->format('d/m/Y H:i:s');
     }
 
     /* ===============================
@@ -439,15 +442,15 @@ new class extends Component {
     public function updated(string $name, mixed $value): void
     {
         match ($name) {
-            'pernafasan' => ($this->dataDaftarUGD['screening']['pernafasan'] = $value),
-            'kesadaran' => ($this->dataDaftarUGD['screening']['kesadaran'] = $value),
-            'nadi' => ($this->dataDaftarUGD['screening']['nadi'] = $value),
-            'nyeriDada' => ($this->dataDaftarUGD['screening']['nyeriDada'] = $value),
-            'nyeriDadaTingkat' => ($this->dataDaftarUGD['screening']['nyeriDadaTingkat'] = $value),
-            'prioritasPelayanan' => ($this->dataDaftarUGD['screening']['prioritasPelayanan'] = $value),
-            'tandaKematianPasti' => ($this->dataDaftarUGD['screening']['tandaKematianPasti'] = $value),
-            'tindakanResusitasi' => ($this->dataDaftarUGD['screening']['tindakanResusitasi'] = $value),
-            'dinyatakanMeninggal' => ($this->dataDaftarUGD['screening']['dinyatakanMeninggal'] = $value),
+            'pernafasan' => ($this->screening['pernafasan'] = $value),
+            'kesadaran' => ($this->screening['kesadaran'] = $value),
+            'nadi' => ($this->screening['nadi'] = $value),
+            'nyeriDada' => ($this->screening['nyeriDada'] = $value),
+            'nyeriDadaTingkat' => ($this->screening['nyeriDadaTingkat'] = $value),
+            'prioritasPelayanan' => ($this->screening['prioritasPelayanan'] = $value),
+            'tandaKematianPasti' => ($this->screening['tandaKematianPasti'] = $value),
+            'tindakanResusitasi' => ($this->screening['tindakanResusitasi'] = $value),
+            'dinyatakanMeninggal' => ($this->screening['dinyatakanMeninggal'] = $value),
             default => null,
         };
 
@@ -460,7 +463,7 @@ new class extends Component {
         // Nyeri dada dikembalikan ke "Tidak Ada" → tingkat nyeri ikut gugur.
         if ($name === 'nyeriDada' && $value !== 'Ada') {
             $this->nyeriDadaTingkat = '';
-            $this->dataDaftarUGD['screening']['nyeriDadaTingkat'] = '';
+            $this->screening['nyeriDadaTingkat'] = '';
         }
     }
 
@@ -511,7 +514,7 @@ new class extends Component {
         $this->screeningTerbuka = false;
         $this->isFormLocked = false;
         $this->isEmrLocked = false;
-        $this->dataDaftarUGD = [];
+        $this->screening = [];
         $this->pernafasan = '';
         $this->kesadaran = '';
         $this->nadi = '';
@@ -531,7 +534,7 @@ new class extends Component {
         $this->dinyatakanMeninggal = '';
 
         foreach (['tandaKematianPasti', 'tandaKematianKeterangan', 'tindakanResusitasi', 'dinyatakanMeninggal', 'waktuMeninggal', 'dokterPenyataMeninggal'] as $key) {
-            $this->dataDaftarUGD['screening'][$key] = '';
+            $this->screening[$key] = '';
         }
     }
 };
@@ -587,7 +590,7 @@ new class extends Component {
             {{-- BODY --}}
             <div class="flex-1 px-4 py-4 overflow-y-auto bg-surface-soft/70 dark:bg-gray-950/20">
 
-                @if (isset($dataDaftarUGD['screening']))
+                @if (!empty($screening))
 
                     {{-- Display Pasien --}}
                     <div class="mb-4">
@@ -608,44 +611,44 @@ new class extends Component {
                                     {{-- Keluhan Utama --}}
                                     <div>
                                         <x-input-label value="Keluhan Utama" :required="true" />
-                                        <x-textarea wire:model.live="dataDaftarUGD.screening.keluhanUtama"
+                                        <x-textarea wire:model.live="screening.keluhanUtama"
                                             placeholder="Keluhan utama pasien..." :disabled="$isFormLocked" rows="3"
                                             class="w-full mt-1" />
-                                        <x-input-error :messages="$errors->get('dataDaftarUGD.screening.keluhanUtama')" class="mt-1" />
+                                        <x-input-error :messages="$errors->get('screening.keluhanUtama')" class="mt-1" />
                                     </div>
 
                                     {{-- Nyeri Dada --}}
                                     <div>
                                         <x-input-label value="Nyeri Dada" :required="true" />
                                         <div class="flex flex-wrap gap-2 mt-1">
-                                            @foreach ($dataDaftarUGD['screening']['nyeriDadaOptions'] ?? [] as $opt)
+                                            @foreach ($screening['nyeriDadaOptions'] ?? [] as $opt)
                                                 <x-radio-button :label="$opt['nyeriDada']" :value="$opt['nyeriDada']" name="nyeriDada"
                                                     wire:model.live="nyeriDada" :disabled="$isFormLocked" />
                                             @endforeach
                                         </div>
                                         @if ($nyeriDada === 'Ada')
                                             <div class="flex flex-wrap gap-2 mt-2">
-                                                @foreach ($dataDaftarUGD['screening']['nyeriDadaTingkatOptions'] ?? [] as $opt)
+                                                @foreach ($screening['nyeriDadaTingkatOptions'] ?? [] as $opt)
                                                     <x-radio-button :label="$opt['nyeriDadaTingkat']" :value="$opt['nyeriDadaTingkat']"
                                                         name="nyeriDadaTingkat" wire:model.live="nyeriDadaTingkat"
                                                         :disabled="$isFormLocked" />
                                                 @endforeach
                                             </div>
                                         @endif
-                                        <x-input-error :messages="$errors->get('dataDaftarUGD.screening.nyeriDada')" class="mt-1" />
+                                        <x-input-error :messages="$errors->get('screening.nyeriDada')" class="mt-1" />
                                     </div>
 
                                     {{-- Prioritas Pelayanan --}}
                                     <div>
                                         <x-input-label value="Prioritas Pelayanan" :required="true" />
                                         <div class="flex flex-wrap gap-2 mt-1">
-                                            @foreach ($dataDaftarUGD['screening']['prioritasPelayananOptions'] ?? [] as $opt)
+                                            @foreach ($screening['prioritasPelayananOptions'] ?? [] as $opt)
                                                 <x-radio-button :label="$opt['prioritasPelayanan']" :value="$opt['prioritasPelayanan']"
                                                     name="prioritasPelayanan" wire:model.live="prioritasPelayanan"
                                                     :disabled="$isFormLocked" />
                                             @endforeach
                                         </div>
-                                        <x-input-error :messages="$errors->get('dataDaftarUGD.screening.prioritasPelayanan')" class="mt-1" />
+                                        <x-input-error :messages="$errors->get('screening.prioritasPelayanan')" class="mt-1" />
                                     </div>
 
                                 </div>
@@ -657,36 +660,36 @@ new class extends Component {
                                     <div>
                                         <x-input-label value="Pernafasan" :required="true" />
                                         <div class="flex flex-wrap gap-2 mt-1">
-                                            @foreach ($dataDaftarUGD['screening']['pernafasanOptions'] ?? [] as $opt)
+                                            @foreach ($screening['pernafasanOptions'] ?? [] as $opt)
                                                 <x-radio-button :label="$opt['pernafasan']" :value="$opt['pernafasan']" name="pernafasan"
                                                     wire:model.live="pernafasan" :disabled="$isFormLocked" />
                                             @endforeach
                                         </div>
-                                        <x-input-error :messages="$errors->get('dataDaftarUGD.screening.pernafasan')" class="mt-1" />
+                                        <x-input-error :messages="$errors->get('screening.pernafasan')" class="mt-1" />
                                     </div>
 
                                     {{-- Kesadaran --}}
                                     <div>
                                         <x-input-label value="Kesadaran" :required="true" />
                                         <div class="flex flex-wrap gap-2 mt-1">
-                                            @foreach ($dataDaftarUGD['screening']['kesadaranOptions'] ?? [] as $opt)
+                                            @foreach ($screening['kesadaranOptions'] ?? [] as $opt)
                                                 <x-radio-button :label="$opt['kesadaran']" :value="$opt['kesadaran']" name="kesadaran"
                                                     wire:model.live="kesadaran" :disabled="$isFormLocked" />
                                             @endforeach
                                         </div>
-                                        <x-input-error :messages="$errors->get('dataDaftarUGD.screening.kesadaran')" class="mt-1" />
+                                        <x-input-error :messages="$errors->get('screening.kesadaran')" class="mt-1" />
                                     </div>
 
                                     {{-- Nadi --}}
                                     <div>
                                         <x-input-label value="Nadi" :required="true" />
                                         <div class="flex flex-wrap gap-2 mt-1">
-                                            @foreach ($dataDaftarUGD['screening']['nadiOptions'] ?? [] as $opt)
+                                            @foreach ($screening['nadiOptions'] ?? [] as $opt)
                                                 <x-radio-button :label="$opt['nadi']" :value="$opt['nadi']" name="nadi"
                                                     wire:model.live="nadi" :disabled="$isFormLocked" />
                                             @endforeach
                                         </div>
-                                        <x-input-error :messages="$errors->get('dataDaftarUGD.screening.nadi')" class="mt-1" />
+                                        <x-input-error :messages="$errors->get('screening.nadi')" class="mt-1" />
                                     </div>
 
                                 </div>
@@ -716,22 +719,22 @@ new class extends Component {
                                             <div>
                                                 <x-input-label value="Tanda Kematian Pasti" :required="true" />
                                                 <div class="flex flex-wrap gap-2 mt-1">
-                                                    @foreach ($dataDaftarUGD['screening']['tandaKematianPastiOptions'] ?? [] as $opt)
+                                                    @foreach ($screening['tandaKematianPastiOptions'] ?? [] as $opt)
                                                         <x-radio-button :label="$opt['tandaKematianPasti']" :value="$opt['tandaKematianPasti']"
                                                             name="tandaKematianPasti" wire:model.live="tandaKematianPasti"
                                                             :disabled="$isFormLocked" />
                                                     @endforeach
                                                 </div>
-                                                <x-input-error :messages="$errors->get('dataDaftarUGD.screening.tandaKematianPasti')" class="mt-1" />
+                                                <x-input-error :messages="$errors->get('screening.tandaKematianPasti')" class="mt-1" />
                                             </div>
 
                                             @if ($tandaKematianPasti === 'Ada')
                                                 <div>
                                                     <x-input-label value="Keterangan Tanda Kematian" :required="true" />
-                                                    <x-textarea wire:model.live="dataDaftarUGD.screening.tandaKematianKeterangan"
+                                                    <x-textarea wire:model.live="screening.tandaKematianKeterangan"
                                                         placeholder="mis. lebam mayat, kaku mayat, pupil midriasis total non-reaktif, cedera fatal tidak survivable..."
                                                         :disabled="$isFormLocked" rows="3" class="w-full mt-1" />
-                                                    <x-input-error :messages="$errors->get('dataDaftarUGD.screening.tandaKematianKeterangan')" class="mt-1" />
+                                                    <x-input-error :messages="$errors->get('screening.tandaKematianKeterangan')" class="mt-1" />
                                                 </div>
                                             @endif
 
@@ -739,13 +742,13 @@ new class extends Component {
                                             <div>
                                                 <x-input-label value="Tindakan Resusitasi" :required="true" />
                                                 <div class="flex flex-wrap gap-2 mt-1">
-                                                    @foreach ($dataDaftarUGD['screening']['tindakanResusitasiOptions'] ?? [] as $opt)
+                                                    @foreach ($screening['tindakanResusitasiOptions'] ?? [] as $opt)
                                                         <x-radio-button :label="$opt['tindakanResusitasi']" :value="$opt['tindakanResusitasi']"
                                                             name="tindakanResusitasi" wire:model.live="tindakanResusitasi"
                                                             :disabled="$isFormLocked" />
                                                     @endforeach
                                                 </div>
-                                                <x-input-error :messages="$errors->get('dataDaftarUGD.screening.tindakanResusitasi')" class="mt-1" />
+                                                <x-input-error :messages="$errors->get('screening.tindakanResusitasi')" class="mt-1" />
                                             </div>
 
                                         </div>
@@ -757,13 +760,13 @@ new class extends Component {
                                             <div>
                                                 <x-input-label value="Dinyatakan Meninggal" :required="true" />
                                                 <div class="flex flex-wrap gap-2 mt-1">
-                                                    @foreach ($dataDaftarUGD['screening']['dinyatakanMeninggalOptions'] ?? [] as $opt)
+                                                    @foreach ($screening['dinyatakanMeninggalOptions'] ?? [] as $opt)
                                                         <x-radio-button :label="$opt['dinyatakanMeninggal']" :value="$opt['dinyatakanMeninggal']"
                                                             name="dinyatakanMeninggal" wire:model.live="dinyatakanMeninggal"
                                                             :disabled="$isFormLocked" />
                                                     @endforeach
                                                 </div>
-                                                <x-input-error :messages="$errors->get('dataDaftarUGD.screening.dinyatakanMeninggal')" class="mt-1" />
+                                                <x-input-error :messages="$errors->get('screening.dinyatakanMeninggal')" class="mt-1" />
                                             </div>
 
                                             @if ($dinyatakanMeninggal === 'Ya')
@@ -771,22 +774,22 @@ new class extends Component {
                                                 <div>
                                                     <x-input-label value="Waktu Meninggal" :required="true" />
                                                     <div class="flex items-center gap-2 mt-1">
-                                                        <x-text-input wire:model.live="dataDaftarUGD.screening.waktuMeninggal"
+                                                        <x-text-input wire:model.live="screening.waktuMeninggal"
                                                             placeholder="dd/mm/yyyy hh:mm:ss" :disabled="$isFormLocked" class="w-full" />
                                                         <x-now-button wire:click="setWaktuMeninggal" :disabled="$isFormLocked" />
                                                     </div>
-                                                    <x-input-error :messages="$errors->get('dataDaftarUGD.screening.waktuMeninggal')" class="mt-1" />
+                                                    <x-input-error :messages="$errors->get('screening.waktuMeninggal')" class="mt-1" />
                                                 </div>
 
                                                 {{-- Dokter yang Menyatakan --}}
                                                 <div>
                                                     <x-input-label value="Dokter yang Menyatakan" :required="true" />
                                                     <div class="mt-1">
-                                                        <x-ppa-combobox wireModel="dataDaftarUGD.screening.dokterPenyataMeninggal"
+                                                        <x-ppa-combobox wireModel="screening.dokterPenyataMeninggal"
                                                             :disabled="$isFormLocked"
                                                             placeholder="Nama dokter — pilih dari daftar atau ketik" />
                                                     </div>
-                                                    <x-input-error :messages="$errors->get('dataDaftarUGD.screening.dokterPenyataMeninggal')" class="mt-1" />
+                                                    <x-input-error :messages="$errors->get('screening.dokterPenyataMeninggal')" class="mt-1" />
                                                 </div>
                                             @endif
 
@@ -855,9 +858,9 @@ new class extends Component {
                         <x-border-form :title="__('Tanda Tangan Petugas')" :align="__('start')" :bgcolor="__('bg-surface-soft')">
                             <div class="mt-4">
                                 <x-signature.ttd-petugas :framed="false" :allowClear="false"
-                                    :ttd="$dataDaftarUGD['screening']['petugasPelayanan'] ?? ''"
-                                    :date="$dataDaftarUGD['screening']['tanggalPelayanan'] ?? ''"
-                                    :code="$dataDaftarUGD['screening']['petugasPelayananCode'] ?? ''"
+                                    :ttd="$screening['petugasPelayanan'] ?? ''"
+                                    :date="$screening['tanggalPelayanan'] ?? ''"
+                                    :code="$screening['petugasPelayananCode'] ?? ''"
                                     :locked="$isFormLocked"
                                     :canSign="auth()->user()?->hasAnyRole(['Perawat', 'Dokter', 'Admin'])"
                                     sign="setPetugasPelayanan" signLabel="TTD-E Petugas" />

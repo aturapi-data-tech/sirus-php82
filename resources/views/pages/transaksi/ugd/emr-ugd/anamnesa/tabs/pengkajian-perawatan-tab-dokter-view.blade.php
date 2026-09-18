@@ -6,8 +6,8 @@
         <div class="py-2 grid grid-cols-3 gap-2 items-start border-b border-hairline dark:border-gray-700">
             <span class="text-sm font-medium text-muted dark:text-gray-400">Perawat Penerima</span>
             <span class="col-span-2 text-base font-medium text-ink dark:text-gray-200">
-                {{ $dataDaftarUGD['anamnesa']['pengkajianPerawatan']['perawatPenerima'] ?? '-' }}
-                <x-input-error :messages="$errors->get('dataDaftarUGD.anamnesa.pengkajianPerawatan.perawatPenerima')" class="mt-1" />
+                {{ $anamnesa['pengkajianPerawatan']['perawatPenerima'] ?? '-' }}
+                <x-input-error :messages="$errors->get('anamnesa.pengkajianPerawatan.perawatPenerima')" class="mt-1" />
             </span>
         </div>
 
@@ -15,8 +15,8 @@
         <div class="py-2 grid grid-cols-3 gap-2 items-start border-b border-hairline dark:border-gray-700">
             <span class="text-sm font-medium text-muted dark:text-gray-400">Waktu Datang</span>
             <span class="col-span-2 text-base font-medium text-ink dark:text-gray-200">
-                {{ $dataDaftarUGD['anamnesa']['pengkajianPerawatan']['jamDatang'] ?? '-' }}
-                <x-input-error :messages="$errors->get('dataDaftarUGD.anamnesa.pengkajianPerawatan.jamDatang')" class="mt-1" />
+                {{ $anamnesa['pengkajianPerawatan']['jamDatang'] ?? '-' }}
+                <x-input-error :messages="$errors->get('anamnesa.pengkajianPerawatan.jamDatang')" class="mt-1" />
             </span>
         </div>
 
@@ -25,7 +25,7 @@
             <span class="text-sm font-medium text-muted dark:text-gray-400">Tingkat Kegawatan</span>
             <span class="col-span-2 text-base font-medium text-ink dark:text-gray-200">
                 @php
-                    $triage = $dataDaftarUGD['anamnesa']['pengkajianPerawatan']['tingkatKegawatan'] ?? '-';
+                    $triage = $anamnesa['pengkajianPerawatan']['tingkatKegawatan'] ?? '-';
                     $triageColor = match ($triage) {
                         'P1' => 'bg-red-600 text-white border-red-700',
                         'P2' => 'bg-yellow-400 text-ink border-yellow-500',
@@ -49,7 +49,7 @@
                 @else
                     -
                 @endif
-                <x-input-error :messages="$errors->get('dataDaftarUGD.anamnesa.pengkajianPerawatan.tingkatKegawatan')" class="mt-1" />
+                <x-input-error :messages="$errors->get('anamnesa.pengkajianPerawatan.tingkatKegawatan')" class="mt-1" />
             </span>
         </div>
 
@@ -57,7 +57,7 @@
         <div class="py-2 grid grid-cols-3 gap-2 items-start border-b border-hairline dark:border-gray-700">
             <span class="text-sm font-medium text-muted dark:text-gray-400">Status Medik</span>
             <span class="col-span-2 text-base text-ink dark:text-gray-200">
-                {{ ($dataDaftarUGD['anamnesa']['pengkajianPerawatan']['statusMedik']['statusMedik'] ?? '') !== '' ? $dataDaftarUGD['anamnesa']['pengkajianPerawatan']['statusMedik']['statusMedik'] : '-' }}
+                {{ ($anamnesa['pengkajianPerawatan']['statusMedik']['statusMedik'] ?? '') !== '' ? $anamnesa['pengkajianPerawatan']['statusMedik']['statusMedik'] : '-' }}
             </span>
         </div>
 
@@ -65,8 +65,8 @@
         <div class="py-2 grid grid-cols-3 gap-2 items-start border-b border-hairline dark:border-gray-700">
             <span class="text-sm font-medium text-muted dark:text-gray-400">Cara Masuk IGD</span>
             <span class="col-span-2 text-base text-ink dark:text-gray-200">
-                {{ $dataDaftarUGD['anamnesa']['pengkajianPerawatan']['caraMasukIgd'] ?? '-' }}
-                <x-input-error :messages="$errors->get('dataDaftarUGD.anamnesa.pengkajianPerawatan.caraMasukIgd')" class="mt-1" />
+                {{ $anamnesa['pengkajianPerawatan']['caraMasukIgd'] ?? '-' }}
+                <x-input-error :messages="$errors->get('anamnesa.pengkajianPerawatan.caraMasukIgd')" class="mt-1" />
             </span>
         </div>
 
@@ -74,13 +74,13 @@
         <div class="py-2 grid grid-cols-3 gap-2 items-start border-b border-hairline dark:border-gray-700">
             <span class="text-sm font-medium text-muted dark:text-gray-400">Sarana Transportasi</span>
             <span class="col-span-2 text-base text-ink dark:text-gray-200">
-                {{ $dataDaftarUGD['anamnesa']['pengkajianPerawatan']['saranaTransportasiDesc'] ?? '-' }}
-                @if (!empty($dataDaftarUGD['anamnesa']['pengkajianPerawatan']['saranaTransportasiKet']))
-                    — {{ $dataDaftarUGD['anamnesa']['pengkajianPerawatan']['saranaTransportasiKet'] }}
+                {{ $anamnesa['pengkajianPerawatan']['saranaTransportasiDesc'] ?? '-' }}
+                @if (!empty($anamnesa['pengkajianPerawatan']['saranaTransportasiKet']))
+                    — {{ $anamnesa['pengkajianPerawatan']['saranaTransportasiKet'] }}
                 @endif
                 <x-input-error :messages="$errors->get('saranaTransportasiId')" class="mt-1" />
-                <x-input-error :messages="$errors->get('dataDaftarUGD.anamnesa.pengkajianPerawatan.saranaTransportasiId')" class="mt-1" />
-                <x-input-error :messages="$errors->get('dataDaftarUGD.anamnesa.pengkajianPerawatan.saranaTransportasiKet')" class="mt-1" />
+                <x-input-error :messages="$errors->get('anamnesa.pengkajianPerawatan.saranaTransportasiId')" class="mt-1" />
+                <x-input-error :messages="$errors->get('anamnesa.pengkajianPerawatan.saranaTransportasiKet')" class="mt-1" />
             </span>
         </div>
 
@@ -89,7 +89,7 @@
             <span class="text-sm font-medium text-muted dark:text-gray-400">Anamnesa Diperoleh</span>
             <span class="col-span-2 text-base text-ink dark:text-gray-200">
                 @php
-                    $anamnesaDiperoleh = $dataDaftarUGD['anamnesa']['anamnesaDiperoleh'] ?? [];
+                    $anamnesaDiperoleh = $anamnesa['anamnesaDiperoleh'] ?? [];
                     $sources = [];
                     if (!empty($anamnesaDiperoleh['autoanamnesa'])) {
                         $sources[] = 'Auto-anamnesa (Pasien)';
@@ -102,7 +102,7 @@
                 @if (!empty($anamnesaDiperoleh['anamnesaDiperolehDari']))
                     — {{ $anamnesaDiperoleh['anamnesaDiperolehDari'] }}
                 @endif
-                <x-input-error :messages="$errors->get('dataDaftarUGD.anamnesa.anamnesaDiperoleh.anamnesaDiperolehDari')" class="mt-1" />
+                <x-input-error :messages="$errors->get('anamnesa.anamnesaDiperoleh.anamnesaDiperolehDari')" class="mt-1" />
             </span>
         </div>
 
@@ -110,8 +110,8 @@
         <div class="py-2 grid grid-cols-3 gap-2 items-start border-b border-hairline dark:border-gray-700">
             <span class="text-sm font-medium text-muted dark:text-gray-400">Keluhan Utama</span>
             <span class="col-span-2 text-base text-ink dark:text-gray-200 whitespace-pre-line">
-                {{ $dataDaftarUGD['anamnesa']['keluhanUtama']['keluhanUtama'] ?? '-' }}
-                <x-input-error :messages="$errors->get('dataDaftarUGD.anamnesa.keluhanUtama.keluhanUtama')" class="mt-1" />
+                {{ $anamnesa['keluhanUtama']['keluhanUtama'] ?? '-' }}
+                <x-input-error :messages="$errors->get('anamnesa.keluhanUtama.keluhanUtama')" class="mt-1" />
             </span>
         </div>
 

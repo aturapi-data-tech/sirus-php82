@@ -3,9 +3,9 @@
 
     {{-- Textarea Terapi --}}
     <div>
-        <x-textarea placeholder="Terapi" :error="$errors->has('dataDaftarUGD.perencanaan.terapi.terapi')" :disabled="$isFormLocked" :rows="7"
-            wire:model.live="dataDaftarUGD.perencanaan.terapi.terapi" />
-        <x-input-error :messages="$errors->get('dataDaftarUGD.perencanaan.terapi.terapi')" class="mt-1" />
+        <x-textarea placeholder="Terapi" :error="$errors->has('perencanaan.terapi.terapi')" :disabled="$isFormLocked" :rows="7"
+            wire:model.live="perencanaan.terapi.terapi" />
+        <x-input-error :messages="$errors->get('perencanaan.terapi.terapi')" class="mt-1" />
     </div>
 
     {{-- Shortcut tombol E-Resep — auto-save SOAP child dulu, tunggu konfirmasi,

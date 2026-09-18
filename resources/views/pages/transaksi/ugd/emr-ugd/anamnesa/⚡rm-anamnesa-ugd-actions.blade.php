@@ -16,7 +16,32 @@ new class extends Component {
 
     public bool $isFormLocked = false;
     public ?int $rjNo = null;
-    public array $dataDaftarUGD = [];
+    /**
+     * IRISAN dokumen: cabang `anamnesa` (model form — jalur validasi & wire:model kini
+     * `anamnesa.*`) plus tiga nilai turunan dari cabang lain.
+     */
+    public array $anamnesa = [];
+
+    public string $regNoPasien = '';
+
+    /** Keluhan dari Screening — dipakai mengisi keluhan utama bila masih kosong. */
+    public string $keluhanScreening = '';
+
+    /** Sudah ada dokter pemeriksa di cabang `perencanaan` (guard alur dokter). */
+    public bool $adaDrPemeriksa = false;
+
+    /** Penanda kunjungan sudah dimuat lewat open(). */
+    public bool $dokumenTermuat = false;
+
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan + tiga nilai yang disimpan. */
+    private function serapDokumen(array $data): void
+    {
+        $this->anamnesa = $data['anamnesa'] ?? [];
+        $this->regNoPasien = (string) ($data['regNo'] ?? '');
+        $this->keluhanScreening = (string) ($data['screening']['keluhanUtama'] ?? '');
+        $this->adaDrPemeriksa = filled($data['perencanaan']['pengkajianMedis']['drPemeriksa'] ?? '');
+        $this->dokumenTermuat = true;
+    }
 
     /**
      * Daftar rekonsiliasi obat SAAT FORM DIBUKA — titik cabang untuk merge tiga arah.
@@ -71,8 +96,7 @@ new class extends Component {
     public function rendering(): void
     {
         $default = $this->getDefaultAnamnesa();
-        $current = $this->dataDaftarUGD['anamnesa'] ?? [];
-        $this->dataDaftarUGD['anamnesa'] = array_replace_recursive($default, $current);
+        $this->anamnesa = array_replace_recursive($default, $this->anamnesa);
     }
 
     /* ===============================
@@ -95,55 +119,55 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarUGD = $data;
+        $this->serapDokumen($data);
 
         // Inisialisasi key anamnesa jika belum ada
-        if (!isset($this->dataDaftarUGD['anamnesa']) || !is_array($this->dataDaftarUGD['anamnesa'])) {
-            $this->dataDaftarUGD['anamnesa'] = $this->getDefaultAnamnesa();
+        if (!$this->anamnesa) {
+            $this->anamnesa = $this->getDefaultAnamnesa();
         }
 
         // Pastikan struktur Status Medik ada — record lama (pra-fitur) tak punya key ini
         // sehingga opsi radio tak muncul bila hanya mengandalkan merge di rendering().
-        if (!isset($this->dataDaftarUGD['anamnesa']['pengkajianPerawatan']['statusMedik']['statusMedikOptions'])) {
+        if (!isset($this->anamnesa['pengkajianPerawatan']['statusMedik']['statusMedikOptions'])) {
             $defStatusMedik = $this->getDefaultAnamnesa()['pengkajianPerawatan']['statusMedik'];
-            $defStatusMedik['statusMedik'] = $this->dataDaftarUGD['anamnesa']['pengkajianPerawatan']['statusMedik']['statusMedik'] ?? '';
-            $this->dataDaftarUGD['anamnesa']['pengkajianPerawatan']['statusMedik'] = $defStatusMedik;
+            $defStatusMedik['statusMedik'] = $this->anamnesa['pengkajianPerawatan']['statusMedik']['statusMedik'] ?? '';
+            $this->anamnesa['pengkajianPerawatan']['statusMedik'] = $defStatusMedik;
         }
 
         // Sync property lokal
-        $this->tingkatKegawatan = $this->dataDaftarUGD['anamnesa']['pengkajianPerawatan']['tingkatKegawatan'] ?? '';
-        $this->caraMasukIgd = $this->dataDaftarUGD['anamnesa']['pengkajianPerawatan']['caraMasukIgd'] ?? '';
-        $this->saranaTransportasiId = $this->dataDaftarUGD['anamnesa']['pengkajianPerawatan']['saranaTransportasiId'] ?? '4';
+        $this->tingkatKegawatan = $this->anamnesa['pengkajianPerawatan']['tingkatKegawatan'] ?? '';
+        $this->caraMasukIgd = $this->anamnesa['pengkajianPerawatan']['caraMasukIgd'] ?? '';
+        $this->saranaTransportasiId = $this->anamnesa['pengkajianPerawatan']['saranaTransportasiId'] ?? '4';
 
         // Sync keluhan utama dari screening → anamnesa jika kosong
-        if (empty($this->dataDaftarUGD['anamnesa']['keluhanUtama']['keluhanUtama']) && !empty($this->dataDaftarUGD['screening']['keluhanUtama'])) {
-            $this->dataDaftarUGD['anamnesa']['keluhanUtama']['keluhanUtama'] = $this->dataDaftarUGD['screening']['keluhanUtama'];
+        if (empty($this->anamnesa['keluhanUtama']['keluhanUtama']) && filled($this->keluhanScreening)) {
+            $this->anamnesa['keluhanUtama']['keluhanUtama'] = $this->keluhanScreening;
         }
 
         // Sync alergi + riwayat dari master pasien
         $pasienData = $this->findDataMasterPasien($data['regNo']);
         if (!empty($pasienData['pasien']['alergi'])) {
-            $this->dataDaftarUGD['anamnesa']['alergi']['alergi'] = $pasienData['pasien']['alergi'];
+            $this->anamnesa['alergi']['alergi'] = $pasienData['pasien']['alergi'];
             // Kode SNOMED ikut teksnya — hanya bila teks alergi juga diambil dari master,
             // supaya kode tak menempel ke alergi lain. Dulu snomedCode tak pernah disinkron.
             if (!empty($pasienData['pasien']['alergiSnomedCode'])) {
-                $this->dataDaftarUGD['anamnesa']['alergi']['snomedCode'] = $pasienData['pasien']['alergiSnomedCode'];
-                $this->dataDaftarUGD['anamnesa']['alergi']['snomedDisplayEn'] = $pasienData['pasien']['alergiSnomedDisplayEn'] ?? '';
-                $this->dataDaftarUGD['anamnesa']['alergi']['snomedDisplayId'] = $pasienData['pasien']['alergiSnomedDisplayId'] ?? '';
+                $this->anamnesa['alergi']['snomedCode'] = $pasienData['pasien']['alergiSnomedCode'];
+                $this->anamnesa['alergi']['snomedDisplayEn'] = $pasienData['pasien']['alergiSnomedDisplayEn'] ?? '';
+                $this->anamnesa['alergi']['snomedDisplayId'] = $pasienData['pasien']['alergiSnomedDisplayId'] ?? '';
             }
         }
         if (!empty($pasienData['pasien']['riwayatPenyakitDahulu'])) {
-            $this->dataDaftarUGD['anamnesa']['riwayatPenyakitDahulu']['riwayatPenyakitDahulu'] = $pasienData['pasien']['riwayatPenyakitDahulu'];
+            $this->anamnesa['riwayatPenyakitDahulu']['riwayatPenyakitDahulu'] = $pasienData['pasien']['riwayatPenyakitDahulu'];
         }
 
         // Seragamkan node alergi + turunkan radio "Ada alergi?" (default Tidak -> 716186003).
         // Record lama tak punya key adaAlergi -> diturunkan dari teksnya. Lihat AlergiSnomed.
-        $this->dataDaftarUGD['anamnesa']['alergi'] = AlergiSnomed::normalisasi(
-            $this->dataDaftarUGD['anamnesa']['alergi'] ?? [],
+        $this->anamnesa['alergi'] = AlergiSnomed::normalisasi(
+            $this->anamnesa['alergi'] ?? [],
         );
 
         // Basis merge tiga arah — direkam sebelum user menyentuh apa pun.
-        $this->rekonsiliasiObatSaatDibuka = (array) data_get($this->dataDaftarUGD, 'anamnesa.rekonsiliasiObat', []);
+        $this->rekonsiliasiObatSaatDibuka = (array) data_get($this->anamnesa, 'rekonsiliasiObat', []);
 
         $this->isFormLocked = $this->checkEmrUGDStatus($rjNo);
         $this->incrementVersion('modal-anamnesa-ugd');
@@ -152,8 +176,8 @@ new class extends Component {
     /** Radio "Ada alergi?" diubah -> seragamkan node lewat sumber tunggal. */
     public function updatedDataDaftarUgdAnamnesaAlergiAdaAlergi(): void
     {
-        $this->dataDaftarUGD['anamnesa']['alergi'] = AlergiSnomed::normalisasi(
-            $this->dataDaftarUGD['anamnesa']['alergi'] ?? [],
+        $this->anamnesa['alergi'] = AlergiSnomed::normalisasi(
+            $this->anamnesa['alergi'] ?? [],
         );
     }
 
@@ -163,10 +187,10 @@ new class extends Component {
     protected function rules(): array
     {
         return [
-            'dataDaftarUGD.anamnesa.pengkajianPerawatan.jamDatang' => 'nullable|date_format:d/m/Y H:i:s',
-            'dataDaftarUGD.anamnesa.pengkajianPerawatan.caraMasukIgd' => 'required',
-            'dataDaftarUGD.anamnesa.pengkajianPerawatan.tingkatKegawatan' => 'required',
-            'dataDaftarUGD.anamnesa.keluhanUtama.keluhanUtama' => 'required',
+            'anamnesa.pengkajianPerawatan.jamDatang' => 'nullable|date_format:d/m/Y H:i:s',
+            'anamnesa.pengkajianPerawatan.caraMasukIgd' => 'required',
+            'anamnesa.pengkajianPerawatan.tingkatKegawatan' => 'required',
+            'anamnesa.keluhanUtama.keluhanUtama' => 'required',
         ];
     }
 
@@ -181,10 +205,10 @@ new class extends Component {
     protected function validationAttributes(): array
     {
         return [
-            'dataDaftarUGD.anamnesa.pengkajianPerawatan.jamDatang' => 'Jam Datang',
-            'dataDaftarUGD.anamnesa.pengkajianPerawatan.caraMasukIgd' => 'Cara Masuk IGD',
-            'dataDaftarUGD.anamnesa.pengkajianPerawatan.tingkatKegawatan' => 'Tingkat Kegawatan',
-            'dataDaftarUGD.anamnesa.keluhanUtama.keluhanUtama' => 'Keluhan Utama',
+            'anamnesa.pengkajianPerawatan.jamDatang' => 'Jam Datang',
+            'anamnesa.pengkajianPerawatan.caraMasukIgd' => 'Cara Masuk IGD',
+            'anamnesa.pengkajianPerawatan.tingkatKegawatan' => 'Tingkat Kegawatan',
+            'anamnesa.keluhanUtama.keluhanUtama' => 'Keluhan Utama',
         ];
     }
 
@@ -223,8 +247,8 @@ new class extends Component {
                 $daftarRekonsiliasiObatDb = (array) data_get($data, 'anamnesa.rekonsiliasiObat', []);
                 $statusRekonsiliasiDb = data_get($data, 'anamnesa.' . RekonsiliasiObat::STATUS_KEY);
 
-                $data['anamnesa'] = $this->dataDaftarUGD['anamnesa'] ?? [];
-                $data['anamnesa']['rekonsiliasiObat'] = RekonsiliasiObat::gabungTigaArah($this->rekonsiliasiObatSaatDibuka, (array) data_get($this->dataDaftarUGD, 'anamnesa.rekonsiliasiObat', []), $daftarRekonsiliasiObatDb);
+                $data['anamnesa'] = $this->anamnesa;
+                $data['anamnesa']['rekonsiliasiObat'] = RekonsiliasiObat::gabungTigaArah($this->rekonsiliasiObatSaatDibuka, (array) data_get($this->anamnesa, 'rekonsiliasiObat', []), $daftarRekonsiliasiObatDb);
                 // Ceklis apoteker tidak pernah diubah dari form ini — nilai DB yang dipakai.
                 RekonsiliasiObat::pertahankanStatus($data['anamnesa'], $statusRekonsiliasiDb);
 
@@ -242,7 +266,7 @@ new class extends Component {
 
                 // 5. Simpan JSON
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->dataDaftarUGD = $data;
+                $this->serapDokumen($data);
 
                 // Basis digeser ke hasil tersimpan — Simpan berikutnya tidak boleh
                 // memakai titik cabang yang sudah usang.
@@ -276,7 +300,7 @@ new class extends Component {
      =============================== */
     private function updateRiwayatMedisPasien(): void
     {
-        $regNo = $this->dataDaftarUGD['regNo'] ?? null;
+        $regNo = $this->regNoPasien ?: null;
         if (!$regNo) {
             return;
         }
@@ -284,16 +308,16 @@ new class extends Component {
         $pasienData = $this->findDataMasterPasien($regNo);
         $updated = false;
 
-        $alergi = $this->dataDaftarUGD['anamnesa']['alergi']['alergi'] ?? '';
-        $riwayat = $this->dataDaftarUGD['anamnesa']['riwayatPenyakitDahulu']['riwayatPenyakitDahulu'] ?? '';
+        $alergi = $this->anamnesa['alergi']['alergi'] ?? '';
+        $riwayat = $this->anamnesa['riwayatPenyakitDahulu']['riwayatPenyakitDahulu'] ?? '';
 
         if (!empty($alergi)) {
             $pasienData['pasien']['alergi'] = $alergi;
             // Kode SNOMED ikut teksnya — SELALU ditimpa (termasuk jadi kosong) supaya kode
             // lama tak tertinggal menempel pada teks alergi yang sudah diganti.
-            $pasienData['pasien']['alergiSnomedCode'] = $this->dataDaftarUGD['anamnesa']['alergi']['snomedCode'] ?? '';
-            $pasienData['pasien']['alergiSnomedDisplayEn'] = $this->dataDaftarUGD['anamnesa']['alergi']['snomedDisplayEn'] ?? '';
-            $pasienData['pasien']['alergiSnomedDisplayId'] = $this->dataDaftarUGD['anamnesa']['alergi']['snomedDisplayId'] ?? '';
+            $pasienData['pasien']['alergiSnomedCode'] = $this->anamnesa['alergi']['snomedCode'] ?? '';
+            $pasienData['pasien']['alergiSnomedDisplayEn'] = $this->anamnesa['alergi']['snomedDisplayEn'] ?? '';
+            $pasienData['pasien']['alergiSnomedDisplayId'] = $this->anamnesa['alergi']['snomedDisplayId'] ?? '';
             $updated = true;
         }
         if (!empty($riwayat)) {
@@ -325,11 +349,11 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarUGD['anamnesa']['pengkajianPerawatan']['perawatPenerima'] = auth()->user()->myuser_name;
-        $this->dataDaftarUGD['anamnesa']['pengkajianPerawatan']['perawatPenerimaCode'] = auth()->user()->myuser_code;
+        $this->anamnesa['pengkajianPerawatan']['perawatPenerima'] = auth()->user()->myuser_name;
+        $this->anamnesa['pengkajianPerawatan']['perawatPenerimaCode'] = auth()->user()->myuser_code;
 
-        if (empty($this->dataDaftarUGD['anamnesa']['pengkajianPerawatan']['jamDatang'])) {
-            $this->dataDaftarUGD['anamnesa']['pengkajianPerawatan']['jamDatang'] = now()->format('d/m/Y H:i:s');
+        if (empty($this->anamnesa['pengkajianPerawatan']['jamDatang'])) {
+            $this->anamnesa['pengkajianPerawatan']['jamDatang'] = now()->format('d/m/Y H:i:s');
         }
 
         $this->incrementVersion('modal-anamnesa-ugd');
@@ -364,7 +388,7 @@ new class extends Component {
             return;
         }
 
-        if (blank($this->dataDaftarUGD['anamnesa']['pengkajianPerawatan']['perawatPenerima'] ?? '')) {
+        if (blank($this->anamnesa['pengkajianPerawatan']['perawatPenerima'] ?? '')) {
             $this->dispatch('toast', type: 'error', message: 'Belum ada TTD Perawat yang perlu dibuka.');
 
             return;
@@ -377,7 +401,7 @@ new class extends Component {
         // Kalau stempel perawat boleh dicabut selagi TTD dokter masih berdiri, isinya
         // berubah di bawah tanda tangan yang sudah mengesahkannya — dokter tercatat
         // menyetujui rekaman yang bukan lagi yang dia setujui.
-        if (filled($this->dataDaftarUGD['perencanaan']['pengkajianMedis']['drPemeriksa'] ?? '')) {
+        if ($this->adaDrPemeriksa) {
             $this->dispatch('toast', type: 'error', message: 'Buka kunci TTD-E Dokter Pemeriksa lebih dulu — TTD dokter mengesahkan seluruh rekaman kunjungan ini.');
 
             return;
@@ -401,7 +425,7 @@ new class extends Component {
                 $data['anamnesa']['pengkajianPerawatan']['perawatPenerimaCode'] = '';
 
                 $this->updateJsonUGD((int) $this->rjNo, $data);
-                $this->dataDaftarUGD = $data;
+                $this->serapDokumen($data);
 
                 $this->appendAdminLogUGD((int) $this->rjNo, 'Buka Kunci TTD Perawat Penerima — stempel ' . $perawatSebelumnya . ' dicabut oleh ' . (auth()->user()->myuser_name ?? '-'), 'MR');
             });
@@ -418,7 +442,7 @@ new class extends Component {
 
     public function setAutoJamDatang(): void
     {
-        $this->dataDaftarUGD['anamnesa']['pengkajianPerawatan']['jamDatang'] = now()->format('d/m/Y H:i:s');
+        $this->anamnesa['pengkajianPerawatan']['jamDatang'] = now()->format('d/m/Y H:i:s');
     }
 
     /* ===============================
@@ -436,12 +460,12 @@ new class extends Component {
      */
     protected function pengkajianSiapUntukRekonsiliasi(): bool
     {
-        $pengkajian = $this->dataDaftarUGD['anamnesa']['pengkajianPerawatan'] ?? [];
+        $pengkajian = $this->anamnesa['pengkajianPerawatan'] ?? [];
 
         $belum = collect([
             'Cara Masuk IGD' => $pengkajian['caraMasukIgd'] ?? null,
             'Tingkat Kegawatan' => $pengkajian['tingkatKegawatan'] ?? null,
-            'Keluhan Utama' => $this->dataDaftarUGD['anamnesa']['keluhanUtama']['keluhanUtama'] ?? null,
+            'Keluhan Utama' => $this->anamnesa['keluhanUtama']['keluhanUtama'] ?? null,
         ])
             ->filter(fn($nilai) => blank($nilai))
             ->keys();
@@ -483,12 +507,12 @@ new class extends Component {
             return;
         }
 
-        if (RekonsiliasiObat::sudahAda($this->dataDaftarUGD['anamnesa']['rekonsiliasiObat'] ?? [], $this->formEntryRekonsiliasi['namaObat'])) {
+        if (RekonsiliasiObat::sudahAda($this->anamnesa['rekonsiliasiObat'] ?? [], $this->formEntryRekonsiliasi['namaObat'])) {
             $this->dispatch('toast', type: 'error', message: 'Obat sudah ada dalam daftar.');
             return;
         }
 
-        $this->dataDaftarUGD['anamnesa']['rekonsiliasiObat'][] = RekonsiliasiObat::barisBaru($this->formEntryRekonsiliasi['namaObat'], $this->formEntryRekonsiliasi['dosis'], $this->formEntryRekonsiliasi['rute'], $this->formEntryRekonsiliasi['dibawaRanap'], $this->formEntryRekonsiliasi['digunakanRanap'], $this->formEntryRekonsiliasi['lanjutPulang']);
+        $this->anamnesa['rekonsiliasiObat'][] = RekonsiliasiObat::barisBaru($this->formEntryRekonsiliasi['namaObat'], $this->formEntryRekonsiliasi['dosis'], $this->formEntryRekonsiliasi['rute'], $this->formEntryRekonsiliasi['dibawaRanap'], $this->formEntryRekonsiliasi['digunakanRanap'], $this->formEntryRekonsiliasi['lanjutPulang']);
 
         $namaObat = $this->formEntryRekonsiliasi['namaObat'];
         $this->reset(['formEntryRekonsiliasi']);
@@ -502,10 +526,10 @@ new class extends Component {
             return;
         }
 
-        if (isset($this->dataDaftarUGD['anamnesa']['rekonsiliasiObat'][$index])) {
-            $namaObat = $this->dataDaftarUGD['anamnesa']['rekonsiliasiObat'][$index]['namaObat'] ?? '-';
-            unset($this->dataDaftarUGD['anamnesa']['rekonsiliasiObat'][$index]);
-            $this->dataDaftarUGD['anamnesa']['rekonsiliasiObat'] = array_values($this->dataDaftarUGD['anamnesa']['rekonsiliasiObat']);
+        if (isset($this->anamnesa['rekonsiliasiObat'][$index])) {
+            $namaObat = $this->anamnesa['rekonsiliasiObat'][$index]['namaObat'] ?? '-';
+            unset($this->anamnesa['rekonsiliasiObat'][$index]);
+            $this->anamnesa['rekonsiliasiObat'] = array_values($this->anamnesa['rekonsiliasiObat']);
             $this->save('Hapus Rekonsiliasi Obat UGD — ' . $namaObat);
         }
     }
@@ -515,11 +539,11 @@ new class extends Component {
      =============================== */
     public function calculateScreeningGizi(): void
     {
-        $screeningGizi = $this->dataDaftarUGD['anamnesa']['screeningGizi'] ?? [];
+        $screeningGizi = $this->anamnesa['screeningGizi'] ?? [];
         $total = (int) ($screeningGizi['perubahanBB3BlnScore'] ?? 0) + (int) ($screeningGizi['jmlPerubahanBBScore'] ?? 0) + (int) ($screeningGizi['intakeMakananScore'] ?? 0);
 
-        $this->dataDaftarUGD['anamnesa']['screeningGizi']['scoreTotalScreeningGizi'] = (string) $total;
-        $this->dataDaftarUGD['anamnesa']['screeningGizi']['tglScreeningGizi'] = now()->format('d/m/Y H:i:s');
+        $this->anamnesa['screeningGizi']['scoreTotalScreeningGizi'] = (string) $total;
+        $this->anamnesa['screeningGizi']['tglScreeningGizi'] = now()->format('d/m/Y H:i:s');
     }
 
     /* ===============================
@@ -528,9 +552,9 @@ new class extends Component {
     public function updated(string $name, mixed $value): void
     {
         match ($name) {
-            'tingkatKegawatan' => ($this->dataDaftarUGD['anamnesa']['pengkajianPerawatan']['tingkatKegawatan'] = $value),
-            'caraMasukIgd' => ($this->dataDaftarUGD['anamnesa']['pengkajianPerawatan']['caraMasukIgd'] = $value),
-            'saranaTransportasiId' => ($this->dataDaftarUGD['anamnesa']['pengkajianPerawatan']['saranaTransportasiId'] = $value),
+            'tingkatKegawatan' => ($this->anamnesa['pengkajianPerawatan']['tingkatKegawatan'] = $value),
+            'caraMasukIgd' => ($this->anamnesa['pengkajianPerawatan']['caraMasukIgd'] = $value),
+            'saranaTransportasiId' => ($this->anamnesa['pengkajianPerawatan']['saranaTransportasiId'] = $value),
             default => null,
         };
     }
@@ -626,17 +650,17 @@ new class extends Component {
     #[On('lov.selected.keluhanUtamaSnomed')]
     public function onKeluhanUtamaSnomedSelected(string $target, array $payload): void
     {
-        $this->dataDaftarUGD['anamnesa']['keluhanUtama']['snomedCode'] = $payload['snomed_code'] ?? '';
-        $this->dataDaftarUGD['anamnesa']['keluhanUtama']['snomedDisplayEn'] = $payload['display_en'] ?? '';
-        $this->dataDaftarUGD['anamnesa']['keluhanUtama']['snomedDisplayId'] = $payload['display_id'] ?? '';
+        $this->anamnesa['keluhanUtama']['snomedCode'] = $payload['snomed_code'] ?? '';
+        $this->anamnesa['keluhanUtama']['snomedDisplayEn'] = $payload['display_en'] ?? '';
+        $this->anamnesa['keluhanUtama']['snomedDisplayId'] = $payload['display_id'] ?? '';
     }
 
     #[On('lov.cleared.keluhanUtamaSnomed')]
     public function onKeluhanUtamaSnomedCleared(string $target): void
     {
-        $this->dataDaftarUGD['anamnesa']['keluhanUtama']['snomedCode'] = '';
-        $this->dataDaftarUGD['anamnesa']['keluhanUtama']['snomedDisplayEn'] = '';
-        $this->dataDaftarUGD['anamnesa']['keluhanUtama']['snomedDisplayId'] = '';
+        $this->anamnesa['keluhanUtama']['snomedCode'] = '';
+        $this->anamnesa['keluhanUtama']['snomedDisplayEn'] = '';
+        $this->anamnesa['keluhanUtama']['snomedDisplayId'] = '';
     }
 
     /* ===============================
@@ -645,17 +669,17 @@ new class extends Component {
     #[On('lov.selected.alergiSnomed')]
     public function onAlergiSnomedSelected(string $target, array $payload): void
     {
-        $this->dataDaftarUGD['anamnesa']['alergi']['snomedCode'] = $payload['snomed_code'] ?? '';
-        $this->dataDaftarUGD['anamnesa']['alergi']['snomedDisplayEn'] = $payload['display_en'] ?? '';
-        $this->dataDaftarUGD['anamnesa']['alergi']['snomedDisplayId'] = $payload['display_id'] ?? '';
+        $this->anamnesa['alergi']['snomedCode'] = $payload['snomed_code'] ?? '';
+        $this->anamnesa['alergi']['snomedDisplayEn'] = $payload['display_en'] ?? '';
+        $this->anamnesa['alergi']['snomedDisplayId'] = $payload['display_id'] ?? '';
     }
 
     #[On('lov.cleared.alergiSnomed')]
     public function onAlergiSnomedCleared(string $target): void
     {
-        $this->dataDaftarUGD['anamnesa']['alergi']['snomedCode'] = '';
-        $this->dataDaftarUGD['anamnesa']['alergi']['snomedDisplayEn'] = '';
-        $this->dataDaftarUGD['anamnesa']['alergi']['snomedDisplayId'] = '';
+        $this->anamnesa['alergi']['snomedCode'] = '';
+        $this->anamnesa['alergi']['snomedDisplayEn'] = '';
+        $this->anamnesa['alergi']['snomedDisplayId'] = '';
     }
 
     /* ===============================
@@ -665,7 +689,8 @@ new class extends Component {
     {
         $this->resetVersion();
         $this->isFormLocked = false;
-        $this->dataDaftarUGD = [];
+        $this->anamnesa = [];
+        $this->dokumenTermuat = false;
         $this->anamnesaActiveTab = 'pengkajian';
         $this->reset(['formEntryRekonsiliasi']);
         $this->tingkatKegawatan = '';
@@ -681,7 +706,7 @@ new class extends Component {
             <div
                 class="w-full p-4 space-y-6 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
 
-                @if (isset($dataDaftarUGD['anamnesa']))
+                @if ($dokumenTermuat)
                     <div x-data="{ activeTab: @entangle('anamnesaActiveTab') }" class="w-full">
 
                         {{-- TAB NAVIGATION --}}

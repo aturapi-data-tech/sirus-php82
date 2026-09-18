@@ -5,19 +5,19 @@
         {{-- Perawat Penerima (Waktu Datang otomatis saat TTD) --}}
         <div>
             <x-signature.ttd-petugas :framed="false" :allowClear="false"
-                :ttd="$dataDaftarUGD['anamnesa']['pengkajianPerawatan']['perawatPenerima'] ?? ''"
-                :date="$dataDaftarUGD['anamnesa']['pengkajianPerawatan']['jamDatang'] ?? ''"
-                :code="$dataDaftarUGD['anamnesa']['pengkajianPerawatan']['perawatPenerimaCode'] ?? ''"
+                :ttd="$anamnesa['pengkajianPerawatan']['perawatPenerima'] ?? ''"
+                :date="$anamnesa['pengkajianPerawatan']['jamDatang'] ?? ''"
+                :code="$anamnesa['pengkajianPerawatan']['perawatPenerimaCode'] ?? ''"
                 :locked="$isFormLocked ?? false"
                 sign="setPerawatPenerima" nameLabel="Perawat Penerima" dateLabel="Waktu Datang" signLabel="Ttd Perawat" />
-            <x-input-error :messages="$errors->get('dataDaftarUGD.anamnesa.pengkajianPerawatan.perawatPenerima')" class="mt-1" />
+            <x-input-error :messages="$errors->get('anamnesa.pengkajianPerawatan.perawatPenerima')" class="mt-1" />
 
             {{-- Buka Kunci TTD Perawat — muncul hanya bila SUDAH ter-TTD dan untuk role
                  berhak (Gate dokumen.bukaKunci, sama dengan Buka Kunci Screening &
                  modul dokumen). Tombol TTD sendiri hilang begitu stempel terisi. --}}
-            @if (filled($dataDaftarUGD['anamnesa']['pengkajianPerawatan']['perawatPenerima'] ?? ''))
+            @if (filled($anamnesa['pengkajianPerawatan']['perawatPenerima'] ?? ''))
                 @can('dokumen.bukaKunci')
-                    @if (filled($dataDaftarUGD['perencanaan']['pengkajianMedis']['drPemeriksa'] ?? ''))
+                    @if ($adaDrPemeriksa)
                         {{-- Dokter menandatangani TERAKHIR dan TTD-nya mengesahkan seluruh
                              rekaman. Selagi stempelnya berdiri, stempel perawat tak boleh
                              dicabut — jadi tombolnya diganti keterangan, bukan disembunyikan
@@ -49,7 +49,7 @@
         <div>
             <x-input-label value="Tingkat Kegawatan (Triage)" :required="true" />
             <div class="flex flex-wrap gap-2 mt-1">
-                @foreach ($dataDaftarUGD['anamnesa']['pengkajianPerawatan']['tingkatKegawatanOption'] ?? [] as $opt)
+                @foreach ($anamnesa['pengkajianPerawatan']['tingkatKegawatanOption'] ?? [] as $opt)
                     <x-radio-button :label="$opt['tingkatKegawatan']" :value="$opt['tingkatKegawatan']" name="tingkatKegawatan"
                         wire:model.live="tingkatKegawatan" :disabled="$isFormLocked" />
                 @endforeach
@@ -71,73 +71,73 @@
                 @endforeach
             </div>
 
-            <x-input-error :messages="$errors->get('dataDaftarUGD.anamnesa.pengkajianPerawatan.tingkatKegawatan')" class="mt-1" />
+            <x-input-error :messages="$errors->get('anamnesa.pengkajianPerawatan.tingkatKegawatan')" class="mt-1" />
         </div>
 
         {{-- Status Medik --}}
         <div>
             <x-input-label value="Status Medik" />
             <div class="grid grid-cols-1 gap-2 mt-1 sm:grid-cols-2">
-                @foreach ($dataDaftarUGD['anamnesa']['pengkajianPerawatan']['statusMedik']['statusMedikOptions'] ?? [] as $opt)
+                @foreach ($anamnesa['pengkajianPerawatan']['statusMedik']['statusMedikOptions'] ?? [] as $opt)
                     <x-radio-button :label="$opt['statusMedik']" :value="$opt['statusMedik']" name="statusMedikUGD"
-                        wire:model.live="dataDaftarUGD.anamnesa.pengkajianPerawatan.statusMedik.statusMedik" :disabled="$isFormLocked" />
+                        wire:model.live="anamnesa.pengkajianPerawatan.statusMedik.statusMedik" :disabled="$isFormLocked" />
                 @endforeach
             </div>
-            <x-input-error :messages="$errors->get('dataDaftarUGD.anamnesa.pengkajianPerawatan.statusMedik.statusMedik')" class="mt-1" />
+            <x-input-error :messages="$errors->get('anamnesa.pengkajianPerawatan.statusMedik.statusMedik')" class="mt-1" />
         </div>
 
         {{-- Cara Masuk IGD --}}
         <div>
             <x-input-label value="Cara Masuk IGD" :required="true" />
             <div class="grid grid-cols-3 gap-2 mt-1">
-                @foreach ($dataDaftarUGD['anamnesa']['pengkajianPerawatan']['caraMasukIgdOption'] ?? [] as $opt)
+                @foreach ($anamnesa['pengkajianPerawatan']['caraMasukIgdOption'] ?? [] as $opt)
                     <x-radio-button :label="$opt['caraMasukIgd']" :value="$opt['caraMasukIgd']" name="caraMasukIgd"
                         wire:model.live="caraMasukIgd" :disabled="$isFormLocked" />
                 @endforeach
             </div>
-            <x-input-error :messages="$errors->get('dataDaftarUGD.anamnesa.pengkajianPerawatan.caraMasukIgd')" class="mt-1" />
+            <x-input-error :messages="$errors->get('anamnesa.pengkajianPerawatan.caraMasukIgd')" class="mt-1" />
         </div>
 
         {{-- Sarana Transportasi --}}
         <div>
             <x-input-label value="Sarana Transportasi" />
             <div class="flex flex-wrap gap-2 mt-1">
-                @foreach ($dataDaftarUGD['anamnesa']['pengkajianPerawatan']['saranaTransportasiOptions'] ?? [] as $opt)
+                @foreach ($anamnesa['pengkajianPerawatan']['saranaTransportasiOptions'] ?? [] as $opt)
                     <x-radio-button :label="$opt['saranaTransportasiDesc']" :value="$opt['saranaTransportasiId']" name="saranaTransportasiId"
                         wire:model.live="saranaTransportasiId" :disabled="$isFormLocked" />
                 @endforeach
             </div>
             <x-input-error :messages="$errors->get('saranaTransportasiId')" class="mt-1" />
-            <x-input-error :messages="$errors->get('dataDaftarUGD.anamnesa.pengkajianPerawatan.saranaTransportasiId')" class="mt-1" />
+            <x-input-error :messages="$errors->get('anamnesa.pengkajianPerawatan.saranaTransportasiId')" class="mt-1" />
             @if ($saranaTransportasiId === '4')
-                <x-text-input wire:model.live="dataDaftarUGD.anamnesa.pengkajianPerawatan.saranaTransportasiKet"
+                <x-text-input wire:model.live="anamnesa.pengkajianPerawatan.saranaTransportasiKet"
                     placeholder="Sebutkan sarana transportasi..." class="w-full mt-2"
-                    :error="$errors->has('dataDaftarUGD.anamnesa.pengkajianPerawatan.saranaTransportasiKet')"
+                    :error="$errors->has('anamnesa.pengkajianPerawatan.saranaTransportasiKet')"
                     :disabled="$isFormLocked" />
-                <x-input-error :messages="$errors->get('dataDaftarUGD.anamnesa.pengkajianPerawatan.saranaTransportasiKet')" class="mt-1" />
+                <x-input-error :messages="$errors->get('anamnesa.pengkajianPerawatan.saranaTransportasiKet')" class="mt-1" />
             @endif
         </div>
 
         {{-- Anamnesa Diperoleh --}}
         <div>
             <x-input-label value="Anamnesa Diperoleh Dari" />
-            <x-select-input wire:model.live="dataDaftarUGD.anamnesa.anamnesaDiperoleh.anamnesaDiperolehDari"
-                :error="$errors->has('dataDaftarUGD.anamnesa.anamnesaDiperoleh.anamnesaDiperolehDari')"
+            <x-select-input wire:model.live="anamnesa.anamnesaDiperoleh.anamnesaDiperolehDari"
+                :error="$errors->has('anamnesa.anamnesaDiperoleh.anamnesaDiperolehDari')"
                 class="w-full" :disabled="$isFormLocked">
                 <option value="">-- Pilih Sumber Anamnesa --</option>
                 <option value="Auto-anamnesa (Pasien)">Auto-anamnesa (Pasien)</option>
                 <option value="Allo-anamnesa (Keluarga)">Allo-anamnesa (Keluarga)</option>
                 <option value="Allo-anamnesa (Lain-lain)">Allo-anamnesa (Lain-lain)</option>
             </x-select-input>
-            <x-input-error :messages="$errors->get('dataDaftarUGD.anamnesa.anamnesaDiperoleh.anamnesaDiperolehDari')" class="mt-1" />
+            <x-input-error :messages="$errors->get('anamnesa.anamnesaDiperoleh.anamnesaDiperolehDari')" class="mt-1" />
         </div>
 
         {{-- Keluhan Utama --}}
         <div>
             <x-input-label value="Keluhan Utama" :required="true" />
-            <x-textarea wire:model.live="dataDaftarUGD.anamnesa.keluhanUtama.keluhanUtama" placeholder="Keluhan Utama"
-                :error="$errors->has('dataDaftarUGD.anamnesa.keluhanUtama.keluhanUtama')" :disabled="$isFormLocked" :rows="3" class="w-full mt-1" />
-            <x-input-error :messages="$errors->get('dataDaftarUGD.anamnesa.keluhanUtama.keluhanUtama')" class="mt-1" />
+            <x-textarea wire:model.live="anamnesa.keluhanUtama.keluhanUtama" placeholder="Keluhan Utama"
+                :error="$errors->has('anamnesa.keluhanUtama.keluhanUtama')" :disabled="$isFormLocked" :rows="3" class="w-full mt-1" />
+            <x-input-error :messages="$errors->get('anamnesa.keluhanUtama.keluhanUtama')" class="mt-1" />
         </div>
 
         {{-- SNOMED CT — Keluhan Utama (untuk Satu Sehat) --}}
@@ -147,7 +147,7 @@
                 label="Kode SNOMED Keluhan Utama (Satu Sehat)"
                 placeholder="Ketik keluhan dalam Bahasa Indonesia / Inggris..."
                 valueSet="condition-code"
-                :initialSnomedCode="$dataDaftarUGD['anamnesa']['keluhanUtama']['snomedCode'] ?? null"
+                :initialSnomedCode="$anamnesa['keluhanUtama']['snomedCode'] ?? null"
                 :disabled="$isFormLocked"
                 wire:key="lov-snomed-keluhan-ugd-{{ $rjNo ?? 'new' }}-{{ $renderVersions['modal-anamnesa-ugd'] ?? 0 }}"
             />
