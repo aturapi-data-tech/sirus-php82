@@ -8,6 +8,7 @@ use Carbon\Carbon;
 use App\Http\Traits\Txn\Rj\EmrRJTrait;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 use Illuminate\Validation\ValidationException;
+use App\Support\TtdPasien;
 
 new class extends Component {
     use EmrRJTrait, WithRenderVersioningTrait;
@@ -200,7 +201,7 @@ new class extends Component {
         if ($this->isFormLocked || $this->viewOnly) {
             return;
         }
-        $this->signature = $dataUrl;
+        $this->signature = TtdPasien::simpan($dataUrl, TtdPasien::regNoDariKunjungan('RJ', $this->rjNo));   // gambar ke RSTXN_TTDS; di sini cukup referensi "TTD:<no>"
         $this->incrementVersion('modal-penundaan-pelayanan-rj');
     }
 

@@ -202,7 +202,7 @@
                             <p class="text-[9px] text-gray-500 mb-2">{{ $form['signaturePembuatDate'] ?? '-' }}</p>
                             <div class="text-center my-1">
                                 @if (!empty($signaturePembuat))
-                                    <img src="{{ $signaturePembuat }}" class="h-16" alt="TTD Pembuat" />
+                                    <img src="{{ \App\Support\TtdPasien::sumberGambar($signaturePembuat) }}" class="h-16" alt="TTD Pembuat" />
                                 @else
                                     <div class="h-16">&nbsp;</div>
                                 @endif
@@ -222,7 +222,7 @@
                             </p>
                             <div class="text-center my-1">
                                 @if (!empty($signatureSaksi))
-                                    <img src="{{ $signatureSaksi }}" class="h-16" alt="TTD Saksi" />
+                                    <img src="{{ \App\Support\TtdPasien::sumberGambar($signatureSaksi) }}" class="h-16" alt="TTD Saksi" />
                                 @else
                                     <div class="h-16">&nbsp;</div>
                                 @endif

@@ -16,6 +16,7 @@ use Carbon\Carbon;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Support\Clause\PenolakanObatClause;
 use App\Support\TtdUser;
+use App\Support\TtdPasien;
 
 new class extends Component {
     use EmrUGDTrait, MasterPasienTrait, WithRenderVersioningTrait, WithValidationToastTrait;
@@ -187,7 +188,7 @@ new class extends Component {
         if ($this->isFormLocked || $this->viewOnly) {
             return;
         }
-        $this->signature = $dataUrl;
+        $this->signature = TtdPasien::simpan($dataUrl, $this->regNo);   // gambar ke RSTXN_TTDS; di sini cukup referensi "TTD:<no>"
         $this->incrementVersion('modal-penolakan-obat-ugd');
     }
 
@@ -205,7 +206,7 @@ new class extends Component {
         if ($this->isFormLocked || $this->viewOnly) {
             return;
         }
-        $this->signatureSaksi = $dataUrl;
+        $this->signatureSaksi = TtdPasien::simpan($dataUrl, $this->regNo);   // gambar ke RSTXN_TTDS; di sini cukup referensi "TTD:<no>"
         $this->incrementVersion('modal-penolakan-obat-ugd');
     }
 

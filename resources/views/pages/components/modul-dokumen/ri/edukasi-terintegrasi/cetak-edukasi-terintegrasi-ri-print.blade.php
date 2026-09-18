@@ -292,7 +292,7 @@
 
                             <div class="text-center my-1">
                                 @if (!empty($form['ttd']['pasienKeluargaTTD']))
-                                    <img src="{{ $form['ttd']['pasienKeluargaTTD'] }}" class="h-16" alt="Tanda Tangan Pasien" />
+                                    <img src="{{ \App\Support\TtdPasien::sumberGambar($form['ttd']['pasienKeluargaTTD']) }}" class="h-16" alt="Tanda Tangan Pasien" />
                                 @else
                                     <div class="h-16">&nbsp;</div>
                                 @endif
