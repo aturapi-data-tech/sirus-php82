@@ -118,7 +118,8 @@ new class extends Component {
         $this->incrementVersion('modal-perencanaan-ri');
     }
 
-    public function updatedDataDaftarRiPerencanaanTindakLanjutTindakLanjut(string $val): void
+    /** Hook Livewire untuk wire:model "perencanaan.tindakLanjut.tindakLanjut" — NAMA method wajib mengikuti jalur properti itu. */
+    public function updatedPerencanaanTindakLanjutTindakLanjut(string $val): void
     {
         $opt = collect($this->tindakLanjutOptions)->firstWhere('tindakLanjutKode', $val);
         if ($opt) {

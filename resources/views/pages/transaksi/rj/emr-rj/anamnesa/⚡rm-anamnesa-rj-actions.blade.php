@@ -119,7 +119,8 @@ new class extends Component {
      * 'Tidak' membuang teks & kode zat lalu memasang 716186003; 'Ya' mengosongkan
      * supaya petugas mengisi zat sebenarnya.
      */
-    public function updatedDataDaftarPoliRjAnamnesaAlergiAdaAlergi(): void
+    /** Hook Livewire untuk wire:model "anamnesa.alergi.adaAlergi" — NAMA method wajib mengikuti jalur properti itu. */
+    public function updatedAnamnesaAlergiAdaAlergi(): void
     {
         $this->anamnesa['alergi'] = AlergiSnomed::normalisasi(
             $this->anamnesa['alergi'] ?? [],
