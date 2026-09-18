@@ -13,7 +13,12 @@ new class extends Component {
 
     public bool $isFormLocked = false;
     public ?string $riHdrNo = null;
-    public array $dataDaftarRi = [];
+    /**
+     * RINGKASAN kunjungan, bukan dokumennya. Induk EMR RI hanya perlu identitas pasien
+     * dan jenis klaim; anak-anaknya memuat datanya sendiri dari prop riHdrNo.
+     */
+    public string $regNoPasien = '';
+    public string $klaimId = '';
 
     public array $renderVersions = [];
     protected array $renderAreas = ['modal-emr-ri'];
@@ -36,7 +41,9 @@ new class extends Component {
             $this->dispatch('toast', type: 'error', message: 'Data Rawat Inap tidak ditemukan.');
             return;
         }
-        $this->dataDaftarRi = $data;
+        // Dokumen dibaca sebagai variabel LOKAL, diperas jadi ringkasan, lalu dilepas.
+        $this->regNoPasien = (string) ($data['regNo'] ?? '');
+        $this->klaimId = (string) ($data['klaimId'] ?? '');
 
         // Kunci klinis mengikuti kebijakan trait (sengaja longgar — audit log saja),
         // BUKAN inline ri_status; kunci finansial tetap via checkRIStatus() di administrasi.
@@ -82,7 +89,7 @@ new class extends Component {
 
     protected function resetForm(): void
     {
-        $this->reset(['riHdrNo', 'dataDaftarRi']);
+        $this->reset(['riHdrNo', 'regNoPasien', 'klaimId']);
         $this->resetVersion();
         $this->isFormLocked = false;
     }
@@ -156,7 +163,7 @@ new class extends Component {
                     @php
                         $klaimStatusRi =
                             \Illuminate\Support\Facades\DB::table('rsmst_klaimtypes')
-                                ->where('klaim_id', $dataDaftarRi['klaimId'] ?? '')
+                                ->where('klaim_id', $klaimId)
                                 ->value('klaim_status') ?? 'UMUM';
                         $isBPJSRi = $klaimStatusRi === 'BPJS';
 
@@ -461,8 +468,8 @@ new class extends Component {
                         ──────────────────────────────────────────── --}}
                         <div x-show="activeTab === 'riwayat'" x-transition.opacity.duration.200ms>
                             <livewire:pages::components.rekam-medis.rekam-medis-display.rekam-medis-display
-                                :regNo="$dataDaftarRi['regNo'] ?? ''" :rjNoRefCopyTo="0" :contextRI="true"
-                                wire:key="emr-ri.rekam-medis-display-{{ $dataDaftarRi['regNo'] ?? 'new' }}" />
+                                :regNo="$regNoPasien" :rjNoRefCopyTo="0" :contextRI="true"
+                                wire:key="emr-ri.rekam-medis-display-{{ $regNoPasien ?: 'new' }}" />
                         </div>
 
                     </div>

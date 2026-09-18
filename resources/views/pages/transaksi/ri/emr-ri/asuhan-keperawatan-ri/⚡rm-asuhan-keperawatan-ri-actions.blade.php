@@ -16,7 +16,8 @@ new class extends Component {
 
     public bool $isFormLocked = false;
     public ?string $riHdrNo = null;
-    public array $dataDaftarRi = [];
+    /** IRISAN dokumen: hanya cabang `asuhanKeperawatan`. */
+    public array $daftarAskep = [];
 
     public array $formEntryAsuhanKeperawatan = [
         'tglAsuhanKeperawatan' => '',
@@ -73,8 +74,7 @@ new class extends Component {
             $this->dispatch('toast', type: 'error', message: 'Data RI tidak ditemukan.');
             return;
         }
-        $this->dataDaftarRi = $data;
-        $this->dataDaftarRi['asuhanKeperawatan'] ??= [];
+        $this->daftarAskep = $data['asuhanKeperawatan'] ?? [];
         $this->incrementVersion('modal-asuhan-keperawatan-ri');
         // Kunci klinis mengikuti kebijakan trait (sengaja longgar), bukan inline ri_status.
         $this->isFormLocked = $this->checkEmrRIStatus($riHdrNo);
@@ -202,7 +202,7 @@ new class extends Component {
                 $fresh['asuhanKeperawatan'] ??= [];
                 $fresh['asuhanKeperawatan'][] = $this->formEntryAsuhanKeperawatan;
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->dataDaftarRi = $fresh;
+                $this->daftarAskep = $fresh['asuhanKeperawatan'] ?? [];
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Tambah Asuhan Keperawatan — entri ' . ($this->formEntryAsuhanKeperawatan['tglAsuhanKeperawatan'] ?: '-') . ' (' . ($this->formEntryAsuhanKeperawatan['diagKepId'] ?: '-') . ')', 'MR');
             });
             $this->resetFormEntry();
@@ -230,7 +230,7 @@ new class extends Component {
                 array_splice($fresh['asuhanKeperawatan'], $index, 1);
                 $fresh['asuhanKeperawatan'] = array_values($fresh['asuhanKeperawatan']);
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->dataDaftarRi = $fresh;
+                $this->daftarAskep = $fresh['asuhanKeperawatan'] ?? [];
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Hapus Asuhan Keperawatan — entri ' . ($askepRow['tglAsuhanKeperawatan'] ?? '-') . ' (' . ($askepRow['diagKepId'] ?? '-') . ')', 'MR');
             });
             $this->afterSave('Asuhan Keperawatan berhasil dihapus.');
@@ -258,7 +258,7 @@ new class extends Component {
         $this->reset(['formImpl']);
 
         // Auto-fill assessment dengan nama diagnosis
-        $askep = $this->dataDaftarRi['asuhanKeperawatan'][$askepIndex] ?? null;
+        $askep = $this->daftarAskep[$askepIndex] ?? null;
         if ($askep) {
             $this->formImpl['soap']['assessment'] = $askep['diagKepDesc'] ?? '';
         }
@@ -355,7 +355,7 @@ new class extends Component {
                 ];
 
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->dataDaftarRi = $fresh;
+                $this->daftarAskep = $fresh['asuhanKeperawatan'] ?? [];
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Tambah Implementasi Askep — entri ' . ($implEntry['tglImpl'] ?: '-') . ' (' . ($askep['diagKepId'] ?? '-') . ')', 'MR');
             });
             $this->reset(['formImpl']);
@@ -397,7 +397,7 @@ new class extends Component {
                 }
 
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->dataDaftarRi = $fresh;
+                $this->daftarAskep = $fresh['asuhanKeperawatan'] ?? [];
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Hapus Implementasi Askep — entri ' . ($impl['tglImpl'] ?? '-') . ' oleh ' . ($impl['petugasImpl'] ?? '-'), 'MR');
             });
             $this->afterSave('Implementasi & CPPT terkait berhasil dihapus.');
@@ -445,7 +445,7 @@ new class extends Component {
         }
         $fresh = $this->findDataRI($this->riHdrNo);
         if ($fresh) {
-            $this->dataDaftarRi = $fresh;
+            $this->daftarAskep = $fresh['asuhanKeperawatan'] ?? [];
             $this->incrementVersion('modal-asuhan-keperawatan-ri');
         }
     }
@@ -911,7 +911,7 @@ new class extends Component {
     {{-- ============================================================
     | RIWAYAT ASUHAN KEPERAWATAN
     ============================================================= --}}
-    @forelse (array_reverse($dataDaftarRi['asuhanKeperawatan'] ?? [], true) as $idx => $askep)
+    @forelse (array_reverse($daftarAskep, true) as $idx => $askep)
         <div wire:key="askep-{{ $idx }}-{{ $this->renderKey('modal-asuhan-keperawatan-ri') }}"
             class="grid grid-cols-1 lg:grid-cols-2 gap-2">
 

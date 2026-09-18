@@ -16,7 +16,27 @@ new class extends Component {
     public bool $isFormLocked = false;
     public ?string $riHdrNo = null;
 
-    public array $dataDaftarRi = [];
+    /**
+     * IRISAN dokumen: cabang `kontrol` + tiga nilai dari cabang lain (SEP, Leveling Dokter,
+     * jenis klaim) yang dipakai menyiapkan Surat Kontrol.
+     */
+    public array $kontrol = [];
+    public string $noSep = '';
+    public array $levelingDokter = [];
+    public string $klaimId = '';
+
+    /** Penanda kunjungan sudah dimuat lewat open(). */
+    public bool $dokumenTermuat = false;
+
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan + skalar yang disimpan. */
+    private function serapIrisan(array $data): void
+    {
+        $this->kontrol = $data['kontrol'] ?? [];
+        $this->noSep = (string) ($data['sep']['noSep'] ?? '');
+        $this->levelingDokter = $data['pengkajianAwalPasienRawatInap']['levelingDokter'] ?? [];
+        $this->klaimId = (string) ($data['klaimId'] ?? '');
+        $this->dokumenTermuat = true;
+    }
 
     public array $formKontrol = [
         'noKontrolRS' => '',
@@ -53,8 +73,7 @@ new class extends Component {
     public function rendering(): void
     {
         $default = $this->getDefaultKontrol();
-        $current = $this->dataDaftarRi['kontrol'] ?? [];
-        $this->dataDaftarRi['kontrol'] = array_replace_recursive($default, $current);
+        $this->kontrol = array_replace_recursive($default, $this->kontrol);
     }
 
     #[On('open-rm-skdp-ri')]
@@ -74,7 +93,7 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarRi = $data;
+        $this->serapIrisan($data);
 
         $this->formKontrol = !empty($data['kontrol']) && is_array($data['kontrol'])
             ? $data['kontrol']
@@ -94,10 +113,10 @@ new class extends Component {
 
     private function getDefaultKontrol(): array
     {
-        $noSEP = $this->dataDaftarRi['sep']['noSep'] ?? '';
+        $noSEP = $this->noSep;
 
         // Cari dokter utama dari leveling dokter di pengkajian awal
-        $levelingDokter = $this->dataDaftarRi['pengkajianAwalPasienRawatInap']['levelingDokter'] ?? [];
+        $levelingDokter = $this->levelingDokter;
         $dokterUtama = collect($levelingDokter)->firstWhere('levelDokter', 'Utama');
 
         $drId = $dokterUtama['drId'] ?? '';
@@ -205,7 +224,7 @@ new class extends Component {
     private function pushSuratKontrolBPJS(): void
     {
         $klaimStatus = DB::table('rsmst_klaimtypes')
-            ->where('klaim_id', $this->dataDaftarRi['klaimId'] ?? '')
+            ->where('klaim_id', $this->klaimId)
             ->value('klaim_status') ?? 'UMUM';
 
         if ($klaimStatus !== 'BPJS') {
@@ -241,7 +260,7 @@ new class extends Component {
             return;
         }
 
-        if (empty($this->dataDaftarRi)) {
+        if (!$this->dokumenTermuat) {
             $this->dispatch('toast', type: 'error', message: 'Data RI tidak ditemukan, silakan buka ulang form.');
             return;
         }
@@ -266,7 +285,7 @@ new class extends Component {
                 $isBaru = empty($fresh['kontrol']);
                 $fresh['kontrol'] = $this->formKontrol;
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->dataDaftarRi = $fresh;
+                $this->serapIrisan($fresh);
 
                 $this->appendAdminLogRI((int) $this->riHdrNo, ($isBaru ? 'Buat' : 'Update') . ' SKDP — kontrol ' . ($this->formKontrol['tglKontrol'] ?: '-'), 'MR');
             });

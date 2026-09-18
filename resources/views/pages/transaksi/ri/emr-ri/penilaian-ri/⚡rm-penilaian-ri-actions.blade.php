@@ -11,7 +11,25 @@ new class extends Component {
 
     public bool $isFormLocked = false;
     public ?string $riHdrNo = null;
-    public array $dataDaftarRi = [];
+    /**
+     * Hanya JUMLAH entri tiap sub-tab, bukan dokumen EMR-nya — induk ini cuma butuh
+     * lima angka untuk badge tab. Pola sama dengan induk Observasi RI (7f7ab38e).
+     */
+    public int $countNyeri = 0;
+    public int $countResikoJatuh = 0;
+    public int $countResikoBunuhDiri = 0;
+    public int $countDekubitus = 0;
+    public int $countGizi = 0;
+
+    /** Dokumen dibaca sebagai variabel LOKAL, dihitung, lalu dilepas. */
+    private function hitungBadge(array $data): void
+    {
+        $this->countNyeri = count($data['penilaian']['nyeri'] ?? []);
+        $this->countResikoJatuh = count($data['penilaian']['resikoJatuh'] ?? []);
+        $this->countResikoBunuhDiri = count($data['penilaian']['resikoBunuhDiri'] ?? []);
+        $this->countDekubitus = count($data['penilaian']['dekubitus'] ?? []);
+        $this->countGizi = count($data['penilaian']['gizi'] ?? []);
+    }
 
     public string $subTab = 'nyeri';
 
@@ -56,8 +74,7 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarRi = $data;
-        $this->dataDaftarRi['penilaian'] ??= ['nyeri' => [], 'resikoJatuh' => [], 'resikoBunuhDiri' => [], 'dekubitus' => [], 'gizi' => []];
+        $this->hitungBadge($data);
 
         $this->isFormLocked = $this->checkEmrRIStatus($riHdrNo); // ← pakai trait
 
@@ -75,7 +92,7 @@ new class extends Component {
     {
         $data = $this->findDataRI($riHdrNo);
         if ($data) {
-            $this->dataDaftarRi = $data;
+            $this->hitungBadge($data);
         }
     }
 
@@ -109,36 +126,10 @@ new class extends Component {
         }
     }
 
-    public function getCountNyeriProperty(): int
-    {
-        return count($this->dataDaftarRi['penilaian']['nyeri'] ?? []);
-    }
-
-    public function getCountResikoJatuhProperty(): int
-    {
-        return count($this->dataDaftarRi['penilaian']['resikoJatuh'] ?? []);
-    }
-
-    public function getCountResikoBunuhDiriProperty(): int
-    {
-        return count($this->dataDaftarRi['penilaian']['resikoBunuhDiri'] ?? []);
-    }
-
-    public function getCountDekubitusProperty(): int
-    {
-        return count($this->dataDaftarRi['penilaian']['dekubitus'] ?? []);
-    }
-
-    public function getCountGiziProperty(): int
-    {
-        return count($this->dataDaftarRi['penilaian']['gizi'] ?? []);
-    }
-
     protected function resetForm(): void
     {
         $this->resetVersion();
         $this->isFormLocked = false;
-        $this->dataDaftarRi = [];
         $this->subDirty = ['nyeri' => false, 'resikoJatuh' => false, 'resikoBunuhDiri' => false, 'dekubitus' => false, 'gizi' => false];
     }
 };

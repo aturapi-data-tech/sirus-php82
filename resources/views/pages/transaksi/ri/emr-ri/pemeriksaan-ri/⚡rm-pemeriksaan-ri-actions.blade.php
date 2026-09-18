@@ -16,7 +16,9 @@ new class extends Component {
 
     public bool $isFormLocked = false;
     public ?string $riHdrNo = null;
-    public array $dataDaftarRi = [];
+    /** IRISAN dokumen: cabang `pemeriksaan` + nomor RM untuk komponen display penunjang. */
+    public array $pemeriksaan = [];
+    public string $regNoPasien = '';
 
     public array $renderVersions = [];
     protected array $renderAreas = ['modal-pemeriksaan-ri'];
@@ -55,11 +57,11 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarRi = $data;
-        $this->dataDaftarRi['pemeriksaan'] ??= [
+        $this->pemeriksaan = $data['pemeriksaan'] ?? [
             'pemeriksaanPenunjang' => ['lab' => [], 'rad' => []],
             'uploadHasilPenunjang' => [],
         ];
+        $this->regNoPasien = (string) ($data['regNo'] ?? '');
 
         $this->isFormLocked = $this->checkEmrRIStatus($riHdrNo); // ← trait
 
@@ -110,7 +112,7 @@ new class extends Component {
                     ],
                 ];
                 $this->updateJsonRI($this->riHdrNo, $fresh);
-                $this->dataDaftarRi = $fresh;
+                $this->pemeriksaan = $fresh['pemeriksaan'] ?? [];
 
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Upload Hasil Penunjang — ' . $this->descPDF, 'MR');
             });
@@ -153,7 +155,7 @@ new class extends Component {
                     ->values()
                     ->toArray();
                 $this->updateJsonRI($this->riHdrNo, $fresh);
-                $this->dataDaftarRi = $fresh;
+                $this->pemeriksaan = $fresh['pemeriksaan'] ?? [];
 
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Hapus Hasil Penunjang — ' . ($deletedRow['desc'] ?? basename($file)), 'MR');
             });
@@ -373,7 +375,7 @@ new class extends Component {
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-hairline-soft dark:divide-gray-700">
-                    @forelse (array_reverse($dataDaftarRi['pemeriksaan']['uploadHasilPenunjang'] ?? []) as $item)
+                    @forelse (array_reverse($pemeriksaan['uploadHasilPenunjang'] ?? []) as $item)
                         <tr class="group hover:bg-surface-soft dark:hover:bg-gray-800 transition">
                             <td class="px-4 py-2 whitespace-nowrap text-body dark:text-gray-300">
                                 {{ $item['tglUpload'] ?? '-' }}</td>
@@ -450,21 +452,21 @@ new class extends Component {
 
         <div x-show="subTab === 'laboratorium'" x-cloak class="space-y-4">
             <livewire:pages::components.rekam-medis.penunjang.laboratorium-display.laboratorium-display
-                :regNo="$dataDaftarRi['regNo'] ?? ''" wire:key="emr-ri.laboratorium-display-{{ $dataDaftarRi['regNo'] ?? 'new' }}" />
+                :regNo="$regNoPasien" wire:key="emr-ri.laboratorium-display-{{ $regNoPasien ?: 'new' }}" />
 
             <livewire:pages::components.rekam-medis.penunjang.lab-luar-display.lab-luar-display
-                :regNo="$dataDaftarRi['regNo'] ?? ''"
-                wire:key="emr-ri.lab-luar-display-{{ $dataDaftarRi['regNo'] ?? 'new' }}" />
+                :regNo="$regNoPasien"
+                wire:key="emr-ri.lab-luar-display-{{ $regNoPasien ?: 'new' }}" />
         </div>
 
         <div x-show="subTab === 'radiologi'" x-cloak>
-            <livewire:pages::components.rekam-medis.penunjang.radiologi-display.radiologi-display :regNo="$dataDaftarRi['regNo'] ?? ''"
-                wire:key="emr-ri.radiologi-display-{{ $dataDaftarRi['regNo'] ?? 'new' }}" />
+            <livewire:pages::components.rekam-medis.penunjang.radiologi-display.radiologi-display :regNo="$regNoPasien"
+                wire:key="emr-ri.radiologi-display-{{ $regNoPasien ?: 'new' }}" />
         </div>
 
         <div x-show="subTab === 'upload'" x-cloak>
             <livewire:pages::components.rekam-medis.penunjang.upload-penunjang-display.upload-penunjang-display
-                :regNo="$dataDaftarRi['regNo'] ?? ''" wire:key="emr-ri.upload-penunjang-display-{{ $dataDaftarRi['regNo'] ?? 'new' }}" />
+                :regNo="$regNoPasien" wire:key="emr-ri.upload-penunjang-display-{{ $regNoPasien ?: 'new' }}" />
         </div>
 
     </div>{{-- end tab hasil --}}
