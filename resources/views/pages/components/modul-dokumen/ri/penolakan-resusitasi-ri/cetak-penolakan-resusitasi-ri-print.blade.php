@@ -153,7 +153,7 @@
 
                 <div class="text-center">
                     @if (!empty($form['signature']))
-                        <img src="{{ $form['signature'] }}" class="h-12" alt="Tanda Tangan Pembuat Pernyataan" />
+                        <img src="{{ \App\Support\TtdPasien::sumberGambar($form['signature']) }}" class="h-12" alt="Tanda Tangan Pembuat Pernyataan" />
                     @else
                         <div class="h-12">&nbsp;</div>
                     @endif
@@ -175,7 +175,7 @@
 
                 <div class="text-center">
                     @if (!empty($form['signatureSaksi']))
-                        <img src="{{ $form['signatureSaksi'] }}" class="h-12" alt="Tanda Tangan Saksi" />
+                        <img src="{{ \App\Support\TtdPasien::sumberGambar($form['signatureSaksi']) }}" class="h-12" alt="Tanda Tangan Saksi" />
                     @else
                         <div class="h-12">&nbsp;</div>
                     @endif

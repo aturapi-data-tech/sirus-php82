@@ -87,7 +87,7 @@
                             <p class="mb-1 text-[9px]">{{ $hubunganText }}</p>
                             <div style="min-height:60px;" class="flex items-center justify-center">
                                 @if (!empty($form['signature']))
-                                    <img src="{{ $form['signature'] }}" style="max-height:55px;max-width:140px;" />
+                                    <img src="{{ \App\Support\TtdPasien::sumberGambar($form['signature']) }}" style="max-height:55px;max-width:140px;" />
                                 @endif
                             </div>
                             <p class="mt-1 border-t border-black pt-1">

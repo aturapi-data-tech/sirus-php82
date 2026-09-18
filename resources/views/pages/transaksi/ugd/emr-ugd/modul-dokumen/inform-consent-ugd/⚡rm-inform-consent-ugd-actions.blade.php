@@ -8,6 +8,7 @@ use Carbon\Carbon;
 use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 use App\Http\Traits\Concerns\WithValidationToastTrait;
+use App\Support\TtdPasien;
 
 new class extends Component {
     use EmrUGDTrait, WithRenderVersioningTrait, WithValidationToastTrait;
@@ -231,7 +232,7 @@ new class extends Component {
         if ($this->isFormLocked) {
             return;
         }
-        $this->signature = $dataUrl;
+        $this->signature = TtdPasien::simpan($dataUrl, TtdPasien::regNoDariKunjungan('UGD', $this->rjNo));   // gambar ke RSTXN_TTDS; di sini cukup referensi "TTD:<no>"
         $this->incrementVersion('modal-inform-consent-ugd');
     }
 
@@ -249,7 +250,7 @@ new class extends Component {
         if ($this->isFormLocked) {
             return;
         }
-        $this->signatureSaksi = $dataUrl;
+        $this->signatureSaksi = TtdPasien::simpan($dataUrl, TtdPasien::regNoDariKunjungan('UGD', $this->rjNo));   // gambar ke RSTXN_TTDS; di sini cukup referensi "TTD:<no>"
         $this->incrementVersion('modal-inform-consent-ugd');
     }
 

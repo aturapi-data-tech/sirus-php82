@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Support\TtdUser;
+use App\Support\TtdPasien;
 
 new class extends Component {
     use EmrRITrait, MasterPasienTrait, WithRenderVersioningTrait, WithValidationToastTrait;
@@ -229,7 +230,7 @@ new class extends Component {
         if ($this->isFormLocked) {
             return;
         }
-        $this->signature = $dataUrl;
+        $this->signature = TtdPasien::simpan($dataUrl, $this->regNo);   // gambar ke RSTXN_TTDS; di sini cukup referensi "TTD:<no>"
         $this->incrementVersion('modal-inform-consent-ri');
     }
 
@@ -247,7 +248,7 @@ new class extends Component {
         if ($this->isFormLocked) {
             return;
         }
-        $this->signatureSaksi = $dataUrl;
+        $this->signatureSaksi = TtdPasien::simpan($dataUrl, $this->regNo);   // gambar ke RSTXN_TTDS; di sini cukup referensi "TTD:<no>"
         $this->incrementVersion('modal-inform-consent-ri');
     }
 

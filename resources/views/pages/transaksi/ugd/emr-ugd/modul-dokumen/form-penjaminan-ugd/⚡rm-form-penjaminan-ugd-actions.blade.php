@@ -10,6 +10,7 @@ use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 use App\Support\KelasKamar;
 use App\Support\Clause\PenjaminanClause;
 use Illuminate\Validation\ValidationException;
+use App\Support\TtdPasien;
 
 new class extends Component {
     use EmrUGDTrait, WithRenderVersioningTrait;
@@ -202,7 +203,7 @@ new class extends Component {
         if ($this->isFormLocked || $this->viewOnly) {
             return;
         }
-        $this->signature = $dataUrl;
+        $this->signature = TtdPasien::simpan($dataUrl, TtdPasien::regNoDariKunjungan('UGD', $this->rjNo));   // gambar ke RSTXN_TTDS; di sini cukup referensi "TTD:<no>"
         $this->incrementVersion('modal-form-penjaminan');
     }
 
@@ -220,7 +221,7 @@ new class extends Component {
         if ($this->isFormLocked || $this->viewOnly) {
             return;
         }
-        $this->signatureSaksi = $dataUrl;
+        $this->signatureSaksi = TtdPasien::simpan($dataUrl, TtdPasien::regNoDariKunjungan('UGD', $this->rjNo));   // gambar ke RSTXN_TTDS; di sini cukup referensi "TTD:<no>"
         $this->incrementVersion('modal-form-penjaminan');
     }
 

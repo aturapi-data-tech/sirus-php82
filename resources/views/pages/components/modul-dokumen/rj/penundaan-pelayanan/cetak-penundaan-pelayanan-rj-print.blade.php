@@ -120,7 +120,7 @@
 
                             <div class="text-center my-1">
                                 @if (!empty($form['signature']))
-                                    <img src="{{ $form['signature'] }}" class="h-16" alt="Tanda Tangan Pasien" />
+                                    <img src="{{ \App\Support\TtdPasien::sumberGambar($form['signature']) }}" class="h-16" alt="Tanda Tangan Pasien" />
                                 @else
                                     <div class="h-16">&nbsp;</div>
                                 @endif

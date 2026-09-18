@@ -10,6 +10,7 @@ use App\Http\Traits\Txn\Rj\EmrRJTrait;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 use Illuminate\Validation\ValidationException;
+use App\Support\TtdPasien;
 
 new class extends Component {
     use EmrRJTrait, MasterPasienTrait, WithRenderVersioningTrait;
@@ -235,8 +236,8 @@ new class extends Component {
             return;
         }
 
-        $this->signature = $dataUrl;
-        $this->generalConsent['signature'] = $dataUrl;
+        $this->signature = TtdPasien::simpan($dataUrl, TtdPasien::regNoDariKunjungan('RJ', $this->rjNo));   // gambar ke RSTXN_TTDS; di sini cukup referensi "TTD:<no>"
+        $this->generalConsent['signature'] = $this->signature;
         $this->generalConsent['signatureDate'] = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
     }
 
