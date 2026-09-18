@@ -11,7 +11,9 @@
      tanpa teks apa pun di atasnya — supaya kotak pasien, saksi, dan petugas
      (x-signature.ttd-gambar di dalam ttd-petugas) sejajar di satu baris grid.
      Kotak dibuat SAMA PERSIS dengan ttd-gambar: lebar penuh + proporsi kanvas pad 460x180.
-     Waktu TTD (prop date) tampil DI BAWAH kotak dengan gaya baris "Waktu TTD" ttd-petugas. --}}
+     Waktu TTD (prop date) tampil DI BAWAH kotak dengan gaya baris "Waktu TTD" ttd-petugas.
+     Prop signature boleh data-URL (warisan, inline) ATAU referensi "TTD:<no>" ke RSTXN_TTDS —
+     App\Support\TtdPasien::sumberGambar() yang menyelesaikannya. --}}
 <div>
 
     @if ($label)
@@ -19,7 +21,7 @@
     @endif
 
     <div class="w-full overflow-hidden bg-white border border-gray-200 rounded-xl dark:border-gray-700">
-        <img src="{{ $signature }}" alt="Tanda Tangan" class="w-full object-contain p-2 mx-auto max-h-40"
+        <img src="{{ \App\Support\TtdPasien::sumberGambar($signature) }}" alt="Tanda Tangan" class="w-full object-contain p-2 mx-auto max-h-40"
             style="aspect-ratio: 460 / 180;" />
     </div>
 

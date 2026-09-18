@@ -11,6 +11,7 @@ use Carbon\Carbon;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Support\Clause\GeneralConsentClause;
 use App\Support\TtdUser;
+use App\Support\TtdPasien;
 
 new class extends Component {
     use EmrRITrait, MasterPasienTrait, WithRenderVersioningTrait, WithValidationToastTrait;
@@ -224,8 +225,12 @@ new class extends Component {
         if ($this->isFormLocked) {
             return;
         }
-        $this->signature = $dataUrl;
-        $this->generalConsent['signature'] = $dataUrl;
+        // Gambarnya masuk RSTXN_TTDS SEKARANG; properti & JSON cukup memegang referensi "TTD:<no>"
+        // supaya +-27.000 karakter base64 tidak ikut snapshot tiap request selama form terbuka.
+        // Tabel belum terpasang / insert gagal -> simpan() mengembalikan data-URL-nya (perilaku lama).
+        $nilaiTtd = TtdPasien::simpan($dataUrl, $this->regNo);
+        $this->signature = $nilaiTtd;
+        $this->generalConsent['signature'] = $nilaiTtd;
         $this->generalConsent['signatureDate'] = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
     }
 
