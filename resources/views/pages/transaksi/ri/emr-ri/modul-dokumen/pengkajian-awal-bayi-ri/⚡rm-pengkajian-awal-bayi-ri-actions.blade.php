@@ -92,6 +92,13 @@ new class extends Component {
     // true = entri terkunci sedang ditampilkan di form dalam mode read-only (lihat saja, tak bisa edit).
     public bool $viewOnly = false;
 
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan di bawah ini yang disimpan. */
+    private function muatDariDokumen(array $data): void
+    {
+        $this->regNo = $data['regNo'] ?? null;
+        $this->entriList = is_array($data[$this->jsonKey] ?? null) ? $data[$this->jsonKey] : [];
+    }
+
     protected function rules(): array
     {
         return [];
@@ -109,8 +116,7 @@ new class extends Component {
         if ($this->riHdrNo) {
             $data = $this->findDataRI($this->riHdrNo);
             if ($data) {
-                $this->regNo = $data['regNo'] ?? null;
-                $this->entriList = $data[$this->jsonKey] ?? [];
+                $this->muatDariDokumen($data);
                 $this->isFormLocked = $this->checkEmrRIStatus($this->riHdrNo) || $disabled;
             }
         }
@@ -136,8 +142,7 @@ new class extends Component {
             return;
         }
 
-        $this->regNo = $data['regNo'] ?? null;
-        $this->entriList = is_array($data[$this->jsonKey] ?? null) ? $data[$this->jsonKey] : [];
+        $this->muatDariDokumen($data);
         $this->isFormLocked = $this->checkEmrRIStatus($this->riHdrNo) || $this->disabled;
 
         $this->incrementVersion('modal-pengkajian-awal-bayi-ri');
@@ -215,7 +220,7 @@ new class extends Component {
             $fresh[$this->jsonKey] = array_values($list);
 
             $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-            $this->entriList = $fresh[$this->jsonKey];
+            $this->muatDariDokumen($fresh);
 
             $this->appendAdminLogRI((int) $this->riHdrNo, $logVerb . ' Pengkajian Awal Bayi — ' . (($entry['tglLahir'] ?? '') ?: '-') . ' (' . $key . ')', 'MR');
         });
@@ -328,7 +333,7 @@ new class extends Component {
                 $fresh[$this->jsonKey] = array_values($list);
 
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->entriList = $fresh[$this->jsonKey];
+                $this->muatDariDokumen($fresh);
 
                 $pembukaKunci = auth()->user()->myuser_name ?? '-';
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Buka kunci Pengkajian Awal Bayi (' . $createdAt . ') oleh ' . $pembukaKunci . ' — TTD petugas dicabut', 'MR');
@@ -470,7 +475,7 @@ new class extends Component {
                     ->all();
 
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->entriList = $fresh[$this->jsonKey];
+                $this->muatDariDokumen($fresh);
 
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Hapus Pengkajian Awal Bayi — ' . $createdAt, 'MR');
             });

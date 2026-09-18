@@ -44,6 +44,12 @@ new class extends Component {
     // (dipakai juga worklist Gizi Rawat Inap /ri/gizi).
     public array $programDietOptions = GiziOptions::PROGRAM_DIET;
 
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan di bawah ini yang disimpan. */
+    private function muatDariDokumen(array $data): void
+    {
+        $this->daftarGizi = $data['penilaian']['gizi'] ?? [];
+    }
+
     public array $skriningGiziAwalOptions = [
         'perubahanBeratBadan' => [['perubahan' => 'Tidak ada perubahan', 'score' => 0], ['perubahan' => 'Turun 5-10%', 'score' => 1], ['perubahan' => 'Turun >10%', 'score' => 2]],
         'asupanMakanan' => [['asupan' => 'Cukup', 'score' => 0], ['asupan' => 'Kurang', 'score' => 1], ['asupan' => 'Sangat kurang', 'score' => 2]],
@@ -95,7 +101,7 @@ new class extends Component {
             return;
         }
 
-        $this->daftarGizi = $data['penilaian']['gizi'] ?? [];
+        $this->muatDariDokumen($data);
 
         $this->isFormLocked = $this->checkEmrRIStatus($riHdrNo);
 
@@ -197,7 +203,7 @@ new class extends Component {
                 $fresh['penilaian']['gizi'][] = $this->formEntryGizi;
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Tambah Penilaian Gizi — ' . ($this->formEntryGizi['tglPenilaian'] ?? '-'), 'MR');
-                $this->daftarGizi = $fresh['penilaian']['gizi'] ?? [];
+                $this->muatDariDokumen($fresh);
             });
             $this->reset(['formEntryGizi']);
             $this->afterSave('Penilaian Gizi berhasil disimpan.');
@@ -224,7 +230,7 @@ new class extends Component {
                 $fresh['penilaian']['gizi'] = array_values($fresh['penilaian']['gizi']);
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Hapus Penilaian Gizi — entri ' . $tglHapus, 'MR');
-                $this->daftarGizi = $fresh['penilaian']['gizi'] ?? [];
+                $this->muatDariDokumen($fresh);
             });
             $this->afterSave('Gizi dihapus.');
         } catch (\RuntimeException $e) {

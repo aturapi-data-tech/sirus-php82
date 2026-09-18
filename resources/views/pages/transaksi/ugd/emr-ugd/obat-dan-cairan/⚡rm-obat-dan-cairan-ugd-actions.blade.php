@@ -32,6 +32,13 @@ new class extends Component {
     public ?string $regNoPasien = null;
 
     public array $renderVersions = [];
+
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan di bawah ini yang disimpan. */
+    private function muatDariDokumen(array $data): void
+    {
+        $this->daftarObatCairan = $data['observasi']['obatDanCairan']['pemberianObatDanCairan'] ?? [];
+        $this->regNoPasien = $data['regNo'] ?? null;
+    }
     protected array $renderAreas = ['modal-obat-cairan-ugd'];
 
     // ── Form entry obat dan cairan ──
@@ -105,8 +112,7 @@ new class extends Component {
             return;
         }
 
-        $this->daftarObatCairan = $data['observasi']['obatDanCairan']['pemberianObatDanCairan'] ?? [];
-        $this->regNoPasien = $data['regNo'] ?? null;
+        $this->muatDariDokumen($data);
 
         // Generate ID untuk data lama yang belum ada ID
         $this->generateIds();
@@ -218,7 +224,7 @@ new class extends Component {
 
                 // 6. Simpan JSON
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->daftarObatCairan = $data['observasi']['obatDanCairan']['pemberianObatDanCairan'];
+                $this->muatDariDokumen($data);
                 $this->generateIds();
 
                 // 7. Audit log (rekam medis)
@@ -275,7 +281,7 @@ new class extends Component {
 
                 // 5. Simpan JSON
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->daftarObatCairan = $data['observasi']['obatDanCairan']['pemberianObatDanCairan'];
+                $this->muatDariDokumen($data);
                 $this->generateIds();
 
                 // 6. Audit log (rekam medis)

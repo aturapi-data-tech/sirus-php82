@@ -18,6 +18,12 @@ new class extends Component {
     public array $daftarResikoJatuh = [];
 
     public array $renderVersions = [];
+
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan di bawah ini yang disimpan. */
+    private function muatDariDokumen(array $data): void
+    {
+        $this->daftarResikoJatuh = $data['penilaian']['resikoJatuh'] ?? [];
+    }
     protected array $renderAreas = ['modal-penilaian-resiko-jatuh-ri'];
 
     public array $formEntryResikoJatuh = [
@@ -72,7 +78,7 @@ new class extends Component {
             return;
         }
 
-        $this->daftarResikoJatuh = $data['penilaian']['resikoJatuh'] ?? [];
+        $this->muatDariDokumen($data);
 
         $this->isFormLocked = $this->checkEmrRIStatus($riHdrNo);
 
@@ -156,7 +162,7 @@ new class extends Component {
                 $fresh['penilaian']['resikoJatuh'][] = $this->formEntryResikoJatuh;
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Tambah Penilaian Risiko Jatuh — ' . ($this->formEntryResikoJatuh['tglPenilaian'] ?? '-'), 'MR');
-                $this->daftarResikoJatuh = $fresh['penilaian']['resikoJatuh'] ?? [];
+                $this->muatDariDokumen($fresh);
             });
             $this->reset(['formEntryResikoJatuh']);
             $this->afterSave('Penilaian Risiko Jatuh berhasil disimpan.');
@@ -183,7 +189,7 @@ new class extends Component {
                 $fresh['penilaian']['resikoJatuh'] = array_values($fresh['penilaian']['resikoJatuh']);
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Hapus Penilaian Risiko Jatuh — entri ' . $tglHapus, 'MR');
-                $this->daftarResikoJatuh = $fresh['penilaian']['resikoJatuh'] ?? [];
+                $this->muatDariDokumen($fresh);
             });
             $this->afterSave('Risiko Jatuh dihapus.');
         } catch (\RuntimeException $e) {

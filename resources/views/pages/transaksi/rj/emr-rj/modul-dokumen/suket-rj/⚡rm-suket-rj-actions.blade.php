@@ -36,6 +36,13 @@ new class extends Component {
 
     // renderVersions
     public array $renderVersions = [];
+
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan di bawah ini yang disimpan. */
+    private function muatDariDokumen(array $data): void
+    {
+        $this->rjDate = $data['rjDate'] ?? null;
+        $this->suket = $data['suket'] ?? $this->getDefaultSuket();
+    }
     protected array $renderAreas = ['modal-suket-rj'];
 
     /* ===============================
@@ -84,8 +91,7 @@ new class extends Component {
         }
 
         // rjDate DULU: getDefaultSuket() membacanya untuk opsi Hari Ini/Besok.
-        $this->rjDate = $data['rjDate'] ?? null;
-        $this->suket = $data['suket'] ?? $this->getDefaultSuket();
+        $this->muatDariDokumen($data);
         $this->dokumenTermuat = true;
 
         // Normalisasi data legacy:

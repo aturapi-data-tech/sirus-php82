@@ -18,6 +18,12 @@ new class extends Component {
     public array $daftarDekubitus = [];
 
     public array $renderVersions = [];
+
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan di bawah ini yang disimpan. */
+    private function muatDariDokumen(array $data): void
+    {
+        $this->daftarDekubitus = $data['penilaian']['dekubitus'] ?? [];
+    }
     protected array $renderAreas = ['modal-penilaian-dekubitus-ri'];
 
     public array $formEntryDekubitus = [
@@ -64,7 +70,7 @@ new class extends Component {
             return;
         }
 
-        $this->daftarDekubitus = $data['penilaian']['dekubitus'] ?? [];
+        $this->muatDariDokumen($data);
 
         $this->isFormLocked = $this->checkEmrRIStatus($riHdrNo);
 
@@ -140,7 +146,7 @@ new class extends Component {
                 $fresh['penilaian']['dekubitus'][] = $this->formEntryDekubitus;
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Tambah Penilaian Dekubitus — ' . ($this->formEntryDekubitus['tglPenilaian'] ?? '-'), 'MR');
-                $this->daftarDekubitus = $fresh['penilaian']['dekubitus'] ?? [];
+                $this->muatDariDokumen($fresh);
             });
             $this->reset(['formEntryDekubitus']);
             $this->afterSave('Penilaian Dekubitus berhasil disimpan.');
@@ -167,7 +173,7 @@ new class extends Component {
                 $fresh['penilaian']['dekubitus'] = array_values($fresh['penilaian']['dekubitus']);
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Hapus Penilaian Dekubitus — entri ' . $tglHapus, 'MR');
-                $this->daftarDekubitus = $fresh['penilaian']['dekubitus'] ?? [];
+                $this->muatDariDokumen($fresh);
             });
             $this->afterSave('Dekubitus dihapus.');
         } catch (\RuntimeException $e) {

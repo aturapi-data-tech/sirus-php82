@@ -41,6 +41,13 @@ new class extends Component {
     /** Langkah yang sedang ditunggu kabarnya. Dikosongkan begitu kabarnya datang. */
     public string $langkahAktif = '';
 
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan di bawah ini yang disimpan. */
+    private function muatDariDokumen(array $data): void
+    {
+        $this->regName = (string) ($data['regName'] ?? '');
+        $this->regNoPasien = (string) ($data['regNo'] ?? '');
+    }
+
     public function kirimSemua(): void
     {
         if (empty($this->rjNo)) {
@@ -170,8 +177,7 @@ new class extends Component {
             $this->dispatch('toast', type: 'error', message: 'Data UGD tidak ditemukan.');
             return false;
         }
-        $this->regName = (string) ($data['regName'] ?? '');
-        $this->regNoPasien = (string) ($data['regNo'] ?? '');
+        $this->muatDariDokumen($data);
         return true;
     }
 };

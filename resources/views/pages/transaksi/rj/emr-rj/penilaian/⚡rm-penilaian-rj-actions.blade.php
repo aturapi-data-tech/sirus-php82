@@ -80,9 +80,9 @@ new class extends Component {
 
 
         // Initialize penilaian data jika belum ada
-        $this->penilaian = $data['penilaian'] ?? $this->getDefaultPenilaian();
+        $this->muatDariDokumen($data);
 
-        $this->umurPasienTahun = $this->hitungUmurPasien($data['regNo'] ?? null);
+        $this->muatDariDokumen($data);
         $this->skalaDisarankan = NyeriOptions::saranUntukUmur($this->umurPasienTahun);
 
         $this->incrementVersion('modal-penilaian-rj');
@@ -147,7 +147,7 @@ new class extends Component {
 
                 // 7. Persist + sync properti lokal
                 $this->updateJsonRJ($this->rjNo, $data);
-                $this->penilaian = $data['penilaian'];
+                $this->muatDariDokumen($data);
 
                 // 8. Audit log — keterangan dari pemanggil (add/remove tiap assessment)
                 if ($logKeterangan !== null) {
@@ -893,6 +893,13 @@ new class extends Component {
      =============================================================== */
 
     public array $formEntryGizi = [];
+
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan di bawah ini yang disimpan. */
+    private function muatDariDokumen(array $data): void
+    {
+        $this->penilaian = $data['penilaian'] ?? $this->getDefaultPenilaian();
+        $this->umurPasienTahun = $this->hitungUmurPasien($data['regNo'] ?? null);
+    }
 
     public array $skriningGiziAwalOptions = [
         'perubahanBeratBadan' => [['perubahan' => 'Tidak ada perubahan', 'score' => 0], ['perubahan' => 'Turun 5-10%', 'score' => 1], ['perubahan' => 'Turun >10%', 'score' => 2]],

@@ -65,6 +65,13 @@ new class extends Component {
     // true = entri terkunci sedang ditampilkan di form dalam mode read-only (lihat saja, tak bisa edit).
     public bool $viewOnly = false;
 
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan di bawah ini yang disimpan. */
+    private function muatDariDokumen(array $data): void
+    {
+        $this->regNo = $data['regNo'] ?? null;
+        $this->instruksiList = is_array($data[$this->jsonKey] ?? null) ? $data[$this->jsonKey] : [];
+    }
+
     /* ===============================
      | MOUNT
      =============================== */
@@ -77,8 +84,7 @@ new class extends Component {
         if ($this->rjNo) {
             $data = $this->findDataRJ($this->rjNo);
             if ($data) {
-                $this->regNo = $data['regNo'] ?? null;
-                $this->instruksiList = $data[$this->jsonKey] ?? [];
+                $this->muatDariDokumen($data);
                 $this->isFormLocked = $this->checkEmrRJStatus($this->rjNo) || $disabled;
             }
         }
@@ -104,8 +110,7 @@ new class extends Component {
             return;
         }
 
-        $this->regNo = $data['regNo'] ?? null;
-        $this->instruksiList = is_array($data[$this->jsonKey] ?? null) ? $data[$this->jsonKey] : [];
+        $this->muatDariDokumen($data);
         $this->isFormLocked = $this->checkEmrRJStatus($this->rjNo) || $this->disabled;
         $this->incrementVersion('modal-instruksi-pasca-bedah-rj');
 
@@ -245,7 +250,7 @@ new class extends Component {
             $fresh[$this->jsonKey] = array_values($list);
 
             $this->updateJsonRJ((int) $this->rjNo, $fresh);
-            $this->instruksiList = $fresh[$this->jsonKey];
+            $this->muatDariDokumen($fresh);
 
             $this->appendAdminLogRJ((int) $this->rjNo, $logVerb . ' Instruksi Pasca Bedah — ' . ($entry['tanggal'] ?: '-') . ' (' . $key . ')', 'MR');
         });
@@ -491,7 +496,7 @@ new class extends Component {
                     ->toArray();
 
                 $this->updateJsonRJ((int) $this->rjNo, $fresh);
-                $this->instruksiList = $fresh[$this->jsonKey];
+                $this->muatDariDokumen($fresh);
 
                 $this->appendAdminLogRJ((int) $this->rjNo, 'Hapus Instruksi Pasca Bedah — ' . $createdAt, 'MR');
             });
@@ -538,7 +543,7 @@ new class extends Component {
                 $list[$index]['ttdDate'] = '';
                 $fresh[$this->jsonKey] = array_values($list);
                 $this->updateJsonRJ((int) $this->rjNo, $fresh);
-                $this->instruksiList = $fresh[$this->jsonKey];
+                $this->muatDariDokumen($fresh);
                 $pembukaKunci = auth()->user()->myuser_name ?? '-';
                 $this->appendAdminLogRJ((int) $this->rjNo, 'Buka kunci Instruksi Pasca Bedah (' . $createdAt . ') oleh ' . $pembukaKunci . ' — TTD petugas dicabut, entri kembali draft', 'MR');
             });

@@ -109,6 +109,13 @@ new class extends Component {
     public array $kriteriaOptions = ['Anak', 'Dewasa', 'Geriatri'];
     public array $mallampatiOptions = ['I', 'II', 'III', 'IV'];
     public array $gerakLeherOptions = ['Bebas', 'Terbatas'];
+
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan di bawah ini yang disimpan. */
+    private function muatDariDokumen(array $data): void
+    {
+        $this->regNo = $data['regNo'] ?? null;
+        $this->praAnestesiList = is_array($data['praAnestesiUGD'] ?? null) ? $data['praAnestesiUGD'] : [];
+    }
     public array $asaOptions = ['ASA I', 'ASA II', 'ASA III', 'ASA IV', 'ASA V', 'ASA I-E', 'ASA II-E', 'ASA III-E', 'ASA IV-E', 'ASA V-E'];
 
     /* ===============================
@@ -123,8 +130,7 @@ new class extends Component {
         if ($this->rjNo) {
             $data = $this->findDataUGD($this->rjNo);
             if ($data) {
-                $this->regNo = $data['regNo'] ?? null;
-                $this->praAnestesiList = $data['praAnestesiUGD'] ?? [];
+                $this->muatDariDokumen($data);
                 $this->isFormLocked = $this->checkEmrUGDStatus($this->rjNo) || $disabled;
             }
         }
@@ -151,8 +157,7 @@ new class extends Component {
             return;
         }
 
-        $this->regNo = $data['regNo'] ?? null;
-        $this->praAnestesiList = is_array($data['praAnestesiUGD'] ?? null) ? $data['praAnestesiUGD'] : [];
+        $this->muatDariDokumen($data);
         $this->isFormLocked = $this->checkEmrUGDStatus($this->rjNo) || $this->disabled;
         $this->incrementVersion('modal-pra-anestesi-ugd');
 
@@ -299,7 +304,7 @@ new class extends Component {
             $fresh['praAnestesiUGD'] = array_values($list);
 
             $this->updateJsonUGD((int) $this->rjNo, $fresh);
-            $this->praAnestesiList = $fresh['praAnestesiUGD'];
+            $this->muatDariDokumen($fresh);
 
             $this->appendAdminLogUGD((int) $this->rjNo, $logVerb . ' Pengkajian Pra Anestesi — ' . ($entry['psAsa'] ?: '-') . ' (' . $key . ')', 'MR');
         });
@@ -483,7 +488,7 @@ new class extends Component {
                 $fresh['praAnestesiUGD'] = array_values($list);
 
                 $this->updateJsonUGD((int) $this->rjNo, $fresh);
-                $this->praAnestesiList = $fresh['praAnestesiUGD'];
+                $this->muatDariDokumen($fresh);
 
                 $pembukaKunci = auth()->user()->myuser_name ?? '-';
                 $this->appendAdminLogUGD((int) $this->rjNo, 'Buka kunci Pengkajian Pra Anestesi (' . $createdAt . ') oleh ' . $pembukaKunci . ' — kedua TTD dicabut', 'MR');
@@ -665,7 +670,7 @@ new class extends Component {
                     ->toArray();
 
                 $this->updateJsonUGD((int) $this->rjNo, $fresh);
-                $this->praAnestesiList = $fresh['praAnestesiUGD'];
+                $this->muatDariDokumen($fresh);
 
                 $this->appendAdminLogUGD((int) $this->rjNo, 'Hapus Pengkajian Pra Anestesi — ' . $createdAt, 'MR');
             });

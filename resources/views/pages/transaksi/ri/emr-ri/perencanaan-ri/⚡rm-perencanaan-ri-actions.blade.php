@@ -464,7 +464,7 @@ new class extends Component {
             </div>
 
             {{-- Rujukan Berbasis Kompetensi Ranap (SATUSEHAT FHIR langsung) — Pulang Pindah / Rujuk --}}
-            @if (($dataDaftarRi['perencanaan']['tindakLanjut']['tindakLanjut'] ?? '') === '306206005')
+            @if (($perencanaan['tindakLanjut']['tindakLanjut'] ?? '') === '306206005')
                 <div class="pt-2 border-t border-hairline-soft dark:border-gray-700">
                     <livewire:pages::transaksi.ri.emr-ri.rujukan-kompetensi.rm-rujukan-kompetensi-fhir-ri-actions
                         :riHdrNo="$riHdrNo" wire:key="rm-rujukan-kompetensi-fhir-ri-{{ $riHdrNo }}" />
@@ -473,7 +473,7 @@ new class extends Component {
 
             {{-- Rujukan poli RS lain (SISRUTE) — pasien pulang ranap bisa dirujuk
                  untuk rawat jalan di RS lain, jalurnya lewat BPJS, bukan FHIR. --}}
-            @if (($dataDaftarRi['perencanaan']['tindakLanjut']['tindakLanjut'] ?? '') === '306206005')
+            @if (($perencanaan['tindakLanjut']['tindakLanjut'] ?? '') === '306206005')
                 <div class="pt-2 border-t border-hairline-soft dark:border-gray-700">
                     <livewire:pages::transaksi.ri.emr-ri.rujukan-kompetensi.rm-rujukan-kompetensi-ri-actions
                         :riHdrNo="$riHdrNo" wire:key="rm-rujukan-kompetensi-ri-{{ $riHdrNo }}" />

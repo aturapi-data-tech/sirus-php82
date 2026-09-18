@@ -162,6 +162,13 @@ new class extends Component {
     /** Pratinjau skor dari isian form (dihitung ulang tiap field selesai diisi), sebelum disimpan. */
     public ?array $ewsPratinjau = null;
 
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan di bawah ini yang disimpan. */
+    private function muatDariDokumen(array $data): void
+    {
+        $this->daftarTandaVital = $data['observasi']['observasiLanjutan']['tandaVital'] ?? [];
+        $this->regNoPasien = $data['regNo'] ?? null;
+    }
+
     public function hitungPratinjauEws(): void
     {
         if (!$this->ewsTersedia()) {
@@ -233,8 +240,7 @@ new class extends Component {
         }
 
         // Diisi SEBELUM tentukanUmurDanVarian() — fungsi itu membaca entri terakhir dari sini.
-        $this->daftarTandaVital = $data['observasi']['observasiLanjutan']['tandaVital'] ?? [];
-        $this->regNoPasien = $data['regNo'] ?? null;
+        $this->muatDariDokumen($data);
 
         // Generate ID untuk data lama yang belum ada ID
         $this->generateIds('observasi_');
@@ -379,7 +385,7 @@ new class extends Component {
 
                 // 7. Simpan JSON
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->daftarTandaVital = $data['observasi']['observasiLanjutan']['tandaVital'];
+                $this->muatDariDokumen($data);
                 $this->generateIds('observasi_');
             });
 
@@ -442,7 +448,7 @@ new class extends Component {
 
                 // 5. Simpan JSON
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->daftarTandaVital = $data['observasi']['observasiLanjutan']['tandaVital'];
+                $this->muatDariDokumen($data);
                 $this->generateIds('observasi_');
             });
 

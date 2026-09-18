@@ -32,6 +32,13 @@ new class extends Component {
     /** Map Cara Masuk (entry_id => entry_desc) dari rsmst_entrytypes — fallback bila entryDesc view kosong. */
     public array $entryLabels = [];
 
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan di bawah ini yang disimpan. */
+    private function muatDariDokumen(array $data): void
+    {
+        $this->dataPasien = $this->findDataMasterPasien($data['regNo'] ?? '') ?? [];
+        $this->ewsTerakhir = EwsSkor::terakhirDari($data['observasi']['observasiLanjutan']['tandaVital'] ?? []) ?? [];
+    }
+
     /**
      * Cegah reload berulang: saat Simpan EMR RI menembak, BANYAK modul (CPPT,
      * penilaian, diagnosa, observasi, askep, dll — ~22 modul) masing-masing dispatch
@@ -70,10 +77,10 @@ new class extends Component {
                 'levelingDokter' => $data['pengkajianAwalPasienRawatInap']['levelingDokter'] ?? [],
             ],
         ];
-        $this->dataPasien = $this->findDataMasterPasien($data['regNo'] ?? '') ?? [];
+        $this->muatDariDokumen($data);
         $this->resikoJatuhTerakhir = $this->hitungResikoJatuhTerakhir($data);
         $this->resikoBunuhDiriTerakhir = $this->hitungResikoBunuhDiriTerakhir($data);
-        $this->ewsTerakhir = EwsSkor::terakhirDari($data['observasi']['observasiLanjutan']['tandaVital'] ?? []) ?? [];
+        $this->muatDariDokumen($data);
         $this->entryLabels = DB::table('rsmst_entrytypes')->pluck('entry_desc', 'entry_id')
             ->mapWithKeys(fn($entryDesc, $entryId) => [(string) $entryId => $entryDesc])->all();
     }

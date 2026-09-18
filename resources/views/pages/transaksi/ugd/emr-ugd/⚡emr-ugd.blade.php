@@ -28,6 +28,15 @@ new class extends Component {
     public bool $adaEresep = false;
 
     public array $renderVersions = [];
+
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan di bawah ini yang disimpan. */
+    private function muatDariDokumen(array $data): void
+    {
+        $this->regNoPasien = (string) ($data['regNo'] ?? '');
+        $this->drId = (string) ($data['drId'] ?? '');
+        $this->noSep = (string) ($data['sep']['noSep'] ?? '');
+        $this->adaEresep = !empty($data['eresep']) || !empty($data['eresepRacikan']);
+    }
     protected array $renderAreas = ['modal-emr-ugd'];
 
     /* ===============================
@@ -112,10 +121,7 @@ new class extends Component {
         }
 
         // Dokumen dibaca sebagai variabel LOKAL, diperas jadi ringkasan, lalu dilepas.
-        $this->regNoPasien = (string) ($data['regNo'] ?? '');
-        $this->drId = (string) ($data['drId'] ?? '');
-        $this->noSep = (string) ($data['sep']['noSep'] ?? '');
-        $this->adaEresep = !empty($data['eresep']) || !empty($data['eresepRacikan']);
+        $this->muatDariDokumen($data);
 
         if ($this->checkEmrUGDStatus($rjNo)) {
             $this->isFormLocked = true;

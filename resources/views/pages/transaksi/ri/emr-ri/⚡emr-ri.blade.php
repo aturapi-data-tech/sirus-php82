@@ -21,6 +21,13 @@ new class extends Component {
     public string $klaimId = '';
 
     public array $renderVersions = [];
+
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan di bawah ini yang disimpan. */
+    private function muatDariDokumen(array $data): void
+    {
+        $this->regNoPasien = (string) ($data['regNo'] ?? '');
+        $this->klaimId = (string) ($data['klaimId'] ?? '');
+    }
     protected array $renderAreas = ['modal-emr-ri'];
 
     public function mount(): void
@@ -42,8 +49,7 @@ new class extends Component {
             return;
         }
         // Dokumen dibaca sebagai variabel LOKAL, diperas jadi ringkasan, lalu dilepas.
-        $this->regNoPasien = (string) ($data['regNo'] ?? '');
-        $this->klaimId = (string) ($data['klaimId'] ?? '');
+        $this->muatDariDokumen($data);
 
         // Kunci klinis mengikuti kebijakan trait (sengaja longgar — audit log saja),
         // BUKAN inline ri_status; kunci finansial tetap via checkRIStatus() di administrasi.

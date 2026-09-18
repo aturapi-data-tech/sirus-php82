@@ -28,6 +28,12 @@ new class extends Component {
 
     // renderVersions
     public array $renderVersions = [];
+
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan di bawah ini yang disimpan. */
+    private function muatDariDokumen(array $data): void
+    {
+        $this->eresep = $data['eresep'] ?? [];
+    }
     protected array $renderAreas = ['eresep-non-racikan-rj'];
 
     /* ===============================
@@ -86,7 +92,7 @@ new class extends Component {
             return;
         }
 
-        $this->eresep = $data['eresep'] ?? [];
+        $this->muatDariDokumen($data);
         $this->dokumenTermuat = true;
     }
 
@@ -107,7 +113,7 @@ new class extends Component {
         $data['eresep'] = $this->eresep;
 
         $this->updateJsonRJ($this->rjNo, $data);
-        $this->eresep = $data['eresep'];
+        $this->muatDariDokumen($data);
     }
 
     /* ===============================

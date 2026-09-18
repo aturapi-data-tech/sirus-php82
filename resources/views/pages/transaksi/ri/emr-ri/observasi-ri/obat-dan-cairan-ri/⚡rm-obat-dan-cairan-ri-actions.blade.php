@@ -26,6 +26,12 @@ new class extends Component {
     public array $daftarObatCairan = [];
 
     public array $renderVersions = [];
+
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan di bawah ini yang disimpan. */
+    private function muatDariDokumen(array $data): void
+    {
+        $this->daftarObatCairan = $data['observasi']['obatDanCairan']['pemberianObatDanCairan'] ?? [];
+    }
     protected array $renderAreas = ['modal-obat-cairan-ri'];
 
     // ── Form entry obat dan cairan ──
@@ -90,7 +96,7 @@ new class extends Component {
             return;
         }
 
-        $this->daftarObatCairan = $data['observasi']['obatDanCairan']['pemberianObatDanCairan'] ?? [];
+        $this->muatDariDokumen($data);
 
         // Generate ID untuk data lama yang belum ada ID
         $this->generateIds();
@@ -186,7 +192,7 @@ new class extends Component {
 
                 // 6. Simpan JSON
                 $this->updateJsonRI($this->riHdrNo, $data);
-                $this->daftarObatCairan = $data['observasi']['obatDanCairan']['pemberianObatDanCairan'];
+                $this->muatDariDokumen($data);
                 $this->generateIds();
 
                 // 7. Audit log
@@ -243,7 +249,7 @@ new class extends Component {
 
                 // 5. Simpan JSON
                 $this->updateJsonRI($this->riHdrNo, $data);
-                $this->daftarObatCairan = $data['observasi']['obatDanCairan']['pemberianObatDanCairan'];
+                $this->muatDariDokumen($data);
                 $this->generateIds();
 
                 // 6. Audit log

@@ -23,6 +23,12 @@ new class extends Component {
     public array $signaCatatanOptions = [];
 
     public array $renderVersions = [];
+
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan di bawah ini yang disimpan. */
+    private function muatDariDokumen(array $data): void
+    {
+        $this->eresepHdr = $data['eresepHdr'] ?? [];
+    }
     protected array $renderAreas = ['eresep-non-racikan-ri'];
 
     /* ===============================
@@ -62,7 +68,7 @@ new class extends Component {
             return;
         }
 
-        $this->eresepHdr = $data['eresepHdr'] ?? [];
+        $this->muatDariDokumen($data);
         $this->eresepHdr[$this->resepIndex]['eresep'] ??= [];
     }
 
@@ -79,7 +85,7 @@ new class extends Component {
             $this->eresepHdr[$this->resepIndex]['eresep'] ?? [];
 
         $this->updateJsonRI($this->riHdrNo, $data);
-        $this->eresepHdr = $data['eresepHdr'] ?? [];
+        $this->muatDariDokumen($data);
     }
 
     /* ===============================

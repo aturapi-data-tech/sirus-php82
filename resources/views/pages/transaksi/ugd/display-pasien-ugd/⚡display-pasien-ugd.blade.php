@@ -28,6 +28,13 @@ new class extends Component {
     /** Skrining risiko bunuh diri (C-SSRS) terbaru — terisi jika kategori Rendah/Sedang/Tinggi. */
     public array $resikoBunuhDiriTerakhir = [];
 
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan di bawah ini yang disimpan. */
+    private function muatDariDokumen(array $data): void
+    {
+        $this->dataPasien = $this->findDataMasterPasien($data['regNo'] ?? '') ?? [];
+        $this->ewsTerakhir = EwsSkor::terakhirDari($data['observasi']['observasiLanjutan']['tandaVital'] ?? []) ?? [];
+    }
+
     /**
      * Cegah reload berulang: saat tombol Simpan EMR menembak, ~5 child (anamnesa,
      * pemeriksaan, diagnosa, penilaian, perencanaan) masing-masing dispatch
@@ -64,10 +71,10 @@ new class extends Component {
             'shift'     => $data['shift'] ?? null,
             'sep'       => ['noSep' => $data['sep']['noSep'] ?? null],
         ];
-        $this->dataPasien = $this->findDataMasterPasien($data['regNo'] ?? '') ?? [];
+        $this->muatDariDokumen($data);
         $this->resikoJatuhTerakhir = $this->hitungResikoJatuhTerakhir($data);
         $this->resikoBunuhDiriTerakhir = $this->hitungResikoBunuhDiriTerakhir($data);
-        $this->ewsTerakhir = EwsSkor::terakhirDari($data['observasi']['observasiLanjutan']['tandaVital'] ?? []) ?? [];
+        $this->muatDariDokumen($data);
     }
 
     /**

@@ -107,6 +107,13 @@ new class extends Component {
 
     public array $sudahBelumTidakPerluOptions = ['Sudah', 'Belum', 'Tidak Perlu'];
 
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan di bawah ini yang disimpan. */
+    private function muatDariDokumen(array $data): void
+    {
+        $this->regNo = $data['regNo'] ?? null;
+        $this->surgicalSafetyChecklistList = is_array($data[$this->jsonKey] ?? null) ? $data[$this->jsonKey] : [];
+    }
+
     private const TTD_ROLES = [
         'dokterAnestesi' => ['field' => 'ttdDokterAnestesi', 'label' => 'Dokter Anestesi'],
         'perawatInstrumen' => ['field' => 'ttdPerawatInstrumen', 'label' => 'Perawat Instrumen'],
@@ -122,8 +129,7 @@ new class extends Component {
         if ($this->rjNo) {
             $data = $this->findDataUGD($this->rjNo);
             if ($data) {
-                $this->regNo = $data['regNo'] ?? null;
-                $this->surgicalSafetyChecklistList = $data[$this->jsonKey] ?? [];
+                $this->muatDariDokumen($data);
                 $this->isFormLocked = $this->checkEmrUGDStatus($this->rjNo) || $disabled;
             }
         }
@@ -144,8 +150,7 @@ new class extends Component {
             $this->dispatch('toast', type: 'error', message: 'Data UGD tidak ditemukan.');
             return;
         }
-        $this->regNo = $data['regNo'] ?? null;
-        $this->surgicalSafetyChecklistList = is_array($data[$this->jsonKey] ?? null) ? $data[$this->jsonKey] : [];
+        $this->muatDariDokumen($data);
         $this->isFormLocked = $this->checkEmrUGDStatus($this->rjNo) || $this->disabled;
         $this->incrementVersion('modal-surgical-safety-checklist-ugd');
         $this->layar = 'daftar';
@@ -332,7 +337,7 @@ new class extends Component {
             $fresh[$this->jsonKey] = array_values($list);
 
             $this->updateJsonUGD((int) $this->rjNo, $fresh);
-            $this->surgicalSafetyChecklistList = $fresh[$this->jsonKey];
+            $this->muatDariDokumen($fresh);
 
             $this->appendAdminLogUGD((int) $this->rjNo, $logVerb . ' Surgical Safety Checklist — ' . ($entry['tindakan'] ?: '-') . ' (' . $key . ')', 'MR');
         });
@@ -454,7 +459,7 @@ new class extends Component {
                 $fresh[$this->jsonKey] = array_values($list);
 
                 $this->updateJsonUGD((int) $this->rjNo, $fresh);
-                $this->surgicalSafetyChecklistList = $fresh[$this->jsonKey];
+                $this->muatDariDokumen($fresh);
 
                 $pelaku = auth()->user()->myuser_name ?? '-';
                 $this->appendAdminLogUGD((int) $this->rjNo, 'Buka kunci Surgical Safety Checklist (' . $createdAt . ') oleh ' . $pelaku . ' — ketiga TTD dicabut', 'MR');
@@ -609,7 +614,7 @@ new class extends Component {
                 }
                 $fresh[$this->jsonKey] = collect($fresh[$this->jsonKey])->reject(fn($item) => ($item['createdAt'] ?? '') === $createdAt)->values()->toArray();
                 $this->updateJsonUGD((int) $this->rjNo, $fresh);
-                $this->surgicalSafetyChecklistList = $fresh[$this->jsonKey];
+                $this->muatDariDokumen($fresh);
                 $this->appendAdminLogUGD((int) $this->rjNo, 'Hapus Surgical Safety Checklist — ' . $createdAt, 'MR');
             });
 

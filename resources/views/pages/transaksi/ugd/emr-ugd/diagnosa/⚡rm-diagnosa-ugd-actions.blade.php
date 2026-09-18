@@ -27,6 +27,15 @@ new class extends Component {
     public ?string $procedureId = null;
 
     public array $renderVersions = [];
+
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan di bawah ini yang disimpan. */
+    private function muatDariDokumen(array $data): void
+    {
+        $this->diagnosis = $this->normalisasiDiagnosis($data['diagnosis'] ?? []);
+        $this->procedure = $data['procedure'] ?? [];
+        $this->diagnosisFreeText = (string) ($data['diagnosisFreeText'] ?? '');
+        $this->procedureFreeText = (string) ($data['procedureFreeText'] ?? '');
+    }
     protected array $renderAreas = ['modal-diagnosis-ugd'];
 
     /* ===============================
@@ -66,10 +75,7 @@ new class extends Component {
             return;
         }
 
-        $this->diagnosis = $this->normalisasiDiagnosis($data['diagnosis'] ?? []);
-        $this->procedure = $data['procedure'] ?? [];
-        $this->diagnosisFreeText = (string) ($data['diagnosisFreeText'] ?? '');
-        $this->procedureFreeText = (string) ($data['procedureFreeText'] ?? '');
+        $this->muatDariDokumen($data);
         $this->dokumenTermuat = true;
 
         $this->isFormLocked = $this->checkEmrUGDStatus($rjNo);

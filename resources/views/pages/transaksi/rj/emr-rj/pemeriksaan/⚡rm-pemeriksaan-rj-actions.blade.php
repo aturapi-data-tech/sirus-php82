@@ -40,6 +40,13 @@ new class extends Component {
 
     // renderVersions
     public array $renderVersions = [];
+
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan di bawah ini yang disimpan. */
+    private function muatDariDokumen(array $data): void
+    {
+        $this->pemeriksaan = $data['pemeriksaan'] ?? $this->getDefaultPemeriksaan();
+        $this->regNoPasien = (string) ($data['regNo'] ?? '');
+    }
     protected array $renderAreas = ['modal-pemeriksaan-rj'];
 
     /* ===============================
@@ -95,8 +102,7 @@ new class extends Component {
 
 
         // Initialize pemeriksaan data jika belum ada
-        $this->pemeriksaan = $data['pemeriksaan'] ?? $this->getDefaultPemeriksaan();
-        $this->regNoPasien = (string) ($data['regNo'] ?? '');
+        $this->muatDariDokumen($data);
         $this->dokumenTermuat = true;
 
         // Sync suspekAkibatKerja ke property terpisah — default 'Tidak' jika belum diisi
@@ -351,7 +357,7 @@ new class extends Component {
 
                 // 8. Persist + sync properti lokal
                 $this->updateJsonRJ($this->rjNo, $data);
-                $this->pemeriksaan = $data['pemeriksaan'] ?? [];
+                $this->muatDariDokumen($data);
 
                 // 9. Audit log
                 $this->appendAdminLogRJ((int) $this->rjNo, ($isBaru ? 'Buat' : 'Update') . ' Pemeriksaan RJ — waktu pemeriksaan ' . ($data['pemeriksaan']['tandaVital']['waktuPemeriksaan'] ?? '-'), 'MR');
@@ -402,7 +408,7 @@ new class extends Component {
 
                 // Idempotency: skip kalau $text sudah ada di tail (handle double-fire)
                 if (str_ends_with(rtrim($existing), trim($text))) {
-                    $this->pemeriksaan = $data['pemeriksaan'] ?? [];
+                    $this->muatDariDokumen($data);
                     return;
                 }
 
@@ -410,7 +416,7 @@ new class extends Component {
 
                 // 6. Persist + sync
                 $this->updateJsonRJ($this->rjNo, $data);
-                $this->pemeriksaan = $data['pemeriksaan'] ?? [];
+                $this->muatDariDokumen($data);
 
                 // 7. Audit log
                 $this->appendAdminLogRJ((int) $this->rjNo, 'Terima hasil laborat ke Penunjang Pemeriksaan RJ', 'MR');
@@ -478,7 +484,7 @@ new class extends Component {
                 ];
 
                 $this->updateJsonRJ($this->rjNo, $data);
-                $this->pemeriksaan = $data['pemeriksaan'] ?? [];
+                $this->muatDariDokumen($data);
 
                 // Audit log
                 $this->appendAdminLogRJ((int) $this->rjNo, 'Upload hasil penunjang RJ — ' . $this->descPDF . ' (' . $filename . ')', 'MR');
@@ -543,7 +549,7 @@ new class extends Component {
                     ->toArray();
 
                 $this->updateJsonRJ($this->rjNo, $data);
-                $this->pemeriksaan = $data['pemeriksaan'] ?? [];
+                $this->muatDariDokumen($data);
 
                 // Audit log
                 $this->appendAdminLogRJ((int) $this->rjNo, 'Hapus hasil penunjang RJ — ' . $removedFileLabel, 'MR');
