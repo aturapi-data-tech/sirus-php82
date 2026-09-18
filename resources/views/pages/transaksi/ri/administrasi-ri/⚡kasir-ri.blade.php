@@ -15,7 +15,8 @@ new class extends Component {
 
     public bool $isFormLocked = false;
     public ?int $riHdrNo = null;
-    public array $dataDaftarRI = [];
+    /** Penanda kunjungan sudah dimuat. Dokumennya sendiri tak pernah dibaca di sini. */
+    public bool $dokumenTermuat = false;
 
     // ── Ringkasan Biaya ──
     public int $totalAll       = 0;
@@ -117,9 +118,9 @@ new class extends Component {
         $this->riHdrNo = $riHdrNo;
         $this->resetValidation();
 
-        $this->dataDaftarRI = $this->findDataRI($riHdrNo) ?? [];
+        $this->dokumenTermuat = filled($this->findDataRI($riHdrNo) ?? []);
 
-        if (empty($this->dataDaftarRI)) {
+        if (!$this->dokumenTermuat) {
             $this->dispatch('toast', type: 'error', message: 'Data RI tidak ditemukan.');
             return;
         }
@@ -174,7 +175,7 @@ new class extends Component {
 
     private function resetKasir(): void
     {
-        $this->reset(['riHdrNo', 'dataDaftarRI', 'bayar', 'accId', 'accName', 'riStatus', 'statusPulang', 'exitDate', 'outNo', 'outDesc']);
+        $this->reset(['riHdrNo', 'dokumenTermuat', 'bayar', 'accId', 'accName', 'riStatus', 'statusPulang', 'exitDate', 'outNo', 'outDesc']);
         $this->resetVersion();
         $this->isFormLocked             = false;
         $this->tglPulangSudahDiproses   = false;

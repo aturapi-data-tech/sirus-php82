@@ -12,7 +12,8 @@ new class extends Component {
 
     public bool $isFormLocked = false;
     public ?int $riHdrNo = null;
-    public array $dataDaftarRI = [];
+    /** Penanda kunjungan sudah dimuat. Dokumennya sendiri tak pernah dibaca di sini. */
+    public bool $dokumenTermuat = false;
     public array $renderVersions = [];
     public string $riStatus = 'I'; // sync dari rstxn_rihdrs.ri_status — I/P (Inap/Pulang)
     protected array $renderAreas = ['modal'];
@@ -74,13 +75,13 @@ new class extends Component {
         $this->riHdrNo = $riHdrNo;
         $this->resetValidation();
 
-        $dataDaftarRI = $this->findDataRI($riHdrNo);
-        if (!$dataDaftarRI) {
+        $data = $this->findDataRI($riHdrNo);
+        if (!$data) {
             $this->dispatch('toast', type: 'error', message: 'Data Rawat Inap tidak ditemukan.');
             return;
         }
 
-        $this->dataDaftarRI = $dataDaftarRI;
+        $this->dokumenTermuat = true;
 
         // $readOnly = dibuka dari bulanan (view-only untuk Casemix verifikasi tagihan vs klaim).
         if ($this->checkRIStatus($riHdrNo) || $readOnly) {
@@ -265,7 +266,7 @@ new class extends Component {
      =============================== */
     protected function resetForm(): void
     {
-        $this->reset(['riHdrNo', 'dataDaftarRI']);
+        $this->reset(['riHdrNo', 'dokumenTermuat']);
         $this->resetVersion();
         $this->isFormLocked     = false;
         $this->riStatus         = 'I';

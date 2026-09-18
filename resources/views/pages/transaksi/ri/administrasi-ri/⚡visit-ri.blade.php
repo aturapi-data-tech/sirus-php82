@@ -15,7 +15,14 @@ new class extends Component {
 
     public bool $isFormLocked = false;
     public ?int $riHdrNo = null;
-    public array $dataDaftarRI = [];
+    /**
+     * Daftar baris RiVisit hasil query DB — BUKAN dokumen EMR.
+     *
+     * Dulu dibungkus di properti yang dinamai seperti dokumen `datadaftarri_json`,
+     * padahal komponen ini tidak pernah membaca dokumen itu sama sekali. Namanya
+     * diluruskan supaya tidak menyesatkan.
+     */
+    public array $daftarVisit = [];
 
     public array $formEntry = [
         'visitDate'  => '',
@@ -54,7 +61,7 @@ new class extends Component {
         if ($this->riHdrNo) {
             $this->findData($this->riHdrNo);
         } else {
-            $this->dataDaftarRI['RiVisit'] = [];
+            $this->daftarVisit = [];
         }
     }
 
@@ -76,7 +83,7 @@ new class extends Component {
             ->orderByDesc('rstxn_rivisits.visit_date')
             ->get();
 
-        $this->dataDaftarRI['RiVisit'] = $rows->map(fn($r) => (array) $r)->toArray();
+        $this->daftarVisit = $rows->map(fn($r) => (array) $r)->toArray();
     }
 
     /* ===============================
@@ -339,7 +346,7 @@ new class extends Component {
         <div class="overflow-hidden bg-canvas border border-hairline rounded-2xl dark:border-gray-700 dark:bg-gray-900">
             <div class="flex items-center justify-between px-4 py-3 border-b border-hairline dark:border-gray-700">
                 <h3 class="text-sm font-semibold text-body dark:text-gray-300">Daftar Kunjungan Dokter</h3>
-                <x-badge variant="gray">{{ count($dataDaftarRI['RiVisit'] ?? []) }} item</x-badge>
+                <x-badge variant="gray">{{ count($daftarVisit ?? []) }} item</x-badge>
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full text-sm text-left">
@@ -354,7 +361,7 @@ new class extends Component {
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-hairline-soft dark:divide-gray-800">
-                        @forelse ($dataDaftarRI['RiVisit'] ?? [] as $item)
+                        @forelse ($daftarVisit ?? [] as $item)
                             <tr wire:key="visit-ri-{{ $item['visit_no'] ?? $loop->index }}" class="transition group hover:bg-surface-soft dark:hover:bg-gray-800/40">
                                 <td class="px-4 py-1.5 font-mono text-sm text-muted whitespace-nowrap">{{ $item['visit_date'] ?? '-' }}</td>
                                 <td class="px-4 py-1.5 text-ink dark:text-gray-200 whitespace-nowrap">{{ $item['dr_name'] ?? '-' }}</td>
@@ -376,12 +383,12 @@ new class extends Component {
                             </tr>
                         @endforelse
                     </tbody>
-                    @if (!empty($dataDaftarRI['RiVisit']))
+                    @if (!empty($daftarVisit))
                         <tfoot class="border-t border-hairline bg-surface-soft dark:bg-gray-800/50 dark:border-gray-700">
                             <tr>
                                 <td colspan="2" class="px-4 py-3 text-sm font-semibold text-muted dark:text-gray-400">Total</td>
                                 <td class="px-4 py-3 text-sm font-bold text-right text-ink dark:text-white">
-                                    Rp {{ number_format(collect($dataDaftarRI['RiVisit'])->sum('visit_price')) }}
+                                    Rp {{ number_format(collect($daftarVisit)->sum('visit_price')) }}
                                 </td>
                                 @if (!$isFormLocked) <td></td> @endif
                             </tr>
