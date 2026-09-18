@@ -20,11 +20,11 @@ new class extends Component {
      * butuh lima angka untuk badge tab. Dokumen dibaca sebagai variabel lokal di open(),
      * dihitung, lalu dilepas.
      */
-    public int $countObat = 0;
-    public int $countPengeluaran = 0;
-    public int $countOksigen = 0;
-    public int $countAlatInvasif = 0;
-    public int $countTTV = 0;
+    public int $jumlahObat = 0;
+    public int $jumlahPengeluaran = 0;
+    public int $jumlahOksigen = 0;
+    public int $jumlahAlatInvasif = 0;
+    public int $jumlahTandaVital = 0;
 
     public string $subTab = 'obat-cairan';
 
@@ -70,11 +70,11 @@ new class extends Component {
         }
 
         // $data TIDAK disimpan ke properti — cukup diambil jumlah entri tiap sub-tab.
-        $this->countObat = count($data['observasi']['obatDanCairan']['pemberianObatDanCairan'] ?? []);
-        $this->countPengeluaran = count($data['observasi']['pengeluaranCairan']['pengeluaranCairan'] ?? []);
-        $this->countOksigen = count($data['observasi']['pemakaianOksigen']['pemakaianOksigenData'] ?? []);
-        $this->countAlatInvasif = count($data['observasi']['alatInvasif']['alatInvasifData'] ?? []);
-        $this->countTTV = count($data['observasi']['observasiLanjutan']['tandaVital'] ?? []);
+        $this->jumlahObat = count($data['observasi']['obatDanCairan']['pemberianObatDanCairan'] ?? []);
+        $this->jumlahPengeluaran = count($data['observasi']['pengeluaranCairan']['pengeluaranCairan'] ?? []);
+        $this->jumlahOksigen = count($data['observasi']['pemakaianOksigen']['pemakaianOksigenData'] ?? []);
+        $this->jumlahAlatInvasif = count($data['observasi']['alatInvasif']['alatInvasifData'] ?? []);
+        $this->jumlahTandaVital = count($data['observasi']['observasiLanjutan']['tandaVital'] ?? []);
 
         // Gunakan trait untuk cek status
         $this->isFormLocked = $this->checkEmrRIStatus($riHdrNo);
@@ -93,11 +93,11 @@ new class extends Component {
     {
         $this->resetVersion();
         $this->isFormLocked = false;
-        $this->countObat = 0;
-        $this->countPengeluaran = 0;
-        $this->countOksigen = 0;
-        $this->countAlatInvasif = 0;
-        $this->countTTV = 0;
+        $this->jumlahObat = 0;
+        $this->jumlahPengeluaran = 0;
+        $this->jumlahOksigen = 0;
+        $this->jumlahAlatInvasif = 0;
+        $this->jumlahTandaVital = 0;
         $this->subDirty = ['obat-cairan' => false, 'pengeluaran' => false, 'oksigen' => false, 'alat-invasif' => false, 'ttv' => false];
     }
 
@@ -202,35 +202,35 @@ new class extends Component {
                         [
                             'key' => 'obat-cairan',
                             'label' => 'Pemberian Obat & Cairan',
-                            'count' => $this->countObat,
+                            'count' => $this->jumlahObat,
                             'icon' =>
                                 'M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z',
                         ],
                         [
                             'key' => 'pengeluaran',
                             'label' => 'Pengeluaran Cairan',
-                            'count' => $this->countPengeluaran,
+                            'count' => $this->jumlahPengeluaran,
                             'icon' =>
                                 'M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z',
                         ],
                         [
                             'key' => 'oksigen',
                             'label' => 'Pemakaian Oksigen',
-                            'count' => $this->countOksigen,
+                            'count' => $this->jumlahOksigen,
                             'icon' =>
                                 'M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z',
                         ],
                         [
                             'key' => 'alat-invasif',
                             'label' => 'Alat Invasif & Tirah Baring',
-                            'count' => $this->countAlatInvasif,
+                            'count' => $this->jumlahAlatInvasif,
                             'icon' =>
                                 'M13 10V3L4 14h7v7l9-11h-7z',
                         ],
                         [
                             'key' => 'ttv',
                             'label' => 'Observasi Lanjutan',
-                            'count' => $this->countTTV,
+                            'count' => $this->jumlahTandaVital,
                             'icon' =>
                                 'M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z',
                         ],
