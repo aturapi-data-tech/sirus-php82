@@ -288,7 +288,8 @@ new class extends Component {
     }
 
     /** Radio "Ada alergi?" diubah -> seragamkan lewat sumber tunggal. */
-    public function updatedDataDaftarRiPengkajianDokterAnamnesaAdaAlergi(): void
+    /** Hook Livewire untuk wire:model "pengkajianDokter.anamnesa.adaAlergi" — NAMA method wajib mengikuti jalur properti itu. */
+    public function updatedPengkajianDokterAnamnesaAdaAlergi(): void
     {
         $this->pengkajianDokter['anamnesa'] = AlergiSnomed::normalisasiRi($this->pengkajianDokter['anamnesa'] ?? []);
     }
