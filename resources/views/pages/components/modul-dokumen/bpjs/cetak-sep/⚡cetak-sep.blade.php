@@ -81,6 +81,24 @@ new class extends Component {
         // (kasus RI: dpjpLayan dikirim kosong, kode DPJP riil ada di skdp.kodeDPJP;
         //  drDesc di rihdrs = dokter penerima/umum, bukan DPJP spesialis) → dataTxn.drDesc.
         $dokterDpjp = $resSep['dpjp']['nmDPJP'] ?? null;
+
+        // Rawat Inap ber-SPRI: SPRI harus sama dengan SEP — dokter & Sub/Spesialis cetakan ikut SPRI.
+        // (poli.tujuan RANAP selalu dikirim kosong dan RI tak punya poliDesc, jadi tanpa ini tercetak "-".)
+        $subSpesialis = null;
+        $spri = $dataTxn['spri'] ?? [];
+        if ($jenis === 'ri' && filled($spri['noSPRIBPJS'] ?? '')) {
+            $subSpesialis = trim((string) ($spri['poliKontrolDesc'] ?? '')) ?: null;
+            $dokterSpri = trim((string) ($spri['drKontrolDesc'] ?? ''));
+            if ($dokterSpri === '' && filled($spri['drKontrolBPJS'] ?? '')) {
+                $dokterSpri = (string) DB::table('rsmst_doctors')
+                    ->where('kd_dr_bpjs', $spri['drKontrolBPJS'])
+                    ->value('dr_name');
+            }
+            if ($dokterSpri !== '') {
+                $dokterDpjp = $dokterSpri;
+            }
+        }
+
         $kodeDpjpReq = $reqSep['dpjpLayan'] ?? '';
         if (empty($kodeDpjpReq)) {
             $kodeDpjpReq = $reqSep['skdp']['kodeDPJP'] ?? '';
@@ -105,6 +123,7 @@ new class extends Component {
             'namaRs' => $identitasRs->int_name ?? 'RSI MADINAH',
             'tglCetak' => Carbon::now(config('app.timezone'))->translatedFormat('d-m-Y H:i:s'),
             'dokterDpjp' => $dokterDpjp,
+            'subSpesialis' => $subSpesialis,
         ];
 
         set_time_limit(300);
