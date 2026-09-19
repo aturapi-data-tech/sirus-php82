@@ -578,6 +578,9 @@ Route::middleware(['auth'])->group(function () {
     Route::livewire('/manajemen/rs/apotek-online/laporan-klaim', 'pages::manajemen.rs.apotek-online.laporan-klaim-apotek.laporan-klaim-apotek')
         ->name('manajemen.rs.apotek-online.laporan-klaim');
 
+    Route::livewire('/manajemen/rs/rekam-medis/arsip-modul-dokumen', 'pages::manajemen.rs.rekam-medis.arsip-modul-dokumen.arsip-modul-dokumen')
+        ->name('manajemen.rs.rekam-medis.arsip-modul-dokumen');
+
     Route::livewire('/manajemen/laporan-diagnosa', 'pages::manajemen.laporan-diagnosa.laporan-diagnosa')
         ->name('manajemen.laporan-diagnosa');
 
