@@ -563,6 +563,9 @@ Route::middleware(['auth'])->group(function () {
     Route::livewire('/manajemen/rs/vclaim/laporan-rujukan-masuk', 'pages::manajemen.rs.vclaim.laporan-rujukan-masuk.laporan-rujukan-masuk')
         ->name('manajemen.rs.vclaim.laporan-rujukan-masuk');
 
+    Route::livewire('/manajemen/rs/rekam-medis/arsip-modul-dokumen', 'pages::manajemen.rs.rekam-medis.arsip-modul-dokumen.arsip-modul-dokumen')
+        ->name('manajemen.rs.rekam-medis.arsip-modul-dokumen');
+
     Route::livewire('/manajemen/laporan-diagnosa', 'pages::manajemen.laporan-diagnosa.laporan-diagnosa')
         ->name('manajemen.laporan-diagnosa');
 
