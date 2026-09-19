@@ -535,8 +535,13 @@ new class extends Component {
                 'SEPForm.noMR' => 'required',
                 'SEPForm.diagAwal' => 'required',
                 'SEPForm.noTelp' => 'required',
+                // SEP Rawat Inap dibuat DARI SPRI — tanpa SPRI tak ada dokter yang bisa disamakan.
+                'SPRIForm.noSPRIBPJS' => 'required',
+                'SPRIForm.drKontrolBPJS' => 'required',
             ],
             [
+                'SPRIForm.noSPRIBPJS.required' => 'SPRI belum dibuat — buat SPRI dulu di tab SPRI.',
+                'SPRIForm.drKontrolBPJS.required' => 'Dokter SPRI belum punya kode DPJP BPJS — lengkapi di tab SPRI.',
                 'SEPForm.noKartu.required' => 'Nomor Kartu BPJS harus diisi.',
                 'SEPForm.tglSep.required' => 'Tanggal SEP wajib diisi.',
                 'SEPForm.tglSep.date_format' => 'Format Tanggal SEP harus dd/mm/yyyy.',
@@ -589,9 +594,11 @@ new class extends Component {
                     'flagProcedure' => $this->SEPForm['flagProcedure'] ?? '',
                     'kdPenunjang' => $this->SEPForm['kdPenunjang'] ?? '',
                     'assesmentPel' => $this->SEPForm['assesmentPel'] ?? '',
+                    // SPRI harus sama dengan SEP: nomor surat & dokter SELALU diambil dari SPRI — bukan dari
+                    // isian tab SEP. validateSEPForm() menjamin keduanya terisi sebelum sampai ke sini.
                     'skdp' => [
-                        'noSurat' => $this->SEPForm['skdp']['noSurat'] ?? '',
-                        'kodeDPJP' => $this->SEPForm['skdp']['kodeDPJP'] ?? '',
+                        'noSurat' => trim((string) ($this->SPRIForm['noSPRIBPJS'] ?? '')),
+                        'kodeDPJP' => $this->kodeDpjpSpri(),
                     ],
                     'dpjpLayan' => '', // kosong untuk RANAP (jnsPelayanan=1)
                     'noTelp' => $this->SEPForm['noTelp'] ?? '',
@@ -718,14 +725,41 @@ new class extends Component {
     /* ===============================
      | LOV LISTENERS
      =============================== */
+    /**
+     * Kode DPJP BPJS dokter pembuat SPRI; '' bila SPRI belum terbit.
+     * ATURAN: SPRI harus sama dengan SEP — dokter di SEP Rawat Inap = dokter di SPRI.
+     */
+    private function kodeDpjpSpri(): string
+    {
+        return filled($this->SPRIForm['noSPRIBPJS'] ?? '') ? trim((string) ($this->SPRIForm['drKontrolBPJS'] ?? '')) : '';
+    }
+
+    /** DPJP SEP yang TERKIRIM berbeda dari dokter SPRI? (data lama, sebelum aturan ini ditegakkan) */
+    public function dpjpSepBedaDariSpri(): bool
+    {
+        $kodeSpri = $this->kodeDpjpSpri();
+        $kodeTerkirim = trim((string) ($this->sepData['reqSep']['request']['t_sep']['skdp']['kodeDPJP'] ?? ''));
+
+        return $kodeSpri !== '' && $kodeTerkirim !== '' && $kodeSpri !== $kodeTerkirim;
+    }
+
     #[On('lov.selected.riFormDokterVclaim')]
     public function riFormDokterVclaim(string $target, array $payload): void
     {
+        // SPRI sudah terbit -> DPJP SEP mengikuti SPRI; ganti dokter dilakukan di tab SPRI.
+        if ($this->kodeDpjpSpri() !== '') {
+            $this->drId = $this->SPRIForm['drKontrol'] ?: $this->drId;
+            $this->drDesc = $this->SPRIForm['drKontrolDesc'] ?: $this->drDesc;
+            $this->incrementVersion('form-sep');
+            $this->dispatch('toast', type: 'warning', message: 'DPJP SEP mengikuti dokter SPRI. Untuk mengganti dokter, ubah lewat tab SPRI.');
+
+            return;
+        }
+
         $this->drId = $payload['dr_id'] ?? null;
         $this->drDesc = $payload['dr_name'] ?? '';
         $this->SEPForm['dpjpLayan'] = $payload['kd_dr_bpjs'] ?? '';
         $this->SEPForm['poli']['tujuan'] = $payload['kd_poli_bpjs'] ?? $this->SEPForm['poli']['tujuan'];
-        $this->SEPForm['skdp']['kodeDPJP'] = $payload['kd_dr_bpjs'] ?? '';
         $this->incrementVersion('form-sep');
         $this->dispatch('focus-vclaim-ri-diagnosa');
     }
@@ -1020,7 +1054,7 @@ new class extends Component {
                             <div class="flex items-center gap-1">
                                 <span
                                     class="w-5 h-5 rounded-full flex items-center justify-center text-white text-xs font-bold {{ !empty($SEPForm['diagAwal']) ? 'bg-blue-500' : 'bg-gray-300' }}">2</span>
-                                <span>Isi form SEP (Diagnosa, DPJP, dll)</span>
+                                <span>Isi form SEP (Diagnosa, dll) — DPJP mengikuti SPRI</span>
                                 @if (!empty($SEPForm['diagAwal']))
                                     <span class="text-green-600">✓</span>
                                 @endif
@@ -1291,15 +1325,18 @@ new class extends Component {
                                     {{-- 5. No. SPRI --}}
                                     <div class="lg:col-span-2">
                                         <x-input-label value="No. SPRI *" />
-                                        <x-text-input wire:model="SEPForm.skdp.noSurat" class="w-full"
-                                            :disabled="$isFormLocked" placeholder="Auto dari SPRI" />
+                                        {{-- Hanya tampilan: nilainya milik SPRI (sumber tunggal kiriman skdp ke BPJS). --}}
+                                        <x-text-input wire:model="SPRIForm.noSPRIBPJS" class="w-full"
+                                            :disabled="true" placeholder="Dari tab SPRI" :error="$errors->has('SPRIForm.noSPRIBPJS')" />
+                                        <x-input-error :messages="$errors->get('SPRIForm.noSPRIBPJS')" class="mt-1" />
                                     </div>
 
                                     {{-- 6. DPJP Pemberi Surat SKDP/SPRI --}}
                                     <div class="lg:col-span-2">
                                         <x-input-label value="DPJP Pemberi Surat SKDP/SPRI *" />
-                                        <x-text-input wire:model="SEPForm.skdp.kodeDPJP" class="w-full"
-                                            :disabled="$isFormLocked" placeholder="Auto dari SPRI / LOV Dokter" />
+                                        <x-text-input wire:model="SPRIForm.drKontrolBPJS" class="w-full"
+                                            :disabled="true" placeholder="Dari tab SPRI" :error="$errors->has('SPRIForm.drKontrolBPJS')" />
+                                        <x-input-error :messages="$errors->get('SPRIForm.drKontrolBPJS')" class="mt-1" />
                                     </div>
 
                                     {{-- 7. Tgl. SEP --}}
@@ -1367,8 +1404,20 @@ new class extends Component {
 
                                     {{-- LOV Dokter DPJP --}}
                                     <div class="lg:col-span-4">
+                                        {{-- SPRI harus sama dengan SEP: begitu SPRI terbit, DPJP di sini terkunci mengikuti dokter SPRI. --}}
                                         <livewire:lov.dokter.lov-dokter label="DPJP yang Melayani (Rawat Inap) *"
-                                            target="riFormDokterVclaim" :initialDrId="$drId ?? null" :disabled="$isFormLocked" />
+                                            target="riFormDokterVclaim" :initialDrId="$drId ?? null"
+                                            :disabled="$isFormLocked || filled($SPRIForm['noSPRIBPJS'] ?? '')" />
+                                        @if (filled($SPRIForm['noSPRIBPJS'] ?? ''))
+                                            <p class="mt-1 text-xs text-muted-soft">Mengikuti dokter SPRI — untuk mengganti, ubah lewat tab SPRI.</p>
+                                        @endif
+                                        @if ($this->dpjpSepBedaDariSpri())
+                                            <p class="mt-1 text-xs font-medium text-error">
+                                                DPJP pada SEP yang terkirim (kode {{ $sepData['reqSep']['request']['t_sep']['skdp']['kodeDPJP'] ?? '-' }})
+                                                berbeda dari dokter SPRI (kode {{ $SPRIForm['drKontrolBPJS'] ?? '-' }}).
+                                                Klik Edit SEP lalu simpan untuk menyamakannya.
+                                            </p>
+                                        @endif
                                         @if (!empty($SEPForm['dpjpLayan']))
                                             <p class="mt-1 text-xs text-muted-soft">Kode DPJP BPJS: <span
                                                     class="font-mono font-semibold">{{ $SEPForm['dpjpLayan'] }}</span>
