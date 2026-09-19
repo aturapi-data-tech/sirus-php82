@@ -38,7 +38,11 @@
         $noTelp = $reqSep['noTelp'] ?? '-';
 
         // ── Sub/Spesialis (resSep['poli'] = string "PENYAKIT DALAM" / resSep['kdPoli'] = "INT") ──
-        $subSpesialis = $resSep['poli'] ?? ($dataTxn['poliDesc'] ?? ($reqSep['poli']['tujuan'] ?? '-'));
+        // RI ber-SPRI: di-resolve di component (poli dokter SPRI); selain itu rantai lama.
+        $subSpesialis = $data['subSpesialis'] ?? ($resSep['poli'] ?? ($dataTxn['poliDesc'] ?? ($reqSep['poli']['tujuan'] ?? '-')));
+        if (trim((string) $subSpesialis) === '') {
+            $subSpesialis = '-';
+        }
 
         // ── Dokter DPJP ── (di-resolve di component cetak-sep.blade.php)
         $dokterDpjp = $data['dokterDpjp'] ?? ($resSep['dpjp']['nmDPJP'] ?? ($dataTxn['drDesc'] ?? '-'));
