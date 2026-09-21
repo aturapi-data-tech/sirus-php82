@@ -25,6 +25,8 @@ use Livewire\Attributes\Session;
  *     status_pulang: L = Lunas, H = Bon/Hutang, bukan ri_status.)
  *   - LOS / lama dirawat = exit_date - entry_date (Oracle date arithmetic, NUMBER hari
  *     berpecahan — masuk 23.00 keluar 01.00 = 0,08 hari). Sama dengan RL 3.2.
+ *   - Hari rawat dihitung dari SEGMEN KAMAR (rsmst_trfrooms, lihat segmenKamarQuery): tiap hari
+ *     jatuh ke bangsal tempat pasien benar-benar dirawat, bukan seluruhnya ke kamar terakhir.
  *   - Σ lama dirawat dibebankan SELURUHNYA ke periode tanggal PULANG. Ini pendekatan, bukan
  *     sensus harian: pasien yang masih dirawat belum terhitung, dan hari rawat lintas bulan
  *     jatuh ke bulan pulangnya. Karena itu komponen hitungan ditampilkan di layar.
@@ -205,17 +207,62 @@ trait KunjunganRITrait
     }
 
     /**
-     * Aggregate query — group by ekspresi yang dikirim caller.
+     * SEGMEN KAMAR — dasar hari rawat semua indikator.
+     *
+     * Satu baris per segmen kamar (rsmst_trfrooms: start_date → end_date) milik kunjungan yang
+     * PULANG dalam periode. Pindah Kamar menutup segmen lama & membuka yang baru; Kasir menutup
+     * segmen terakhir dengan tanggal pulang. Segmen yang masih terbuka ditutup dengan exit_date.
+     * Kunjungan tanpa riwayat kamar sama sekali (data lama) diwakili SATU segmen: kamar di header,
+     * entry_date → exit_date — supaya tidak lenyap dari hitungan.
+     *
+     * Dengan ini hari rawat jatuh ke bangsal tempat pasien BENAR-BENAR dirawat, bukan seluruhnya
+     * ke bangsal kamar terakhir (dulu bangsal transit seperti ICU tampak kosong).
+     * Populasinya tidak berubah: hanya kunjungan ber-exit_date dalam periode; syarat status P &
+     * lama dirawat wajar tetap dikenakan pemanggil lewat kondisiDataWajarSql('s').
+     */
+    protected function segmenKamarQuery($start, $end)
+    {
+        $saring = fn($query) => $query
+            ->whereBetween('h.exit_date', [$start, $end])
+            ->where('h.klaim_id', '!=', 'KR')
+            ->whereRaw("NVL(h.ri_status,'-') <> 'F'");
+
+        $kolomHeader = 'h.rihdr_no, h.entry_date, h.exit_date, h.ri_status';
+
+        $denganRiwayat = $saring(
+            DB::table('rstxn_rihdrs as h')
+                ->join('rsmst_trfrooms as t', 't.rihdr_no', '=', 'h.rihdr_no')
+                ->selectRaw("{$kolomHeader}, t.room_id as seg_room_id, t.start_date as seg_mulai, NVL(t.end_date, h.exit_date) as seg_selesai, 1 as ada_riwayat")
+        );
+
+        $tanpaRiwayat = $saring(
+            DB::table('rstxn_rihdrs as h')
+                ->whereNotExists(fn($query) => $query->selectRaw('1')->from('rsmst_trfrooms as t')->whereColumn('t.rihdr_no', 'h.rihdr_no'))
+                ->selectRaw("{$kolomHeader}, h.room_id as seg_room_id, h.entry_date as seg_mulai, h.exit_date as seg_selesai, 0 as ada_riwayat")
+        );
+
+        return $denganRiwayat->unionAll($tanpaRiwayat);
+    }
+
+    /** Segmen yang tanggalnya sah: punya tanggal mulai dan tidak berakhir sebelum mulai. */
+    protected function kondisiSegmenSahSql(): string
+    {
+        return '(s.seg_mulai IS NOT NULL AND s.seg_selesai >= s.seg_mulai)';
+    }
+
+    /**
+     * Aggregate per periode — group by ekspresi yang dikirim caller (memakai alias h).
+     * Dua query digabung per periode:
+     *   (1) header  : jumlah kunjungan & penggolongan data janggal (satu baris per kunjungan);
+     *   (2) segmen  : hari rawat & pasien yang memakai bangsal yang dihitung.
+     * Dipisah karena menggabung segmen ke query (1) akan menggandakan hitungan BPJS/UMUM.
      */
     protected function buildKunjunganRIAggregate($start, $end, string $groupSql)
     {
-        $bangsalDihitung = $this->kondisiBangsalDihitungSql();
         $dataWajar = $this->kondisiDataWajarSql();
-        $dihitung = "({$bangsalDihitung} AND {$dataWajar})";
 
-        return DB::table('rstxn_rihdrs as h')
+        $header = DB::table('rstxn_rihdrs as h')
             ->leftJoin('rsmst_klaimtypes as k', 'k.klaim_id', '=', 'h.klaim_id')
-            ->leftJoin('rsmst_rooms as r', 'r.room_id', '=', 'h.room_id')
             ->select([
                 DB::raw("{$groupSql} as periode"),
                 DB::raw("COUNT(DISTINCT h.rihdr_no) as total"),
@@ -225,12 +272,10 @@ trait KunjunganRITrait
                 DB::raw("SUM(CASE WHEN h.ri_status='P' THEN 1 ELSE 0 END) as selesai"),
                 // Punya exit_date tapi status bukan P (Pulang) — data rusak, bagian dari anomali_dikeluarkan
                 DB::raw("SUM(CASE WHEN NVL(h.ri_status,'-')<>'P' THEN 1 ELSE 0 END) as status_lain"),
-                // Komponen indikator — HANYA kunjungan di bangsal yang dihitung (lihat $parameterBangsal)
-                // DAN lama dirawatnya bisa dipercaya. Oracle date subtraction returns days as NUMBER.
-                DB::raw("COUNT(DISTINCT CASE WHEN {$dihitung} THEN h.rihdr_no END) as keluar_bor"),
-                DB::raw("COUNT(DISTINCT CASE WHEN NOT {$bangsalDihitung} THEN h.rihdr_no END) as luar_bangsal"),
-                DB::raw("COUNT(DISTINCT CASE WHEN {$bangsalDihitung} AND NOT {$dataWajar} THEN h.rihdr_no END) as anomali_dikeluarkan"),
-                DB::raw("SUM(CASE WHEN {$dihitung} THEN NVL(h.exit_date - h.entry_date, 0) ELSE 0 END) as total_los"),
+                // Kunjungan yang tanggal pulang & lama dirawatnya bisa dipercaya
+                DB::raw("SUM(CASE WHEN {$dataWajar} THEN 1 ELSE 0 END) as wajar"),
+                // Σ lama dirawat versi HEADER (exit − entry) — hanya pembanding uji silang terhadap Σ segmen
+                DB::raw("SUM(CASE WHEN {$dataWajar} THEN h.exit_date - h.entry_date ELSE 0 END) as los_header"),
                 DB::raw("SUM(CASE WHEN {$dataWajar} AND h.exit_date - h.entry_date < 1 THEN 1 ELSE 0 END) as los_kurang_1"),
             ])
             ->whereBetween('h.exit_date', [$start, $end])
@@ -241,6 +286,39 @@ trait KunjunganRITrait
             ->orderBy(DB::raw($groupSql))
             ->get()
             ->keyBy('periode');
+
+        $groupSegmen = str_replace('h.exit_date', 's.exit_date', $groupSql);
+        $wajarSegmen = $this->kondisiDataWajarSql('s') . ' AND ' . $this->kondisiSegmenSahSql();
+        $dihitung = "({$wajarSegmen} AND " . $this->kondisiBangsalDihitungSql() . ')';
+
+        $segmen = DB::query()
+            ->fromSub($this->segmenKamarQuery($start, $end), 's')
+            ->leftJoin('rsmst_rooms as r', 'r.room_id', '=', 's.seg_room_id')
+            ->select([
+                DB::raw("{$groupSegmen} as periode"),
+                // Pasien yang memakai bed di bangsal yang dihitung — penyebut ALOS / BTO / TOI
+                DB::raw("COUNT(DISTINCT CASE WHEN {$dihitung} THEN s.rihdr_no END) as keluar_bor"),
+                // Hari rawat di bangsal yang dihitung — pembilang BOR
+                DB::raw("SUM(CASE WHEN {$dihitung} THEN s.seg_selesai - s.seg_mulai ELSE 0 END) as total_los"),
+                // Hari rawat SEMUA bangsal — pembanding uji silang terhadap los_header
+                DB::raw("SUM(CASE WHEN {$wajarSegmen} THEN s.seg_selesai - s.seg_mulai ELSE 0 END) as los_segmen"),
+            ])
+            ->groupBy(DB::raw($groupSegmen))
+            ->get()
+            ->keyBy('periode');
+
+        return $header->map(function ($row) use ($segmen) {
+            $rowSegmen = $segmen->get($row->periode);
+            $wajar = (int) ($row->wajar ?? 0);
+            $row->keluar_bor = (int) ($rowSegmen->keluar_bor ?? 0);
+            $row->total_los = (float) ($rowSegmen->total_los ?? 0);
+            $row->los_segmen = (float) ($rowSegmen->los_segmen ?? 0);
+            // Tiap kunjungan jatuh tepat di satu kelompok: data janggal → luar bangsal → dihitung.
+            $row->anomali_dikeluarkan = (int) $row->total - $wajar;
+            $row->luar_bangsal = max(0, $wajar - $row->keluar_bor);
+
+            return $row;
+        });
     }
 
     protected function pasienUnikGlobalRI($start, $end): int
@@ -255,11 +333,11 @@ trait KunjunganRITrait
     }
 
     /**
-     * Breakdown per bangsal — semua bangsal, sorted desc by total.
-     * Plus ALOS, total LOS, jumlah pasien meninggal (untuk GDR/NDR).
-     *
-     * Catatan: bangsal_id BUKAN kolom langsung di rstxn_rihdrs. Lookup via:
-     *   rstxn_rihdrs.room_id → rsmst_rooms.bangsal_id → rsmst_bangsals.bangsal_name
+     * Breakdown per bangsal — dua query digabung per bangsal_id:
+     *   (1) header, menurut bangsal kamar TERAKHIR: pasien pulang dari bangsal itu, data janggal,
+     *       dan kematian (NDR/GDR) — kematian dicatat di tempat pasien terakhir dirawat;
+     *   (2) segmen kamar, menurut bangsal TEMPAT DIRAWAT: hari rawat & pasien yang dilayani
+     *       (pulang + dipindahkan, sama dengan "pasien keluar ruangan" pada sensus harian).
      *
      * Deteksi "Meninggal" lewat JSON datadaftarri_json (path:
      *   perencanaan.tindakLanjut.tindakLanjutKode = '419099009' SNOMED-CT).
@@ -270,17 +348,14 @@ trait KunjunganRITrait
         $deathPattern = '"tindakLanjutKode":"419099009"';
         $dataWajar = $this->kondisiDataWajarSql();
 
-        return DB::table('rstxn_rihdrs as h')
+        $header = DB::table('rstxn_rihdrs as h')
             ->leftJoin('rsmst_rooms as r', 'r.room_id', '=', 'h.room_id')
             ->leftJoin('rsmst_bangsals as b', 'b.bangsal_id', '=', 'r.bangsal_id')
             ->select([
                 'r.bangsal_id',
                 DB::raw('MAX(b.bangsal_name) as bangsal_name'),
                 DB::raw('COUNT(DISTINCT h.rihdr_no) as total'),
-                // Komponen indikator: hanya kunjungan yang lama dirawatnya bisa dipercaya
-                DB::raw("COUNT(DISTINCT CASE WHEN {$dataWajar} THEN h.rihdr_no END) as keluar_dihitung"),
                 DB::raw("COUNT(DISTINCT CASE WHEN NOT {$dataWajar} THEN h.rihdr_no END) as anomali_dikeluarkan"),
-                DB::raw("SUM(CASE WHEN {$dataWajar} THEN h.exit_date - h.entry_date ELSE 0 END) as total_los"),
                 DB::raw("SUM(CASE WHEN {$dataWajar} AND h.exit_date - h.entry_date < 1 THEN 1 ELSE 0 END) as los_kurang_1"),
                 DB::raw("SUM(CASE WHEN INSTR(h.datadaftarri_json, '{$deathPattern}') > 0 THEN 1 ELSE 0 END) as meninggal"),
                 DB::raw("SUM(CASE WHEN INSTR(h.datadaftarri_json, '{$deathPattern}') > 0 AND NVL(h.exit_date - h.entry_date, 0) >= 2 THEN 1 ELSE 0 END) as meninggal48"),
@@ -290,25 +365,62 @@ trait KunjunganRITrait
             ->whereNotNull('h.exit_date')
             ->whereRaw("NVL(h.ri_status,'-') <> 'F'")
             ->groupBy('r.bangsal_id')
-            ->orderByDesc('total')
-            ->get();
+            ->get()
+            ->keyBy(fn($row) => (string) ($row->bangsal_id ?? ''));
+
+        $wajarSegmen = $this->kondisiDataWajarSql('s') . ' AND ' . $this->kondisiSegmenSahSql();
+
+        $segmen = DB::query()
+            ->fromSub($this->segmenKamarQuery($start, $end), 's')
+            ->leftJoin('rsmst_rooms as r', 'r.room_id', '=', 's.seg_room_id')
+            ->leftJoin('rsmst_bangsals as b', 'b.bangsal_id', '=', 'r.bangsal_id')
+            ->select([
+                'r.bangsal_id',
+                DB::raw('MAX(b.bangsal_name) as bangsal_name'),
+                DB::raw("COUNT(DISTINCT CASE WHEN {$wajarSegmen} THEN s.rihdr_no END) as pasien_bangsal"),
+                DB::raw("SUM(CASE WHEN {$wajarSegmen} THEN s.seg_selesai - s.seg_mulai ELSE 0 END) as total_los"),
+            ])
+            ->groupBy('r.bangsal_id')
+            ->get()
+            ->keyBy(fn($row) => (string) ($row->bangsal_id ?? ''));
+
+        // Gabungan kunci: bangsal transit bisa hanya muncul di segmen (tak ada yang pulang dari sana).
+        return $header->keys()->merge($segmen->keys())->unique()->values()
+            ->map(function (string $bangsalId) use ($header, $segmen) {
+                $rowHeader = $header->get($bangsalId);
+                $rowSegmen = $segmen->get($bangsalId);
+
+                return (object) [
+                    'bangsal_id'          => $bangsalId === '' ? null : $bangsalId,
+                    'bangsal_name'        => $rowHeader->bangsal_name ?? ($rowSegmen->bangsal_name ?? null),
+                    'total'               => (int) ($rowHeader->total ?? 0),
+                    'anomali_dikeluarkan' => (int) ($rowHeader->anomali_dikeluarkan ?? 0),
+                    'los_kurang_1'        => (int) ($rowHeader->los_kurang_1 ?? 0),
+                    'meninggal'           => (int) ($rowHeader->meninggal ?? 0),
+                    'meninggal48'         => (int) ($rowHeader->meninggal48 ?? 0),
+                    'pasien_bangsal'      => (int) ($rowSegmen->pasien_bangsal ?? 0),
+                    'total_los'           => (float) ($rowSegmen->total_los ?? 0),
+                ];
+            })
+            ->sortByDesc('total_los')
+            ->values();
     }
 
     /**
      * Tambahkan indikator BOR/BTO/TOI/GDR/NDR ke tiap row breakdown bangsal.
      *
-     * Formula:
-     *   BOR = Σ LOS / (TT × hari periode) × 100%
-     *   BTO = Σ pulang / TT
-     *   TOI = (TT × hari − Σ LOS) / Σ pulang
-     *   GDR = meninggal / Σ pulang × 1000 (per mille)
-     *   NDR = meninggal_LOS≥48h / Σ pulang × 1000
+     * Formula (hari rawat & pasien dilayani dari SEGMEN KAMAR):
+     *   BOR  = Σ hari rawat di bangsal / (TT × hari periode) × 100%
+     *   ALOS = Σ hari rawat di bangsal / pasien dilayani bangsal
+     *   BTO  = pasien dilayani bangsal / TT
+     *   TOI  = (TT × hari − Σ hari rawat) / pasien dilayani bangsal
+     *   GDR  = meninggal / pasien pulang dari bangsal × 1000 (per mille)
+     *   NDR  = meninggal ≥ 48 jam / pasien pulang dari bangsal × 1000
      *
-     * Bangsal tanpa data TT (bangsal_id NULL atau tidak ada bed) → bor/bto/toi
-     * di-set null (akan ditampilkan "—" oleh view).
+     * Bangsal tanpa TT atau yang dikeluarkan dari BOR → bor/bto/toi null ("—" di view).
      *
-     * @param  iterable $rows       Hasil bangsalBreakdownRI() — Collection of stdClass
-     * @param  int      $totalDays  Total hari di periode laporan
+     * @param  iterable $rows       Hasil bangsalBreakdownRI()
+     * @param  int      $totalDays  Hari periode yang sudah berjalan
      * @return array<int,array>     Array of array yang siap dirender
      */
     protected function enrichBangsalIndicators($rows, int $totalDays): array
@@ -318,7 +430,7 @@ trait KunjunganRITrait
 
         foreach ($rows as $row) {
             $total = (int) ($row->total ?? 0);
-            $keluarDihitung = (int) ($row->keluar_dihitung ?? 0);
+            $pasienBangsal = (int) ($row->pasien_bangsal ?? 0);
             $totalLos = (float) ($row->total_los ?? 0);
             $meninggal = (int) ($row->meninggal ?? 0);
             $meninggal48 = (int) ($row->meninggal48 ?? 0);
@@ -330,9 +442,9 @@ trait KunjunganRITrait
             $bor = ($tt > 0 && $totalDays > 0)
                 ? round($totalLos / ($tt * $totalDays) * 100, 1)
                 : null;
-            $bto = $tt > 0 ? round($keluarDihitung / $tt, 2) : null;
-            $toi = ($tt > 0 && $totalDays > 0 && $keluarDihitung > 0)
-                ? round((($tt * $totalDays) - $totalLos) / $keluarDihitung, 1)
+            $bto = $tt > 0 ? round($pasienBangsal / $tt, 2) : null;
+            $toi = ($tt > 0 && $totalDays > 0 && $pasienBangsal > 0)
+                ? round((($tt * $totalDays) - $totalLos) / $pasienBangsal, 1)
                 : null;
             $gdr = $total > 0 ? round($meninggal / $total * 1000, 1) : 0.0;
             $ndr = $total > 0 ? round($meninggal48 / $total * 1000, 1) : 0.0;
@@ -340,11 +452,12 @@ trait KunjunganRITrait
             $out[] = [
                 'bangsal_id'   => $row->bangsal_id,
                 'bangsal_name' => $row->bangsal_name,
+                // total = pasien PULANG dari bangsal ini (kamar terakhir) — penyebut NDR/GDR
                 'total'        => $total,
-                // keluar_dihitung = total dikurangi data janggal; penyebut BTO/TOI/ALOS (NDR/GDR tetap memakai total)
-                'keluar_dihitung' => $keluarDihitung,
+                // pasien_bangsal = pasien yang DIRAWAT di bangsal ini (pulang + dipindahkan) — penyebut ALOS/BTO/TOI
+                'pasien_bangsal' => $pasienBangsal,
                 'anomali_dikeluarkan' => (int) ($row->anomali_dikeluarkan ?? 0),
-                'alos'         => $keluarDihitung > 0 ? round($totalLos / $keluarDihitung, 1) : 0.0,
+                'alos'         => $pasienBangsal > 0 ? round($totalLos / $pasienBangsal, 1) : 0.0,
                 'total_los'    => round($totalLos, 1),
                 'los_kurang_1' => (int) ($row->los_kurang_1 ?? 0),
                 'tt'           => $tt,
@@ -384,6 +497,8 @@ trait KunjunganRITrait
             'keluar_bor'    => $keluarBor,
             'luar_bangsal'  => (int) ($r->luar_bangsal ?? 0),
             'anomali_dikeluarkan' => (int) ($r->anomali_dikeluarkan ?? 0),
+            'los_header'    => round((float) ($r->los_header ?? 0), 1),
+            'los_segmen'    => round((float) ($r->los_segmen ?? 0), 1),
             'total_los'     => round($totalLos, 1),
             // ALOS per periode = total_los / keluar_bor (weighted)
             'alos'          => $keluarBor > 0 ? round($totalLos / $keluarBor, 1) : 0.0,
@@ -408,6 +523,8 @@ trait KunjunganRITrait
             'keluar_bor'   => $keluarBor,
             'luar_bangsal' => $sum('luar_bangsal'),
             'anomali_dikeluarkan' => $sum('anomali_dikeluarkan'),
+            'los_header'   => round($sum('los_header'), 1),
+            'los_segmen'   => round($sum('los_segmen'), 1),
             'total_los'    => round($totalLos, 1),
             // ALOS global = weighted (total_los / keluar_bor)
             'alos'         => $keluarBor > 0 ? round($totalLos / $keluarBor, 1) : 0.0,
@@ -535,6 +652,18 @@ trait KunjunganRITrait
             ->where('h.klaim_id', '!=', 'KR')
             ->first();
 
+        // Mutu riwayat kamar: segmen bertanggal tak sah tidak menyumbang hari rawat; kunjungan tanpa
+        // riwayat kamar diwakili satu segmen dari header (lihat segmenKamarQuery).
+        $segmenSah = $this->kondisiSegmenSahSql();
+        $riwayat = DB::query()
+            ->fromSub($this->segmenKamarQuery($start, $end), 's')
+            ->select([
+                DB::raw("SUM(CASE WHEN s.ada_riwayat = 1 AND NOT {$segmenSah} THEN 1 ELSE 0 END) as segmen_janggal"),
+                DB::raw('COUNT(DISTINCT CASE WHEN s.ada_riwayat = 0 THEN s.rihdr_no END) as tanpa_riwayat_kamar'),
+                DB::raw('SUM(CASE WHEN s.ada_riwayat = 1 THEN 1 ELSE 0 END) as jumlah_segmen'),
+            ])
+            ->first();
+
         // Masih dirawat = belum punya exit_date → belum masuk hitungan mana pun di laporan ini.
         $dirawat = DB::table('rstxn_rihdrs')
             ->select([
@@ -556,6 +685,9 @@ trait KunjunganRITrait
             'los_lebih_batas' => (int) ($row->los_lebih_batas ?? 0),
             'batas_los'       => $batas,
             'tanpa_bangsal'   => (int) ($row->tanpa_bangsal ?? 0),
+            'segmen_janggal'  => (int) ($riwayat->segmen_janggal ?? 0),
+            'tanpa_riwayat_kamar' => (int) ($riwayat->tanpa_riwayat_kamar ?? 0),
+            'jumlah_segmen'   => (int) ($riwayat->jumlah_segmen ?? 0),
             'masih_dirawat'   => (int) ($dirawat->jumlah ?? 0),
             'masih_dirawat_hari' => round((float) ($dirawat->hari_rawat ?? 0), 1),
         ];
