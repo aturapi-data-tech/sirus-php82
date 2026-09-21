@@ -38,6 +38,10 @@
             'Masih dalam batas, tetap dihitung. Pastikan memang rawat lama, bukan tanggal pulang yang telat diisi.'],
         ['Lama dirawat di bawah 1 hari', $anomali['los_kurang_1'] ?? 0, 'peringatan',
             'Masuk dan keluar kurang dari 24 jam. Sah secara klinis dan tetap dihitung, tetapi bila menumpuk di satu bangsal ALOS-nya jatuh mendekati 0.'],
+        ['Segmen riwayat kamar bertanggal tak sah', $anomali['segmen_janggal'] ?? 0, 'dikeluarkan',
+            'Segmen kamar tanpa tanggal mulai, atau selesai sebelum mulai (dari ' . $angka($anomali['jumlah_segmen'] ?? 0) . ' segmen). Hari rawat segmen itu tidak dihitung; perbaiki di Administrasi RI → Riwayat Kamar.'],
+        ['Tanpa riwayat kamar', $anomali['tanpa_riwayat_kamar'] ?? 0, 'peringatan',
+            'Kunjungan tidak punya baris riwayat kamar sama sekali (data lama). Tetap dihitung: seluruh lama dirawatnya dibebankan ke kamar di data kunjungan.'],
         ['Kamar tanpa bangsal', $anomali['tanpa_bangsal'] ?? 0, 'peringatan',
             'room_id kosong atau kamarnya belum dipetakan ke bangsal — masuk baris "(Tanpa Bangsal)". Bisa dikeluarkan lewat kartu Parameter TT per Bangsal.'],
         ['Batal tetapi bertanggal pulang', $anomali['batal_berexit'] ?? 0, 'info',
@@ -57,11 +61,19 @@
         'info' => 'text-ink dark:text-gray-100',
     ];
 
+    // Σ hari rawat menurut riwayat kamar vs menurut tanggal masuk–pulang (keduanya semua bangsal, data wajar).
+    $losHeader = (float) ($totals['los_header'] ?? 0);
+    $losSegmen = (float) ($totals['los_segmen'] ?? 0);
+
     $ujiSilang = [
+        ['Σ hari rawat riwayat kamar = Σ (pulang − masuk)',
+            $angka($losSegmen, 1) . ' vs ' . $angka($losHeader, 1),
+            abs($losSegmen - $losHeader) < 1,
+            'Selisih = riwayat kamar berlubang atau tumpang tindih (mis. tanggal mulai/selesai kamar diedit, atau segmen terakhir tidak sama dengan tanggal pulang). Selisih ' . $angka($losSegmen - $losHeader, 1) . ' hari.'],
         ['Total = dihitung + luar bangsal + data janggal',
             $angka($totalKeluar) . ' vs ' . $angka($keluarDihitung) . ' + ' . $angka($luarBangsal) . ' + ' . $angka($anomaliDikeluarkan),
             $totalKeluar === $keluarDihitung + $luarBangsal + $anomaliDikeluarkan,
-            'Setiap pasien keluar harus jatuh tepat di satu kelompok: ikut hitungan, di bangsal yang tidak dihitung BOR, atau data janggal.'],
+            'Setiap pasien keluar harus jatuh tepat di satu kelompok: data janggal, tidak pernah dirawat di bangsal yang dihitung BOR, atau ikut hitungan.'],
         ['BPJS + UMUM = Total keluar', $angka($jumlahPenjamin) . ' vs ' . $angka($totalKeluar), $jumlahPenjamin === $totalKeluar,
             'Selisih berarti ada kunjungan dengan klaim_id kosong.'],
         ['Σ pasien keluar per bangsal = Total keluar', $angka($jumlahBangsalKeluar) . ' vs ' . $angka($totalKeluar), $jumlahBangsalKeluar === $totalKeluar,
@@ -133,6 +145,6 @@
     </div>
     <div class="px-4 py-2 text-[10px] leading-snug text-muted dark:text-gray-500 border-t border-hairline-soft dark:border-gray-800">
         Data bertanda <strong>TIDAK DIHITUNG</strong> dikeluarkan dari Σ lama dirawat dan penyebut BOR / ALOS / TOI / BTO, tetapi tetap terhitung di jumlah kunjungan
-        (Total, BPJS, UMUM) dan di NDR / GDR. Angka di kartu ini mencakup semua bangsal; kolom "Dikeluarkan" pada tabel hanya menghitung bangsal yang dihitung BOR.
+        (Total, BPJS, UMUM) dan di NDR / GDR. Hari rawat diambil dari riwayat kamar, hanya untuk pasien yang sudah pulang (status P).
     </div>
 </div>

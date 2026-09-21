@@ -21,9 +21,9 @@
         $tt = $angka($kapasitasTT);
 
         return match ($indikator) {
-            'bor' => "BOR = Σ lama dirawat ÷ (TT × hari) × 100 = {$lamaDirawat} ÷ ({$tt} × {$hari}) × 100",
-            'alos' => "ALOS = Σ lama dirawat ÷ pasien keluar = {$lamaDirawat} ÷ {$keluar}",
-            'toi' => "TOI = ((TT × hari) − Σ lama dirawat) ÷ pasien keluar = (({$tt} × {$hari}) − {$lamaDirawat}) ÷ {$keluar}",
+            'bor' => "BOR = Σ hari rawat ÷ (TT × hari) × 100 = {$lamaDirawat} ÷ ({$tt} × {$hari}) × 100",
+            'alos' => "ALOS = Σ hari rawat ÷ pasien keluar = {$lamaDirawat} ÷ {$keluar}",
+            'toi' => "TOI = ((TT × hari) − Σ hari rawat) ÷ pasien keluar = (({$tt} × {$hari}) − {$lamaDirawat}) ÷ {$keluar}",
             'bto' => "BTO = pasien keluar ÷ TT = {$keluar} ÷ {$tt}",
         };
     };
@@ -49,8 +49,8 @@
                     <th class="px-3 py-2 text-right text-amber-700 dark:text-amber-300">UMUM</th>
                     <th class="px-3 py-2 text-right text-blue-700 dark:text-blue-300" title="Hari periode yang SUDAH berjalan s/d hari ini (periode mendatang = 0)">Hari</th>
                     <th class="px-3 py-2 text-right text-blue-700 dark:text-blue-300" title="Hari TT tersedia = TT × hari periode">TT × Hari</th>
-                    <th class="px-3 py-2 text-right text-blue-700 dark:text-blue-300" title="Pasien keluar yang ikut hitungan indikator = Total − bangsal yang tidak dihitung BOR − data janggal yang dikeluarkan">Keluar Dihitung</th>
-                    <th class="px-3 py-2 text-right text-blue-700 dark:text-blue-300" title="Σ (exit_date − entry_date) pasien keluar di bangsal yang dihitung, dibebankan ke periode tanggal pulang">Σ Lama Dirawat</th>
+                    <th class="px-3 py-2 text-right text-blue-700 dark:text-blue-300" title="Pasien keluar yang ikut hitungan indikator = Total − data janggal − yang tidak pernah dirawat di bangsal yang dihitung BOR">Keluar Dihitung</th>
+                    <th class="px-3 py-2 text-right text-blue-700 dark:text-blue-300" title="Σ hari rawat dari riwayat kamar, hanya di bangsal yang dihitung BOR; dibebankan ke periode tanggal pulang">Σ Hari Rawat</th>
                     <th class="px-2 py-2 text-right text-purple-700 dark:text-purple-300" title="Bed Occupancy Rate (%)">BOR</th>
                     <th class="px-2 py-2 text-right text-purple-700 dark:text-purple-300" title="Average Length of Stay (hari)">ALOS</th>
                     <th class="px-2 py-2 text-right text-purple-700 dark:text-purple-300" title="Turn Over Interval (hari)">TOI</th>

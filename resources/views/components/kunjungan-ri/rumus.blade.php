@@ -22,19 +22,19 @@
     $daftarRumus = [
         [
             'kode' => 'BOR', 'nama' => 'Bed Occupancy Rate', 'ideal' => '60–85%',
-            'rumus' => 'Σ lama dirawat ÷ (TT × hari periode) × 100',
+            'rumus' => 'Σ hari rawat ÷ (TT × hari periode) × 100',
             'isi' => $angka($lamaDirawat, 1) . ' ÷ (' . $angka($tt) . ' × ' . $angka($hari) . ') × 100',
             'hasil' => ($totals['bor'] ?? null) !== null ? $totals['bor'] . '%' : '—',
         ],
         [
             'kode' => 'ALOS', 'nama' => 'Average Length of Stay', 'ideal' => '6–9 hari',
-            'rumus' => 'Σ lama dirawat ÷ pasien keluar',
+            'rumus' => 'Σ hari rawat ÷ pasien keluar',
             'isi' => $angka($lamaDirawat, 1) . ' ÷ ' . $angka($keluar),
             'hasil' => $keluar > 0 ? ($totals['alos'] ?? 0) . ' hari' : '—',
         ],
         [
             'kode' => 'TOI', 'nama' => 'Turn Over Interval', 'ideal' => '1–3 hari',
-            'rumus' => '((TT × hari periode) − Σ lama dirawat) ÷ pasien keluar',
+            'rumus' => '((TT × hari periode) − Σ hari rawat) ÷ pasien keluar',
             'isi' => '(' . $angka($hariTersedia) . ' − ' . $angka($lamaDirawat, 1) . ') ÷ ' . $angka($keluar),
             'hasil' => ($totals['toi'] ?? null) !== null ? $totals['toi'] . ' hari' : '—',
         ],
@@ -82,15 +82,15 @@
                     Pasien keluar = {{ $angka($keluar) }}
                     @if ($keluar !== $keluarSemua)
                         <span class="font-normal text-amber-700 dark:text-amber-400">
-                            dari {{ $angka($keluarSemua) }} = {{ $angka($keluarSemua) }} − {{ $angka($totals['luar_bangsal'] ?? 0) }} di bangsal yang tidak dihitung BOR − {{ $angka($totals['anomali_dikeluarkan'] ?? 0) }} data janggal
+                            dari {{ $angka($keluarSemua) }} = {{ $angka($keluarSemua) }} − {{ $angka($totals['anomali_dikeluarkan'] ?? 0) }} data janggal − {{ $angka($totals['luar_bangsal'] ?? 0) }} yang tidak pernah dirawat di bangsal yang dihitung BOR
                         </span>
                     @endif
                 </dt>
-                <dd class="text-muted dark:text-gray-400">Kunjungan RI yang tanggal pulangnya (exit_date) jatuh dalam periode; klaim Kronis dan status Batal (F) dikeluarkan. Indikator hanya memakai bangsal yang dihitung (kartu Parameter TT per Bangsal) dan kunjungan yang lama dirawatnya bisa dipercaya (kartu Pemeriksaan Data).</dd>
+                <dd class="text-muted dark:text-gray-400">Kunjungan RI yang tanggal pulangnya (exit_date) jatuh dalam periode; klaim Kronis dan status Batal (F) dikeluarkan. Indikator hanya memakai pasien yang pernah dirawat di bangsal yang dihitung (kartu Parameter TT per Bangsal) dan kunjungan yang lama dirawatnya bisa dipercaya (kartu Pemeriksaan Data).</dd>
             </div>
             <div>
-                <dt class="font-semibold text-ink dark:text-gray-100">Σ lama dirawat = {{ $angka($lamaDirawat, 1) }} hari</dt>
-                <dd class="text-muted dark:text-gray-400">Jumlah (exit_date − entry_date) tiap pasien keluar, dalam hari berpecahan (masuk 23.00 keluar 01.00 = 0,08 hari). Seluruhnya dibebankan ke periode tanggal PULANG.</dd>
+                <dt class="font-semibold text-ink dark:text-gray-100">Σ hari rawat = {{ $angka($lamaDirawat, 1) }} hari</dt>
+                <dd class="text-muted dark:text-gray-400">Dari riwayat kamar: jumlah (selesai − mulai) tiap segmen kamar di bangsal yang dihitung BOR, dalam hari berpecahan (7 jam di kamar transit = 0,29 hari). Seluruhnya dibebankan ke periode tanggal PULANG.</dd>
             </div>
             <div>
                 <dt class="font-semibold text-ink dark:text-gray-100">Hari periode = {{ $angka($hari) }} dari {{ $angka($hariKalender) }} hari kalender</dt>
@@ -103,8 +103,8 @@
         </dl>
         <p class="mt-3 text-[11px] leading-snug text-muted dark:text-gray-400">
             <strong class="text-body dark:text-gray-300">Keterbatasan cara hitung ini:</strong>
-            bukan sensus harian — pasien yang MASIH dirawat belum terhitung sama sekali, dan hari rawat yang melintasi pergantian
-            bulan jatuh seluruhnya ke bulan pulangnya. Akibatnya BOR periode yang baru mulai bisa terlalu rendah atau melonjak.
+            bukan sensus harian — hanya pasien yang SUDAH pulang (status P) yang dihitung, pasien yang masih dirawat belum terhitung sama sekali,
+            dan hari rawat yang melintasi pergantian bulan jatuh seluruhnya ke bulan pulangnya. Akibatnya BOR periode yang baru mulai bisa terlalu rendah atau melonjak.
             Jumlahnya ada di kotak Pemeriksaan Data di bawah.
         </p>
     </div>
