@@ -9,14 +9,14 @@ new class extends Component {
     use KunjunganRITrait;
 
     public int $filterTahun;
-    public int $kapasitasTT;       // editable — default dari DB, user bisa override (mis. exclude ICU/IGD)
-    public int $defaultKapasitasTT;
+    public int $kapasitasTT = 0;        // TT total yang dipakai — bawaan = Σ TT bangsal yang dihitung, bisa ditimpa manual
+    public int $defaultKapasitasTT = 0; // Σ TT bangsal yang dihitung (lihat $parameterBangsal di trait)
 
     public function mount(): void
     {
         $this->filterTahun = Carbon::now()->year;
-        $this->defaultKapasitasTT = $this->kapasitasTTGlobal();
-        $this->kapasitasTT = $this->defaultKapasitasTT;
+        // TT per bangsal dari master + setelan tersimpan di sesi; TT total = Σ bangsal yang dihitung.
+        $this->muatParameterBangsal();
     }
 
     public function resetKapasitasTT(): void
@@ -170,7 +170,7 @@ new class extends Component {
                         <div class="text-xs text-blue-700 uppercase dark:text-blue-300">Kapasitas TT</div>
                         @if ($kapasitasTT !== $defaultKapasitasTT)
                             <button type="button" wire:click="resetKapasitasTT"
-                                class="text-[9px] text-blue-600 hover:underline dark:text-blue-400" title="Reset ke default DB">
+                                class="text-[9px] text-blue-600 hover:underline dark:text-blue-400" title="Kembali ke Σ TT bangsal yang dihitung">
                                 reset
                             </button>
                         @endif
@@ -179,8 +179,8 @@ new class extends Component {
                         min="1" max="9999"
                         class="mt-1 block w-full !text-xl !font-bold !py-0.5 !text-blue-800 dark:!text-blue-200" />
                     <div class="mt-0.5 text-[10px] text-blue-600 dark:text-blue-400 truncate"
-                        title="Default {{ $defaultKapasitasTT }} bed (rsmst_beds). Override untuk exclude ICU/IGD/perinatologi yang tidak dihitung BOR resmi.">
-                        default: {{ $defaultKapasitasTT }} bed (DB)
+                        title="Bawaan = jumlah TT bangsal yang dihitung BOR ({{ $defaultKapasitasTT }} bed). Atur per bangsal di kartu Parameter TT per Bangsal.">
+                        Σ bangsal dihitung: {{ $defaultKapasitasTT }} bed
                     </div>
                 </div>
             </div>
@@ -257,6 +257,10 @@ new class extends Component {
         </div>
     </div>
 
+    {{-- PARAMETER TT PER BANGSAL — TT bisa diubah & bangsal bisa dikeluarkan dari BOR (bed bayi, UGD) --}}
+    <x-kunjungan-ri.parameter-tt :rows="$parameterBangsal" :ttDihitung="$this->ttBangsalDihitung()"
+        :diubah="$this->parameterBangsalDiubah()" />
+
     {{-- TABEL PERIODE + RUMUS — komponen hitungan ditampilkan supaya angka janggal bisa dilacak --}}
     <x-kunjungan-ri.tabel-periode :rows="$this->rows" :totals="$tot" :pasienUnikGlobal="$this->pasienUnikGlobal"
         labelPeriode="Bulan" :kapasitasTT="$kapasitasTT" :defaultKapasitasTT="$defaultKapasitasTT" />
@@ -284,5 +288,5 @@ new class extends Component {
 
     {{-- PEMERIKSAAN DATA — hitungan data janggal + uji silang jumlah --}}
     <x-kunjungan-ri.anomali :anomali="$this->anomaliData" :totals="$tot" :bangsal="$this->bangsalBreakdown"
-        :kapasitasTT="$kapasitasTT" />
+        :kapasitasTT="$kapasitasTT" :ttBangsalDihitung="$this->ttBangsalDihitung()" />
 </div>

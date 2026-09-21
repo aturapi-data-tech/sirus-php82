@@ -6,6 +6,8 @@
     // Baris breakdown bangsal (enrichBangsalIndicators) — untuk uji silang jumlah.
     'bangsal' => [],
     'kapasitasTT' => 0,
+    // Σ TT bangsal yang dihitung (parameter TT per bangsal).
+    'ttBangsalDihitung' => 0,
 ])
 
 @php
@@ -13,7 +15,7 @@
 
     $totalKeluar = (int) ($totals['total'] ?? 0);
     $jumlahBangsalKeluar = array_sum(array_column($bangsal, 'total'));
-    $jumlahBangsalTT = array_sum(array_column($bangsal, 'tt'));
+    $jumlahBangsalTT = (int) $ttBangsalDihitung;
     $jumlahPenjamin = (int) ($totals['bpjs'] ?? 0) + (int) ($totals['umum'] ?? 0);
 
     // [judul, nilai, janggal?, keterangan]
@@ -40,9 +42,9 @@
         ['BPJS + UMUM = Total keluar', $angka($jumlahPenjamin) . ' vs ' . $angka($totalKeluar), $jumlahPenjamin === $totalKeluar,
             'Selisih berarti ada kunjungan dengan klaim_id kosong.'],
         ['Σ pasien keluar per bangsal = Total keluar', $angka($jumlahBangsalKeluar) . ' vs ' . $angka($totalKeluar), $jumlahBangsalKeluar === $totalKeluar,
-            'Harus sama: keduanya memakai penyaring yang sama.'],
-        ['Σ TT per bangsal = Kapasitas TT', $angka($jumlahBangsalTT) . ' vs ' . $angka($kapasitasTT), $jumlahBangsalTT === (int) $kapasitasTT,
-            'Beda berarti ada bed di kamar tanpa bangsal, bangsal tanpa pasien keluar pada periode ini, atau Kapasitas TT sedang diubah manual.'],
+            'Harus sama: keduanya menghitung SEMUA pasien keluar, termasuk bangsal yang tidak dihitung BOR.'],
+        ['Σ TT bangsal yang dihitung = Kapasitas TT', $angka($jumlahBangsalTT) . ' vs ' . $angka($kapasitasTT), $jumlahBangsalTT === (int) $kapasitasTT,
+            'Beda berarti Kapasitas TT total sedang ditimpa manual — BOR total tidak lagi sejalan dengan BOR per bangsal.'],
     ];
 @endphp
 
