@@ -10,10 +10,12 @@
 @php
     $angka = fn($nilai, int $desimal = 0) => number_format((float) $nilai, $desimal);
     $kelasAnomali = fn($jumlah) => $jumlah > 0 ? 'font-semibold text-amber-700 dark:text-amber-400' : 'text-muted-soft';
+    $kelasDikeluarkan = fn($jumlah) => $jumlah > 0 ? 'font-bold text-rose-700 dark:text-rose-400' : 'text-muted-soft';
     $rumusSel = function (array $row, string $indikator) use ($hariPeriode, $angka) {
         $lamaDirawat = $angka($row['total_los'], 1);
         $hari = $angka($hariPeriode);
-        $keluar = $angka($row['total']);
+        $keluar = $angka($row['keluar_dihitung']);
+        $semuaKeluar = $angka($row['total']);
         $tt = $angka($row['tt']);
 
         return match ($indikator) {
@@ -21,8 +23,8 @@
             'alos' => "ALOS = {$lamaDirawat} ÷ {$keluar}",
             'bto' => "BTO = {$keluar} ÷ {$tt}",
             'toi' => "TOI = (({$tt} × {$hari}) − {$lamaDirawat}) ÷ {$keluar}",
-            'ndr' => 'NDR = ' . $angka($row['meninggal48']) . " ÷ {$keluar} × 1000",
-            'gdr' => 'GDR = ' . $angka($row['meninggal']) . " ÷ {$keluar} × 1000",
+            'ndr' => 'NDR = ' . $angka($row['meninggal48']) . " ÷ {$semuaKeluar} × 1000",
+            'gdr' => 'GDR = ' . $angka($row['meninggal']) . " ÷ {$semuaKeluar} × 1000",
         };
     };
 
@@ -33,6 +35,8 @@
     $jumlah = [
         'tt' => array_sum(array_column($rowsDihitung, 'tt')),
         'total' => array_sum(array_column($rowsDihitung, 'total')),
+        'keluar_dihitung' => array_sum(array_column($rowsDihitung, 'keluar_dihitung')),
+        'anomali_dikeluarkan' => array_sum(array_column($rowsDihitung, 'anomali_dikeluarkan')),
         'total_los' => array_sum(array_column($rowsDihitung, 'total_los')),
         'los_kurang_1' => array_sum(array_column($rowsDihitung, 'los_kurang_1')),
         'meninggal' => array_sum(array_column($rowsDihitung, 'meninggal')),
@@ -40,9 +44,9 @@
     ];
     $jumlah['hari_tersedia'] = $jumlah['tt'] * (int) $hariPeriode;
     $jumlah['bor'] = $jumlah['hari_tersedia'] > 0 ? round($jumlah['total_los'] / $jumlah['hari_tersedia'] * 100, 1) : null;
-    $jumlah['alos'] = $jumlah['total'] > 0 ? round($jumlah['total_los'] / $jumlah['total'], 1) : null;
-    $jumlah['bto'] = ($jumlah['tt'] > 0 && $hariPeriode > 0) ? round($jumlah['total'] / $jumlah['tt'], 2) : null;
-    $jumlah['toi'] = ($jumlah['total'] > 0 && $jumlah['hari_tersedia'] > 0) ? round(($jumlah['hari_tersedia'] - $jumlah['total_los']) / $jumlah['total'], 1) : null;
+    $jumlah['alos'] = $jumlah['keluar_dihitung'] > 0 ? round($jumlah['total_los'] / $jumlah['keluar_dihitung'], 1) : null;
+    $jumlah['bto'] = ($jumlah['tt'] > 0 && $hariPeriode > 0) ? round($jumlah['keluar_dihitung'] / $jumlah['tt'], 2) : null;
+    $jumlah['toi'] = ($jumlah['keluar_dihitung'] > 0 && $jumlah['hari_tersedia'] > 0) ? round(($jumlah['hari_tersedia'] - $jumlah['total_los']) / $jumlah['keluar_dihitung'], 1) : null;
     $jumlah['ndr'] = $jumlah['total'] > 0 ? round($jumlah['meninggal48'] / $jumlah['total'] * 1000, 1) : null;
     $jumlah['gdr'] = $jumlah['total'] > 0 ? round($jumlah['meninggal'] / $jumlah['total'] * 1000, 1) : null;
 @endphp
@@ -62,8 +66,9 @@
                     <th class="px-3 py-3 text-left">Jenis Pelayanan (Bangsal)</th>
                     <th class="px-3 py-3 text-right text-blue-700 dark:text-blue-300" title="Jumlah bed bangsal ini (rsmst_beds lewat kamar → bangsal)">TT</th>
                     <th class="px-3 py-3 text-right text-blue-700 dark:text-blue-300" title="Hari TT tersedia = TT × hari periode">TT × Hari</th>
-                    <th class="px-3 py-3 text-right">Pasien Keluar</th>
-                    <th class="px-3 py-3 text-right text-blue-700 dark:text-blue-300" title="Σ (exit_date − entry_date) pasien keluar bangsal ini">Σ Lama Dirawat</th>
+                    <th class="px-3 py-3 text-right" title="Semua pasien keluar bangsal ini (penyebut NDR / GDR)">Pasien Keluar</th>
+                    <th class="px-2 py-3 text-right text-rose-700 dark:text-rose-400" title="Data janggal yang TIDAK ikut hitungan BOR / ALOS / BTO / TOI: status bukan P, lama dirawat negatif, tanpa tanggal masuk, atau di atas batas wajar">Dikeluarkan</th>
+                    <th class="px-3 py-3 text-right text-blue-700 dark:text-blue-300" title="Σ (exit_date − entry_date) pasien keluar bangsal ini, tanpa data janggal yang dikeluarkan">Σ Lama Dirawat</th>
                     <th class="px-2 py-3 text-right text-amber-700 dark:text-amber-400" title="Pasien keluar dengan lama dirawat di bawah 1 hari">LOS &lt; 1 hr</th>
                     <th class="px-2 py-3 text-right text-purple-700 dark:text-purple-300" title="Bed Occupancy Rate (%)">BOR</th>
                     <th class="px-2 py-3 text-right text-purple-700 dark:text-purple-300" title="Average Length of Stay (hari)">ALOS</th>
@@ -90,6 +95,7 @@
                             title="{{ $dihitung ? 'TT master: ' . $angka($row['tt_db'] ?? $row['tt']) : 'Dikeluarkan dari BOR — TT master: ' . $angka($row['tt_db'] ?? 0) }}">{{ $row['tt'] > 0 ? $angka($row['tt']) : '—' }}</td>
                         <td class="px-3 py-2.5 text-right tabular-nums text-blue-700 dark:text-blue-300">{{ $row['tt'] > 0 ? $angka($row['hari_tersedia']) : '—' }}</td>
                         <td class="px-3 py-2.5 text-right tabular-nums font-semibold">{{ $angka($row['total']) }}</td>
+                        <td class="px-2 py-2.5 text-right tabular-nums {{ $kelasDikeluarkan($row['anomali_dikeluarkan']) }}">{{ $angka($row['anomali_dikeluarkan']) }}</td>
                         <td class="px-3 py-2.5 text-right tabular-nums text-blue-700 dark:text-blue-300">{{ $angka($row['total_los'], 1) }}</td>
                         <td class="px-2 py-2.5 text-right tabular-nums {{ $kelasAnomali($row['los_kurang_1']) }}">{{ $angka($row['los_kurang_1']) }}</td>
                         <td class="px-2 py-2.5 text-right tabular-nums text-purple-700 dark:text-purple-300" title="{{ $rumusSel($row, 'bor') }}">{{ $row['bor'] !== null ? $row['bor'] . '%' : '—' }}</td>
@@ -103,7 +109,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="15" class="px-6 py-12">
+                        <td colspan="16" class="px-6 py-12">
                             <div class="flex flex-col items-center justify-center gap-3">
                                 <svg class="w-12 h-12 text-muted-soft" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" /></svg>
                                 <p class="text-base font-medium text-muted dark:text-gray-400">Belum ada data</p>
@@ -120,6 +126,7 @@
                         <td class="px-3 py-3 text-right tabular-nums text-blue-800 dark:text-blue-200">{{ $angka($jumlah['tt']) }}</td>
                         <td class="px-3 py-3 text-right tabular-nums text-blue-800 dark:text-blue-200">{{ $angka($jumlah['hari_tersedia']) }}</td>
                         <td class="px-3 py-3 text-right tabular-nums">{{ $angka($jumlah['total']) }}</td>
+                        <td class="px-2 py-3 text-right tabular-nums {{ $kelasDikeluarkan($jumlah['anomali_dikeluarkan']) }}">{{ $angka($jumlah['anomali_dikeluarkan']) }}</td>
                         <td class="px-3 py-3 text-right tabular-nums text-blue-800 dark:text-blue-200">{{ $angka($jumlah['total_los'], 1) }}</td>
                         <td class="px-2 py-3 text-right tabular-nums {{ $kelasAnomali($jumlah['los_kurang_1']) }}">{{ $angka($jumlah['los_kurang_1']) }}</td>
                         <td class="px-2 py-3 text-right tabular-nums text-purple-800 dark:text-purple-200">{{ $jumlah['bor'] !== null ? $jumlah['bor'] . '%' : '—' }}</td>
@@ -141,6 +148,6 @@
         <strong>Bangsal</strong> = bangsal kamar TERAKHIR pasien: bila pasien pindah kamar, seluruh lama dirawatnya dibebankan ke bangsal terakhir —
         bangsal transit (mis. ICU, perinatologi) bisa tampak terlalu sepi.
         <strong>Meninggal</strong> dibaca dari EMR Perencanaan RI (tindak lanjut SNOMED 419099009); kematian yang tidak dicatat di sana tidak terhitung.
-        NDR/GDR per 1000 pasien keluar.
+        NDR/GDR per 1000 pasien keluar (semua). <strong class="text-rose-700 dark:text-rose-400">Dikeluarkan</strong> = data janggal yang tidak ikut BOR / ALOS / BTO / TOI.
     </div>
 </div>
