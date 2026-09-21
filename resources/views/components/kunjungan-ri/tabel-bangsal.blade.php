@@ -26,14 +26,17 @@
         };
     };
 
-    // Baris JUMLAH dihitung ulang dari penjumlahan komponennya (bukan rata-rata persentase).
+    // Baris JUMLAH dihitung ulang dari penjumlahan komponennya (bukan rata-rata persentase),
+    // dan HANYA bangsal yang dihitung BOR — supaya cocok dengan baris TOTAL tabel periode.
+    $rowsDihitung = array_values(array_filter($rows, fn($row) => $row['dihitung'] ?? true));
+    $adaDikeluarkan = count($rowsDihitung) !== count($rows);
     $jumlah = [
-        'tt' => array_sum(array_column($rows, 'tt')),
-        'total' => array_sum(array_column($rows, 'total')),
-        'total_los' => array_sum(array_column($rows, 'total_los')),
-        'los_kurang_1' => array_sum(array_column($rows, 'los_kurang_1')),
-        'meninggal' => array_sum(array_column($rows, 'meninggal')),
-        'meninggal48' => array_sum(array_column($rows, 'meninggal48')),
+        'tt' => array_sum(array_column($rowsDihitung, 'tt')),
+        'total' => array_sum(array_column($rowsDihitung, 'total')),
+        'total_los' => array_sum(array_column($rowsDihitung, 'total_los')),
+        'los_kurang_1' => array_sum(array_column($rowsDihitung, 'los_kurang_1')),
+        'meninggal' => array_sum(array_column($rowsDihitung, 'meninggal')),
+        'meninggal48' => array_sum(array_column($rowsDihitung, 'meninggal48')),
     ];
     $jumlah['hari_tersedia'] = $jumlah['tt'] * (int) $hariPeriode;
     $jumlah['bor'] = $jumlah['hari_tersedia'] > 0 ? round($jumlah['total_los'] / $jumlah['hari_tersedia'] * 100, 1) : null;
@@ -74,10 +77,17 @@
             </thead>
             <tbody>
                 @forelse ($rows as $nomor => $row)
-                    <tr class="border-t border-hairline-soft dark:border-gray-800 hover:bg-surface-soft dark:hover:bg-gray-800/50">
+                    @php $dihitung = $row['dihitung'] ?? true; @endphp
+                    <tr class="border-t border-hairline-soft dark:border-gray-800 hover:bg-surface-soft dark:hover:bg-gray-800/50 {{ $dihitung ? '' : 'bg-surface-soft/60 dark:bg-gray-800/40' }}">
                         <td class="px-4 py-2.5 font-bold text-muted-soft">{{ $nomor + 1 }}</td>
-                        <td class="px-3 py-2.5 font-medium text-ink dark:text-gray-100">{{ $row['bangsal_name'] ?? '(Tanpa Bangsal)' }}</td>
-                        <td class="px-3 py-2.5 text-right tabular-nums text-blue-700 dark:text-blue-300">{{ $row['tt'] > 0 ? $angka($row['tt']) : '—' }}</td>
+                        <td class="px-3 py-2.5 font-medium text-ink dark:text-gray-100">
+                            {{ $row['bangsal_name'] ?? '(Tanpa Bangsal)' }}
+                            @unless ($dihitung)
+                                <span class="ml-1 px-2 py-0.5 text-[10px] font-semibold rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">tidak dihitung BOR</span>
+                            @endunless
+                        </td>
+                        <td class="px-3 py-2.5 text-right tabular-nums {{ $dihitung && $row['tt'] !== ($row['tt_db'] ?? $row['tt']) ? 'font-bold text-amber-700 dark:text-amber-400' : 'text-blue-700 dark:text-blue-300' }}"
+                            title="{{ $dihitung ? 'TT master: ' . $angka($row['tt_db'] ?? $row['tt']) : 'Dikeluarkan dari BOR — TT master: ' . $angka($row['tt_db'] ?? 0) }}">{{ $row['tt'] > 0 ? $angka($row['tt']) : '—' }}</td>
                         <td class="px-3 py-2.5 text-right tabular-nums text-blue-700 dark:text-blue-300">{{ $row['tt'] > 0 ? $angka($row['hari_tersedia']) : '—' }}</td>
                         <td class="px-3 py-2.5 text-right tabular-nums font-semibold">{{ $angka($row['total']) }}</td>
                         <td class="px-3 py-2.5 text-right tabular-nums text-blue-700 dark:text-blue-300">{{ $angka($row['total_los'], 1) }}</td>
@@ -106,7 +116,7 @@
                 <tfoot class="bg-surface-soft dark:bg-gray-800 border-t-2 border-gray-300 dark:border-gray-600">
                     <tr class="text-sm font-bold text-ink dark:text-gray-100">
                         <td class="px-4 py-3"></td>
-                        <td class="px-3 py-3">JUMLAH</td>
+                        <td class="px-3 py-3">JUMLAH{{ $adaDikeluarkan ? ' (bangsal yang dihitung)' : '' }}</td>
                         <td class="px-3 py-3 text-right tabular-nums text-blue-800 dark:text-blue-200">{{ $angka($jumlah['tt']) }}</td>
                         <td class="px-3 py-3 text-right tabular-nums text-blue-800 dark:text-blue-200">{{ $angka($jumlah['hari_tersedia']) }}</td>
                         <td class="px-3 py-3 text-right tabular-nums">{{ $angka($jumlah['total']) }}</td>
@@ -127,7 +137,7 @@
     </div>
     <div class="px-4 py-2 text-[10px] leading-snug text-muted dark:text-gray-500 border-t border-hairline-soft dark:border-gray-800">
         <strong>Hari periode</strong> = {{ $angka($hariPeriode) }} hari yang sudah berjalan{{ $keteranganPeriode !== '' ? ' (' . $keteranganPeriode . ')' : '' }}.
-        <strong>TT</strong> per bangsal dari master bed, tidak ikut perubahan Kapasitas TT di atas.
+        <strong>TT</strong> per bangsal dari kartu Parameter TT per Bangsal (angka kuning = diubah dari master); tidak ikut penimpaan manual Kapasitas TT total.
         <strong>Bangsal</strong> = bangsal kamar TERAKHIR pasien: bila pasien pindah kamar, seluruh lama dirawatnya dibebankan ke bangsal terakhir —
         bangsal transit (mis. ICU, perinatologi) bisa tampak terlalu sepi.
         <strong>Meninggal</strong> dibaca dari EMR Perencanaan RI (tindak lanjut SNOMED 419099009); kematian yang tidak dicatat di sana tidak terhitung.

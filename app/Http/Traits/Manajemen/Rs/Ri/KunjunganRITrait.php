@@ -4,6 +4,7 @@ namespace App\Http\Traits\Manajemen\Rs\Ri;
 
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Livewire\Attributes\Session;
 
 /**
  * Shared logic untuk Laporan Kunjungan Rawat Inap (ri-bulanan & ri-tahunan).
@@ -25,18 +26,151 @@ use Illuminate\Support\Facades\DB;
  *   - Hari periode = hari yang SUDAH BERJALAN (lihat hariPeriodeBerjalan()), bukan panjang
  *     kalender penuh — supaya BOR/TOI tahun/bulan berjalan tidak terencerkan.
  *   - ALOS = Σ lama dirawat ÷ pasien keluar.
+ *   - Parameter TT per bangsal ($parameterBangsal): TT bawaan = jumlah bed di master, bisa diubah,
+ *     dan tiap bangsal bisa DIKELUARKAN dari hitungan (bed bayi, UGD). Bangsal yang dikeluarkan
+ *     dibuang TT-nya SEKALIGUS pasien & hari rawatnya dari BOR/ALOS/TOI/BTO — membuang TT saja
+ *     akan menaikkan BOR secara palsu. Jumlah kunjungan (Total/BPJS/UMUM) tetap semua pasien.
  *   - BPJS = klaim_status='BPJS' OR klaim_id='JM'.
  *   - Breakdown spesifik RI: per **Bangsal** (bukan poli/dokter).
  */
 trait KunjunganRITrait
 {
     /**
+     * Parameter TT per bangsal — daftar berindeks (BUKAN peta ber-kunci bangsal_id: kunci mirip
+     * angka diurutkan ulang oleh JS Livewire). Tiap baris:
+     *   bangsal_id ('' = kamar tanpa bangsal), bangsal_name, tt_db (jumlah bed di master),
+     *   tt (yang dipakai, bisa diubah), dihitung (ikut BOR atau tidak).
+     * Disimpan di sesi & dipakai bersama tab Tahunan dan Multi-Tahun.
+     */
+    #[Session(key: 'laporan-kunjungan-ri-parameter-bangsal')]
+    public array $parameterBangsal = [];
+
+    /** Jumlah bed per bangsal dari master, termasuk kelompok kamar tanpa bangsal (bangsal_id ''). */
+    protected function daftarBangsalTT(): array
+    {
+        return DB::table('rsmst_beds as bd')
+            ->join('rsmst_rooms as r', 'r.room_id', '=', 'bd.room_id')
+            ->leftJoin('rsmst_bangsals as b', 'b.bangsal_id', '=', 'r.bangsal_id')
+            ->select('r.bangsal_id', DB::raw('MAX(b.bangsal_name) as bangsal_name'), DB::raw('COUNT(*) as tt'))
+            ->groupBy('r.bangsal_id')
+            ->orderBy(DB::raw('MAX(b.bangsal_name)'))
+            ->get()
+            ->map(fn($row) => [
+                'bangsal_id'   => (string) ($row->bangsal_id ?? ''),
+                'bangsal_name' => (string) ($row->bangsal_name ?? '(Tanpa Bangsal)'),
+                'tt_db'        => (int) $row->tt,
+            ])
+            ->all();
+    }
+
+    /**
+     * Susun $parameterBangsal dari master, lalu tempelkan setelan tersimpan (tt & dihitung)
+     * menurut bangsal_id. Bangsal baru ikut bawaan DB; bangsal yang sudah tak ada terbuang.
+     */
+    protected function muatParameterBangsal(): void
+    {
+        $tersimpan = collect($this->parameterBangsal)->keyBy(fn($row) => (string) ($row['bangsal_id'] ?? ''));
+
+        $this->parameterBangsal = collect($this->daftarBangsalTT())
+            ->map(function (array $row) use ($tersimpan) {
+                $lama = $tersimpan->get($row['bangsal_id']);
+
+                return $row + [
+                    'tt'       => $lama !== null ? max(0, (int) ($lama['tt'] ?? $row['tt_db'])) : $row['tt_db'],
+                    'dihitung' => $lama !== null ? (bool) ($lama['dihitung'] ?? true) : true,
+                ];
+            })
+            ->values()
+            ->all();
+
+        $this->selaraskanKapasitasTT();
+    }
+
+    /** Σ TT bangsal yang dihitung = TT total bawaan. */
+    public function ttBangsalDihitung(): int
+    {
+        return (int) collect($this->parameterBangsal)->where('dihitung', true)->sum('tt');
+    }
+
+    /** TT total mengikuti parameter bangsal; penimpaan manual TT total gugur tiap parameter berubah. */
+    protected function selaraskanKapasitasTT(): void
+    {
+        $this->defaultKapasitasTT = $this->ttBangsalDihitung();
+        $this->kapasitasTT = $this->defaultKapasitasTT;
+    }
+
+    /** Hook Livewire: kotak TT bangsal diubah ("{indeks}.tt"). */
+    public function updatedParameterBangsal($nilai, $kunci): void
+    {
+        foreach ($this->parameterBangsal as $indeks => $row) {
+            $this->parameterBangsal[$indeks]['tt'] = max(0, (int) ($row['tt'] ?? 0));
+            $this->parameterBangsal[$indeks]['dihitung'] = (bool) ($row['dihitung'] ?? true);
+        }
+        $this->selaraskanKapasitasTT();
+    }
+
+    public function toggleBangsalDihitung(int $indeks): void
+    {
+        if (!isset($this->parameterBangsal[$indeks])) {
+            return;
+        }
+        $this->parameterBangsal[$indeks]['dihitung'] = !($this->parameterBangsal[$indeks]['dihitung'] ?? true);
+        $this->selaraskanKapasitasTT();
+    }
+
+    /** Kembalikan semua parameter ke master: TT = jumlah bed, semua bangsal dihitung. */
+    public function resetParameterBangsal(): void
+    {
+        $this->parameterBangsal = [];
+        $this->muatParameterBangsal();
+    }
+
+    public function parameterBangsalDiubah(): bool
+    {
+        return collect($this->parameterBangsal)->contains(fn($row) => (int) $row['tt'] !== (int) $row['tt_db'] || !$row['dihitung']);
+    }
+
+    /**
+     * Potongan SQL "kunjungan ini ikut hitungan BOR" menurut bangsal kamarnya.
+     * bangsal_id DISISIPKAN sebagai literal (bukan binding): potongan ini dipakai di dalam
+     * SELECT, dan binding di SELECT menggeser urutan binding WHERE. Nilainya berasal dari master
+     * dan tetap disaring ketat di sini.
+     */
+    protected function kondisiBangsalDihitungSql(string $kolom = 'r.bangsal_id'): string
+    {
+        $dikeluarkan = collect($this->parameterBangsal)->where('dihitung', false)->pluck('bangsal_id')->map(fn($id) => (string) $id);
+        if ($dikeluarkan->isEmpty()) {
+            return '1=1';
+        }
+
+        $tanpaBangsalDikeluarkan = $dikeluarkan->contains('');
+        $literal = $dikeluarkan
+            ->filter(fn($id) => $id !== '' && preg_match('/^[A-Za-z0-9_.\-]+$/', $id))
+            ->map(fn($id) => "'" . $id . "'")
+            ->implode(',');
+
+        $syarat = [];
+        if ($literal !== '') {
+            // NOT IN terhadap NULL = NULL (bukan benar) → kamar tanpa bangsal harus dijaga eksplisit.
+            $syarat[] = $tanpaBangsalDikeluarkan ? "{$kolom} NOT IN ({$literal})" : "({$kolom} IS NULL OR {$kolom} NOT IN ({$literal}))";
+        }
+        if ($tanpaBangsalDikeluarkan) {
+            $syarat[] = "{$kolom} IS NOT NULL";
+        }
+
+        return $syarat === [] ? '1=1' : '(' . implode(' AND ', $syarat) . ')';
+    }
+
+    /**
      * Aggregate query — group by ekspresi yang dikirim caller.
      */
     protected function buildKunjunganRIAggregate($start, $end, string $groupSql)
     {
+        $dihitung = $this->kondisiBangsalDihitungSql();
+
         return DB::table('rstxn_rihdrs as h')
             ->leftJoin('rsmst_klaimtypes as k', 'k.klaim_id', '=', 'h.klaim_id')
+            ->leftJoin('rsmst_rooms as r', 'r.room_id', '=', 'h.room_id')
             ->select([
                 DB::raw("{$groupSql} as periode"),
                 DB::raw("COUNT(DISTINCT h.rihdr_no) as total"),
@@ -46,8 +180,10 @@ trait KunjunganRITrait
                 DB::raw("SUM(CASE WHEN h.ri_status='P' THEN 1 ELSE 0 END) as selesai"),
                 // Punya exit_date tapi status bukan P (Pulang) — data janggal, tetap ikut dihitung
                 DB::raw("SUM(CASE WHEN NVL(h.ri_status,'-')<>'P' THEN 1 ELSE 0 END) as status_lain"),
-                // LOS aggregates — Oracle date subtraction returns days as NUMBER
-                DB::raw("SUM(NVL(h.exit_date - h.entry_date, 0)) as total_los"),
+                // Komponen indikator — HANYA kunjungan di bangsal yang dihitung (lihat $parameterBangsal).
+                // Oracle date subtraction returns days as NUMBER.
+                DB::raw("COUNT(DISTINCT CASE WHEN {$dihitung} THEN h.rihdr_no END) as keluar_bor"),
+                DB::raw("SUM(CASE WHEN {$dihitung} THEN NVL(h.exit_date - h.entry_date, 0) ELSE 0 END) as total_los"),
                 DB::raw("SUM(CASE WHEN NVL(h.exit_date - h.entry_date, 0) < 1 THEN 1 ELSE 0 END) as los_kurang_1"),
             ])
             ->whereBetween('h.exit_date', [$start, $end])
@@ -109,25 +245,6 @@ trait KunjunganRITrait
     }
 
     /**
-     * Kapasitas TT per bangsal: COUNT bed di tiap bangsal lewat
-     *   rsmst_beds.room_id → rsmst_rooms.bangsal_id.
-     *
-     * Return: [bangsal_id => jumlah_bed]. Bangsal tanpa bed/dengan room
-     * yang punya bangsal_id NULL akan absent dari array.
-     */
-    protected function kapasitasTTPerBangsal(): array
-    {
-        return DB::table('rsmst_beds as bd')
-            ->join('rsmst_rooms as r', 'r.room_id', '=', 'bd.room_id')
-            ->whereNotNull('r.bangsal_id')
-            ->select('r.bangsal_id', DB::raw('COUNT(*) as tt'))
-            ->groupBy('r.bangsal_id')
-            ->pluck('tt', 'bangsal_id')
-            ->map(fn($v) => (int) $v)
-            ->all();
-    }
-
-    /**
      * Tambahkan indikator BOR/BTO/TOI/GDR/NDR ke tiap row breakdown bangsal.
      *
      * Formula:
@@ -146,7 +263,7 @@ trait KunjunganRITrait
      */
     protected function enrichBangsalIndicators($rows, int $totalDays): array
     {
-        $ttMap = $this->kapasitasTTPerBangsal();
+        $parameter = collect($this->parameterBangsal)->keyBy(fn($row) => (string) $row['bangsal_id']);
         $out = [];
 
         foreach ($rows as $row) {
@@ -154,7 +271,10 @@ trait KunjunganRITrait
             $totalLos = (float) ($row->total_los ?? 0);
             $meninggal = (int) ($row->meninggal ?? 0);
             $meninggal48 = (int) ($row->meninggal48 ?? 0);
-            $tt = (int) ($ttMap[$row->bangsal_id] ?? 0);
+            $parameterRow = $parameter->get((string) ($row->bangsal_id ?? ''));
+            $dihitung = (bool) ($parameterRow['dihitung'] ?? true);
+            // Bangsal yang dikeluarkan dari BOR: TT dianggap 0 → BOR/BTO/TOI tampil "—".
+            $tt = $dihitung ? (int) ($parameterRow['tt'] ?? 0) : 0;
 
             $bor = ($tt > 0 && $totalDays > 0)
                 ? round($totalLos / ($tt * $totalDays) * 100, 1)
@@ -174,6 +294,8 @@ trait KunjunganRITrait
                 'total_los'    => round($totalLos, 1),
                 'los_kurang_1' => (int) ($row->los_kurang_1 ?? 0),
                 'tt'           => $tt,
+                'tt_db'        => (int) ($parameterRow['tt_db'] ?? 0),
+                'dihitung'     => $dihitung,
                 'hari_tersedia' => $tt * $totalDays,
                 'meninggal'    => $meninggal,
                 'meninggal48'  => $meninggal48,
@@ -191,6 +313,7 @@ trait KunjunganRITrait
     protected function fillKunjunganRow(?object $r, string $label, string $short): array
     {
         $total = (int) ($r->total ?? 0);
+        $keluarBor = (int) ($r->keluar_bor ?? 0);
         $totalLos = (float) ($r->total_los ?? 0);
 
         return [
@@ -203,9 +326,11 @@ trait KunjunganRITrait
             'selesai'       => (int) ($r->selesai ?? 0),
             'status_lain'   => (int) ($r->status_lain ?? 0),
             'los_kurang_1'  => (int) ($r->los_kurang_1 ?? 0),
+            // keluar_bor & total_los = hanya bangsal yang dihitung; sama dengan total bila tak ada yang dikeluarkan
+            'keluar_bor'    => $keluarBor,
             'total_los'     => round($totalLos, 1),
-            // ALOS per periode = total_los / total (weighted)
-            'alos'          => $total > 0 ? round($totalLos / $total, 1) : 0.0,
+            // ALOS per periode = total_los / keluar_bor (weighted)
+            'alos'          => $keluarBor > 0 ? round($totalLos / $keluarBor, 1) : 0.0,
         ];
     }
 
@@ -213,6 +338,7 @@ trait KunjunganRITrait
     {
         $sum = fn(string $k) => array_sum(array_column($rows, $k));
         $totalCount = $sum('total');
+        $keluarBor = $sum('keluar_bor');
         $totalLos = $sum('total_los');
 
         return [
@@ -223,9 +349,10 @@ trait KunjunganRITrait
             'selesai'      => $sum('selesai'),
             'status_lain'  => $sum('status_lain'),
             'los_kurang_1' => $sum('los_kurang_1'),
+            'keluar_bor'   => $keluarBor,
             'total_los'    => round($totalLos, 1),
-            // ALOS global = weighted (total_los / total_pasien)
-            'alos'         => $totalCount > 0 ? round($totalLos / $totalCount, 1) : 0.0,
+            // ALOS global = weighted (total_los / keluar_bor)
+            'alos'         => $keluarBor > 0 ? round($totalLos / $keluarBor, 1) : 0.0,
         ];
     }
 
@@ -251,17 +378,6 @@ trait KunjunganRITrait
     }
 
     /**
-     * Kapasitas Tempat Tidur global = jumlah bed di rsmst_beds.
-     * Catatan: TT bisa berubah seiring waktu. Untuk akurasi historis penuh,
-     * butuh tracking history. Versi sekarang pakai TT current — cocok kalau
-     * kapasitas TT relatif stabil dalam periode laporan.
-     */
-    protected function kapasitasTTGlobal(): int
-    {
-        return (int) DB::table('rsmst_beds')->count();
-    }
-
-    /**
      * Enrich rows dengan BOR / BTO / TOI per periode.
      *
      * Formula (Kemenkes / standar Indonesia):
@@ -278,7 +394,7 @@ trait KunjunganRITrait
         foreach ($rows as &$r) {
             $days = (int) $daysGetter($r);
             $totalLos = (float) $r['total_los'];
-            $total = (int) $r['total'];
+            $total = (int) $r['keluar_bor'];
 
             $r['days_in_period'] = $days;
             $r['hari_tersedia'] = $tt * $days;
@@ -306,7 +422,7 @@ trait KunjunganRITrait
     protected function totalBORTOIBTO(array $rows, int $tt): array
     {
         $totalLos = array_sum(array_column($rows, 'total_los'));
-        $totalPasien = array_sum(array_column($rows, 'total'));
+        $totalPasien = array_sum(array_column($rows, 'keluar_bor'));
         $totalDays = array_sum(array_column($rows, 'days_in_period'));
 
         $bor = ($tt > 0 && $totalDays > 0) ? round($totalLos / ($tt * $totalDays) * 100, 1) : null;
