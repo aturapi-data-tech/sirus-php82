@@ -634,6 +634,9 @@ Route::middleware(['auth'])->group(function () {
     Route::livewire('/manajemen/rs/rj/laporan-kunjungan-rj', 'pages::manajemen.rs.rj.laporan-kunjungan-rj.laporan-kunjungan-rj')
         ->name('manajemen.rs.rj.laporan-kunjungan-rj');
 
+    Route::livewire('/manajemen/rs/rj/laporan-hak-kelas-rj', 'pages::manajemen.rs.rj.laporan-hak-kelas-rj.laporan-hak-kelas-rj')
+        ->name('manajemen.rs.rj.laporan-hak-kelas-rj');
+
     Route::livewire('/manajemen/rs/ugd/laporan-kunjungan-ugd', 'pages::manajemen.rs.ugd.laporan-kunjungan-ugd.laporan-kunjungan-ugd')
         ->name('manajemen.rs.ugd.laporan-kunjungan-ugd');
 
