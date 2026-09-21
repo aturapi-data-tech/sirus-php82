@@ -1,9 +1,9 @@
 <?php
-// resources/views/pages/manajemen/rs/rj/laporan-hak-kelas-rj/laporan-hak-kelas-rj.blade.php
-// Laporan Kunjungan RJ per Hak Kelas Rawat BPJS (kelas 1 / 2 / 3).
+// resources/views/pages/manajemen/rs/ugd/laporan-hak-kelas-ugd/laporan-hak-kelas-ugd.blade.php
+// Laporan Kunjungan UGD per Hak Kelas Rawat BPJS (kelas 1 / 2 / 3).
 // State, query, dan turunan ada di App\Http\Traits\Manajemen\Rs\HakKelasTrait (satu sumber untuk RJ/UGD/RI).
 // Tampilan sengaja ditanam per jalur — mengubah kolom/teks berarti mengubah ketiga berkas laporan-hak-kelas-*.
-// Berkas ini memegang konfigurasi + tampilan jalur RJ.
+// Berkas ini memegang konfigurasi + tampilan jalur UGD.
 
 use Livewire\Component;
 use App\Http\Traits\Manajemen\Rs\HakKelasTrait;
@@ -14,15 +14,16 @@ new class extends Component {
     protected function konfigurasiHakKelas(): array
     {
         return [
-            'tabel'           => 'rstxn_rjhdrs',
+            'tabel'           => 'rstxn_ugdhdrs',
             'kunci'           => 'rj_no',
-            'json'            => 'datadaftarpolirj_json',
+            'json'            => 'datadaftarugd_json',
             'tanggal'         => 'rj_date',
-            // rj_status: A antrian, L selesai, I transfer UGD, F batal
+            // rj_status: A antrian, L selesai, I transfer RI, F batal
             'syaratAktif'     => "NVL(h.rj_status,'A') <> 'F'",
-            'grupJoin'        => fn($query) => $query->leftJoin('rsmst_polis as g', 'g.poli_id', '=', 'h.poli_id'),
-            'grupSelect'      => 'h.poli_id as grup_id, g.poli_desc as grup_nama',
-            'labelGrupKosong' => '(Tanpa Poli)',
+            // UGD tidak punya poli — pengelompokan memakai dokter
+            'grupJoin'        => fn($query) => $query->leftJoin('rsmst_doctors as g', 'g.dr_id', '=', 'h.dr_id'),
+            'grupSelect'      => 'h.dr_id as grup_id, g.dr_name as grup_nama',
+            'labelGrupKosong' => '(Tanpa Dokter)',
         ];
     }
 };
@@ -39,8 +40,8 @@ new class extends Component {
         $bpjsTakPasti = $tot['sep_tak_terbaca'] + $tot['belum_sep'];
     @endphp
 
-    <x-page-title title="Laporan Kunjungan RJ per Hak Kelas"
-        subtitle="Kunjungan Rawat Jalan BPJS menurut hak kelas rawat peserta (kelas 1 / 2 / 3) yang tercatat saat pembuatan SEP. Periode berdasarkan tanggal kunjungan; pasien Kronis dan kunjungan batal tidak dihitung." />
+    <x-page-title title="Laporan Kunjungan UGD per Hak Kelas"
+        subtitle="Kunjungan UGD BPJS menurut hak kelas rawat peserta (kelas 1 / 2 / 3) yang tercatat saat pembuatan SEP. Periode berdasarkan tanggal kunjungan; pasien Kronis dan kunjungan batal tidak dihitung." />
 
     <div class="w-full min-h-[calc(100vh-5rem)] bg-canvas dark:bg-gray-800">
         <div class="px-6 pt-2 pb-6">
@@ -92,7 +93,7 @@ new class extends Component {
             {{-- RINGKASAN --}}
             <div class="grid grid-cols-2 gap-3 mt-4 sm:grid-cols-3 lg:grid-cols-6">
                 <div class="p-3 border bg-canvas border-hairline rounded-xl dark:border-gray-700 dark:bg-gray-900">
-                    <div class="text-xs uppercase text-muted">Kunjungan RJ {{ $teksPeriode }}</div>
+                    <div class="text-xs uppercase text-muted">Kunjungan UGD {{ $teksPeriode }}</div>
                     <div class="mt-1 text-2xl font-bold text-ink dark:text-gray-100">{{ $angka($tot['total']) }}</div>
                     <div class="text-[10px] text-muted">{{ $angka($this->pasienUnikGlobal) }} pasien unik</div>
                 </div>
@@ -127,7 +128,7 @@ new class extends Component {
                                 <th colspan="2" class="px-3 pt-2 pb-1 text-center text-amber-700 border-b border-hairline dark:text-amber-400 dark:border-gray-700">BPJS Tanpa Hak Kelas</th>
                             </tr>
                             <tr class="text-xs font-semibold tracking-wide uppercase text-muted dark:text-gray-300">
-                                <th class="px-3 py-2 text-right" title="Kunjungan RJ dalam periode, bukan Kronis, bukan batal">Total</th>
+                                <th class="px-3 py-2 text-right" title="Kunjungan UGD dalam periode, bukan Kronis, bukan batal">Total</th>
                                 <th class="px-3 py-2 text-right text-emerald-700 dark:text-emerald-300" title="klaim BPJS atau JKN Mobile">BPJS</th>
                                 <th class="px-3 py-2 text-right" title="Umum, asuransi lain, dsb. — tidak punya hak kelas BPJS">Non-BPJS</th>
                                 @foreach ([1, 2, 3] as $nomorKelas)
@@ -179,12 +180,12 @@ new class extends Component {
                 </div>
             </div>
 
-            {{-- PER POLI --}}
+            {{-- PER DOKTER --}}
             <div class="mt-4 border shadow-sm bg-canvas border-hairline rounded-2xl dark:border-gray-700 dark:bg-gray-900">
                 <div class="px-4 py-3 border-b border-hairline dark:border-gray-700">
                     <h3 class="text-sm font-semibold text-body dark:text-gray-200">
-                        Hak Kelas per Poli
-                        <span class="ml-2 text-xs font-normal text-muted">{{ $teksPeriode }} · {{ count($this->grupBreakdown) }} poli · urut BPJS terbanyak</span>
+                        Hak Kelas per Dokter
+                        <span class="ml-2 text-xs font-normal text-muted">{{ $teksPeriode }} · {{ count($this->grupBreakdown) }} dokter · urut BPJS terbanyak · UGD tidak punya poli</span>
                     </h3>
                 </div>
                 <div class="overflow-x-auto max-h-[600px] overflow-y-auto">
@@ -192,7 +193,7 @@ new class extends Component {
                         <thead class="sticky top-0 z-10 bg-surface-card dark:bg-gray-800">
                             <tr class="text-xs font-semibold tracking-wide uppercase text-muted dark:text-gray-300">
                                 <th class="w-12 px-4 py-3 text-left">#</th>
-                                <th class="px-3 py-3 text-left">Poli</th>
+                                <th class="px-3 py-3 text-left">Dokter</th>
                                 <th class="px-3 py-3 text-right">Total</th>
                                 <th class="px-3 py-3 text-right text-emerald-700 dark:text-emerald-300">BPJS</th>
                                 <th class="px-3 py-3 text-right">Non-BPJS</th>
@@ -237,11 +238,11 @@ new class extends Component {
                 <dl class="grid grid-cols-1 gap-x-8 gap-y-3 p-4 text-xs md:grid-cols-2 text-body dark:text-gray-300">
                     <div>
                         <dt class="font-semibold text-ink dark:text-gray-100">Hak kelas</dt>
-                        <dd class="text-muted dark:text-gray-400">Hak kelas rawat peserta BPJS yang tercatat di data SEP kunjungan (kelas rawat hak), terisi otomatis dari cek kepesertaan saat SEP dibuat. Bukan kelas yang ditempati — Rawat Jalan tidak punya kelas kamar.</dd>
+                        <dd class="text-muted dark:text-gray-400">Hak kelas rawat peserta BPJS yang tercatat di data SEP kunjungan (kelas rawat hak), terisi otomatis dari cek kepesertaan saat SEP dibuat. Bukan kelas yang ditempati — UGD tidak punya kelas kamar. Pasien UGD yang lanjut rawat inap mendapat SEP Rawat Inap tersendiri dan muncul di laporan RI.</dd>
                     </div>
                     <div>
                         <dt class="font-semibold text-ink dark:text-gray-100">Yang dihitung</dt>
-                        <dd class="text-muted dark:text-gray-400">Kunjungan Rawat Jalan menurut tanggal kunjungan. Pasien Kronis dan kunjungan batal dikeluarkan. Satu pasien yang berkunjung beberapa kali dihitung tiap kunjungan; jumlah orangnya ada di "pasien unik".</dd>
+                        <dd class="text-muted dark:text-gray-400">Kunjungan UGD menurut tanggal kunjungan. Pasien Kronis dan kunjungan batal dikeluarkan. Satu pasien yang berkunjung beberapa kali dihitung tiap kunjungan; jumlah orangnya ada di "pasien unik".</dd>
                     </div>
                     <div>
                         <dt class="font-semibold text-amber-700 dark:text-amber-400">SEP, Tak Terbaca</dt>
