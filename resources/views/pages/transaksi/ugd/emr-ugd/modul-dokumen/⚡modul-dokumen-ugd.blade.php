@@ -32,7 +32,6 @@ new class extends Component {
     public int $jumlahSecondOpinion = 0;
     public int $jumlahEso = 0;
     public int $jumlahAkhirHayat = 0;
-    public int $jumlahKriteriaRobson = 0;
 
     /** Dokumen dibaca sebagai variabel LOKAL, diperas jadi penanda, lalu dilepas. */
     private function hitungRingkasan(array $data): void
@@ -50,7 +49,6 @@ new class extends Component {
         $this->jumlahSecondOpinion = count($data['secondOpinionUGD'] ?? []);
         $this->jumlahEso = count($data['pelaporanEsoUGD'] ?? []);
         $this->jumlahAkhirHayat = count($data['pengkajianAkhirHayatUGD'] ?? []);
-        $this->jumlahKriteriaRobson = count($data['kriteriaRobsonUGD'] ?? []);
         $this->adaBedah = collect([
             'pengkajianPreOpUGD', 'praAnestesiUGD', 'praInduksiUGD', 'surgicalSafetyChecklistUGD',
             'laporanOperasiUGD', 'laporanAnestesiUGD', 'pascaAnestesiUGD', 'instruksiPascaBedahUGD',
@@ -135,7 +133,7 @@ new class extends Component {
             'rjNo', 'adaSuket', 'adaTrfUgd', 'adaGeneralConsent', 'adaBedah',
             'adaSuratKematianFinal', 'triaseSaran', 'jumlahInformConsent', 'jumlahPenjaminan',
             'jumlahPenundaan', 'jumlahPenolakanObat', 'jumlahPenolakanResusitasi',
-            'jumlahSecondOpinion', 'jumlahEso', 'jumlahAkhirHayat', 'jumlahKriteriaRobson',
+            'jumlahSecondOpinion', 'jumlahEso', 'jumlahAkhirHayat',
         ]);
         $this->resetVersion();
         $this->isFormLocked = false;
@@ -321,21 +319,6 @@ new class extends Component {
                                         @endif
                                     </x-tab>
 
-                                    {{-- Kriteria Robson (klasifikasi 10 kelompok, WHO) --}}
-                                    <x-tab variant="underline" active-expr="activeTab === 'kriteria-robson'"
-                                        x-on:click="activeTab = 'kriteria-robson'"
-                                        class="inline-flex items-center gap-2">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                                        </svg>
-                                        Kriteria Robson
-                                        @if ($jumlahKriteriaRobson > 0)
-                                            <x-badge variant="success"
-                                                class="text-[10px] px-1.5 py-0">{{ $jumlahKriteriaRobson }}</x-badge>
-                                        @endif
-                                    </x-tab>
-
                                     {{-- Pelaporan Efek Samping Obat (RM 37) --}}
                                     <x-tab variant="underline" active-expr="activeTab === 'pelaporan-eso'"
                                         x-on:click="activeTab = 'pelaporan-eso'"
@@ -453,13 +436,6 @@ new class extends Component {
                                 <livewire:pages::transaksi.ugd.emr-ugd.modul-dokumen.pelayanan-bedah-ugd.rm-pelayanan-bedah-ugd-actions
                                     :rjNo="$rjNo" :disabled="$isFormLocked"
                                     wire:key="pelayanan-bedah-ugd-{{ $rjNo ?? 'init' }}" />
-                            </div>
-
-                            {{-- Panel: Kriteria Robson --}}
-                            <div x-show="activeTab === 'kriteria-robson'" x-transition.opacity.duration.300ms>
-                                <livewire:pages::transaksi.ugd.emr-ugd.modul-dokumen.kriteria-robson-ugd.rm-kriteria-robson-ugd-actions
-                                    :rjNo="$rjNo" :disabled="$isFormLocked"
-                                    wire:key="kriteria-robson-ugd-{{ $rjNo ?? 'init' }}" />
                             </div>
 
                             {{-- Panel: Pengkajian Akhir Hayat --}}
