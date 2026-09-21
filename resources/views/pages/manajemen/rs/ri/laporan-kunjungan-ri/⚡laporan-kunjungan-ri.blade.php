@@ -145,7 +145,7 @@ new class extends Component {
                                                 type: 'linear', position: 'right',
                                                 beginAtZero: true,
                                                 grid: { display: false },
-                                                ticks: { callback: (v) => v + 'h' },
+                                                ticks: { callback: (v) => v + ' hr' },
                                                 title: { display: true, text: 'ALOS (hari)' },
                                             },
                                         },

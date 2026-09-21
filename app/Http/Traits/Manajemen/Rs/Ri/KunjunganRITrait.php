@@ -2,6 +2,7 @@
 
 namespace App\Http\Traits\Manajemen\Rs\Ri;
 
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -11,14 +12,19 @@ use Illuminate\Support\Facades\DB;
  *   - Filter periode pakai **exit_date** (tanggal pulang) — sesuai konvensi
  *     BPJS reporting RI yang dihitung saat pasien discharge.
  *   - Pasien Kronis (klaim_id='KR') di-exclude (tidak relevan di RI tapi safety).
- *   - Status RI:
- *       I = Dirawat (sedang inap aktif — biasanya tidak muncul di laporan
- *           periodik karena belum punya exit_date)
- *       L = Selesai (pulang)
- *       F = Batal
- *   - LOS (Length of Stay) = exit_date - entry_date (Oracle date arithmetic
- *     return NUMBER dalam hari).
- *   - ALOS = AVG(LOS), Total LOS = SUM(LOS).
+ *   - Status RI (rstxn_rihdrs.ri_status):
+ *       I = Dirawat (sedang inap aktif — belum punya exit_date, jadi TIDAK ikut laporan ini)
+ *       P = Pulang
+ *       F = Batal → dikeluarkan dari semua hitungan (sama dengan RL 3.2)
+ *     (Dulu trait ini mengira pulang = 'L' sehingga kolom "Selesai" selalu 0.)
+ *   - LOS / lama dirawat = exit_date - entry_date (Oracle date arithmetic, NUMBER hari
+ *     berpecahan — masuk 23.00 keluar 01.00 = 0,08 hari). Sama dengan RL 3.2.
+ *   - Σ lama dirawat dibebankan SELURUHNYA ke periode tanggal PULANG. Ini pendekatan, bukan
+ *     sensus harian: pasien yang masih dirawat belum terhitung, dan hari rawat lintas bulan
+ *     jatuh ke bulan pulangnya. Karena itu komponen hitungan ditampilkan di layar.
+ *   - Hari periode = hari yang SUDAH BERJALAN (lihat hariPeriodeBerjalan()), bukan panjang
+ *     kalender penuh — supaya BOR/TOI tahun/bulan berjalan tidak terencerkan.
+ *   - ALOS = Σ lama dirawat ÷ pasien keluar.
  *   - BPJS = klaim_status='BPJS' OR klaim_id='JM'.
  *   - Breakdown spesifik RI: per **Bangsal** (bukan poli/dokter).
  */
@@ -37,15 +43,17 @@ trait KunjunganRITrait
                 DB::raw("COUNT(DISTINCT h.reg_no) as pasien_unik"),
                 DB::raw("SUM(CASE WHEN k.klaim_status='BPJS' OR h.klaim_id='JM' THEN 1 ELSE 0 END) as bpjs"),
                 DB::raw("SUM(CASE WHEN (k.klaim_status IS NULL OR k.klaim_status<>'BPJS') AND h.klaim_id<>'JM' THEN 1 ELSE 0 END) as umum"),
-                DB::raw("SUM(CASE WHEN h.ri_status='L' THEN 1 ELSE 0 END) as selesai"),
-                DB::raw("SUM(CASE WHEN h.ri_status='F' THEN 1 ELSE 0 END) as batal"),
-                DB::raw("SUM(CASE WHEN h.ri_status='I' THEN 1 ELSE 0 END) as dirawat"),
+                DB::raw("SUM(CASE WHEN h.ri_status='P' THEN 1 ELSE 0 END) as selesai"),
+                // Punya exit_date tapi status bukan P (Pulang) — data janggal, tetap ikut dihitung
+                DB::raw("SUM(CASE WHEN NVL(h.ri_status,'-')<>'P' THEN 1 ELSE 0 END) as status_lain"),
                 // LOS aggregates — Oracle date subtraction returns days as NUMBER
                 DB::raw("SUM(NVL(h.exit_date - h.entry_date, 0)) as total_los"),
+                DB::raw("SUM(CASE WHEN NVL(h.exit_date - h.entry_date, 0) < 1 THEN 1 ELSE 0 END) as los_kurang_1"),
             ])
             ->whereBetween('h.exit_date', [$start, $end])
             ->where('h.klaim_id', '!=', 'KR')
             ->whereNotNull('h.exit_date')
+            ->whereRaw("NVL(h.ri_status,'-') <> 'F'")
             ->groupBy(DB::raw($groupSql))
             ->orderBy(DB::raw($groupSql))
             ->get()
@@ -58,6 +66,7 @@ trait KunjunganRITrait
             ->whereBetween('exit_date', [$start, $end])
             ->whereNotNull('exit_date')
             ->where('klaim_id', '!=', 'KR')
+            ->whereRaw("NVL(ri_status,'-') <> 'F'")
             ->distinct()
             ->count('reg_no');
     }
@@ -86,12 +95,14 @@ trait KunjunganRITrait
                 DB::raw('COUNT(DISTINCT h.rihdr_no) as total'),
                 DB::raw('ROUND(AVG(NVL(h.exit_date - h.entry_date, 0)), 1) as alos'),
                 DB::raw('SUM(NVL(h.exit_date - h.entry_date, 0)) as total_los'),
+                DB::raw('SUM(CASE WHEN NVL(h.exit_date - h.entry_date, 0) < 1 THEN 1 ELSE 0 END) as los_kurang_1'),
                 DB::raw("SUM(CASE WHEN INSTR(h.datadaftarri_json, '{$deathPattern}') > 0 THEN 1 ELSE 0 END) as meninggal"),
                 DB::raw("SUM(CASE WHEN INSTR(h.datadaftarri_json, '{$deathPattern}') > 0 AND NVL(h.exit_date - h.entry_date, 0) >= 2 THEN 1 ELSE 0 END) as meninggal48"),
             ])
             ->whereBetween('h.exit_date', [$start, $end])
             ->where('h.klaim_id', '!=', 'KR')
             ->whereNotNull('h.exit_date')
+            ->whereRaw("NVL(h.ri_status,'-') <> 'F'")
             ->groupBy('r.bangsal_id')
             ->orderByDesc('total')
             ->get();
@@ -161,7 +172,9 @@ trait KunjunganRITrait
                 'total'        => $total,
                 'alos'         => (float) ($row->alos ?? 0),
                 'total_los'    => round($totalLos, 1),
+                'los_kurang_1' => (int) ($row->los_kurang_1 ?? 0),
                 'tt'           => $tt,
+                'hari_tersedia' => $tt * $totalDays,
                 'meninggal'    => $meninggal,
                 'meninggal48'  => $meninggal48,
                 'bor'          => $bor,
@@ -188,8 +201,8 @@ trait KunjunganRITrait
             'bpjs'          => (int) ($r->bpjs ?? 0),
             'umum'          => (int) ($r->umum ?? 0),
             'selesai'       => (int) ($r->selesai ?? 0),
-            'batal'         => (int) ($r->batal ?? 0),
-            'dirawat'       => (int) ($r->dirawat ?? 0),
+            'status_lain'   => (int) ($r->status_lain ?? 0),
+            'los_kurang_1'  => (int) ($r->los_kurang_1 ?? 0),
             'total_los'     => round($totalLos, 1),
             // ALOS per periode = total_los / total (weighted)
             'alos'          => $total > 0 ? round($totalLos / $total, 1) : 0.0,
@@ -208,8 +221,8 @@ trait KunjunganRITrait
             'bpjs'         => $sum('bpjs'),
             'umum'         => $sum('umum'),
             'selesai'      => $sum('selesai'),
-            'batal'        => $sum('batal'),
-            'dirawat'      => $sum('dirawat'),
+            'status_lain'  => $sum('status_lain'),
+            'los_kurang_1' => $sum('los_kurang_1'),
             'total_los'    => round($totalLos, 1),
             // ALOS global = weighted (total_los / total_pasien)
             'alos'         => $totalCount > 0 ? round($totalLos / $totalCount, 1) : 0.0,
@@ -268,6 +281,7 @@ trait KunjunganRITrait
             $total = (int) $r['total'];
 
             $r['days_in_period'] = $days;
+            $r['hari_tersedia'] = $tt * $days;
 
             if ($tt > 0 && $days > 0) {
                 $r['bor'] = round($totalLos / ($tt * $days) * 100, 1);
@@ -276,8 +290,9 @@ trait KunjunganRITrait
                     ? round((($tt * $days) - $totalLos) / $total, 1)
                     : null;
             } else {
-                $r['bor'] = 0.0;
-                $r['bto'] = 0.0;
+                // Periode belum berjalan (hari = 0) atau TT kosong → tidak ada yang bisa dihitung.
+                $r['bor'] = null;
+                $r['bto'] = null;
                 $r['toi'] = null;
             }
         }
@@ -294,12 +309,76 @@ trait KunjunganRITrait
         $totalPasien = array_sum(array_column($rows, 'total'));
         $totalDays = array_sum(array_column($rows, 'days_in_period'));
 
-        $bor = ($tt > 0 && $totalDays > 0) ? round($totalLos / ($tt * $totalDays) * 100, 1) : 0.0;
-        $bto = $tt > 0 ? round($totalPasien / $tt, 2) : 0.0;
+        $bor = ($tt > 0 && $totalDays > 0) ? round($totalLos / ($tt * $totalDays) * 100, 1) : null;
+        $bto = ($tt > 0 && $totalDays > 0) ? round($totalPasien / $tt, 2) : null;
         $toi = ($totalPasien > 0 && $tt > 0 && $totalDays > 0)
             ? round((($tt * $totalDays) - $totalLos) / $totalPasien, 1)
             : null;
 
-        return ['bor' => $bor, 'bto' => $bto, 'toi' => $toi, 'days_total' => $totalDays];
+        return ['bor' => $bor, 'bto' => $bto, 'toi' => $toi, 'days_total' => $totalDays, 'hari_tersedia' => $tt * $totalDays];
+    }
+
+    /**
+     * Jumlah hari periode yang SUDAH BERJALAN sampai hari ini (inklusif).
+     *   - periode lampau  → panjang kalender penuh
+     *   - periode berjalan → dari awal periode s/d hari ini
+     *   - periode mendatang → 0 (indikator ditampilkan "—")
+     * Tanpa ini BOR/TOI tahun berjalan dibagi 365 hari padahal baru sebagian yang lewat.
+     */
+    protected function hariPeriodeBerjalan(Carbon $start, Carbon $end): int
+    {
+        $hariIni = Carbon::now(config('app.timezone'))->endOfDay();
+        $awal = $start->copy()->startOfDay();
+        if ($awal->greaterThan($hariIni)) {
+            return 0;
+        }
+        $akhir = $end->copy()->endOfDay()->min($hariIni);
+
+        return (int) $awal->diffInDays($akhir->copy()->startOfDay()) + 1;
+    }
+
+    /**
+     * Hitungan data janggal dalam periode — supaya angka indikator yang aneh bisa dilacak
+     * ke sumbernya. Satu baris agregat; TIDAK mengubah hitungan indikator.
+     */
+    protected function anomaliDataRI($start, $end): array
+    {
+        $row = DB::table('rstxn_rihdrs as h')
+            ->leftJoin('rsmst_rooms as r', 'r.room_id', '=', 'h.room_id')
+            ->select([
+                DB::raw("SUM(CASE WHEN NVL(h.ri_status,'-')='F' THEN 1 ELSE 0 END) as batal_berexit"),
+                DB::raw("SUM(CASE WHEN NVL(h.ri_status,'-') NOT IN ('P','F') THEN 1 ELSE 0 END) as status_lain"),
+                DB::raw("SUM(CASE WHEN NVL(h.ri_status,'-')<>'F' AND h.entry_date IS NULL THEN 1 ELSE 0 END) as tanpa_tgl_masuk"),
+                DB::raw("SUM(CASE WHEN NVL(h.ri_status,'-')<>'F' AND h.exit_date < h.entry_date THEN 1 ELSE 0 END) as los_negatif"),
+                DB::raw("SUM(CASE WHEN NVL(h.ri_status,'-')<>'F' AND h.exit_date >= h.entry_date AND h.exit_date - h.entry_date < 1 THEN 1 ELSE 0 END) as los_kurang_1"),
+                DB::raw("SUM(CASE WHEN NVL(h.ri_status,'-')<>'F' AND h.exit_date - h.entry_date > 30 THEN 1 ELSE 0 END) as los_lebih_30"),
+                DB::raw("SUM(CASE WHEN NVL(h.ri_status,'-')<>'F' AND r.bangsal_id IS NULL THEN 1 ELSE 0 END) as tanpa_bangsal"),
+            ])
+            ->whereBetween('h.exit_date', [$start, $end])
+            ->where('h.klaim_id', '!=', 'KR')
+            ->first();
+
+        // Masih dirawat = belum punya exit_date → belum masuk hitungan mana pun di laporan ini.
+        $dirawat = DB::table('rstxn_rihdrs')
+            ->select([
+                DB::raw('COUNT(*) as jumlah'),
+                DB::raw('SUM(NVL(SYSDATE - entry_date, 0)) as hari_rawat'),
+            ])
+            ->whereNull('exit_date')
+            ->where('ri_status', 'I')
+            ->where('klaim_id', '!=', 'KR')
+            ->first();
+
+        return [
+            'batal_berexit'   => (int) ($row->batal_berexit ?? 0),
+            'status_lain'     => (int) ($row->status_lain ?? 0),
+            'tanpa_tgl_masuk' => (int) ($row->tanpa_tgl_masuk ?? 0),
+            'los_negatif'     => (int) ($row->los_negatif ?? 0),
+            'los_kurang_1'    => (int) ($row->los_kurang_1 ?? 0),
+            'los_lebih_30'    => (int) ($row->los_lebih_30 ?? 0),
+            'tanpa_bangsal'   => (int) ($row->tanpa_bangsal ?? 0),
+            'masih_dirawat'   => (int) ($dirawat->jumlah ?? 0),
+            'masih_dirawat_hari' => round((float) ($dirawat->hari_rawat ?? 0), 1),
+        ];
     }
 }
