@@ -58,7 +58,7 @@ new class extends Component {
             'surgicalSafetyChecklistRI', 'laporanOperasiRI', 'laporanAnestesiRI',
             'pascaAnestesiRI', 'instruksiPascaBedahRI'])->contains(fn($k) => !empty($data[$k]));
         $this->adaObstetriNeonatal = collect(['pengkajianAwalObstetriRI', 'riwayatObstetriRI',
-            'observasiPersalinanRI', 'laporanPersalinanRI', 'indikatorScRI', 'observasiNifasRI',
+            'observasiPersalinanRI', 'laporanPersalinanRI', 'kriteriaRobsonRI', 'indikatorScRI', 'observasiNifasRI',
             'pengkajianAwalGinekologiRI', 'pengkajianAwalBayiRI', 'pengkajianNeonatalPerawatRI',
             'identifikasiBayiRI', 'catatanTerapiNeonatalRI'])->contains(fn($k) => !empty($data[$k]));
         $this->adaSurveilans = collect(['surveilansPlebitisRI', 'surveilansIskRI',

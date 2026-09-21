@@ -921,6 +921,10 @@ new class extends Component {
 
                     <livewire:pages::components.rekam-medis.ugd.dokumen-view.instruksi-pasca-bedah-view-ugd :rjNo="$rjNo"
                         :entries="$dataDaftarTxn['instruksiPascaBedahUGD'] ?? []" wire:key="rm-view-instruksi-pasca-bedah-ugd-{{ $rjNo }}" />
+
+                    {{-- ── Kriteria Robson — viewer (Lihat + Cetak dalam modal) ── --}}
+                    <livewire:pages::components.rekam-medis.ugd.dokumen-view.kriteria-robson-view-ugd :rjNo="$rjNo"
+                        :entries="$dataDaftarTxn['kriteriaRobsonUGD'] ?? []" wire:key="rm-view-kriteria-robson-ugd-{{ $rjNo }}" />
                 </div>
 
                 {{-- ════ TAB: HASIL PENUNJANG (lab / radiologi / upload — view-only) ════ --}}

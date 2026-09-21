@@ -772,6 +772,10 @@ new class extends Component {
 
                     <livewire:pages::components.rekam-medis.rj.dokumen-view.instruksi-pasca-bedah-view-rj :rjNo="$rjNo"
                         :entries="$dataDaftarTxn['instruksiPascaBedahRJ'] ?? []" wire:key="rm-view-instruksi-pasca-bedah-rj-{{ $rjNo }}" />
+
+                    {{-- ── Kriteria Robson — viewer (Lihat + Cetak dalam modal) ── --}}
+                    <livewire:pages::components.rekam-medis.rj.dokumen-view.kriteria-robson-view-rj :rjNo="$rjNo"
+                        :entries="$dataDaftarTxn['kriteriaRobsonRJ'] ?? []" wire:key="rm-view-kriteria-robson-rj-{{ $rjNo }}" />
                 </div>
 
                 {{-- ════ TAB: HASIL PENUNJANG (lab / radiologi / upload — view-only) ════ --}}

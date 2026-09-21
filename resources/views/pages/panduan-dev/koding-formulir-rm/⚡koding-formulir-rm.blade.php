@@ -82,6 +82,7 @@ new class extends Component {
             'RM-05.08' => 'Instruksi Pasca Bedah',
             'RM-05.09' => 'Laporan Persalinan',
             'RM-05.10' => 'Indikasi Sectio Caesarea',
+            'RM-05.11' => 'Kriteria Robson',
 
             'RM-06.01' => 'Hasil Pemeriksaan Laboratorium',
             'RM-06.02' => 'Hasil Pemeriksaan Radiologi',
@@ -160,14 +161,14 @@ TXT,
 'blade-baru' => <<<'TXT'
 # cetak-laporan-endoskopi-ri-print.blade.php
 
-%TAG_LAYOUT% kode="RM-05.11 · Rev.0"
+%TAG_LAYOUT% kode="RM-05.12 · Rev.0"
     title="LAPORAN TINDAKAN ENDOSKOPI — RAWAT INAP">
 
     ...isi formulir...
 
 %TAG_LAYOUT_TUTUP%
 
-# Kaki SETIAP halaman (dari layout):   RM-05.11 · Rev.0  ……  Dicetak: 15/09/2026 08:54:42 oleh <nama user>
+# Kaki SETIAP halaman (dari layout):   RM-05.12 · Rev.0  ……  Dicetak: 15/09/2026 08:54:42 oleh <nama user>
 # JANGAN tulis footer Dicetak / No. RM / nama RS sendiri di blade.
 # Layout lain yang juga punya prop kode: x-pdf.layout-a4, x-pdf.layout-kwitansi
 TXT,
@@ -176,19 +177,19 @@ TXT,
 // resources/views/pages/panduan-dev/koding-formulir-rm/⚡koding-formulir-rm.blade.php
 // → method formulir(). Taruh di kelompoknya; NN = nomor terakhir kelompok itu + 1.
 
-'RM-05.10' => 'Indikasi Sectio Caesarea',
-'RM-05.11' => 'Laporan Tindakan Endoskopi',      // ← baru
+'RM-05.11' => 'Kriteria Robson',
+'RM-05.12' => 'Laporan Tindakan Endoskopi',      // ← baru
 
 // Port ke jalur lain (RJ/UGD) TIDAK menambah baris — cukup pasang kode yang sama
 // di blade cetak jalur itu; kolom "View cetak" di Daftar Formulir RM terisi sendiri.
 TXT,
 
 'kode-literal' => <<<'TXT'
-BENAR   kode="RM-05.11 · Rev.0"
-SALAH   kode="RM-05.11"                 ← revisi wajib ikut tertulis
-SALAH   kode="RM-05.11 Rev.0"           ← pemisahnya " · " (spasi, titik tengah, spasi)
+BENAR   kode="RM-05.12 · Rev.0"
+SALAH   kode="RM-05.12"                 ← revisi wajib ikut tertulis
+SALAH   kode="RM-05.12 Rev.0"           ← pemisahnya " · " (spasi, titik tengah, spasi)
 SALAH   :kode="$kodeFormulir"           ← tak terbaca Daftar Formulir RM
-SALAH   title="RM-05.11 LAPORAN …"      ← kode diketik di judul, bukan prop kode
+SALAH   title="RM-05.12 LAPORAN …"      ← kode diketik di judul, bukan prop kode
 
 # Titik tengah "·" paling aman disalin dari blade cetak lain:
 grep -rh 'kode="RM-' resources/views --include='*-print.blade.php' | head -1
