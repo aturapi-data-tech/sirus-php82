@@ -33,6 +33,7 @@ new class extends Component {
         ['key' => 'riwayatObstetri', 'label' => 'Riwayat Obstetri', 'fase' => 'Obstetri', 'pengisi' => 'Bidan', 'ket' => 'Tabel riwayat kehamilan & persalinan yang lalu', 'icon' => $iconTbl],
         ['key' => 'observasiPersalinan', 'label' => 'Observasi Persalinan', 'fase' => 'Intranatal', 'pengisi' => 'Bidan', 'ket' => 'Pemantauan Kala I–II berulang (TD/N/RR/S/DJJ/His/EWS)', 'icon' => $iconChart],
         ['key' => 'laporanPersalinan', 'label' => 'Laporan Tindakan Persalinan', 'fase' => 'Intranatal', 'pengisi' => 'Dokter / Bidan', 'ket' => 'Partus, bayi, plasenta, perlukaan, Kala IV, IMD/rawat gabung', 'icon' => $iconDoc],
+        ['key' => 'kriteriaRobson', 'label' => 'Kriteria Robson', 'fase' => 'Audit', 'pengisi' => 'Dokter / Bidan', 'ket' => 'Klasifikasi 10 kelompok Robson (WHO) — kelompok ditentukan otomatis dari variabel obstetri', 'icon' => $iconChart],
         ['key' => 'indikatorSc', 'label' => 'Indikator Proses SC', 'fase' => 'Audit', 'pengisi' => 'Dokter', 'ket' => 'Checklist mutu 15 indikator + klasifikasi + indikasi SC', 'icon' => $iconCheck],
         ['key' => 'observasiNifas', 'label' => 'Observasi Nifas', 'fase' => 'Postnatal', 'pengisi' => 'Bidan', 'ket' => 'Pemantauan masa nifas (TFU, lochia, laktasi, luka, EWS)', 'icon' => $iconHeart],
         ['key' => 'pengkajianGinekologi', 'label' => 'Pengkajian Awal Ginekologi', 'fase' => 'Ginekologi', 'pengisi' => 'Bidan / Dokter', 'ket' => 'Keluhan, riwayat haid/KB, pemeriksaan dalam (VT/RT/Inspeculo), diagnosa', 'icon' => $iconDoc],
@@ -132,6 +133,10 @@ new class extends Component {
     <div x-show="subTab === 'laporanPersalinan'" x-transition.opacity.duration.200ms style="display:none">
         <livewire:pages::transaksi.ri.emr-ri.modul-dokumen.laporan-persalinan-ri.rm-laporan-persalinan-ri-actions
             :riHdrNo="$riHdrNo" :disabled="$disabled" wire:key="vk-laporan-persalinan-{{ $riHdrNo ?? 'init' }}" />
+    </div>
+    <div x-show="subTab === 'kriteriaRobson'" x-transition.opacity.duration.200ms style="display:none">
+        <livewire:pages::transaksi.ri.emr-ri.modul-dokumen.kriteria-robson-ri.rm-kriteria-robson-ri-actions
+            :riHdrNo="$riHdrNo" :disabled="$disabled" wire:key="vk-kriteria-robson-{{ $riHdrNo ?? 'init' }}" />
     </div>
     <div x-show="subTab === 'indikatorSc'" x-transition.opacity.duration.200ms style="display:none">
         <livewire:pages::transaksi.ri.emr-ri.modul-dokumen.indikator-sc-ri.rm-indikator-sc-ri-actions

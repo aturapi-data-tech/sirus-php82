@@ -21,6 +21,7 @@ new class extends Component {
             'pengkajianPreOpRJ' => 'Pengkajian Pre-Op', 'praAnestesiRJ' => 'Pra Anestesi', 'praInduksiRJ' => 'Pra Induksi',
             'surgicalSafetyChecklistRJ' => 'Surgical Safety Checklist', 'laporanOperasiRJ' => 'Laporan Operasi',
             'laporanAnestesiRJ' => 'Laporan Anestesi', 'pascaAnestesiRJ' => 'Pasca Anestesi', 'instruksiPascaBedahRJ' => 'Instruksi Pasca Bedah',
+            'kriteriaRobsonRJ' => 'Kriteria Robson',
         ],
         'UGD' => [
             'generalConsentPasienUGD' => 'General Consent', 'informConsentPasienUGD' => 'Inform Consent',
@@ -30,6 +31,7 @@ new class extends Component {
             'pengkajianPreOpUGD' => 'Pengkajian Pre-Op', 'praAnestesiUGD' => 'Pra Anestesi', 'praInduksiUGD' => 'Pra Induksi',
             'surgicalSafetyChecklistUGD' => 'Surgical Safety Checklist', 'laporanOperasiUGD' => 'Laporan Operasi',
             'laporanAnestesiUGD' => 'Laporan Anestesi', 'pascaAnestesiUGD' => 'Pasca Anestesi', 'instruksiPascaBedahUGD' => 'Instruksi Pasca Bedah',
+            'kriteriaRobsonUGD' => 'Kriteria Robson',
         ],
         'RI' => [
             'generalConsentPasienRI' => 'General Consent', 'informConsentPasienRI' => 'Inform Consent', 'suratKematianRI' => 'Surat Kematian',
@@ -43,7 +45,7 @@ new class extends Component {
             'secondOpinionRI' => 'Second Opinion', 'pengkajianAkhirHayatRI' => 'Akhir Hayat', 'pelaporanEsoRI' => 'Pelaporan ESO',
             'permintaanDarahRI' => 'Permintaan Darah',
             'pengkajianAwalObstetriRI' => 'Pengkajian Awal Obstetri', 'riwayatObstetriRI' => 'Riwayat Obstetri',
-            'observasiPersalinanRI' => 'Observasi Persalinan', 'laporanPersalinanRI' => 'Laporan Persalinan', 'indikatorScRI' => 'Indikator SC',
+            'observasiPersalinanRI' => 'Observasi Persalinan', 'laporanPersalinanRI' => 'Laporan Persalinan', 'kriteriaRobsonRI' => 'Kriteria Robson', 'indikatorScRI' => 'Indikator SC',
             'observasiNifasRI' => 'Observasi Nifas', 'pengkajianAwalGinekologiRI' => 'Pengkajian Awal Ginekologi',
             'pengkajianAwalBayiRI' => 'Pengkajian Awal Bayi', 'pengkajianNeonatalPerawatRI' => 'Pengkajian Neonatal Perawat',
             'identifikasiBayiRI' => 'Identifikasi Bayi', 'catatanTerapiNeonatalRI' => 'Catatan Terapi Neonatal',
