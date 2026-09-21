@@ -762,6 +762,9 @@ new class extends Component {
                     <livewire:pages::components.rekam-medis.ri.dokumen-view.laporan-persalinan-view-ri :riHdrNo="(string) $riHdrNo"
                         :entries="$ri['laporanPersalinanRI'] ?? []" wire:key="rm-view-laporan-persalinan-{{ $riHdrNo }}" />
 
+                    <livewire:pages::components.rekam-medis.ri.dokumen-view.kriteria-robson-view-ri :riHdrNo="(string) $riHdrNo"
+                        :entries="$ri['kriteriaRobsonRI'] ?? []" wire:key="rm-view-kriteria-robson-{{ $riHdrNo }}" />
+
                     <livewire:pages::components.rekam-medis.ri.dokumen-view.indikator-sc-view-ri :riHdrNo="(string) $riHdrNo"
                         :entries="$ri['indikatorScRI'] ?? []" wire:key="rm-view-indikator-sc-{{ $riHdrNo }}" />
 

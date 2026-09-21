@@ -18,13 +18,14 @@ new class extends Component {
      * Hub ini memang perlu tahu keadaan SEMUA dokumen untuk menyalakan badge — tapi cukup
      * benar/salah dan hitungannya, bukan isi dokumennya. Menyimpan `datadaftarpolirj_json`
      * utuh di properti publik berarti mengirim seluruh dokumen bolak-balik tiap request
-     * hanya demi lima badge.
+     * hanya demi enam badge.
      */
     public bool $adaSuket = false;
     public bool $adaGeneralConsent = false;
     public int $jumlahInformConsent = 0;
     public int $jumlahPenundaan = 0;
     public bool $adaBedah = false;
+    public int $jumlahKriteriaRobson = 0;
 
     // renderVersions
     public array $renderVersions = [];
@@ -100,13 +101,14 @@ new class extends Component {
         }
     }
 
-    /** Dokumen dibaca sebagai variabel LOKAL, diperas jadi lima penanda, lalu dilepas. */
+    /** Dokumen dibaca sebagai variabel LOKAL, diperas jadi enam penanda, lalu dilepas. */
     private function hitungRingkasan(array $data): void
     {
         $this->adaSuket = !empty($data['suket']['suketSehat']) || !empty($data['suket']['suketIstirahat']);
         $this->adaGeneralConsent = !empty($data['generalConsentPasienRJ']['signature']);
         $this->jumlahInformConsent = count($data['informConsentPasienRJ'] ?? []);
         $this->jumlahPenundaan = count($data['penundaanPelayananRJ'] ?? []);
+        $this->jumlahKriteriaRobson = count($data['kriteriaRobsonRJ'] ?? []);
         $this->adaBedah = collect([
             'pengkajianPreOpRJ', 'praAnestesiRJ', 'praInduksiRJ', 'surgicalSafetyChecklistRJ',
             'laporanOperasiRJ', 'laporanAnestesiRJ', 'pascaAnestesiRJ', 'instruksiPascaBedahRJ',
@@ -116,7 +118,7 @@ new class extends Component {
     protected function resetForm(): void
     {
         $this->tabAwal = 'suket';
-        $this->reset(['rjNo', 'adaSuket', 'adaGeneralConsent', 'jumlahInformConsent', 'jumlahPenundaan', 'adaBedah']);
+        $this->reset(['rjNo', 'adaSuket', 'adaGeneralConsent', 'jumlahInformConsent', 'jumlahPenundaan', 'adaBedah', 'jumlahKriteriaRobson']);
         $this->resetVersion();
         $this->isFormLocked = false;
     }
@@ -233,6 +235,21 @@ new class extends Component {
                                         @endif
                                     </x-tab>
 
+                                    {{-- Kriteria Robson (klasifikasi 10 kelompok, WHO) --}}
+                                    <x-tab variant="underline" active-expr="activeTab === 'kriteria-robson'"
+                                        x-on:click="activeTab = 'kriteria-robson'"
+                                        class="inline-flex items-center gap-2">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                        </svg>
+                                        Kriteria Robson
+                                        @if ($jumlahKriteriaRobson > 0)
+                                            <x-badge variant="success"
+                                                class="text-[10px] px-1.5 py-0">{{ $jumlahKriteriaRobson }}</x-badge>
+                                        @endif
+                                    </x-tab>
+
                                 </div>
                             </div>
 
@@ -268,6 +285,13 @@ new class extends Component {
                                 <livewire:pages::transaksi.rj.emr-rj.modul-dokumen.pelayanan-bedah-rj.rm-pelayanan-bedah-rj-actions
                                     :rjNo="$rjNo" :disabled="$isFormLocked"
                                     wire:key="pelayanan-bedah-rj-{{ $rjNo ?? 'init' }}" />
+                            </div>
+
+                            {{-- Panel: Kriteria Robson --}}
+                            <div x-show="activeTab === 'kriteria-robson'" x-transition.opacity.duration.300ms>
+                                <livewire:pages::transaksi.rj.emr-rj.modul-dokumen.kriteria-robson-rj.rm-kriteria-robson-rj-actions
+                                    :rjNo="$rjNo" :disabled="$isFormLocked"
+                                    wire:key="kriteria-robson-rj-{{ $rjNo ?? 'init' }}" />
                             </div>
 
                         </div>
