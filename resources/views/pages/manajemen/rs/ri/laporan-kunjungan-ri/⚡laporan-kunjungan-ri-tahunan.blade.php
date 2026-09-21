@@ -310,5 +310,6 @@ new class extends Component {
 
     {{-- PEMERIKSAAN DATA — hitungan data janggal + uji silang jumlah --}}
     <x-kunjungan-ri.anomali :anomali="$this->anomaliData" :totals="$tot" :bangsal="$this->bangsalBreakdown"
-        :kapasitasTT="$kapasitasTT" :ttBangsalDihitung="$this->ttBangsalDihitung()" />
+        :kapasitasTT="$kapasitasTT" :ttBangsalDihitung="$this->ttBangsalDihitung()"
+        :batasLos="$this->batasLos()" :batasLosBawaan="self::BATAS_LOS_BAWAAN" />
 </div>
