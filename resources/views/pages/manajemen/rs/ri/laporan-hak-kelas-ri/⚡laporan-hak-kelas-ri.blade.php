@@ -1,9 +1,9 @@
 <?php
-// resources/views/pages/manajemen/rs/rj/laporan-hak-kelas-rj/laporan-hak-kelas-rj.blade.php
-// Laporan Kunjungan RJ per Hak Kelas Rawat BPJS (kelas 1 / 2 / 3).
+// resources/views/pages/manajemen/rs/ri/laporan-hak-kelas-ri/laporan-hak-kelas-ri.blade.php
+// Laporan Pasien Pulang RI per Hak Kelas Rawat BPJS (kelas 1 / 2 / 3).
 // State, query, dan turunan ada di App\Http\Traits\Manajemen\Rs\HakKelasTrait (satu sumber untuk RJ/UGD/RI).
 // Tampilan sengaja ditanam per jalur — mengubah kolom/teks berarti mengubah ketiga berkas laporan-hak-kelas-*.
-// Berkas ini memegang konfigurasi + tampilan jalur RJ.
+// Berkas ini memegang konfigurasi + tampilan jalur RI.
 
 use Livewire\Component;
 use App\Http\Traits\Manajemen\Rs\HakKelasTrait;
@@ -14,15 +14,19 @@ new class extends Component {
     protected function konfigurasiHakKelas(): array
     {
         return [
-            'tabel'           => 'rstxn_rjhdrs',
-            'kunci'           => 'rj_no',
-            'json'            => 'datadaftarpolirj_json',
-            'tanggal'         => 'rj_date',
-            // rj_status: A antrian, L selesai, I transfer UGD, F batal
-            'syaratAktif'     => "NVL(h.rj_status,'A') <> 'F'",
-            'grupJoin'        => fn($query) => $query->leftJoin('rsmst_polis as g', 'g.poli_id', '=', 'h.poli_id'),
-            'grupSelect'      => 'h.poli_id as grup_id, g.poli_desc as grup_nama',
-            'labelGrupKosong' => '(Tanpa Poli)',
+            'tabel'           => 'rstxn_rihdrs',
+            'kunci'           => 'rihdr_no',
+            'json'            => 'datadaftarri_json',
+            // Periode = tanggal pulang, selaras Laporan Kunjungan RI (KunjunganRITrait)
+            'tanggal'         => 'exit_date',
+            // ri_status: I dirawat, P pulang, F batal
+            'syaratAktif'     => "NVL(h.ri_status,'-') <> 'F'",
+            // Bangsal kamar TERAKHIR pasien (rstxn_rihdrs.room_id → kamar → bangsal)
+            'grupJoin'        => fn($query) => $query
+                ->leftJoin('rsmst_rooms as r', 'r.room_id', '=', 'h.room_id')
+                ->leftJoin('rsmst_bangsals as g', 'g.bangsal_id', '=', 'r.bangsal_id'),
+            'grupSelect'      => 'r.bangsal_id as grup_id, g.bangsal_name as grup_nama',
+            'labelGrupKosong' => '(Tanpa Bangsal)',
         ];
     }
 };
@@ -39,8 +43,8 @@ new class extends Component {
         $bpjsTakPasti = $tot['sep_tak_terbaca'] + $tot['belum_sep'];
     @endphp
 
-    <x-page-title title="Laporan Kunjungan RJ per Hak Kelas"
-        subtitle="Kunjungan Rawat Jalan BPJS menurut hak kelas rawat peserta (kelas 1 / 2 / 3) yang tercatat saat pembuatan SEP. Periode berdasarkan tanggal kunjungan; pasien Kronis dan kunjungan batal tidak dihitung." />
+    <x-page-title title="Laporan Rawat Inap per Hak Kelas"
+        subtitle="Pasien Rawat Inap BPJS yang pulang menurut hak kelas rawat peserta (kelas 1 / 2 / 3) yang tercatat saat pembuatan SEP, plus yang naik kelas. Periode berdasarkan tanggal pulang; pasien Kronis dan rawat inap batal tidak dihitung." />
 
     <div class="w-full min-h-[calc(100vh-5rem)] bg-canvas dark:bg-gray-800">
         <div class="px-6 pt-2 pb-6">
@@ -92,7 +96,7 @@ new class extends Component {
             {{-- RINGKASAN --}}
             <div class="grid grid-cols-2 gap-3 mt-4 sm:grid-cols-3 lg:grid-cols-6">
                 <div class="p-3 border bg-canvas border-hairline rounded-xl dark:border-gray-700 dark:bg-gray-900">
-                    <div class="text-xs uppercase text-muted">Kunjungan RJ {{ $teksPeriode }}</div>
+                    <div class="text-xs uppercase text-muted">Pasien Pulang RI {{ $teksPeriode }}</div>
                     <div class="mt-1 text-2xl font-bold text-ink dark:text-gray-100">{{ $angka($tot['total']) }}</div>
                     <div class="text-[10px] text-muted">{{ $angka($this->pasienUnikGlobal) }} pasien unik</div>
                 </div>
@@ -123,17 +127,18 @@ new class extends Component {
                             <tr class="text-xs font-semibold tracking-wide uppercase text-muted dark:text-gray-300">
                                 <th rowspan="2" class="px-4 py-2 text-left align-bottom">{{ $mode === 'bulanan' ? 'Bulan' : 'Tahun' }}</th>
                                 <th colspan="3" class="px-3 pt-2 pb-1 text-center border-b border-hairline dark:border-gray-700">Kunjungan</th>
-                                <th colspan="6" class="px-3 pt-2 pb-1 text-center text-purple-700 border-b border-hairline dark:text-purple-300 dark:border-gray-700">Hak Kelas Rawat (BPJS)</th>
+                                <th colspan="7" class="px-3 pt-2 pb-1 text-center text-purple-700 border-b border-hairline dark:text-purple-300 dark:border-gray-700">Hak Kelas Rawat (BPJS)</th>
                                 <th colspan="2" class="px-3 pt-2 pb-1 text-center text-amber-700 border-b border-hairline dark:text-amber-400 dark:border-gray-700">BPJS Tanpa Hak Kelas</th>
                             </tr>
                             <tr class="text-xs font-semibold tracking-wide uppercase text-muted dark:text-gray-300">
-                                <th class="px-3 py-2 text-right" title="Kunjungan RJ dalam periode, bukan Kronis, bukan batal">Total</th>
+                                <th class="px-3 py-2 text-right" title="Pasien Pulang RI dalam periode, bukan Kronis, bukan batal">Total</th>
                                 <th class="px-3 py-2 text-right text-emerald-700 dark:text-emerald-300" title="klaim BPJS atau JKN Mobile">BPJS</th>
                                 <th class="px-3 py-2 text-right" title="Umum, asuransi lain, dsb. — tidak punya hak kelas BPJS">Non-BPJS</th>
                                 @foreach ([1, 2, 3] as $nomorKelas)
                                     <th class="px-3 py-2 text-right text-purple-700 dark:text-purple-300">Kelas {{ $nomorKelas }}</th>
                                     <th class="px-2 py-2 text-right text-purple-700 dark:text-purple-300" title="Persentase terhadap BPJS yang hak kelasnya terbaca (kelas 1 + 2 + 3)">%</th>
                                 @endforeach
+                                <th class="px-3 py-2 text-right text-blue-700 dark:text-blue-300" title="Peserta BPJS yang naik kelas perawatan atas permintaan sendiri (kelas rawat naik terisi di data SEP). Sudah termasuk di kelas haknya.">Naik Kelas</th>
                                 <th class="px-3 py-2 text-right text-amber-700 dark:text-amber-400" title="Sudah punya nomor SEP tetapi hak kelas tidak ditemukan di data SEP kunjungan">SEP, Tak Terbaca</th>
                                 <th class="px-3 py-2 text-right text-amber-700 dark:text-amber-400" title="Klaim BPJS tetapi belum punya nomor SEP">Belum SEP</th>
                             </tr>
@@ -150,6 +155,7 @@ new class extends Component {
                                         <td class="px-2 py-2.5 text-right tabular-nums text-muted dark:text-gray-400"
                                             title="{{ $angka($row['kelas' . $nomorKelas]) }} ÷ {{ $angka($row['terbaca']) }} × 100">{{ $persen($row['persen' . $nomorKelas]) }}</td>
                                     @endforeach
+                                    <td class="px-3 py-2.5 text-right tabular-nums text-blue-700 dark:text-blue-300">{{ $angka($row['naik_kelas']) }}</td>
                                     <td class="px-3 py-2.5 text-right tabular-nums {{ $kelasPeringatan($row['sep_tak_terbaca']) }}">{{ $angka($row['sep_tak_terbaca']) }}</td>
                                     <td class="px-3 py-2.5 text-right tabular-nums {{ $kelasPeringatan($row['belum_sep']) }}">{{ $angka($row['belum_sep']) }}</td>
                                 </tr>
@@ -166,6 +172,7 @@ new class extends Component {
                                     <td class="px-2 py-3 text-right tabular-nums text-muted"
                                         title="{{ $angka($tot['kelas' . $nomorKelas]) }} ÷ {{ $angka($tot['terbaca']) }} × 100">{{ $persen($tot['persen' . $nomorKelas]) }}</td>
                                 @endforeach
+                                <td class="px-3 py-3 text-right text-blue-800 tabular-nums dark:text-blue-200">{{ $angka($tot['naik_kelas']) }}</td>
                                 <td class="px-3 py-3 text-right tabular-nums {{ $kelasPeringatan($tot['sep_tak_terbaca']) }}">{{ $angka($tot['sep_tak_terbaca']) }}</td>
                                 <td class="px-3 py-3 text-right tabular-nums {{ $kelasPeringatan($tot['belum_sep']) }}">{{ $angka($tot['belum_sep']) }}</td>
                             </tr>
@@ -179,12 +186,12 @@ new class extends Component {
                 </div>
             </div>
 
-            {{-- PER POLI --}}
+            {{-- PER BANGSAL --}}
             <div class="mt-4 border shadow-sm bg-canvas border-hairline rounded-2xl dark:border-gray-700 dark:bg-gray-900">
                 <div class="px-4 py-3 border-b border-hairline dark:border-gray-700">
                     <h3 class="text-sm font-semibold text-body dark:text-gray-200">
-                        Hak Kelas per Poli
-                        <span class="ml-2 text-xs font-normal text-muted">{{ $teksPeriode }} · {{ count($this->grupBreakdown) }} poli · urut BPJS terbanyak</span>
+                        Hak Kelas per Bangsal
+                        <span class="ml-2 text-xs font-normal text-muted">{{ $teksPeriode }} · {{ count($this->grupBreakdown) }} bangsal · urut BPJS terbanyak · bangsal kamar terakhir</span>
                     </h3>
                 </div>
                 <div class="overflow-x-auto max-h-[600px] overflow-y-auto">
@@ -192,7 +199,7 @@ new class extends Component {
                         <thead class="sticky top-0 z-10 bg-surface-card dark:bg-gray-800">
                             <tr class="text-xs font-semibold tracking-wide uppercase text-muted dark:text-gray-300">
                                 <th class="w-12 px-4 py-3 text-left">#</th>
-                                <th class="px-3 py-3 text-left">Poli</th>
+                                <th class="px-3 py-3 text-left">Bangsal</th>
                                 <th class="px-3 py-3 text-right">Total</th>
                                 <th class="px-3 py-3 text-right text-emerald-700 dark:text-emerald-300">BPJS</th>
                                 <th class="px-3 py-3 text-right">Non-BPJS</th>
@@ -200,6 +207,7 @@ new class extends Component {
                                     <th class="px-3 py-3 text-right text-purple-700 dark:text-purple-300">Kelas {{ $nomorKelas }}</th>
                                     <th class="px-2 py-3 text-right text-purple-700 dark:text-purple-300">%</th>
                                 @endforeach
+                                <th class="px-3 py-3 text-right text-blue-700 dark:text-blue-300" title="Peserta BPJS yang naik kelas perawatan atas permintaan sendiri (kelas rawat naik terisi di data SEP). Sudah termasuk di kelas haknya.">Naik Kelas</th>
                                 <th class="px-3 py-3 text-right text-amber-700 dark:text-amber-400">SEP, Tak Terbaca</th>
                                 <th class="px-3 py-3 text-right text-amber-700 dark:text-amber-400">Belum SEP</th>
                             </tr>
@@ -216,12 +224,13 @@ new class extends Component {
                                         <td class="px-3 py-2.5 text-right font-semibold tabular-nums text-purple-700 dark:text-purple-300">{{ $angka($row['kelas' . $nomorKelas]) }}</td>
                                         <td class="px-2 py-2.5 text-right tabular-nums text-muted dark:text-gray-400">{{ $persen($row['persen' . $nomorKelas]) }}</td>
                                     @endforeach
+                                    <td class="px-3 py-2.5 text-right tabular-nums text-blue-700 dark:text-blue-300">{{ $angka($row['naik_kelas']) }}</td>
                                     <td class="px-3 py-2.5 text-right tabular-nums {{ $kelasPeringatan($row['sep_tak_terbaca']) }}">{{ $angka($row['sep_tak_terbaca']) }}</td>
                                     <td class="px-3 py-2.5 text-right tabular-nums {{ $kelasPeringatan($row['belum_sep']) }}">{{ $angka($row['belum_sep']) }}</td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="13" class="px-6 py-12 text-center text-muted dark:text-gray-400">Belum ada data</td>
+                                    <td colspan="14" class="px-6 py-12 text-center text-muted dark:text-gray-400">Belum ada data</td>
                                 </tr>
                             @endforelse
                         </tbody>
@@ -237,11 +246,11 @@ new class extends Component {
                 <dl class="grid grid-cols-1 gap-x-8 gap-y-3 p-4 text-xs md:grid-cols-2 text-body dark:text-gray-300">
                     <div>
                         <dt class="font-semibold text-ink dark:text-gray-100">Hak kelas</dt>
-                        <dd class="text-muted dark:text-gray-400">Hak kelas rawat peserta BPJS yang tercatat di data SEP kunjungan (kelas rawat hak), terisi otomatis dari cek kepesertaan saat SEP dibuat. Bukan kelas yang ditempati — Rawat Jalan tidak punya kelas kamar.</dd>
+                        <dd class="text-muted dark:text-gray-400">Hak kelas rawat peserta BPJS yang tercatat di data SEP kunjungan (kelas rawat hak), terisi otomatis dari cek kepesertaan saat SEP dibuat. Ini HAK kelas peserta, bukan kelas kamar yang ditempati. Kolom Naik Kelas menghitung peserta yang naik kelas atas permintaan sendiri; mereka tetap dihitung di kelas haknya.</dd>
                     </div>
                     <div>
                         <dt class="font-semibold text-ink dark:text-gray-100">Yang dihitung</dt>
-                        <dd class="text-muted dark:text-gray-400">Kunjungan Rawat Jalan menurut tanggal kunjungan. Pasien Kronis dan kunjungan batal dikeluarkan. Satu pasien yang berkunjung beberapa kali dihitung tiap kunjungan; jumlah orangnya ada di "pasien unik".</dd>
+                        <dd class="text-muted dark:text-gray-400">Pasien Rawat Inap menurut tanggal pulang — sama dengan Laporan Kunjungan RI, jadi pasien yang masih dirawat belum terhitung. Pasien Kronis dan kunjungan batal dikeluarkan. Satu pasien yang berkunjung beberapa kali dihitung tiap kunjungan; jumlah orangnya ada di "pasien unik".</dd>
                     </div>
                     <div>
                         <dt class="font-semibold text-amber-700 dark:text-amber-400">SEP, Tak Terbaca</dt>
