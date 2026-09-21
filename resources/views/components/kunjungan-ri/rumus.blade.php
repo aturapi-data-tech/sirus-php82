@@ -10,7 +10,8 @@
     $angka = fn($nilai, int $desimal = 0) => number_format((float) $nilai, $desimal);
 
     $lamaDirawat = (float) ($totals['total_los'] ?? 0);
-    $keluar = (int) ($totals['total'] ?? 0);
+    $keluar = (int) ($totals['keluar_bor'] ?? 0);
+    $keluarSemua = (int) ($totals['total'] ?? 0);
     $hari = (int) ($totals['days_total'] ?? 0);
     $tt = (int) $kapasitasTT;
     $hariTersedia = $tt * $hari;
@@ -77,8 +78,13 @@
     <div class="px-4 pb-4">
         <dl class="grid grid-cols-1 gap-x-8 gap-y-2 text-xs md:grid-cols-2 text-body dark:text-gray-300">
             <div>
-                <dt class="font-semibold text-ink dark:text-gray-100">Pasien keluar = {{ $angka($keluar) }}</dt>
-                <dd class="text-muted dark:text-gray-400">Kunjungan RI yang tanggal pulangnya (exit_date) jatuh dalam periode; klaim Kronis dan status Batal (F) dikeluarkan.</dd>
+                <dt class="font-semibold text-ink dark:text-gray-100">
+                    Pasien keluar = {{ $angka($keluar) }}
+                    @if ($keluar !== $keluarSemua)
+                        <span class="font-normal text-amber-700 dark:text-amber-400">dari {{ $angka($keluarSemua) }} — {{ $angka($keluarSemua - $keluar) }} di bangsal yang tidak dihitung BOR</span>
+                    @endif
+                </dt>
+                <dd class="text-muted dark:text-gray-400">Kunjungan RI yang tanggal pulangnya (exit_date) jatuh dalam periode; klaim Kronis dan status Batal (F) dikeluarkan. Indikator hanya memakai bangsal yang dihitung (kartu Parameter TT per Bangsal).</dd>
             </div>
             <div>
                 <dt class="font-semibold text-ink dark:text-gray-100">Σ lama dirawat = {{ $angka($lamaDirawat, 1) }} hari</dt>
@@ -90,7 +96,7 @@
             </div>
             <div>
                 <dt class="font-semibold text-ink dark:text-gray-100">TT × hari = {{ $angka($tt) }} × {{ $angka($hari) }} = {{ $angka($hariTersedia) }} hari TT tersedia</dt>
-                <dd class="text-muted dark:text-gray-400">TT = jumlah bed di master saat ini (bukan TT historis). Bisa diubah di kotak Kapasitas TT untuk mengeluarkan bed yang tidak dihitung BOR resmi.</dd>
+                <dd class="text-muted dark:text-gray-400">TT = Σ TT bangsal yang dihitung (bawaan master bed saat ini, bukan TT historis). Atur per bangsal di kartu Parameter TT per Bangsal, atau timpa totalnya di kotak Kapasitas TT.</dd>
             </div>
         </dl>
         <p class="mt-3 text-[11px] leading-snug text-muted dark:text-gray-400">
