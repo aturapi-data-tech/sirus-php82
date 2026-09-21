@@ -81,10 +81,12 @@
                 <dt class="font-semibold text-ink dark:text-gray-100">
                     Pasien keluar = {{ $angka($keluar) }}
                     @if ($keluar !== $keluarSemua)
-                        <span class="font-normal text-amber-700 dark:text-amber-400">dari {{ $angka($keluarSemua) }} — {{ $angka($keluarSemua - $keluar) }} di bangsal yang tidak dihitung BOR</span>
+                        <span class="font-normal text-amber-700 dark:text-amber-400">
+                            dari {{ $angka($keluarSemua) }} = {{ $angka($keluarSemua) }} − {{ $angka($totals['luar_bangsal'] ?? 0) }} di bangsal yang tidak dihitung BOR − {{ $angka($totals['anomali_dikeluarkan'] ?? 0) }} data janggal
+                        </span>
                     @endif
                 </dt>
-                <dd class="text-muted dark:text-gray-400">Kunjungan RI yang tanggal pulangnya (exit_date) jatuh dalam periode; klaim Kronis dan status Batal (F) dikeluarkan. Indikator hanya memakai bangsal yang dihitung (kartu Parameter TT per Bangsal).</dd>
+                <dd class="text-muted dark:text-gray-400">Kunjungan RI yang tanggal pulangnya (exit_date) jatuh dalam periode; klaim Kronis dan status Batal (F) dikeluarkan. Indikator hanya memakai bangsal yang dihitung (kartu Parameter TT per Bangsal) dan kunjungan yang lama dirawatnya bisa dipercaya (kartu Pemeriksaan Data).</dd>
             </div>
             <div>
                 <dt class="font-semibold text-ink dark:text-gray-100">Σ lama dirawat = {{ $angka($lamaDirawat, 1) }} hari</dt>

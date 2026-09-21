@@ -28,6 +28,7 @@
         };
     };
     $kelasAnomali = fn($jumlah) => $jumlah > 0 ? 'font-semibold text-amber-700 dark:text-amber-400' : 'text-muted-soft';
+    $kelasDikeluarkan = fn($jumlah) => $jumlah > 0 ? 'font-bold text-rose-700 dark:text-rose-400' : 'text-muted-soft';
 @endphp
 
 <div class="mt-4 bg-canvas border border-hairline shadow-sm rounded-2xl dark:border-gray-700 dark:bg-gray-900">
@@ -39,7 +40,7 @@
                     <th colspan="4" class="px-3 pt-2 pb-1 text-center border-b border-hairline dark:border-gray-700">Pasien Keluar</th>
                     <th colspan="4" class="px-3 pt-2 pb-1 text-center text-blue-700 border-b border-hairline dark:text-blue-300 dark:border-gray-700">Komponen Hitungan</th>
                     <th colspan="4" class="px-3 pt-2 pb-1 text-center text-purple-700 border-b border-hairline dark:text-purple-300 dark:border-gray-700">Indikator</th>
-                    <th colspan="2" class="px-3 pt-2 pb-1 text-center text-amber-700 border-b border-hairline dark:text-amber-400 dark:border-gray-700">Data Janggal</th>
+                    <th colspan="3" class="px-3 pt-2 pb-1 text-center text-amber-700 border-b border-hairline dark:text-amber-400 dark:border-gray-700">Data Janggal</th>
                 </tr>
                 <tr class="text-xs font-semibold tracking-wide text-muted uppercase dark:text-gray-300">
                     <th class="px-3 py-2 text-right" title="Kunjungan RI ber-exit_date dalam periode, klaim bukan Kronis, status bukan Batal (F)">Total</th>
@@ -48,14 +49,15 @@
                     <th class="px-3 py-2 text-right text-amber-700 dark:text-amber-300">UMUM</th>
                     <th class="px-3 py-2 text-right text-blue-700 dark:text-blue-300" title="Hari periode yang SUDAH berjalan s/d hari ini (periode mendatang = 0)">Hari</th>
                     <th class="px-3 py-2 text-right text-blue-700 dark:text-blue-300" title="Hari TT tersedia = TT × hari periode">TT × Hari</th>
-                    <th class="px-3 py-2 text-right text-blue-700 dark:text-blue-300" title="Pasien keluar di bangsal yang dihitung BOR — sama dengan Total bila tidak ada bangsal yang dikeluarkan">Keluar Dihitung</th>
+                    <th class="px-3 py-2 text-right text-blue-700 dark:text-blue-300" title="Pasien keluar yang ikut hitungan indikator = Total − bangsal yang tidak dihitung BOR − data janggal yang dikeluarkan">Keluar Dihitung</th>
                     <th class="px-3 py-2 text-right text-blue-700 dark:text-blue-300" title="Σ (exit_date − entry_date) pasien keluar di bangsal yang dihitung, dibebankan ke periode tanggal pulang">Σ Lama Dirawat</th>
                     <th class="px-2 py-2 text-right text-purple-700 dark:text-purple-300" title="Bed Occupancy Rate (%)">BOR</th>
                     <th class="px-2 py-2 text-right text-purple-700 dark:text-purple-300" title="Average Length of Stay (hari)">ALOS</th>
                     <th class="px-2 py-2 text-right text-purple-700 dark:text-purple-300" title="Turn Over Interval (hari)">TOI</th>
                     <th class="px-2 py-2 text-right text-purple-700 dark:text-purple-300" title="Bed Turn Over (kali)">BTO</th>
-                    <th class="px-2 py-2 text-right text-amber-700 dark:text-amber-400" title="Pasien keluar dengan lama dirawat di bawah 1 hari (termasuk masuk = keluar)">LOS &lt; 1 hr</th>
-                    <th class="px-2 py-2 text-right text-amber-700 dark:text-amber-400" title="Punya tanggal pulang tetapi ri_status bukan P (Pulang)">Status ≠ P</th>
+                    <th class="px-2 py-2 text-right text-rose-700 dark:text-rose-400" title="TIDAK ikut hitungan indikator: status bukan P, lama dirawat negatif, tanpa tanggal masuk, atau di atas batas wajar. Tetap terhitung di Total.">Dikeluarkan</th>
+                    <th class="px-2 py-2 text-right text-amber-700 dark:text-amber-400" title="Peringatan saja (tetap dihitung): lama dirawat di bawah 1 hari, termasuk masuk = keluar">LOS &lt; 1 hr</th>
+                    <th class="px-2 py-2 text-right text-rose-700 dark:text-rose-400" title="Bagian dari kolom Dikeluarkan: punya tanggal pulang tetapi ri_status bukan P (Pulang) — di Daftar RI masih tampil Dirawat">Status ≠ P</th>
                 </tr>
             </thead>
             <tbody>
@@ -74,8 +76,9 @@
                         <td class="px-2 py-2.5 text-right tabular-nums text-purple-700 dark:text-purple-300" title="{{ $rumusSel($row, 'alos') }}">{{ $row['keluar_bor'] > 0 ? $row['alos'] . ' hr' : '—' }}</td>
                         <td class="px-2 py-2.5 text-right tabular-nums text-purple-700 dark:text-purple-300" title="{{ $rumusSel($row, 'toi') }}">{{ $row['toi'] !== null ? $row['toi'] . ' hr' : '—' }}</td>
                         <td class="px-2 py-2.5 text-right tabular-nums text-purple-700 dark:text-purple-300" title="{{ $rumusSel($row, 'bto') }}">{{ $row['bto'] !== null ? $row['bto'] . 'x' : '—' }}</td>
+                        <td class="px-2 py-2.5 text-right tabular-nums {{ $kelasDikeluarkan($row['anomali_dikeluarkan']) }}">{{ $angka($row['anomali_dikeluarkan']) }}</td>
                         <td class="px-2 py-2.5 text-right tabular-nums {{ $kelasAnomali($row['los_kurang_1']) }}">{{ $angka($row['los_kurang_1']) }}</td>
-                        <td class="px-2 py-2.5 text-right tabular-nums {{ $kelasAnomali($row['status_lain']) }}">{{ $angka($row['status_lain']) }}</td>
+                        <td class="px-2 py-2.5 text-right tabular-nums {{ $kelasDikeluarkan($row['status_lain']) }}">{{ $angka($row['status_lain']) }}</td>
                     </tr>
                 @endforeach
             </tbody>
@@ -94,8 +97,9 @@
                     <td class="px-2 py-3 text-right tabular-nums text-purple-800 dark:text-purple-200" title="{{ $rumusSel($totals, 'alos') }}">{{ $totals['keluar_bor'] > 0 ? $totals['alos'] . ' hr' : '—' }}</td>
                     <td class="px-2 py-3 text-right tabular-nums text-purple-800 dark:text-purple-200" title="{{ $rumusSel($totals, 'toi') }}">{{ $totals['toi'] !== null ? $totals['toi'] . ' hr' : '—' }}</td>
                     <td class="px-2 py-3 text-right tabular-nums text-purple-800 dark:text-purple-200" title="{{ $rumusSel($totals, 'bto') }}">{{ $totals['bto'] !== null ? $totals['bto'] . 'x' : '—' }}</td>
+                    <td class="px-2 py-3 text-right tabular-nums {{ $kelasDikeluarkan($totals['anomali_dikeluarkan']) }}">{{ $angka($totals['anomali_dikeluarkan']) }}</td>
                     <td class="px-2 py-3 text-right tabular-nums {{ $kelasAnomali($totals['los_kurang_1']) }}">{{ $angka($totals['los_kurang_1']) }}</td>
-                    <td class="px-2 py-3 text-right tabular-nums {{ $kelasAnomali($totals['status_lain']) }}">{{ $angka($totals['status_lain']) }}</td>
+                    <td class="px-2 py-3 text-right tabular-nums {{ $kelasDikeluarkan($totals['status_lain']) }}">{{ $angka($totals['status_lain']) }}</td>
                 </tr>
             </tfoot>
         </table>
@@ -107,5 +111,6 @@
             <span class="text-amber-600 dark:text-amber-400">(ditimpa manual; Σ bangsal yang dihitung = {{ $angka($defaultKapasitasTT) }})</span>
         @endif.
         <strong>Hari</strong> = hari yang sudah berjalan s/d hari ini; periode yang belum berjalan ditampilkan "—".
+        <strong class="text-rose-700 dark:text-rose-400">Dikeluarkan</strong> = data janggal yang tidak ikut hitungan indikator (rinciannya di kartu Pemeriksaan Data); <strong class="text-amber-700 dark:text-amber-400">kuning</strong> = peringatan saja.
     </div>
 </div>
