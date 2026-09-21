@@ -25,10 +25,14 @@ new class extends Component {
     public string $drDesc = '';
 
     /**
-     * Dua key tingkat-atas yang MEMANG dikelola komponen ini. null = tidak ada di dokumen
+     * Key tingkat-atas yang MEMANG dikelola komponen ini. null = tidak ada di dokumen
      * saat dimuat, sehingga tidak ikut dipatch — menjaga perilaku isset() yang lama.
+     *
+     * statusPRB SENGAJA tidak dipegang di sini: nilainya ARRAY (statusPRB.penanggungJawab.*)
+     * milik E-Resep, dan komponen ini tak pernah mengubahnya. Dulu ia diketik ?string lalu
+     * di-cast → "Array to string conversion" begitu PRB pernah di-toggle; menyalin baliknya
+     * pun hanya berisiko menimpa toggle E-Resep dengan salinan basi.
      */
-    public ?string $statusPRB = null;
     public ?string $ermStatus = null;
 
     /**
@@ -84,7 +88,6 @@ new class extends Component {
         $this->perencanaan = $data['perencanaan'] ?? [];
         $this->drId = (string) ($data['drId'] ?? '');
         $this->drDesc = (string) ($data['drDesc'] ?? '');
-        $this->statusPRB = array_key_exists('statusPRB', $data) ? (string) $data['statusPRB'] : null;
         $this->ermStatus = array_key_exists('ermStatus', $data) ? (string) $data['ermStatus'] : null;
         $this->prasyaratTtd = [
             'pemeriksaan' => [
@@ -229,11 +232,6 @@ new class extends Component {
 
         // Set hanya key milik komponen ini — key lain tidak tersentuh
         $data['perencanaan'] = $this->perencanaan;
-
-        // statusPRB juga dikelola dari komponen ini
-        if ($this->statusPRB !== null) {
-            $data['statusPRB'] = $this->statusPRB;
-        }
 
         // ermStatus dikelola dari setDrPemeriksa
         if ($this->ermStatus !== null) {
