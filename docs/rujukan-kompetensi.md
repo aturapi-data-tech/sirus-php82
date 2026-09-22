@@ -396,7 +396,16 @@ direaktivasi). Penanganan: koordinasi dengan **TI BPJS kantor wilayah setempat**
 - Kemkes menjalankan *Check Point Modul Rujukan RME* daring kira-kira mingguan (terakhir 22/09/26) + spreadsheet
   progres per faskes — pantau undangan berikutnya di grup.
 - Postman publik: folder "04 Pengiriman Rujukan" (satusehat-public); playbook online: satusehat.kemkes.go.id/platform/docs/id/interoperability/rujukan/
-- Terminologi: clinical-speciality & practitioner-speciality (gsheet Kemkes); Kelompok Layanan per ICD-10 (Playbook Lampiran 4).
+- Terminologi (Google Sheet dari tim SATUSEHAT, grup 03/06/26):
+  - **Poli Tujuan (clinical-speciality)** `1wVb-PSwWsg2I9mdpxRQ9r_E7IHkoTFyBXcJfGTpa4-k` — 307 kode
+    (29 kelompok L01–L43 + 278 layanan LY…), disalin utuh 22/09/26 ke
+    `RujukanKompetensiOptions::CLINICAL_SPECIALITY` (+ `CLINICAL_SPECIALITY_INDUK`); dropdown panel
+    dikelompokkan per induk. Kode kelompok sah dikirim (L03 IGD). Memperbarui: unduh CSV
+    (`…/export?format=csv`) lalu bangkitkan ulang kedua konstanta; "ketik manual" tetap ada.
+  - **Tenaga Ahli (practitioner-speciality)** `1xhAOpG8g2ullzu8eGAqSzU7ecl_DQUevIghSvM8jqgI` — belum
+    dipakai; lihat §7.4 (`performerType` kita memakai SNOMED occupation, contoh faskes lain memakai
+    practitioner-speciality `1071 Penyakit dalam`).
+  - Kelompok Layanan per ICD-10: Playbook Lampiran 4.
 
 ---
 
@@ -460,11 +469,29 @@ Aturan di panel kita:
   memakainya — yang ada baru PATCH Task cancel.
 - **Satu CarePlan hanya untuk satu ServiceRequest.** Memakai ulang CarePlan lama ditolak
   (`CarePlan dengan identifier '…' sudah ada`). Kita aman: `identifierCarePlan` selalu `Str::uuid()` baru.
-- **TERBUKA (21/09/26):** saat semua tujuan menolak lalu permintaan dikirim ke faskes lain, tim
-  SATUSEHAT menjawab *"seharusnya tetap merefer ke 1 careplan"* — beberapa Task, satu CarePlan.
-  Kirim Ulang Tugas kita masih membuat Task **dan** CarePlan baru dalam satu Bundle. Belum diubah:
-  bentuk "Task saja yang menunjuk CarePlan lama" belum ada contohnya, dan belum jelas apakah
-  validasi `supportingInfo` CarePlan (§10.1) ikut berlaku. Tanyakan ke grup sebelum mengubah.
+- **Satu kunjungan = SATU CarePlan; yang berganti hanya Task (21/09/26).** Tim SATUSEHAT: saat
+  semua tujuan menolak lalu permintaan dikirim ke faskes lain, *"seharusnya tetap merefer ke 1
+  careplan"*. Postman hanya mencontohkan N Task + 1 CarePlan dalam SATU Bundle; bentuk "Task saja
+  yang menunjuk CarePlan yang sudah ada" **belum pernah dicontohkan**, jadi diterapkan dengan jaring
+  pengaman (`rujukanKirimTugas($konteks, $carePlanId, $hashIsiCarePlan)`, sejak 22/09/26):
+  - `formRujukan.carePlanId` **tidak dikosongkan** saat Task ditolak atau dibatalkan — hanya
+    `taskApprovalId`/`identifierTask` yang dilepas. Pengecualian: CarePlan yang sudah melahirkan
+    ServiceRequest (`hasil.serviceRequestId`) dikosongkan saat batal, karena satu CarePlan hanya
+    untuk satu ServiceRequest.
+  - Karena CarePlan kini bisa ada tanpa Task hidup, penanda "ada tugas" = **`taskApprovalId`**
+    (stepper, syarat Kirim Rujukan, kotak peringatan "Pulihkan ID"), bukan `carePlanId`.
+  - Tugas yang **ditolak** tidak dibatalkan (sudah final: `completed` + output `rejected`) —
+    cukup dilepas; orgId-nya masuk `orgIdMenolakList` dan faskes itu tak bisa dipilih lagi.
+  - Task berikutnya menunjuk CarePlan yang sama hanya bila **hash isinya sama**
+    (`hashIsiCarePlan` ⇐ `rujukanHashIsiCarePlan`: Task kandidat, jalur, deskripsi, layanan,
+    encounter, pasien, dokter). Bundle-nya berisi **Task saja** dengan `basedOn: CarePlan/<carePlanId>`.
+    Isi berubah (mis. diagnosa/layanan diganti, Cari Kandidat ulang) → Bundle lengkap, CarePlan baru.
+  - Server MENOLAK bentuk Task-saja → otomatis Bundle lengkap (CarePlan baru) + toast berisi alasannya.
+    Gangguan koneksi/5xx TIDAK dijatuhkan ke CarePlan baru (status kirim tak pasti).
+  - `rujukanPulihkanTugasTerakhir()` tidak lagi menganggap tugas ber-output `rejected` aktif —
+    dulu penjaga Kirim Tugas bisa "mengadopsi" tugas yang sudah ditolak.
+  Belum teruji live: toast "Task baru tidak diterima menunjuk CarePlan …" = bukti bahwa server tidak
+  menerima bentuk Task-saja; catat alasannya di sini bila muncul.
 
 ### 7.6 Konfirmasi & isu terbuka
 - **Rawat Jalan tidak punya accept/reject** — hanya IGD & Ranap (22/08). Sesuai desain kotak masuk kita.
@@ -569,7 +596,7 @@ Server kini menegakkan urutan tugas → DITERIMA → rujukan. Panel memblokir se
 ### 10.3 Aturan & jawaban resmi lain
 - **Batas jawaban IGD 15 menit** (07/09): tanpa jawaban dalam 15 menit, perujuk boleh mengirim
   ke faskes lain. Tidak ada auto-cancel; "mekanismenya akan diatur dari SATUSEHAT".
-- **Kirim ulang ke faskes lain = satu CarePlan** (21/09) — isu terbuka, lihat §7.5.
+- **Kirim ulang ke faskes lain = satu CarePlan** (21/09) — diterapkan dengan fallback, lihat §7.5.
 - **Wilayah lokus**: mapping rujukan RJ dikunci ke area piloting; tujuan di luar lokus →
   `PPK Dirujuk tidak ditemukan di Satu Sehat` (16/09). Diagnosa yang kompetensinya tak ada di
   wilayah itu (contoh M75.5 di Tulungagung, 10/09) → "tidak mengandung Faskes Rujukan"; coba

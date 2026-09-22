@@ -125,6 +125,9 @@ TC02–TC05 semuanya bergantung padanya. Detail: `docs/rujukan-kompetensi.md` §
 ## 2c. Jalur FHIR Ranap/IGD — aturan Playbook v6.1 (21 Agu 2026)
 
 Acuan: `docs/rujukan-kompetensi.md` §7. Sumber tunggal terminologi: `App\Support\Options\RujukanKompetensiOptions`.
+Katalog **clinical-speciality LENGKAP** (307 kode, sheet SATUSEHAT 03/06/26, disalin 22/09/26) sudah
+di `CLINICAL_SPECIALITY` + `CLINICAL_SPECIALITY_INDUK` — JANGAN menambah kode dengan menebak; perbarui
+dari sheet (docs §6).
 
 1. **`CarePlan.contributor` = Fasyankes PERUJUK** (kita), bukan tujuan. Ini perubahan v6.1;
    v6.0 dulu menyebut Fasyankes Rujukan. Kode kita sudah benar — jangan "diperbaiki" balik.
@@ -191,8 +194,12 @@ Darurat** hanya berupa tautan Google Docs; UAT-nya mandiri lewat form (docs §10
 - **UAT Ranap & IGD mandiri**: isi skenario lalu https://forms.gle/dgCzayP22sW5LkYa8.
 - **RS tujuan yang aktif menerima di staging**: RSIA Sentosa Makassar (Org 100028369, prov 73,
   kota 7371) — pakai untuk menembus 422 "belum ada Task … yang diterima".
-- **Isu terbuka**: kirim ulang ke faskes lain seharusnya memakai **CarePlan yang sama** (21/09);
-  Kirim Ulang Tugas kita masih membuat CarePlan baru. Tanyakan bentuk payload-nya sebelum mengubah.
+- **Satu kunjungan = SATU CarePlan, yang berganti hanya Task** (21/09): `carePlanId` TIDAK dikosongkan
+  saat Task ditolak/dibatalkan (kecuali sudah melahirkan ServiceRequest); penanda "ada tugas" =
+  `taskApprovalId`. `rujukanKirimTugas()` mengirim Bundle Task-saja (`basedOn: CarePlan/<carePlanId>`)
+  bila `hashIsiCarePlan` sama; ditolak server → otomatis CarePlan baru + toast alasan. Tugas ditolak
+  tidak dibatalkan (final), orgId-nya masuk `orgIdMenolakList`. Bentuk Task-saja BELUM pernah
+  dicontohkan resmi — detail docs §7.5.
 - **Batas jawaban IGD 15 menit** tanpa auto-cancel; lewat itu boleh kirim ke faskes lain.
 - **Whitelist IP BPJS dev**: per IP, tak ter-whitelist = timeout (bukan 500). HTTP 500 cepat dari
   `apijkn-dev` = server BPJS sendiri sedang bermasalah.

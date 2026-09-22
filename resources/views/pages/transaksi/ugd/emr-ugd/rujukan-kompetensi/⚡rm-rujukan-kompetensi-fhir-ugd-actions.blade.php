@@ -165,6 +165,12 @@ new class extends Component {
             // identifier yang kita kirim — pegangan menelusuri kalau id server tak terbaca
             'identifierTask' => '',
             'identifierCarePlan' => '',
+            // Hash isi CarePlan kunjungan ini. Satu kunjungan = SATU CarePlan: saat Task
+            // ditolak/dibatalkan lalu dikirim ke faskes lain, carePlanId dipakai lagi
+            // selama hash isinya sama (lihat rujukanKirimTugas()).
+            'hashIsiCarePlan' => '',
+            // orgId faskes yang MENOLAK tugas rujukan kunjungan ini — tak ditawarkan lagi
+            'orgIdMenolakList' => [],
             'hasil' => [],
         ];
     }
@@ -261,8 +267,9 @@ new class extends Component {
 
     /**
      * Kotak ketik manual muncul kalau petugas memilihnya, ATAU kalau kode
-     * tersimpan memang di luar daftar — daftar kita belum lengkap, jadi record
-     * lama tidak boleh jadi tak terbaca hanya karena kodenya tak dikenal.
+     * tersimpan memang di luar daftar — katalog SATUSEHAT bisa bertambah tanpa
+     * pemberitahuan, jadi record lama tidak boleh jadi tak terbaca hanya karena
+     * kodenya tak dikenal.
      */
     public function specialityManualAktif(): bool
     {
@@ -276,6 +283,12 @@ new class extends Component {
         return RujukanKompetensiOptions::CLINICAL_SPECIALITY;
     }
 
+    /** Katalog yang sama, dikelompokkan per kode induk untuk <optgroup> dropdown. */
+    public function specialityOptionsBerkelompok(): array
+    {
+        return RujukanKompetensiOptions::clinicalSpecialityBerkelompok();
+    }
+
     /**
      * Keadaan tiap langkah alur rujukan — DIHITUNG dari data, bukan disimpan.
      * Menyimpan "langkah aktif" sebagai state tersendiri membuat stepper bisa
@@ -287,7 +300,8 @@ new class extends Component {
     public function langkahRujukan(): array
     {
         $sudahKirim = !empty($this->formRujukan['hasil']['noRujukanSatuSehat']);
-        $adaTugas = !empty($this->formRujukan['carePlanId']);
+        // Task persetujuan, bukan CarePlan: CarePlan tetap ada saat Task ditolak/dibatalkan.
+        $adaTugas = !empty($this->formRujukan['taskApprovalId']);
         $adaKandidat = ($this->formRujukan['kandidatIdx'] ?? null) !== null;
         $statusApproval = (string) ($this->formRujukan['statusApproval'] ?? '');
         $keRanap = ($this->formRujukan['jalur'] ?? 'igd') === 'ranap';
@@ -615,6 +629,10 @@ new class extends Component {
             $this->dispatch('toast', type: 'error', message: 'Pilih kandidat faskes tujuan dulu.');
             return;
         }
+        if (in_array((string) $kandidat['orgId'], (array) ($this->formRujukan['orgIdMenolakList'] ?? []), true)) {
+            $this->dispatch('toast', type: 'error', message: $kandidat['nama'] . ' sudah MENOLAK tugas rujukan kunjungan ini — pilih kandidat lain.');
+            return;
+        }
 
         // PENJAGA 2 — tanya server. State lokal bisa kosong padahal tugasnya sudah
         // ada di sana: draft gagal tersimpan, atau dikirim dari perangkat/petugas
@@ -651,7 +669,7 @@ new class extends Component {
         $identifierTask = (string) Str::uuid();
         $identifierCarePlan = (string) Str::uuid();
 
-        $respon = $this->rujukanBundleApproval([
+        $konteksTugas = [
             'identifierTask' => $identifierTask,
             'identifierCarePlan' => $identifierCarePlan,
             'taskKandidatId' => trim((string) $this->formRujukan['taskKandidatId']),
@@ -666,7 +684,9 @@ new class extends Component {
             'deskripsi' => trim($this->formRujukan['deskripsi']) !== '' ? trim($this->formRujukan['deskripsi']) : 'Rujukan ' . $labelJalur . ' — ' . $this->formRujukan['kodeDiagnosa'] . ' ' . $this->formRujukan['diagnosaDesc'],
             'specialityCode' => trim($this->formRujukan['specialityCode']) !== '' ? trim($this->formRujukan['specialityCode']) : 'L03',
             'specialityDisplay' => trim($this->formRujukan['specialityDisplay']) !== '' ? trim($this->formRujukan['specialityDisplay']) : 'Pelayanan Gawat Darurat',
-        ]);
+        ];
+        $kirim = $this->rujukanKirimTugas($konteksTugas, (string) ($this->formRujukan['carePlanId'] ?? ''), (string) ($this->formRujukan['hashIsiCarePlan'] ?? ''));
+        $respon = $kirim['respon'];
         if ($respon['code'] < 200 || $respon['code'] >= 300) {
             $this->dispatch('toast', type: 'error', message: 'Kirim tugas rujukan gagal [' . $respon['code'] . '] ' . $this->ringkasError($respon['body']));
             return;
@@ -679,7 +699,8 @@ new class extends Component {
             return;
         }
 
-        $carePlanId = $this->rujukanIdDariBundleResponse($respon['body'], 'CarePlan');
+        // CarePlan yang sama dipakai: Bundle tanpa entri CarePlan, id-nya tetap.
+        $carePlanId = $kirim['carePlanIdTetap'] ?: $this->rujukanIdDariBundleResponse($respon['body'], 'CarePlan');
         $taskId = $this->rujukanIdDariBundleResponse($respon['body'], 'Task');
 
         $this->formRujukan['carePlanId'] = $carePlanId;
@@ -690,7 +711,13 @@ new class extends Component {
         // Identifier yang KITA kirim disimpan sebagai jejak: kalau id server gagal
         // terbaca, inilah satu-satunya pegangan untuk menelusuri resource-nya.
         $this->formRujukan['identifierTask'] = $identifierTask;
-        $this->formRujukan['identifierCarePlan'] = $identifierCarePlan;
+        if ($kirim['carePlanIdTetap'] === '') {
+            $this->formRujukan['identifierCarePlan'] = $identifierCarePlan;
+        }
+        $this->formRujukan['hashIsiCarePlan'] = $kirim['hashIsi'];
+        if ($kirim['catatan'] !== '') {
+            $this->dispatch('toast', type: 'warning', message: $kirim['catatan']);
+        }
         $this->simpanDraft('Kirim tugas rujukan ' . $labelJalur . ' → ' . $kandidat['nama']);
 
         // Bundle diterima TAPI id-nya tak terbaca: tugas rujukan SUDAH ada di
@@ -820,6 +847,23 @@ new class extends Component {
         $this->dispatch('toast', type: 'success', message: 'Id tugas rujukan dipulihkan — silakan lanjut Kirim Rujukan.');
     }
 
+    private function lepasTugasDitolak(): void
+    {
+        $taskLama = (string) $this->formRujukan['taskApprovalId'];
+        $orgIdMenolakList = (array) ($this->formRujukan['orgIdMenolakList'] ?? []);
+        if (($this->formRujukan['approvalOrgId'] ?? '') !== '' && !in_array($this->formRujukan['approvalOrgId'], $orgIdMenolakList, true)) {
+            $orgIdMenolakList[] = (string) $this->formRujukan['approvalOrgId'];
+        }
+        $this->formRujukan['orgIdMenolakList'] = $orgIdMenolakList;
+        // Hanya Task yang dilepas — CarePlan kunjungan ini tetap, dipakai Task berikutnya.
+        $this->formRujukan['taskApprovalId'] = '';
+        $this->formRujukan['identifierTask'] = '';
+        $this->formRujukan['statusApproval'] = '';
+        $this->formRujukan['approvalOrgId'] = '';
+        $this->formRujukan['approvalOrgNama'] = '';
+        $this->simpanDraft('Lepas tugas rujukan yang ditolak (Task ' . $taskLama . ')');
+    }
+
     /**
      * Kirim ULANG tugas rujukan: batalkan yang sekarang dulu, baru kirim baru.
      *
@@ -835,6 +879,15 @@ new class extends Component {
             return;
         }
         if (empty($this->formRujukan['taskApprovalId'])) {
+            $this->kirimTugasRujukan();
+            return;
+        }
+
+        // Tugas yang DITOLAK sudah final di SATUSEHAT (completed + output rejected):
+        // tidak dibatalkan, cukup dilepas, lalu kirim ke faskes lain.
+        $persetujuan = $this->ambilStatusApproval();
+        if ($persetujuan['status'] === 'rejected') {
+            $this->lepasTugasDitolak();
             $this->kirimTugasRujukan();
             return;
         }
@@ -864,8 +917,10 @@ new class extends Component {
             $this->dispatch('toast', type: 'error', message: 'Pilih kandidat faskes tujuan dulu (cari kandidat di Langkah 1).');
             return;
         }
-        if (empty($this->formRujukan['carePlanId'])) {
-            $this->dispatch('toast', type: 'error', message: 'Kirim Tugas Rujukan dulu (butuh CarePlan sebagai basedOn).');
+        // CarePlan bisa tetap ada setelah Task ditolak/dibatalkan — yang menentukan
+        // boleh-tidaknya menerbitkan rujukan adalah Task persetujuan yang hidup.
+        if (empty($this->formRujukan['carePlanId']) || empty($this->formRujukan['taskApprovalId'])) {
+            $this->dispatch('toast', type: 'error', message: 'Kirim Tugas Rujukan dulu (butuh Task persetujuan + CarePlan sebagai basedOn).');
             return;
         }
         if (trim((string) ($this->formRujukan['taskKandidatId'] ?? '')) === '') {
@@ -968,14 +1023,19 @@ new class extends Component {
         }
         $taskLama = $this->formRujukan['taskApprovalId'];
         $this->formRujukan['taskApprovalId'] = '';
-        $this->formRujukan['carePlanId'] = '';
-        // Identifier yang kita kirim ikut dibersihkan: ia jejak untuk memulihkan
-        // id tugas yang MASIH hidup. Tugas ini baru saja dibatalkan, jadi
-        // membiarkannya membuat kotak peringatan "Pulihkan ID" muncul untuk
-        // tugas yang sudah mati — dan penjaga di kirimTugasRujukan() ikut
-        // menghalangi pengiriman berikutnya.
+        // CarePlan TETAP (satu kunjungan = satu CarePlan) — kecuali sudah melahirkan
+        // ServiceRequest: satu CarePlan hanya untuk satu ServiceRequest, jadi yang
+        // sudah terpakai tidak boleh ditunjuk Task berikutnya.
+        if (!empty($this->formRujukan['hasil']['serviceRequestId'])) {
+            $this->formRujukan['carePlanId'] = '';
+            $this->formRujukan['identifierCarePlan'] = '';
+            $this->formRujukan['hashIsiCarePlan'] = '';
+        }
+        // Identifier Task ikut dibersihkan: ia jejak untuk memulihkan id tugas yang
+        // MASIH hidup. Tugas ini baru saja dibatalkan, jadi membiarkannya membuat
+        // kotak peringatan "Pulihkan ID" muncul untuk tugas yang sudah mati — dan
+        // penjaga di kirimTugasRujukan() ikut menghalangi pengiriman berikutnya.
         $this->formRujukan['identifierTask'] = '';
-        $this->formRujukan['identifierCarePlan'] = '';
         $this->formRujukan['statusApproval'] = '';
         $this->formRujukan['approvalOrgId'] = '';
         $this->formRujukan['approvalOrgNama'] = '';
@@ -1330,11 +1390,15 @@ new class extends Component {
                         <x-input-label value="Kode Layanan (clinical-speciality)" class="mb-1" />
                         <x-select-input wire:change="pilihSpeciality($event.target.value)" :disabled="$isFormLocked" class="w-full">
                             <option value="">— belum dipilih —</option>
-                            @foreach ($this->specialityOptions() as $kodeLayanan => $namaLayanan)
-                                <option value="{{ $kodeLayanan }}"
-                                    @selected(!$this->specialityManualAktif() && ($formRujukan['specialityCode'] ?? '') === $kodeLayanan)>
-                                    {{ $kodeLayanan }} — {{ $namaLayanan }}
-                                </option>
+                            @foreach ($this->specialityOptionsBerkelompok() as $labelKelompok => $layananKelompok)
+                                <optgroup label="{{ $labelKelompok }}">
+                                    @foreach ($layananKelompok as $kodeLayanan => $namaLayanan)
+                                        <option value="{{ $kodeLayanan }}"
+                                            @selected(!$this->specialityManualAktif() && ($formRujukan['specialityCode'] ?? '') === $kodeLayanan)>
+                                            {{ $kodeLayanan }} — {{ $namaLayanan }}
+                                        </option>
+                                    @endforeach
+                                </optgroup>
                             @endforeach
                             <option value="__manual__" @selected($this->specialityManualAktif())>Lainnya — ketik manual</option>
                         </x-select-input>
@@ -1343,8 +1407,8 @@ new class extends Component {
                                 <span class="font-mono font-semibold text-ink dark:text-gray-200">Kode terkirim: {{ $formRujukan['specialityCode'] }}</span>
                                 {{ filled($formRujukan['specialityDisplay'] ?? '') ? '— ' . $formRujukan['specialityDisplay'] : '' }}
                             @else
-                                Katalog clinical-speciality resmi belum dibagikan Kemkes; daftar ini hanya
-                                kode yang sudah terbukti dipakai.
+                                Katalog resmi SATUSEHAT: 307 kode (kelompok L01–L43 + layanan LY…), per 22/09/26.
+                                Kode di luar daftar tetap bisa diketik manual.
                             @endif
                         </p>
                     </div>
@@ -1425,7 +1489,7 @@ new class extends Component {
                     <div class="flex flex-col items-start gap-2">
                         {{-- Muncul hanya kalau tugas rujukan sudah terkirim tapi id-nya
                              belum terpegang — mengirim ulang akan menumpuk duplikat. --}}
-                        @if (!empty($formRujukan['identifierTask']) && empty($formRujukan['carePlanId']))
+                        @if (!empty($formRujukan['identifierTask']) && empty($formRujukan['taskApprovalId']))
                             <div class="w-full p-3 border rounded-lg border-amber-500 bg-warning-tint dark:bg-amber-900/20 dark:border-amber-700">
                                 <p class="text-sm font-semibold text-warning-deep dark:text-amber-200">Tugas rujukan sudah terkirim, tapi id-nya belum terbaca</p>
                                 <p class="mt-1 text-sm text-body dark:text-gray-300">

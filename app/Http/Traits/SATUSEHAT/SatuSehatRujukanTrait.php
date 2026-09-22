@@ -666,7 +666,67 @@ trait SatuSehatRujukanTrait
             ],
         ];
 
+        // CarePlan yang sama: Bundle hanya berisi Task yang menunjuk CarePlan kunjungan
+        // ini (absolut, bukan urn:uuid) — lihat rujukanKirimTugas().
+        $carePlanIdTetap = trim((string) ($konteks['carePlanIdTetap'] ?? ''));
+        if ($carePlanIdTetap !== '') {
+            $bundle['entry'] = [$bundle['entry'][0]];
+            $bundle['entry'][0]['resource']['basedOn'] = [['reference' => 'CarePlan/' . $carePlanIdTetap]];
+        }
+
         return $this->rujukanRequest('POST', '', $bundle);
+    }
+
+    /**
+     * Hash isi CarePlan — CarePlan yang sama hanya sah dipakai lagi bila yang
+     * DIRENCANAKAN tidak berubah. Faskes tujuan & identifier sengaja tidak ikut:
+     * justru itu yang berganti antar Task.
+     */
+    protected function rujukanHashIsiCarePlan(array $konteks): string
+    {
+        return md5(json_encode(array_map(
+            fn($kunci) => (string) ($konteks[$kunci] ?? ''),
+            ['taskKandidatId', 'jalur', 'deskripsi', 'specialityCode', 'specialityDisplay', 'encounterId', 'patientUuid', 'practitionerUuid']
+        )));
+    }
+
+    /**
+     * Kirim tugas rujukan. Satu kunjungan = SATU CarePlan; yang berganti hanya Task.
+     *
+     * Tim SATUSEHAT 21/09/26: saat semua tujuan menolak lalu permintaan dikirim ke
+     * faskes lain, "seharusnya tetap merefer ke 1 careplan". Contoh resminya hanya
+     * N Task + 1 CarePlan dalam SATU Bundle; bentuk "Task saja menunjuk CarePlan
+     * yang sudah ada" belum pernah dicontohkan. Maka: bila kunjungan sudah punya
+     * CarePlan dan hash isinya sama, kirim Task saja; bila server MENOLAK bentuk itu,
+     * jatuh ke Bundle lengkap (CarePlan baru) sambil membawa alasannya. Gangguan
+     * koneksi/5xx TIDAK dijatuhkan — status kirimnya tak pasti.
+     *
+     * @return array{respon:array,hashIsi:string,carePlanIdTetap:string,catatan:string}
+     *         carePlanIdTetap terisi = CarePlan yang ada dipakai (Bundle tanpa entri CarePlan)
+     */
+    protected function rujukanKirimTugas(array $konteks, string $carePlanId, string $hashIsiCarePlan): array
+    {
+        $hashIsi = $this->rujukanHashIsiCarePlan($konteks);
+        $hasil = ['hashIsi' => $hashIsi, 'carePlanIdTetap' => '', 'catatan' => ''];
+
+        $carePlanId = trim($carePlanId);
+        if ($carePlanId !== '' && $hashIsiCarePlan === $hashIsi) {
+            $respon = $this->rujukanBundleApproval($konteks + ['carePlanIdTetap' => $carePlanId]);
+            $berhasilHttp = $respon['code'] >= 200 && $respon['code'] < 300;
+            $entriGagal = $berhasilHttp ? $this->rujukanEntriBundleGagal($respon['body']) : '';
+
+            if ($berhasilHttp && $entriGagal === '') {
+                return ['respon' => $respon, 'carePlanIdTetap' => $carePlanId] + $hasil;
+            }
+            if ($respon['code'] === 0 || $respon['code'] >= 500) {
+                return ['respon' => $respon] + $hasil;
+            }
+
+            $alasan = $entriGagal !== '' ? $entriGagal : ('HTTP ' . $respon['code']);
+            $hasil['catatan'] = 'Task baru tidak diterima menunjuk CarePlan ' . $carePlanId . ' — ' . mb_substr($alasan, 0, 200) . ' — dibuat CarePlan baru.';
+        }
+
+        return ['respon' => $this->rujukanBundleApproval($konteks)] + $hasil;
     }
 
     /**
@@ -948,6 +1008,10 @@ trait SatuSehatRujukanTrait
         $task = $kandidatTask[0];
 
         $status = (string) ($task['status'] ?? '');
+        // Ditolak tercatat sebagai status 'completed' + output 'rejected' — statusnya
+        // saja tidak cukup. Tugas yang ditolak sudah final; mengadopsinya akan
+        // mengunci kunjungan dari pengiriman ke faskes lain.
+        $keputusan = $this->rujukanKeputusanDariTask($task);
 
         return [
             'taskId' => (string) $task['id'],
@@ -958,7 +1022,7 @@ trait SatuSehatRujukanTrait
             // ditimpa tugas baru. 'completed' ikut aktif: sudah dijawab faskes
             // tujuan, dan mengirim tugas kedua justru menganulir jawabannya.
             // Yang mati cuma yang memang sudah ditutup/rusak.
-            'aktif' => !in_array($status, ['cancelled', 'entered-in-error', 'failed', 'rejected'], true),
+            'aktif' => !in_array($status, ['cancelled', 'entered-in-error', 'failed', 'rejected'], true) && $keputusan !== 'rejected',
             'ditemukan' => true,
         ];
     }
