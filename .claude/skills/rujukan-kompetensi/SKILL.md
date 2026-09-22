@@ -5,8 +5,9 @@ description: Model integrasi & FAQ Rujukan Berbasis Kompetensi (SRBK/SISRUTE) �
 
 # Rujukan Berbasis Kompetensi (SRBK)
 
-Rujukan lengkap + katalog error penuh: **`docs/rujukan-kompetensi.md`** (hasil studi 13.6k baris
-chat grup resmi BPJS×Kemkes Apr–Agu 2026). Skill ini = model integrasi + FAQ tersering.
+Rujukan lengkap + katalog error penuh: **`docs/rujukan-kompetensi.md`** (hasil studi 15.8k baris
+chat grup resmi BPJS×Kemkes 10 Apr–22 Sep 2026; temuan terbaru di §10). Skill ini = model
+integrasi + FAQ tersering.
 
 ## 1. Model integrasi (JANGAN tertukar jalur)
 
@@ -145,9 +146,14 @@ Acuan: `docs/rujukan-kompetensi.md` §7. Sumber tunggal terminologi: `App\Suppor
 7. `PUT ServiceRequest` didukung untuk revisi rujukan terkirim (belum dipakai di repo).
 8. **Tugas Rujukan ≠ Rujukan.** Bundle Task+CarePlan hanya MENANYAKAN kesediaan; ServiceRequest
    barulah rujukan resmi (terbit Nomor Rujukan Nasional). Sebelum ServiceRequest, baca ulang
-   `Task.output` dari server: `rejected` → **blokir**, belum dijawab → **peringatkan saja**
-   (memblokir akan mematikan uji coba staging). Gagal baca → pakai catatan terakhir, jangan
-   menghapus `rejected` yang sudah diketahui.
+   `Task.output` dari server: `rejected` → **blokir**, belum dijawab → **blokir juga** (sejak
+   22/09/26 SATUSEHAT sendiri menolak 422 "belum ada Task referral-approval-request yang
+   diterima faskes tersebut"; dulu cukup diperingatkan). Hanya status TAK TERVERIFIKASI
+   (gangguan koneksi) yang dibiarkan lewat — server yang memutuskan. Gagal baca → pakai
+   catatan terakhir, jangan menghapus `rejected` yang sudah diketahui.
+9. **Validasi `supportingInfo` (22/09/26):** CarePlan bundle approval DAN ServiceRequest wajib
+   menunjuk Task `request-referral-candidate` (`taskKandidatId`). Penolakannya datang sebagai
+   Bundle ber-HTTP 200/201 yang entrinya 4xx — selalu cek `rujukanEntriBundleGagal()`.
 
 ## 3. FAQ / katalog error tersering
 
@@ -160,15 +166,33 @@ Acuan: `docs/rujukan-kompetensi.md` §7. Sumber tunggal terminologi: `App\Suppor
 | `linkId ... tidak valid, linkId valid: ...` | Kriteria basi/hardcode | Re-fetch GetKriteriaRujukan |
 | `hanya boleh mengisi salah satu dari...` | >1 kriteria terisi | UI paksa tepat satu |
 | `PPK ... tidak ditemukan di pemetaan` / `Tujuan Rujukan tidak sesuai dengan PPK` | Pasangan kode BPJS↔SATUSEHAT beda RS / belum termapping | Pakai pasangan dari kandidat |
+| `PPK Dirujuk tidak ditemukan di Satu Sehat` (RJ) | Tujuan di luar wilayah lokus piloting | Pilih RS di wilayah lokus |
+| 422 `ServiceRequest … belum ada Task referral-approval-request yang diterima` | RS tujuan belum MENERIMA (status `requested`) | Tunggu + Cek Status; panel memblokir lebih dulu |
 | `Gagal mendapatkan nomor Rujukan Satu Sehat` (400) | Upstream gagal menerbitkan nomor (kambuhan Jul–Agu 2026) | Simpan bukti, retry nanti; tak ada workaround klien |
 | `Value ... too large or too small for a Decimal` (500) | Bug sisi pusat (gel. 11/08/26) | Tunggu perbaikan |
 | `Found duplicate: Task (20002)` | identifier di-reuse | UUID baru tiap POST |
+| `supportingInfo CarePlan … wajib mereferensikan Task request-referral-candidate` (entri Task 400, **Bundle tetap HTTP 200**) | Aturan staging 22/09/26, belum ada di Postman V30062026 | CarePlan bundle approval `supportingInfo → Task/<taskKandidatId>`; cek tiap `entry[].response.status` via `rujukanEntriBundleGagal()` — entri ditolak tetap membawa `resourceID` palsu |
+| `supportingInfo ServiceRequest wajib mereferensikan Task request-referral-candidate yang sudah tersimpan` (POST ServiceRequest **201 berisi Bundle** entri 400) | Aturan yang sama untuk ServiceRequest | `supportingInfo` = Task kandidat + Task persetujuan; cek entri Bundle SEBELUM menyimpulkan "nomor tak terbit" |
+| `reference target(s) not found: Task/<id>` saat ServiceRequest | `taskApprovalId` tersimpan dari entri bundle yang DITOLAK (Task tak pernah ada) | Kirim Ulang Tugas: batal yang berbalas 404 not found dianggap bersih |
 | 429 `Rate limit quota violation` | Kuota staging habis | Hemat panggilan; lapor |
 | **Error identik di ≥2 endpoint** | Hampir pasti gangguan jaringan SATUSEHAT | Tampilkan hint "gangguan pusat"; JANGAN debug payload |
 | `404 Transaksi tidak dapat diproses. Silakan coba lagi nanti.` | **Consumer ID expired/belum aktif** — bukan endpoint/payload salah | Koordinasi TI BPJS kantor wilayah; jangan debug body |
 | `dokter tidak valid` saat `postKunjungan` | Bukan `kdDokterSatuSehat` — **kode dokter BPJS** di faskes itu belum ada | Lengkapi pemetaan dokter BPJS, bukan IHS-nya |
 
 Sumber lampiran (Postman V30062026, **Playbook v6.1**, Skenario UAT FKTL/FKTP ver 1.0, sample JSON):
-`~/Downloads/Chat WhatsApp dengan SATUSEHAT Rujukan X PCare X VClaim(2)/` — export terbaru
-s/d **24/08/26** (14.486 baris). Skenario UAT **Ranap & Darurat** hanya berupa tautan Google Docs
-di grup, belum ada salinannya di folder.
+`~/Downloads/Chat WhatsApp dengan SATUSEHAT Rujukan X PCare X VClaim/` — export terbaru
+s/d **22/09/26** (15.852 baris; folder `(1)`/`(2)` lama sudah diganti). Skenario UAT **Ranap &
+Darurat** hanya berupa tautan Google Docs; UAT-nya mandiri lewat form (docs §10.6).
+
+## 4. Kanal & mitra uji (per 22/09/26)
+
+- **Lapor kendala**: https://s.id/LaporKendalaSatusehatRujukan (jenis pelayanan, alur RS A➡️RS B,
+  wilayah, kriteria) — bukan lagi lewat chat.
+- **UAT Ranap & IGD mandiri**: isi skenario lalu https://forms.gle/dgCzayP22sW5LkYa8.
+- **RS tujuan yang aktif menerima di staging**: RSIA Sentosa Makassar (Org 100028369, prov 73,
+  kota 7371) — pakai untuk menembus 422 "belum ada Task … yang diterima".
+- **Isu terbuka**: kirim ulang ke faskes lain seharusnya memakai **CarePlan yang sama** (21/09);
+  Kirim Ulang Tugas kita masih membuat CarePlan baru. Tanyakan bentuk payload-nya sebelum mengubah.
+- **Batas jawaban IGD 15 menit** tanpa auto-cancel; lewat itu boleh kirim ke faskes lain.
+- **Whitelist IP BPJS dev**: per IP, tak ter-whitelist = timeout (bukan 500). HTTP 500 cepat dari
+  `apijkn-dev` = server BPJS sendiri sedang bermasalah.

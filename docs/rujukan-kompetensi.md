@@ -1,7 +1,8 @@
 # Rujukan Berbasis Kompetensi (SRBK) — Catatan Lapangan & Aturan Implementasi
 
-Rangkuman grup WA "SATUSEHAT Rujukan X PCare X VClaim" (10 Apr – **24 Agu 2026**, 14.486 baris)
-+ sample payload/response di folder export chat (`~/Downloads/Chat WhatsApp dengan SATUSEHAT Rujukan X PCare X VClaim(2)/`).
+Rangkuman grup WA "SATUSEHAT Rujukan X PCare X VClaim" (10 Apr – **22 Sep 2026**, 15.852 baris)
++ sample payload/response di folder export chat (`~/Downloads/Chat WhatsApp dengan SATUSEHAT Rujukan X PCare X VClaim/`).
+Temuan 26/08–22/09 dan aturan validasi baru 22/09 dirangkum di **§10**.
 
 **Acuan spesifikasi: Playbook SATUSEHAT versi 6.1 (21 Agustus 2026)** — lihat §7 untuk apa
 yang berubah dari v6.0 dan bagian mana yang sudah/belum kita ikuti.
@@ -243,7 +244,14 @@ menghentikan pelayanan pasien yang sudah di depan mata. Menambalnya belakangan b
 | `linkId ... tidak valid, linkId valid: ...` | Kriteria basi/hardcode | Re-fetch GetKriteriaRujukan |
 | `hanya boleh mengisi salah satu dari Terapi...` | >1 kriteria terisi | UI paksa tepat 1 |
 | `PPK ... tidak ditemukan di pemetaan` / `Tujuan Rujukan tidak sesuai dengan PPK` (400) | Pasangan kode BPJS↔SATUSEHAT tidak konsisten / RS belum termapping | Pakai pasangan dari kandidat; lapor mapping |
-| `Gagal mendapatkan nomor Rujukan Satu Sehat` (400) | Upstream SATUSEHAT gagal menerbitkan nomor (kambuhan: Jul–Agu 2026) | Simpan payload+response mentah, retry nanti; TIDAK ada workaround klien |
+| `Gagal mendapatkan nomor Rujukan Satu Sehat` (400) | Upstream SATUSEHAT gagal menerbitkan nomor (kambuhan: Jul–Agu 2026; massal 27/08 & 03/09, back end diperbaiki 04/09; muncul lagi 16–18/09 pasca update) | Simpan payload+response mentah, retry nanti; TIDAK ada workaround klien; laporkan lewat form §10.6 |
+| `supportingInfo CarePlan … wajib mereferensikan Task request-referral-candidate` — entri Task **400** di dalam Bundle ber-HTTP **200** (22/09/26) | Validasi baru (update SATUSEHAT 15–16/09) | `CarePlan.supportingInfo → Task/<taskKandidatId>`; lihat §10.1 |
+| `supportingInfo ServiceRequest wajib mereferensikan Task request-referral-candidate yang sudah tersimpan` — POST ServiceRequest **201** berisi Bundle entri 400 (22/09/26) | Validasi yang sama untuk ServiceRequest | `supportingInfo` = Task kandidat + Task persetujuan; §10.1 |
+| `reference target(s) not found: Task/<id>` saat ServiceRequest | `taskApprovalId` dipungut dari entri Bundle yang DITOLAK — `resourceID` ada, resource-nya tak pernah tersimpan | Cek `entry[].response.status` (`rujukanEntriBundleGagal()`); Kirim Ulang Tugas membersihkan id yang berbalas 404 |
+| 422 `ServiceRequest IGD ke Organization … belum bisa dibuat karena belum ada Task referral-approval-request yang diterima` (22/09/26) | RS tujuan belum MENERIMA tugas rujukan (status `requested`) — kini ditegakkan server | Tunggu jawaban (Cek Status); panel memblokir sebelum kirim, §7.4b |
+| `PPK Dirujuk tidak ditemukan di Satu Sehat` (400, RJ, 16/09) | Tujuan di luar wilayah lokus piloting — mapping dikunci per lokus | Pilih RS di wilayah lokus |
+| 409 `CarePlan dengan id '…' sudah ada` di dalam balasan POST ServiceRequest (21/09) | Bug SATUSEHAT, **diperbaiki 21/09 14.03** | Kirim ulang |
+| 409 `Task dengan identifier '…-PERMINTAAN_KANDIDAT' sudah ada` saat PATCH accept (15/09), padahal Task-nya sudah `completed/accepted` | Bug sisi SATUSEHAT (dicek tim) | Baca ulang Task; bila sudah accepted anggap sukses |
 | `Value was either too large or too small for a Decimal` (500) | Bug sisi BPJS/SATUSEHAT (gel. 11/08/26) | Tunggu perbaikan |
 | `noSep tidak ditemukan` (400) | Sinkronisasi SEP dev | Cek SEP, coba ulang |
 | `dokter tidak valid` di `postKunjungan` (13/08/26) | Bukan soal `kdDokterSatuSehat` — **kode dokter BPJS** di faskes tsb belum ada/salah | Lengkapi pemetaan dokter BPJS, bukan hanya IHS Practitioner |
@@ -381,10 +389,12 @@ direaktivasi). Penanganan: koordinasi dengan **TI BPJS kantor wilayah setempat**
 
 ## 6. Referensi
 
-- Export chat terbaru (s/d **14/08/26**): `~/Downloads/Chat WhatsApp dengan SATUSEHAT Rujukan X PCare X VClaim(1)/`.
-  Kemkes menjalankan *Check Point Progres Modul Rujukan RME* daring 14/08/26 + spreadsheet progres
-  pengembangan per faskes — pantau undangan berikutnya di grup.
-- Folder export chat lama + lampiran: `~/Downloads/Chat WhatsApp dengan SATUSEHAT Rujukan X PCare X VClaim/` — berisi **Postman collection V30062026**, **Playbook Rujukan Pasien (RJ/RI/IGD)**, **Skenario UAT SRBK FKTL ver 1.0**, sample payload/response JSON, Surat Himbauan.
+- Export chat terbaru (s/d **22/09/26**, 15.852 baris) + seluruh lampiran: `~/Downloads/Chat WhatsApp dengan SATUSEHAT Rujukan X PCare X VClaim/`
+  (folder `(1)`/`(2)` lama sudah diganti) — berisi **Postman collection V30062026**, **Playbook v6.0 & v6.1**
+  (`…Rawat Darurat-1.pdf` = v6.1), **Skenario UAT SRBK FKTL/FKTP ver 1.0**, sample payload/response JSON,
+  Surat Himbauan, Form Pengajuan Akses Bridging SIM (whitelist IP).
+- Kemkes menjalankan *Check Point Modul Rujukan RME* daring kira-kira mingguan (terakhir 22/09/26) + spreadsheet
+  progres per faskes — pantau undangan berikutnya di grup.
 - Postman publik: folder "04 Pengiriman Rujukan" (satusehat-public); playbook online: satusehat.kemkes.go.id/platform/docs/id/interoperability/rujukan/
 - Terminologi: clinical-speciality & practitioner-speciality (gsheet Kemkes); Kelompok Layanan per ICD-10 (Playbook Lampiran 4).
 
@@ -433,8 +443,11 @@ Aturan di panel kita:
 - **`rejected` = blokir keras.** Rujukan tidak boleh diterbitkan ke faskes yang menolak;
   petugas diarahkan memilih kandidat lain lalu kirim tugas rujukan ulang (CarePlan ikut baru,
   lihat §7.5 soal CarePlan wajib unik).
-- **Belum dijawab = peringatan, bukan blokir.** Di staging jawaban sering tak pernah datang;
-  memblokir akan mematikan uji coba.
+- **Belum dijawab = BLOKIR juga (sejak 22/09/26).** Dulu cukup peringatan karena di staging
+  jawaban sering tak pernah datang; kini SATUSEHAT sendiri menolak ServiceRequest (422 "belum ada
+  Task referral-approval-request yang diterima faskes tersebut"). Hanya status yang TIDAK
+  TERVERIFIKASI (gangguan koneksi) yang dibiarkan lewat — server yang memutuskan. Untuk uji coba,
+  kirim ke RS yang aktif menjawab di grup (§10.5).
 - Status dibaca **ulang dari server** tiap kali (`rujukanGetTask` → `rujukanKeputusanDariTask`),
   bukan dari state lokal — jawaban datang dari sistem RS lain, jadi state kita selalu bisa basi.
   Kalau pembacaan gagal (gangguan/kuota), pakai catatan terakhir dan tandai "tidak terverifikasi";
@@ -447,13 +460,18 @@ Aturan di panel kita:
   memakainya — yang ada baru PATCH Task cancel.
 - **Satu CarePlan hanya untuk satu ServiceRequest.** Memakai ulang CarePlan lama ditolak
   (`CarePlan dengan identifier '…' sudah ada`). Kita aman: `identifierCarePlan` selalu `Str::uuid()` baru.
+- **TERBUKA (21/09/26):** saat semua tujuan menolak lalu permintaan dikirim ke faskes lain, tim
+  SATUSEHAT menjawab *"seharusnya tetap merefer ke 1 careplan"* — beberapa Task, satu CarePlan.
+  Kirim Ulang Tugas kita masih membuat Task **dan** CarePlan baru dalam satu Bundle. Belum diubah:
+  bentuk "Task saja yang menunjuk CarePlan lama" belum ada contohnya, dan belum jelas apakah
+  validasi `supportingInfo` CarePlan (§10.1) ikut berlaku. Tanyakan ke grup sebelum mengubah.
 
 ### 7.6 Konfirmasi & isu terbuka
 - **Rawat Jalan tidak punya accept/reject** — hanya IGD & Ranap (22/08). Sesuai desain kotak masuk kita.
 - **Terbuka di sisi BPJS**: `noRujukanSatuSehat` & `serviceRequestId` **tidak muncul** di
   `vclaim-rest/Rujukan/{noRujukanBpjs}`; tim menjawab "sedang fixing" (21/08).
 - **Skenario UAT Ranap & Darurat** hanya dibagikan sebagai tautan Google Docs — belum ada salinannya
-  di folder export (yang ada FKTL & FKTP ver 1.0).
+  di folder export (yang ada FKTL & FKTP ver 1.0). Sejak 11/09 UAT-nya **mandiri**, lihat §10.6.
 
 ---
 
@@ -472,7 +490,7 @@ Sumber isi (dinormalkan di `normalkan()`), jalur-agnostik:
 | V Kriteria Rujukan | item `kriteriaList` yang `linkId`-nya = `kriteriaPilih` (+ ICD-9 bila Tindakan Medis) | IGD: pertanyaan `kriteriaIgd` yang dicentang (`RujukanKompetensiOptions::PERTANYAAN_IGD`); ranap: `RujukanKompetensiOptions::KRITERIA_RANAP[kriteriaPilih]` (+ ICD-9) |
 | VIII Alasan Merujuk | `catatan` | `deskripsi` (= CarePlan.description) |
 | II, III (keluhan, KU, GCS/kesadaran, TTV, fisik) | `anamnesa.keluhanUtama.keluhanUtama`, `pemeriksaan.tandaVital.*`, `pemeriksaan.fisik` — path sama di RJ/UGD/RI | sama |
-| VI Tindakan / VII Terapi | `procedure[]` / `eresep[]` (fallback teks `perencanaan.terapi.terapi`) | sama |
+| VI Tindakan / VII Terapi | `procedure[]` / `eresep[]` (fallback teks `perencanaan.terapi.terapi`) — sesuai jawaban Kemkes 10/09/26: diambil dari obat/terapi non-obat & tindakan RME yang sudah diberikan SEBELUM dirujuk, **bukan** dari kuesioner kriteria Tindakan Medis | sama |
 | Tanggal surat | `hasil.tglRujukan` (yyyy-mm-dd) | `hasil.dikirimPada` (dd/mm/yyyy H:i:s) |
 
 Catatan verifikasi lokal 2026-09-09 (UGD 203859, FHIR IGD): PDF 2 halaman terbentuk ±10 detik; enam
@@ -509,3 +527,86 @@ GET). `ServiceRequest.code 385868005` kita = ekstrapolasi dari `Task.input` IGD.
 **Opsional bila ingin makin mirip:** `Task.reasonReference` + `CarePlan.addresses` dari
 `satusehat.conditionIds`; `ServiceRequest.identifier insurance-subscriber` (no. kartu BPJS);
 `secondary-diagnosis` (trait siap, panel belum mengisi).
+
+## 10. Update grup 26/08–22/09/26 & validasi baru 22/09/26
+
+### 10.1 Validasi `supportingInfo` (terbukti di staging 22/09/26)
+SATUSEHAT meng-update sistem malam 15/09 ("beberapa hasil validasi + fix bug pengiriman"). Sejak
+itu dua resource WAJIB menunjuk Task **`request-referral-candidate`** (Task hasil Cari Kandidat,
+tersimpan di `formRujukan.taskKandidatId`):
+
+| Resource | Pesan bila tak ada | Isi yang kita kirim |
+|---|---|---|
+| `CarePlan` di Bundle `referral-approval` | `supportingInfo CarePlan <id> wajib mereferensikan Task request-referral-candidate` | `supportingInfo: [{reference: "Task/<taskKandidatId>"}]` |
+| `ServiceRequest` | `supportingInfo ServiceRequest wajib mereferensikan Task request-referral-candidate yang sudah tersimpan` | Task kandidat + Task persetujuan (`taskApprovalId`) |
+
+Payload ServiceRequest RSIA Sentosa yang dibagikan 21/09 memuat bentuk yang sama, ditambah
+`Condition/<id>` berlabel "Diagnosa Rujukan" di `supportingInfo` (kita mengirim Condition lewat
+`reasonReference`).
+
+**Jebakan utama — penolakan datang sebagai sukses HTTP.** Bundle dibalas **200** dan POST
+ServiceRequest **201**, tapi isinya `transaction-response` yang entrinya `400 Bad Request` +
+OperationOutcome. Entri yang ditolak tetap membawa `location`/`resourceID` yang **tidak pernah
+tersimpan**. Memungut id itu membuat langkah berikutnya mentok `reference target(s) not found`
+dan status persetujuan terbaca 404 ("tidak terverifikasi"). Karena itu:
+- `rujukanEntriBundleGagal($body)` memeriksa tiap `entry[].response.status`; bukan 2xx =
+  gagal, id tidak disimpan, toast "DITOLAK SATUSEHAT — <alasan>" (ekor `; resource=…
+  sisrute_operation=…` dibuang, jejak lengkap tetap di `web_log_status`).
+- Pemeriksaan ini dijalankan SEBELUM menyimpulkan "nomor rujukan tak terbit" — penolakan
+  validasi bukan gangguan pusat.
+- `batalkanTugas()` menganggap balasan 404 "not found" sebagai bersih, supaya Kirim Ulang Tugas
+  tidak terkunci oleh id Task yang tak pernah ada.
+- Balasan ServiceRequest yang SUKSES tetap berupa resource `ServiceRequest` biasa berisi
+  `referral-number-satusehat` (terbukti 10/09) — pembacaan nomornya tidak berubah.
+
+Semuanya berlaku di ketiga panel FHIR (RJ/UGD/RI).
+
+### 10.2 ServiceRequest menunggu persetujuan (422, 22/09/26)
+`ServiceRequest IGD ke Organization <id> belum bisa dibuat karena belum ada Task
+referral-approval-request yang diterima faskes tersebut: Task <id> … (status requested)`.
+Server kini menegakkan urutan tugas → DITERIMA → rujukan. Panel memblokir sebelum kirim (§7.4b).
+
+### 10.3 Aturan & jawaban resmi lain
+- **Batas jawaban IGD 15 menit** (07/09): tanpa jawaban dalam 15 menit, perujuk boleh mengirim
+  ke faskes lain. Tidak ada auto-cancel; "mekanismenya akan diatur dari SATUSEHAT".
+- **Kirim ulang ke faskes lain = satu CarePlan** (21/09) — isu terbuka, lihat §7.5.
+- **Wilayah lokus**: mapping rujukan RJ dikunci ke area piloting; tujuan di luar lokus →
+  `PPK Dirujuk tidak ditemukan di Satu Sehat` (16/09). Diagnosa yang kompetensinya tak ada di
+  wilayah itu (contoh M75.5 di Tulungagung, 10/09) → "tidak mengandung Faskes Rujukan"; coba
+  diagnosa lain.
+- **ICD-9 menentukan strata**: J15.9 = strata dasar, tetapi kriteria *Tindakan Medis* ICD-9
+  33.22 = madya — saat kriteria Tindakan Medis, yang dipakai mencari kandidat adalah ICD-9-nya (04/09).
+- **Identitas**: bayi/anak memakai NIK ibu; pasien tanpa identitas memakai pola Mr. X yang sudah
+  ada (28/08). NIK tak ditemukan: satusehat.kemkes.go.id/platform/docs/id/complaint-channel/nik-not-found/
+- **Kotak masuk sisi tujuan** (12/09): nama pasien ada, diagnosa diambil dari resource `_include`;
+  tanggal lahir & jenis kelamin TIDAK tersedia.
+- **Format cetak surat rujukan Kepmenkes** (27/08) berlaku untuk SEMUA rujukan, termasuk yang
+  lewat bridging; sudah diterapkan (§8).
+- `occurrenceDateTime` pakai **UTC+0** (saran 26/08) — kita sudah (`Carbon::now('UTC')`).
+
+### 10.4 Whitelist IP BPJS dev (02–03/09)
+Akses dev BPJS (`apijkn-dev`, `dvlp`) kini hanya dari IP publik yang di-whitelist lewat Form
+Pengajuan Akses Bridging SIM ke TI KC wilayah (Tulungagung: "Icha bpjs kepwil"). Whitelist **per
+IP, bukan per cons-id**; IP harus dedicated (bukan dinamis). IP dev vendor di-whitelist sementara
+3 bulan. Tidak di-whitelist = **timeout/connection refused**, BUKAN HTTP 500. Produksi saat ini
+belum mensyaratkannya. Kita keluar lewat proxy VPS (lihat `docs/bpjs-whitelist-ip-proxy.md`).
+HTTP 500 cepat dari dev = server BPJS sendiri sedang bermasalah (22/09: "masih dalam proses
+pengecekan tim internal").
+
+### 10.5 Mitra uji yang aktif menjawab (staging)
+Untuk menembus §10.2 dibutuhkan RS tujuan yang benar-benar menerima. Yang meminta dikirimi
+rujukan RANAP/IGD dan terbukti cepat menerima: **RSIA Sentosa Makassar — Org 100028369,
+provinsi 73, kota 7371** (09/09 & 21/09). Pilih wilayah Sulawesi Selatan / Kota Makassar saat
+Cari Kandidat, lalu minta accept di grup. Satu-satunya RS lain yang terbukti menerima di grup:
+RS Al-Islam Bandung (16/09, vendor teraMedik). RS Universitas Hasanuddin (100028071) dan RSUP
+Dr. Wahidin Sudirohusodo (100025592) baru DIMINTA menerima (18/09); jawabannya tidak tercatat.
+
+### 10.6 Proses & kanal
+- **UAT Rawat Inap & Gawat Darurat mandiri** (11/09): isi skenario (Google Docs
+  `1S6mb7imviHyqP1_KVn7UB8495cGObhjB`) lalu kirim form https://forms.gle/dgCzayP22sW5LkYa8;
+  sesuai skenario = modul RI/IGD dinyatakan selesai.
+- **Lapor kendala** (sejak 17/09): https://s.id/LaporKendalaSatusehatRujukan — sertakan jenis
+  pelayanan, alur (RS A ➡️ RS B), wilayah, kriteria. Laporan lewat chat tidak lagi jadi jalur utama.
+- **Progres pengembangan**: spreadsheet `1i8bshkRbPX27zQ-1X4SpMP7qWITM1D0XpmmV3Xy0Wi0`, diperbarui
+  sebelum tiap checkpoint.
+- Dokumen acuan tidak berubah: Playbook tetap **v6.1**, Postman tetap **V30062026**.

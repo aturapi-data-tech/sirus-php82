@@ -635,6 +635,11 @@ trait SatuSehatRujukanTrait
                             'display' => $konteks['patientName'],
                         ],
                         'encounter' => ['reference' => 'Encounter/' . $konteks['encounterId']],
+                        // Aturan staging 22/09/26 (belum ada di Postman V30062026): tanpa
+                        // rujukan ke Task pencarian kandidat, entri Task bundle ditolak 400
+                        // "supportingInfo CarePlan … wajib mereferensikan Task
+                        // request-referral-candidate" — padahal Bundle-nya tetap HTTP 200.
+                        'supportingInfo' => [['reference' => 'Task/' . $konteks['taskKandidatId']]],
                         'created' => $now,
                         'author' => [
                             'reference' => 'Practitioner/' . $konteks['practitionerUuid'],
@@ -662,6 +667,32 @@ trait SatuSehatRujukanTrait
         ];
 
         return $this->rujukanRequest('POST', '', $bundle);
+    }
+
+    /**
+     * Pesan entri Bundle transaction-response yang GAGAL; '' bila semua 2xx.
+     *
+     * SATUSEHAT membalas HTTP 200 walau salah satu entri ditolak — penolakannya
+     * hanya ada di entry[].response.status + OperationOutcome di entry[].resource,
+     * lengkap dengan resourceID yang TIDAK PERNAH tersimpan. Memungut id itu
+     * membuat ServiceRequest berikutnya mentok "reference target(s) not found".
+     */
+    protected function rujukanEntriBundleGagal($body): string
+    {
+        foreach ((is_array($body) ? $body['entry'] ?? [] : []) as $entry) {
+            $status = trim((string) ($entry['response']['status'] ?? ''));
+            if ($status === '' || str_starts_with($status, '2')) {
+                continue;
+            }
+            $pesan = collect($entry['resource']['issue'] ?? [])->pluck('diagnostics')->filter()->first();
+            // Ekor teknis "; resource=… sisrute_operation=…" memakan jatah toast
+            // sampai alasan aslinya terpotong; jejak lengkapnya tetap di web_log_status.
+            $pesan = $pesan ? preg_replace('/;\s*resource=.*$/s', '', (string) $pesan) : $pesan;
+
+            return ($entry['response']['resourceType'] ?? 'Entri') . ' ' . $status . ($pesan ? ': ' . $pesan : '');
+        }
+
+        return '';
     }
 
     /**
@@ -714,7 +745,7 @@ trait SatuSehatRujukanTrait
     /* ═══════════════════════════════════════
      | 5. SERVICEREQUEST (pengiriman rujukan)
      | $konteks: identifier, carePlanId, jalur, deskripsi, patientUuid, encounterId,
-     |     orgTujuanId, orgTujuanNama, taskApprovalId (opsional, masuk supportingInfo)
+     |     orgTujuanId, orgTujuanNama, taskKandidatId + taskApprovalId (masuk supportingInfo)
     ═══════════════════════════════════════ */
     protected function rujukanServiceRequest(array $konteks): array
     {
@@ -788,11 +819,24 @@ trait SatuSehatRujukanTrait
             );
         }
 
+        // Aturan staging 22/09/26: supportingInfo WAJIB memuat Task
+        // request-referral-candidate — tanpa itu balasannya 201 berisi Bundle yang
+        // entrinya 400, dan nomor rujukan tak pernah terbit.
+        $supportingInfo = [];
+        if (!empty($konteks['taskKandidatId'])) {
+            $supportingInfo[] = [
+                'display' => 'Task Pencarian Kandidat Faskes Rujukan',
+                'reference' => 'Task/' . $konteks['taskKandidatId'],
+            ];
+        }
         if (!empty($konteks['taskApprovalId'])) {
-            $serviceRequest['supportingInfo'] = [[
+            $supportingInfo[] = [
                 'display' => 'Task Respon Kandidat Faskes Rujukan',
                 'reference' => 'Task/' . $konteks['taskApprovalId'],
-            ]];
+            ];
+        }
+        if ($supportingInfo !== []) {
+            $serviceRequest['supportingInfo'] = $supportingInfo;
         }
 
         return $this->rujukanRequest('POST', 'ServiceRequest', $serviceRequest);

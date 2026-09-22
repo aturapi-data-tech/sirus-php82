@@ -362,9 +362,8 @@ new class extends Component {
                 'n' => 5,
                 'title' => 'Kirim Rujukan',
                 'hint' => $sudahKirim ? 'No. ' . $this->formRujukan['hasil']['noRujukanSatuSehat'] : 'terbit nomor rujukan',
-                // Aktif hanya setelah faskes menerima — supaya tidak ada dua langkah
-                // menyala bersamaan. Menerbitkan rujukan tanpa menunggu jawaban TETAP
-                // diizinkan (lihat kirimRujukan), stepper cuma menunjukkan alur idealnya.
+                // Aktif hanya setelah faskes menerima — SATUSEHAT menolak
+                // ServiceRequest sebelum Task persetujuan diterima (lihat kirimRujukan).
                 'state' => $keadaanLangkah($sudahKirim, $statusApproval === 'accepted'),
             ],
         ];
@@ -647,12 +646,20 @@ new class extends Component {
             return;
         }
 
+        // CarePlan wajib menunjuk Task pencarian kandidat (supportingInfo) — tanpa itu
+        // entri Task ditolak walau Bundle berbalas 200.
+        if (trim((string) ($this->formRujukan['taskKandidatId'] ?? '')) === '') {
+            $this->dispatch('toast', type: 'error', message: 'Task pencarian kandidat tidak tercatat — jalankan Cari Kandidat ulang, lalu pilih kandidatnya.');
+            return;
+        }
+
         $identifierTask = (string) Str::uuid();
         $identifierCarePlan = (string) Str::uuid();
 
         $respon = $this->rujukanBundleApproval([
             'identifierTask' => $identifierTask,
             'identifierCarePlan' => $identifierCarePlan,
+            'taskKandidatId' => trim((string) $this->formRujukan['taskKandidatId']),
             'encounterId' => $this->encounterUuid(),
             'patientUuid' => $this->patientUuid(),
             'patientName' => $this->regName,
@@ -667,6 +674,13 @@ new class extends Component {
         ]);
         if ($respon['code'] < 200 || $respon['code'] >= 300) {
             $this->dispatch('toast', type: 'error', message: 'Kirim tugas rujukan gagal [' . $respon['code'] . '] ' . $this->ringkasError($respon['body']));
+            return;
+        }
+        // HTTP 200 belum tentu diterima: entri yang ditolak tetap membawa resourceID
+        // yang tak pernah tersimpan. Jangan simpan id apa pun — kirim ulang aman.
+        $entriGagal = $this->rujukanEntriBundleGagal($respon['body']);
+        if ($entriGagal !== '') {
+            $this->dispatch('toast', type: 'error', message: 'Kirim tugas rujukan DITOLAK SATUSEHAT — ' . mb_substr($entriGagal, 0, 300));
             return;
         }
 
@@ -692,7 +706,7 @@ new class extends Component {
             return;
         }
 
-        $this->dispatch('toast', type: 'success', message: 'Tugas rujukan terkirim ke ' . $kandidat['nama'] . ' — lanjut Kirim Rujukan (staging boleh tanpa menunggu approval).');
+        $this->dispatch('toast', type: 'success', message: 'Tugas rujukan terkirim ke ' . $kandidat['nama'] . ' — tunggu RS tujuan MENERIMA (tekan Cek Status), baru Kirim Rujukan.');
     }
 
     /* ═══════════════════════════════════════
@@ -859,6 +873,10 @@ new class extends Component {
             $this->dispatch('toast', type: 'error', message: 'Kirim Tugas Rujukan dulu (butuh CarePlan sebagai basedOn).');
             return;
         }
+        if (trim((string) ($this->formRujukan['taskKandidatId'] ?? '')) === '') {
+            $this->dispatch('toast', type: 'error', message: 'Task pencarian kandidat tidak tercatat (wajib di supportingInfo) — jalankan Cari Kandidat ulang lalu Kirim Ulang Tugas.');
+            return;
+        }
 
         // Tugas rujukan terkirim ke SATU faskes (Task.owner). Menerbitkan
         // ServiceRequest dengan performer faskes LAIN membuat rujukan menggantung:
@@ -871,18 +889,22 @@ new class extends Component {
         }
 
         // Penjagaan persetujuan: menolak = final, tidak boleh diterbitkan rujukannya.
-        // Belum dijawab TIDAK diblokir — di staging jawaban sering tak pernah datang
-        // dan itu akan mematikan uji coba; cukup diperingatkan supaya petugas sadar.
+        // Belum dijawab JUGA diblokir sejak 22/09/26: SATUSEHAT sendiri menolak
+        // ServiceRequest (422 "belum ada Task referral-approval-request yang
+        // diterima faskes tersebut"). Hanya status yang tak terverifikasi (gangguan
+        // koneksi) yang dibiarkan lewat — biar server yang memutuskan.
         $persetujuan = $this->ambilStatusApproval();
         $this->formRujukan['statusApproval'] = $persetujuan['status'];
         if ($persetujuan['status'] === 'rejected') {
             $this->dispatch('toast', type: 'error', message: 'Faskes tujuan MENOLAK tugas rujukan ini — rujukan tidak boleh diterbitkan. Pilih kandidat lain lalu kirim tugas rujukan ulang.');
             return;
         }
+        if ($persetujuan['status'] !== 'accepted' && $persetujuan['terverifikasi']) {
+            $this->dispatch('toast', type: 'error', message: 'Faskes tujuan BELUM menyetujui tugas rujukan — SATUSEHAT baru menerbitkan rujukan setelah RS tujuan menerima. Tekan Cek Status berkala.');
+            return;
+        }
         if ($persetujuan['status'] !== 'accepted') {
-            $this->dispatch('toast', type: 'warning', message: $persetujuan['terverifikasi']
-                ? 'Perhatian: faskes tujuan BELUM menjawab tugas rujukan — rujukan tetap diterbitkan.'
-                : 'Perhatian: status persetujuan tidak terverifikasi (gangguan koneksi) — rujukan tetap diterbitkan.');
+            $this->dispatch('toast', type: 'warning', message: 'Perhatian: status persetujuan tidak terverifikasi (gangguan koneksi) — dicoba kirim, SATUSEHAT yang memutuskan.');
         }
 
         $respon = $this->rujukanServiceRequest([
@@ -899,9 +921,17 @@ new class extends Component {
             'orgTujuanId' => $kandidat['orgId'],
             'orgTujuanNama' => $kandidat['nama'],
             'taskApprovalId' => $this->formRujukan['taskApprovalId'],
+            'taskKandidatId' => trim((string) ($this->formRujukan['taskKandidatId'] ?? '')),
         ]);
         if ($respon['code'] < 200 || $respon['code'] >= 300) {
             $this->dispatch('toast', type: 'error', message: 'Kirim rujukan gagal [' . $respon['code'] . '] ' . $this->ringkasError($respon['body']));
+            return;
+        }
+        // Balasan 201 bisa berupa Bundle yang entrinya DITOLAK — itu penolakan
+        // validasi, bukan "nomor tak terbit"; tampilkan alasan aslinya.
+        $entriGagal = $this->rujukanEntriBundleGagal($respon['body']);
+        if ($entriGagal !== '') {
+            $this->dispatch('toast', type: 'error', message: 'Kirim rujukan DITOLAK SATUSEHAT — ' . mb_substr($entriGagal, 0, 300));
             return;
         }
 
@@ -933,7 +963,10 @@ new class extends Component {
             return;
         }
         $respon = $this->rujukanTaskCancel($this->formRujukan['taskApprovalId']);
-        if ($respon['code'] < 200 || $respon['code'] >= 300) {
+        // 404 = Task tak pernah tersimpan (id dari entri bundle yang ditolak). Tak ada
+        // yang perlu dibatalkan; id-nya dibersihkan supaya Kirim Ulang tidak macet.
+        $taskTakAda = $respon['code'] === 404 && str_contains(strtolower($this->ringkasError($respon['body'])), 'not found');
+        if (!$taskTakAda && ($respon['code'] < 200 || $respon['code'] >= 300)) {
             $this->dispatch('toast', type: 'error', message: 'Batal gagal [' . $respon['code'] . '] ' . $this->ringkasError($respon['body']));
             return;
         }
@@ -952,7 +985,7 @@ new class extends Component {
         $this->formRujukan['approvalOrgNama'] = '';
         $this->formRujukan['hasil'] = [];
         $this->simpanDraft('Batalkan tugas rujukan ranap (Task ' . $taskLama . ')');
-        $this->dispatch('toast', type: 'success', message: 'Tugas rujukan dibatalkan.');
+        $this->dispatch('toast', type: 'success', message: $taskTakAda ? 'Task lama tidak pernah tersimpan di SATUSEHAT — id-nya dibersihkan.' : 'Tugas rujukan dibatalkan.');
     }
 
     /* ═══════════════════════════════════════
@@ -1388,8 +1421,8 @@ new class extends Component {
                         </p>
                     @elseif ($statusApproval !== 'accepted')
                         <p class="mt-1 text-xs text-muted-soft">
-                            Rujukan tetap bisa diterbitkan tanpa menunggu jawaban (dibutuhkan saat uji coba), tapi di
-                            pelayanan nyata sebaiknya tunggu <strong>Diterima</strong> dulu.
+                            Rujukan baru bisa diterbitkan setelah RS tujuan menjawab <strong>Diterima</strong> —
+                            SATUSEHAT menolak sebelum itu. Tekan Cek Status berkala.
                         </p>
                     @endif
                 @endif
@@ -1442,7 +1475,7 @@ new class extends Component {
                                 lanjut Kirim Rujukan;
                                 <span class="font-semibold text-error-deep dark:text-red-300">Ditolak</span> →
                                 pilih kandidat lain lalu kirim tugas rujukan ulang;
-                                <span class="font-semibold">belum dijawab</span> → boleh lanjut, muncul peringatan.
+                                <span class="font-semibold">belum dijawab</span> → tunggu, rujukan belum bisa diterbitkan.
                             </li>
                             <li>
                                 <span class="font-semibold text-ink dark:text-gray-200">Kirim Rujukan</span> —
