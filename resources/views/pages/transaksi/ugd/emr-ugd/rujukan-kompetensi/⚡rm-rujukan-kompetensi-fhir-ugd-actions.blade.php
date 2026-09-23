@@ -1127,6 +1127,10 @@ new class extends Component {
             $this->dispatch('toast', type: 'error', message: 'Batal gagal [' . $respon['code'] . '] ' . $this->ringkasError($respon['body']));
             return;
         }
+        // HTTP 200 berisi OperationOutcome = FHIR sudah membatalkan, tapi penerusan ke
+        // SISRUTE ditolak (terbukti 23/09/26: 'sisrute_operation=send_task sisrute_status=409').
+        // Task di kotak masuk RS tujuan bisa masih 'requested' — petugas wajib diberi tahu.
+        $sisruteMenolak = $taskTakAda ? '' : $this->rujukanOperationOutcomeGagal($respon['body']);
         $taskLama = $this->formRujukan['taskApprovalId'];
         $this->formRujukan['taskApprovalId'] = '';
         // CarePlan TETAP (satu kunjungan = satu CarePlan) — kecuali sudah melahirkan
@@ -1147,6 +1151,10 @@ new class extends Component {
         $this->formRujukan['approvalOrgNama'] = '';
         $this->formRujukan['hasil'] = [];
         $this->simpanDraft('Batalkan tugas rujukan IGD (Task ' . $taskLama . ')');
+        if ($sisruteMenolak !== '') {
+            $this->dispatch('toast', type: 'warning', message: 'Tugas dibatalkan di SATUSEHAT, tapi belum sampai ke SISRUTE (' . $sisruteMenolak . '). Di kotak masuk RS tujuan tugas ini bisa masih tampil menunggu — kabari RS tujuan bahwa tugas sudah dibatalkan.');
+            return;
+        }
         $this->dispatch('toast', type: 'success', message: $taskTakAda ? 'Task lama tidak pernah tersimpan di SATUSEHAT — id-nya dibersihkan.' : 'Tugas rujukan dibatalkan.');
     }
 
