@@ -521,6 +521,25 @@ new class extends Component {
             $this->dispatch('toast', type: 'error', message: 'Pra permintaan gagal [' . $praPermintaan['code'] . '] ' . $this->ringkasError($praPermintaan['body']));
             return;
         }
+        $praDitolak = $this->rujukanOperationOutcomeGagal($praPermintaan['body']);
+        if ($praDitolak !== '') {
+            $this->dispatch('toast', type: 'error', message: 'Pra permintaan DITOLAK SATUSEHAT — ' . $praDitolak);
+            return;
+        }
+
+        // Ranap: linkId & teks kriteria DINAMIS per ICD-10 — dari balasan Pra
+        // Permintaan, jangan hardcode. Diagnosa bisa tak punya kriteria tertentu.
+        $kriteriaServer = [];
+        if ($keRanap) {
+            $kriteriaServer = $this->rujukanKriteriaRanapDariPraPermintaan($praPermintaan['body']);
+            $kriteriaPilih = $this->formRujukan['kriteriaPilih'];
+            if (!isset($kriteriaServer[$kriteriaPilih])) {
+                $tersedia = implode(', ', array_column($kriteriaServer, 'text'));
+                $this->dispatch('toast', type: 'error', message: 'Kriteria "' . (RujukanKompetensiOptions::KRITERIA_RANAP[$kriteriaPilih] ?? $kriteriaPilih) . '" tidak tersedia untuk diagnosa ' . $this->formRujukan['kodeDiagnosa']
+                    . ($tersedia !== '' ? '. Yang tersedia: ' . $tersedia . '.' : ' — SATUSEHAT tidak mengirim daftar kriteria ranap untuk diagnosa ini.'));
+                return;
+            }
+        }
 
         $kandidat = $this->rujukanTaskPencarianKandidat([
             'kelompokLayananKode' => $this->formRujukan['kelompokLayananKode'],
@@ -536,6 +555,7 @@ new class extends Component {
                 'kodeKabupaten' => $this->formRujukan['kodeKabupaten'],
                 'namaKabupaten' => $this->formRujukan['namaKabupaten'],
             ],
+            'kriteriaServer' => $kriteriaServer,
             'kriteria' => $keRanap
                 ? [
                     'terapi' => $this->formRujukan['kriteriaPilih'] === 'terapi',
@@ -546,6 +566,12 @@ new class extends Component {
         ]);
         if ($kandidat['code'] < 200 || $kandidat['code'] >= 300) {
             $this->dispatch('toast', type: 'error', message: 'Pencarian kandidat gagal [' . $kandidat['code'] . '] ' . $this->ringkasError($kandidat['body']));
+            return;
+        }
+        // 201 berisi OperationOutcome = DITOLAK, bukan "kandidat belum keluar"
+        $kandidatDitolak = $this->rujukanOperationOutcomeGagal($kandidat['body']);
+        if ($kandidatDitolak !== '') {
+            $this->dispatch('toast', type: 'error', message: 'Pencarian kandidat DITOLAK SATUSEHAT — ' . $kandidatDitolak);
             return;
         }
 

@@ -63,6 +63,9 @@ dari cons-id vclaim biasa. Semua call wajib `timeout(8)->connectTimeout(3)` + tr
    berisi ICD-9-CM valid & sesuai diagnosa (menentukan kandidat!).
 2. **`linkId` kriteria DINAMIS per ICD-10** — selalu fetch ulang dari GetKriteriaRujukan,
    jangan hardcode/cache lintas diagnosa. Bisa berbentuk gabungan koma ("51947,69587").
+   **Berlaku juga di jalur FHIR ranap**: linkId + teks Q100 diambil dari Questionnaire balasan Task
+   Pra Permintaan (`rujukanKriteriaRanapDariPraPermintaan()`); IGD saja yang tetap `000001–000005`.
+   Salah linkId = **201 berisi OperationOutcome** → cek `rujukanOperationOutcomeGagal()`.
 3. **ICD-10 pilih kode paling rinci** (`A02.0`), tapi kode induk 3-karakter TIDAK
    selalu ditolak: `N40` terbukti diterima SISRUTE 2026-09-11 → 6 panel rujukan pakai
    `:blockHeader="false"` + regex `^[A-Z][0-9]{2}(\.[0-9]{1,2})?$` (dilepas SEMENTARA).

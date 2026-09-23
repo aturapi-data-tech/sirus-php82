@@ -250,6 +250,7 @@ trait SatuSehatRujukanTrait
      |     diagnosaKode, diagnosaDesc, wilayah{kodePropinsi,namaPropinsi,kodeKabupaten,namaKabupaten},
      |     kriteria — ranap: {terapi:bool, tindakanIcd9:string, upayaDiagnosis:bool}
      |               — igd:   {q1..q5: bool} (5 pertanyaan GAWAT DARURAT)
+     |     kriteriaServer — ranap saja: hasil rujukanKriteriaRanapDariPraPermintaan()
      |     diagnosaSekunderKode/Desc (opsional)
     ═══════════════════════════════════════ */
     protected function rujukanTaskPencarianKandidat(array $konteks): array
@@ -277,28 +278,31 @@ trait SatuSehatRujukanTrait
                 ])->values()->all(),
             ]];
         } else {
-            // Ranap: 3 item; satu yang terisi (linkId statis contoh Postman).
+            // Ranap: linkId & teks item DINAMIS per ICD-10 — diambil dari
+            // Questionnaire balasan Pra Permintaan ($konteks['kriteriaServer'],
+            // lihat rujukanKriteriaRanapDariPraPermintaan). linkId contoh Postman
+            // (3216/3215/3214) hanya sah untuk I61.9; diagnosa lain ditolak
+            // "linkId … tidak valid" sebagai OperationOutcome ber-HTTP 201.
             // Tindakan Medis: valueString "" TIDAK sah di FHIR (string wajib
             // berisi) dan bisa terbaca "dua kriteria terisi" → kandidat kosong
             // tanpa pesan. Kosong = item dikirim TANPA answer (bukan string kosong).
             $tindakanIcd9 = trim((string) ($konteks['kriteria']['tindakanIcd9'] ?? ''));
-            $itemTindakan = ['linkId' => '3215', 'text' => 'Tindakan Medis'];
-            if ($tindakanIcd9 !== '') {
-                $itemTindakan['answer'] = [['valueString' => $tindakanIcd9]];
-            }
-            $itemQ100 = [
-                [
-                    'linkId' => '3216',
-                    'text' => 'Terapi/Pengobatan',
-                    'answer' => [['valueBoolean' => (bool) ($konteks['kriteria']['terapi'] ?? false)]],
-                ],
-                $itemTindakan,
-                [
-                    'linkId' => '3214',
-                    'text' => 'Upaya Diagnosis',
-                    'answer' => [['valueBoolean' => (bool) ($konteks['kriteria']['upayaDiagnosis'] ?? false)]],
-                ],
+            $jawaban = [
+                'terapi' => (bool) ($konteks['kriteria']['terapi'] ?? false),
+                'upaya' => (bool) ($konteks['kriteria']['upayaDiagnosis'] ?? false),
             ];
+            $itemQ100 = [];
+            foreach ($konteks['kriteriaServer'] ?? [] as $kunci => $itemServer) {
+                $item = ['linkId' => $itemServer['linkId'], 'text' => $itemServer['text']];
+                if ($kunci === 'tindakan') {
+                    if ($tindakanIcd9 !== '') {
+                        $item['answer'] = [['valueString' => $tindakanIcd9]];
+                    }
+                } else {
+                    $item['answer'] = [['valueBoolean' => $jawaban[$kunci]]];
+                }
+                $itemQ100[] = $item;
+            }
         }
 
         // ── Q101 jejaring wilayah — WAJIB valueCoding, kode tanpa titik
@@ -460,6 +464,53 @@ trait SatuSehatRujukanTrait
     /**
      * Ambil resource Task pertama dari response GET (Bundle searchset atau resource langsung).
      */
+    /**
+     * Kriteria ranap dari Questionnaire "Kriteria Rujukan" yang di-contained
+     * balasan Task Pra Permintaan: ['terapi'|'tindakan'|'upaya' => {linkId, text}].
+     * linkId DAN teks-nya per ICD-10 (K56.7: Terapi 67627, Tindakan Medis 42718,
+     * Upaya Diagnosis 17809; teks "Terapi", di contoh Postman "Terapy/Pengobatan").
+     * Kunci yang tak ada = diagnosa itu memang tidak punya kriteria tersebut.
+     */
+    protected function rujukanKriteriaRanapDariPraPermintaan($body): array
+    {
+        $kuesioner = collect(is_array($body) ? $body['contained'] ?? [] : [])->firstWhere('resourceType', 'Questionnaire');
+        $kriteria = [];
+        foreach ($kuesioner['item'] ?? [] as $item) {
+            $teks = (string) ($item['text'] ?? '');
+            $linkId = (string) ($item['linkId'] ?? '');
+            $kunci = match (true) {
+                stripos($teks, 'terap') !== false => 'terapi',
+                stripos($teks, 'tindakan') !== false => 'tindakan',
+                stripos($teks, 'upaya') !== false => 'upaya',
+                default => null,
+            };
+            if ($kunci !== null && $linkId !== '') {
+                $kriteria[$kunci] = ['linkId' => $linkId, 'text' => $teks];
+            }
+        }
+
+        return $kriteria;
+    }
+
+    /**
+     * Penolakan yang datang sebagai sukses HTTP: Task Pra Permintaan & Pencarian
+     * Kandidat bisa berbalas 201 berisi OperationOutcome (mis. "linkId … tidak
+     * valid"). Tanpa pemeriksaan ini panel menyangka kandidat "belum keluar".
+     */
+    protected function rujukanOperationOutcomeGagal($body): string
+    {
+        if (!is_array($body) || ($body['resourceType'] ?? '') !== 'OperationOutcome') {
+            return '';
+        }
+        $issue = collect($body['issue'] ?? [])->first(fn($issue) => in_array($issue['severity'] ?? '', ['error', 'fatal'], true));
+        if (!$issue) {
+            return '';
+        }
+        $pesan = (string) ($issue['diagnostics'] ?? ($issue['details']['text'] ?? ($issue['code'] ?? 'ditolak')));
+
+        return preg_replace('/;\s*resource=.*$/s', '', $pesan);
+    }
+
     protected function rujukanTaskDariResponse($body): ?array
     {
         if (!is_array($body)) {
