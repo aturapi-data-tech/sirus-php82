@@ -543,6 +543,19 @@ new class extends Component {
                                 <x-cetak-button wire:click="cetakEresep('{{ $rjNo }}')" label="Cetak E-Resep" />
                             @endif
                         @endcan
+
+                        {{-- Rekam Medis Nasional — riwayat pasien dari faskes lain (SATUSEHAT RME) --}}
+                        @hasanyrole('Dokter|Perawat|Admin')
+                            <x-primary-button type="button"
+                                wire:click="$dispatch('rekam-medis-nasional.open', { jalur: 'UGD', nomor: '{{ $rjNo }}' })"
+                                class="gap-1 !bg-emerald-600 hover:!bg-emerald-700 !text-white focus:!ring-emerald-300 dark:!bg-emerald-600 dark:!text-white dark:hover:!bg-emerald-700 dark:focus:!ring-emerald-900">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="M21 12a9 9 0 11-18 0 9 9 0 0118 0zM3.6 9h16.8M3.6 15h16.8M12 3a15 15 0 010 18M12 3a15 15 0 000 18" />
+                                </svg>
+                                Rekam Medis Nasional
+                            </x-primary-button>
+                        @endhasanyrole
                     </div>
 
                     {{-- KANAN: Tutup + Simpan sebelahan --}}
@@ -607,4 +620,8 @@ new class extends Component {
 
     {{-- Cetak Surat Pengantar Rujukan + Resume Klinis (headless: cetak-surat-rujukan.open) --}}
     <livewire:pages::components.rekam-medis.rujukan-kompetensi.cetak-surat-rujukan wire:key="cetak-surat-rujukan-ugd-emr" />
+
+    {{-- Rekam Medis Nasional SATUSEHAT (listen: rekam-medis-nasional.open { jalur, nomor }) --}}
+    <livewire:pages::components.rekam-medis.rekam-medis-nasional.rekam-medis-nasional-actions
+        wire:key="rekam-medis-nasional-actions" />
 </div>
