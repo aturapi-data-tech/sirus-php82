@@ -261,13 +261,11 @@ trait SatuSehatRujukanTrait
 
         // ── Q100 kriteria — struktur beda per jalur (Postman V30062026)
         if ($konteks['jalur'] === 'igd') {
-            $pertanyaanIgd = [
-                '000001' => 'Mengancam nyawa, membahayakan diri dan orang lain/lingkungan',
-                '000002' => 'Adanya gangguan pada jalan nafas, pernafasan, dan sirkulasi',
-                '000003' => 'Adanya penurunan kesadaran',
-                '000004' => 'Adanya gangguan hemodinamik',
-                '000005' => 'Memerlukan tindakan segera',
-            ];
+            // Pertanyaan dari Questionnaire balasan Pra Permintaan
+            // (rujukanPertanyaanIgdDariPraPermintaan); daftar resmi hanya cadangan.
+            $pertanyaanIgd = !empty($konteks['pertanyaanIgdServer'])
+                ? $konteks['pertanyaanIgdServer']
+                : RujukanKompetensiOptions::PERTANYAAN_IGD;
             $itemQ100 = [[
                 'linkId' => '0',
                 'text' => 'GAWAT DARURAT',
@@ -490,6 +488,26 @@ trait SatuSehatRujukanTrait
         }
 
         return $kriteria;
+    }
+
+    /**
+     * Pertanyaan GAWAT DARURAT dari Questionnaire balasan Pra Permintaan jalur IGD:
+     * [linkId => teks], dari item grup (linkId "0") — saat ini 000001–000005.
+     */
+    protected function rujukanPertanyaanIgdDariPraPermintaan($body): array
+    {
+        $kuesioner = collect(is_array($body) ? $body['contained'] ?? [] : [])->firstWhere('resourceType', 'Questionnaire');
+        $pertanyaan = [];
+        foreach ($kuesioner['item'] ?? [] as $grup) {
+            foreach ($grup['item'] ?? [] as $item) {
+                $linkId = (string) ($item['linkId'] ?? '');
+                if ($linkId !== '') {
+                    $pertanyaan[$linkId] = (string) ($item['text'] ?? '');
+                }
+            }
+        }
+
+        return $pertanyaan;
     }
 
     /**

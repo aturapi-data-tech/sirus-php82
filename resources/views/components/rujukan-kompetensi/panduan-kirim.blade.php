@@ -105,7 +105,9 @@
                         Pilih tujuan <span class="font-semibold">IGD</span> atau <span class="font-semibold">Rawat Inap</span> dulu &mdash;
                         pilihan ini menentukan pertanyaan kriteria yang muncul.
                     @endif
-                    Pilih diagnosa (ICD-10), isi kriteria, lalu tentukan wilayah tujuan.
+                    Pilih diagnosa (ICD-10), tekan <span class="font-semibold">Ambil Kriteria dari SATUSEHAT</span>
+                    &mdash; daftar kriteria dikirim server dan berbeda untuk tiap diagnosa &mdash; isi kriterianya,
+                    lalu tentukan wilayah tujuan. Ganti diagnosa atau tujuan = kriteria diambil ulang.
                     Kriteria inilah yang dipakai SATUSEHAT menilai RS mana yang mampu menangani.
                 </li>
                 <li>

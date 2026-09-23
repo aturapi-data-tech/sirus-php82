@@ -140,6 +140,12 @@ new class extends Component {
             // Kriteria ranap: tepat satu — 'terapi' | 'tindakan' | 'upaya'
             'kriteriaPilih' => '',
             'kriteriaIcd9' => '',
+            // Hasil Pra Permintaan (ambilKriteria): kriteria DARI SATUSEHAT, sah untuk
+            // pasangan jalur|diagnosa di kriteriaDimuatUntuk saja.
+            'taskPraPermintaanId' => '',
+            'kriteriaDimuatUntuk' => '',
+            'kriteriaServer' => [],
+            'pertanyaanIgdServer' => [],
             // Jejaring wilayah — valueCoding administrative-area, kode tanpa titik
             'kodePropinsi' => '35',
             'namaPropinsi' => 'JAWA TIMUR',
@@ -295,14 +301,10 @@ new class extends Component {
         return explode(' ', $dikirim, 2)[0];
     }
 
-    public function pertanyaanIgd(): array
-    {
-        return RujukanKompetensiOptions::PERTANYAAN_IGD;
-    }
-
     /** Ganti tujuan = kriteria & kandidat lama tidak berlaku lagi. */
     public function updatedFormRujukanJalur(): void
     {
+        $this->kosongkanKriteria();
         $this->formRujukan['taskKandidatId'] = '';
         $this->formRujukan['kandidatList'] = [];
         $this->formRujukan['kandidatIdx'] = null;
@@ -483,10 +485,108 @@ new class extends Component {
         $this->formRujukan['kandidatList'] = [];
         $this->formRujukan['kandidatIdx'] = null;
         $this->infoKandidat = '';
+        $this->kosongkanKriteria();
+    }
+
+
+    /** Kriteria server hanya sah untuk pasangan jalur + diagnosa saat dimuat. */
+    private function penandaKriteria(): string
+    {
+        return ($this->formRujukan['jalur'] ?? '') . '|' . ($this->formRujukan['kodeDiagnosa'] ?? '');
+    }
+
+    public function kriteriaSiap(): bool
+    {
+        $keRanap = ($this->formRujukan['jalur'] ?? '') === 'ranap';
+
+        return filled($this->formRujukan['taskPraPermintaanId'] ?? '')
+            && ($this->formRujukan['kriteriaDimuatUntuk'] ?? '') === $this->penandaKriteria()
+            && !empty($keRanap ? $this->formRujukan['kriteriaServer'] ?? [] : $this->formRujukan['pertanyaanIgdServer'] ?? []);
+    }
+
+    /** Diagnosa/jalur berubah → kriteria (linkId per ICD-10) harus diambil ulang. */
+    private function kosongkanKriteria(): void
+    {
+        $this->formRujukan['taskPraPermintaanId'] = '';
+        $this->formRujukan['kriteriaDimuatUntuk'] = '';
+        $this->formRujukan['kriteriaServer'] = [];
+        $this->formRujukan['pertanyaanIgdServer'] = [];
+        $this->formRujukan['kriteriaPilih'] = '';
+        $this->formRujukan['kriteriaIcd9'] = '';
+        $this->formRujukan['kriteriaIgd'] = [];
     }
 
     /* ═══════════════════════════════════════
-     | LANGKAH 1 — CARI KANDIDAT (pra permintaan + pencarian)
+     | LANGKAH 1a — AMBIL KRITERIA (Task Pra Permintaan)
+     | Alur Playbook: diagnosa → Pra Permintaan → SATUSEHAT membalas
+     | Questionnaire "Kriteria Rujukan" → petugas memilih dari situ.
+     | linkId & teks DINAMIS per ICD-10 — tidak ada daftar tetap di layar.
+    ═══════════════════════════════════════ */
+    public function ambilKriteria(): void
+    {
+        if ($this->isFormLocked) {
+            return;
+        }
+        $kurang = $this->prasyaratKurang();
+        if (!empty($kurang)) {
+            $this->dispatch('toast', type: 'error', message: 'Data belum siap: ' . implode('; ', $kurang) . '.');
+            return;
+        }
+        $kodeDiagnosa = trim((string) ($this->formRujukan['kodeDiagnosa'] ?? ''));
+        if (!preg_match('/^[A-Z][0-9]{2}(\.[0-9]{1,2})?$/', $kodeDiagnosa)) {
+            $this->dispatch('toast', type: 'error', message: 'Pilih diagnosa ICD-10 dulu (contoh N40 atau I61.9).');
+            return;
+        }
+        $keRanap = ($this->formRujukan['jalur'] ?? '') === 'ranap';
+
+        $this->kosongkanKriteria();
+        // Identifier WAJIB unik SETIAP POST — termasuk retry
+        $praPermintaan = $this->rujukanTaskPraPermintaan([
+            'jalur' => $keRanap ? 'ranap' : 'igd',
+            'identifier' => (string) Str::uuid(),
+            'encounterId' => $this->encounterUuid(),
+            'diagnosaKode' => $kodeDiagnosa,
+            'diagnosaDesc' => $this->formRujukan['diagnosaDesc'],
+        ]);
+        if ($praPermintaan['code'] < 200 || $praPermintaan['code'] >= 300) {
+            $this->dispatch('toast', type: 'error', message: 'Pra permintaan gagal [' . $praPermintaan['code'] . '] ' . $this->ringkasError($praPermintaan['body']));
+            return;
+        }
+        $praDitolak = $this->rujukanOperationOutcomeGagal($praPermintaan['body']);
+        if ($praDitolak !== '') {
+            $this->dispatch('toast', type: 'error', message: 'Pra permintaan DITOLAK SATUSEHAT — ' . $praDitolak);
+            return;
+        }
+
+        if ($keRanap) {
+            $kriteriaServer = $this->rujukanKriteriaRanapDariPraPermintaan($praPermintaan['body']);
+            if (empty($kriteriaServer)) {
+                $this->dispatch('toast', type: 'error', message: 'SATUSEHAT tidak mengirim kriteria ranap untuk diagnosa ' . $kodeDiagnosa . ' — coba kode diagnosa yang lebih rinci.');
+                return;
+            }
+            $this->formRujukan['kriteriaServer'] = $kriteriaServer;
+        } else {
+            $pertanyaanIgd = $this->rujukanPertanyaanIgdDariPraPermintaan($praPermintaan['body']);
+            if (empty($pertanyaanIgd)) {
+                $this->dispatch('toast', type: 'error', message: 'SATUSEHAT tidak mengirim pertanyaan gawat darurat untuk diagnosa ' . $kodeDiagnosa . '.');
+                return;
+            }
+            $this->formRujukan['pertanyaanIgdServer'] = $pertanyaanIgd;
+            $this->formRujukan['kriteriaIgd'] = array_fill_keys(array_map('strval', array_keys($pertanyaanIgd)), false);
+        }
+
+        $this->formRujukan['taskPraPermintaanId'] = (string) ($praPermintaan['body']['id'] ?? '-');
+        $this->formRujukan['kriteriaDimuatUntuk'] = $this->penandaKriteria();
+        $this->formRujukan['taskKandidatId'] = '';
+        $this->formRujukan['kandidatList'] = [];
+        $this->formRujukan['kandidatIdx'] = null;
+        $this->infoKandidat = '';
+        $this->simpanDraft();
+        $this->dispatch('toast', type: 'success', message: 'Kriteria rujukan diterima dari SATUSEHAT untuk ' . $kodeDiagnosa . '.');
+    }
+
+    /* ═══════════════════════════════════════
+     | LANGKAH 1b — CARI KANDIDAT (kriteria dari Langkah 1a, tanpa Pra Permintaan ulang)
     ═══════════════════════════════════════ */
     public function cariKandidat(): void
     {
@@ -497,6 +597,10 @@ new class extends Component {
             return;
         }
         $keRanap = ($this->formRujukan['jalur'] ?? 'ranap') === 'ranap';
+        if (!$this->kriteriaSiap()) {
+            $this->dispatch('toast', type: 'error', message: 'Tekan "Ambil Kriteria dari SATUSEHAT" dulu — kriteria berbeda untuk tiap diagnosa.');
+            return;
+        }
         if ($keRanap) {
             if (!preg_match('/^[A-Z][0-9]{2}(\.[0-9]{1,2})?$/', $this->formRujukan['kodeDiagnosa'] ?? '')) {
                 $this->dispatch('toast', type: 'error', message: 'Tujuan ranap: kode diagnosa harus format ICD-10 (contoh N40 atau I61.9).');
@@ -515,36 +619,11 @@ new class extends Component {
             return;
         }
 
-        // Identifier WAJIB unik SETIAP POST — termasuk retry
-        $praPermintaan = $this->rujukanTaskPraPermintaan([
-            'jalur' => $this->formRujukan['jalur'] ?? 'ranap',
-            'identifier' => (string) Str::uuid(),
-            'encounterId' => $this->encounterUuid(),
-            'diagnosaKode' => $this->formRujukan['kodeDiagnosa'],
-            'diagnosaDesc' => $this->formRujukan['diagnosaDesc'],
-        ]);
-        if ($praPermintaan['code'] < 200 || $praPermintaan['code'] >= 300) {
-            $this->dispatch('toast', type: 'error', message: 'Pra permintaan gagal [' . $praPermintaan['code'] . '] ' . $this->ringkasError($praPermintaan['body']));
+        // Kriteria dari Pra Permintaan (ambilKriteria) — sah hanya untuk jalur + diagnosa ini.
+        $kriteriaServer = $keRanap ? $this->formRujukan['kriteriaServer'] : [];
+        if ($keRanap && !isset($kriteriaServer[$this->formRujukan['kriteriaPilih']])) {
+            $this->dispatch('toast', type: 'error', message: 'Kriteria terpilih tidak ada di daftar SATUSEHAT untuk diagnosa ini — Ambil Kriteria ulang.');
             return;
-        }
-        $praDitolak = $this->rujukanOperationOutcomeGagal($praPermintaan['body']);
-        if ($praDitolak !== '') {
-            $this->dispatch('toast', type: 'error', message: 'Pra permintaan DITOLAK SATUSEHAT — ' . $praDitolak);
-            return;
-        }
-
-        // Ranap: linkId & teks kriteria DINAMIS per ICD-10 — dari balasan Pra
-        // Permintaan, jangan hardcode. Diagnosa bisa tak punya kriteria tertentu.
-        $kriteriaServer = [];
-        if ($keRanap) {
-            $kriteriaServer = $this->rujukanKriteriaRanapDariPraPermintaan($praPermintaan['body']);
-            $kriteriaPilih = $this->formRujukan['kriteriaPilih'];
-            if (!isset($kriteriaServer[$kriteriaPilih])) {
-                $tersedia = implode(', ', array_column($kriteriaServer, 'text'));
-                $this->dispatch('toast', type: 'error', message: 'Kriteria "' . (RujukanKompetensiOptions::KRITERIA_RANAP[$kriteriaPilih] ?? $kriteriaPilih) . '" tidak tersedia untuk diagnosa ' . $this->formRujukan['kodeDiagnosa']
-                    . ($tersedia !== '' ? '. Yang tersedia: ' . $tersedia . '.' : ' — SATUSEHAT tidak mengirim daftar kriteria ranap untuk diagnosa ini.'));
-                return;
-            }
         }
 
         $kandidat = $this->rujukanTaskPencarianKandidat([
@@ -562,6 +641,7 @@ new class extends Component {
                 'namaKabupaten' => $this->formRujukan['namaKabupaten'],
             ],
             'kriteriaServer' => $kriteriaServer,
+            'pertanyaanIgdServer' => $keRanap ? [] : $this->formRujukan['pertanyaanIgdServer'],
             'kriteria' => $keRanap
                 ? [
                     'terapi' => $this->formRujukan['kriteriaPilih'] === 'terapi',
@@ -1327,36 +1407,48 @@ new class extends Component {
                     <p class="mt-1 text-xs text-muted-soft">Dipakai mencari kandidat RS. @if (filled($formRujukan['kodeDiagnosa'] ?? ''))<span class="font-mono font-semibold text-ink dark:text-gray-200">Kode terkirim: {{ $formRujukan['kodeDiagnosa'] }}</span>@endif</p>
                 </div>
 
-                @if (($formRujukan['jalur'] ?? 'ranap') === 'igd')
-                    <div class="space-y-2">
+                {{-- Kriteria DARI SATUSEHAT (Pra Permintaan): linkId & teks per diagnosa.
+                     Tidak ada daftar tetap — sebelum diambil, pilihan kriteria belum tampil. --}}
+                <div class="space-y-2">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <x-secondary-button type="button" wire:click="ambilKriteria" wire:loading.attr="disabled"
+                            wire:target="ambilKriteria" :disabled="$isFormLocked">
+                            <span wire:loading.remove wire:target="ambilKriteria">📋 Ambil Kriteria dari SATUSEHAT</span>
+                            <span wire:loading wire:target="ambilKriteria" class="inline-flex items-center gap-1"><x-loading /> Meminta kriteria...</span>
+                        </x-secondary-button>
+                        @if ($this->kriteriaSiap())
+                            <span class="text-xs text-emerald-700 dark:text-emerald-400">✓ Kriteria diterima dari SATUSEHAT · Pra Permintaan Task <span class="font-mono">{{ $formRujukan['taskPraPermintaanId'] }}</span></span>
+                        @endif
+                    </div>
+
+                    @if (!$this->kriteriaSiap())
+                        <p class="text-xs text-muted-soft">Pilih tujuan layanan &amp; diagnosa, lalu tekan <b>Ambil Kriteria dari SATUSEHAT</b>. Kriteria berbeda untuk tiap diagnosa.</p>
+                    @elseif (($formRujukan['jalur'] ?? '') === 'igd')
                         <p class="text-xs text-muted-soft">Kriteria gawat darurat (centang yang sesuai, minimal satu):</p>
-                        @foreach ($this->pertanyaanIgd() as $linkId => $teks)
+                        @foreach ($formRujukan['pertanyaanIgdServer'] ?? [] as $linkId => $teks)
                             <x-toggle :current="($formRujukan['kriteriaIgd'][$linkId] ?? false) ? 'Ya' : 'Tidak'"
                                 trueValue="Ya" falseValue="Tidak" :disabled="$isFormLocked"
                                 onColor="bg-rose-600" wireClick="toggleKriteriaIgd('{{ $linkId }}')" label="{{ $teks }}" />
                         @endforeach
-                    </div>
-                @else
-                <div class="space-y-2">
-                    <p class="text-xs text-muted-soft">Pilih <b>tepat satu</b> kriteria:</p>
-                    <div class="grid grid-cols-1 gap-2 md:grid-cols-3">
-                        <x-radio-button label="Terapi/Pengobatan" value="terapi" name="kriteriaRanap-{{ $riHdrNo }}"
-                            wire:model.live="formRujukan.kriteriaPilih" :disabled="$isFormLocked" />
-                        <x-radio-button label="Tindakan Medis (ICD-9-CM)" value="tindakan" name="kriteriaRanap-{{ $riHdrNo }}"
-                            wire:model.live="formRujukan.kriteriaPilih" :disabled="$isFormLocked" />
-                        <x-radio-button label="Upaya Diagnosis" value="upaya" name="kriteriaRanap-{{ $riHdrNo }}"
-                            wire:model.live="formRujukan.kriteriaPilih" :disabled="$isFormLocked" />
-                    </div>
-                    @if ($formRujukan['kriteriaPilih'] === 'tindakan')
-                        <div class="max-w-xs">
-                            <x-input-label value="Kode Tindakan ICD-9-CM" class="mb-1" />
-                            <x-text-input wire:model.blur="formRujukan.kriteriaIcd9" placeholder="mis. 01.24"
-                                :disabled="$isFormLocked" class="w-full" />
-                            <p class="mt-1 text-xs text-muted-soft">Harus valid & sesuai diagnosa — menentukan kandidat RS.</p>
+                    @else
+                        <p class="text-xs text-muted-soft">Pilih <b>tepat satu</b> kriteria:</p>
+                        <div class="grid grid-cols-1 gap-2 md:grid-cols-3">
+                            @foreach ($formRujukan['kriteriaServer'] ?? [] as $kunciKriteria => $kriteriaServer)
+                                <x-radio-button :label="$kriteriaServer['text'] . ($kunciKriteria === 'tindakan' ? ' (ICD-9-CM)' : '')"
+                                    :value="$kunciKriteria" name="kriteriaRanap-{{ $riHdrNo }}"
+                                    wire:model.live="formRujukan.kriteriaPilih" :disabled="$isFormLocked" />
+                            @endforeach
                         </div>
+                        @if (($formRujukan['kriteriaPilih'] ?? '') === 'tindakan')
+                            <div class="max-w-xs">
+                                <x-input-label value="Kode Tindakan ICD-9-CM" class="mb-1" />
+                                <x-text-input wire:model.blur="formRujukan.kriteriaIcd9" placeholder="mis. 01.24"
+                                    :disabled="$isFormLocked" class="w-full" />
+                                <p class="mt-1 text-xs text-muted-soft">Harus valid &amp; sesuai diagnosa — menentukan kandidat RS.</p>
+                            </div>
+                        @endif
                     @endif
                 </div>
-                @endif
 
                 {{-- Kelompok Layanan — menyaring kandidat ke faskes yang melayani
                      kelompok ini. Opsional: kosong = tidak dikirim, biar tidak
