@@ -59,10 +59,10 @@
     $petugas = (string) data_get($sbar, 'petugasSBAR', '-');
 
     $sbarRows = [
-        ['S', 'Situation', trim((string) data_get($isi, 'situation', ''))],
-        ['B', 'Background', trim((string) data_get($isi, 'background', ''))],
+        ['S', 'Subjective', trim((string) data_get($isi, 'situation', ''))],
+        ['O', 'Objective', trim((string) data_get($isi, 'background', ''))],
         ['A', 'Assessment', trim((string) data_get($isi, 'assessment', ''))],
-        ['R', 'Recommendation', trim((string) data_get($isi, 'recommendation', ''))],
+        ['P', 'Plan', trim((string) data_get($isi, 'recommendation', ''))],
     ];
 @endphp
 
