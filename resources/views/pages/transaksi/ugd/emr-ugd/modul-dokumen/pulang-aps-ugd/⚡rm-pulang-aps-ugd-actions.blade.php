@@ -1,0 +1,1005 @@
+<?php
+// resources/views/pages/transaksi/ugd/emr-ugd/modul-dokumen/pulang-aps-ugd/rm-pulang-aps-ugd-actions.blade.php
+//
+// Surat Pernyataan Pulang Atas Permintaan Sendiri (APS) — modul dokumen UGD (port dari RI).
+// Pola: permintaan-kerohanian-ri (Draft → TTD petugas = kunci → Lihat/Cetak)
+// + Buka Kunci gate terpusat (dokumen.bukaKunci) sesuai standar terbaru.
+
+use Livewire\Component;
+use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
+use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
+use App\Http\Traits\Concerns\WithRenderVersioningTrait;
+use App\Http\Traits\Concerns\WithValidationToastTrait;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Carbon\Carbon;
+use Barryvdh\DomPDF\Facade\Pdf;
+use App\Support\Clause\PulangApsClause;
+use App\Support\TtdUser;
+use App\Support\TtdPasien;
+
+new class extends Component {
+    use EmrUGDTrait, MasterPasienTrait, WithRenderVersioningTrait, WithValidationToastTrait;
+
+    public bool $isFormLocked = false;
+    public ?int $rjNo = null;
+    public ?string $regNo = null;
+    public bool $disabled = false;
+    /** Nama pasien untuk isian awal penanda tangan (dulu dibaca dari dokumen penuh). */
+    public ?string $regName = null;
+
+    public array $renderVersions = [];
+    protected array $renderAreas = ['modal-pulang-aps-ugd'];
+
+    // ── Form entri baru ──
+    public array $newForm = [
+        'pembuatNama' => '',
+        'hubunganPasien' => 'pasien',
+        'alasanPulang' => '',
+        'keterangan' => '',
+        'risikoDijelaskan' => '',
+        'saksiNama' => '',
+        'petugas' => '',
+        'petugasCode' => '',
+        'petugasDate' => '',
+        'clauseVersion' => PulangApsClause::CURRENT,
+    ];
+
+    public string $signature = ''; // TTD pembuat pernyataan untuk entri baru
+    public string $signatureSaksi = ''; // TTD saksi (wajib saat kunci, pola inform-consent)
+
+    public array $apsList = [];
+
+    public array $hubunganPasienOptions = [
+        ['value' => 'pasien', 'label' => 'Diri Sendiri (Pasien)'],
+        ['value' => 'suami', 'label' => 'Suami'],
+        ['value' => 'istri', 'label' => 'Istri'],
+        ['value' => 'ayah', 'label' => 'Ayah'],
+        ['value' => 'ibu', 'label' => 'Ibu'],
+        ['value' => 'anak', 'label' => 'Anak'],
+        ['value' => 'saudara', 'label' => 'Saudara'],
+        ['value' => 'wali_hukum', 'label' => 'Wali Hukum'],
+        ['value' => 'lainnya', 'label' => 'Lainnya'],
+    ];
+
+    // Kunci entri yang sedang diedit (signatureDate = kunci stabil, di-set saat entri pertama dibuat).
+    // null = sedang membuat entri baru.
+    public ?string $editingKey = null;
+
+    // Layar aktif di modal: 'daftar' (grid entri) atau 'form' (tambah/edit/lihat).
+    // Formulir sengaja tidak nongkrong bersama daftarnya: dulu ia ikut tampil terus lalu
+    // dikosongkan diam-diam sesudah tersimpan, dan petugas yang mengira itu masih formulir
+    // yang tadi diisi mengetik ulang — tersimpan sebagai draft baru.
+    public string $layar = 'daftar';
+
+    // true = entri terkunci sedang ditampilkan di form dalam mode read-only (lihat saja, tak bisa edit).
+    public bool $viewOnly = false;
+
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan di bawah ini yang disimpan. */
+    private function muatDariDokumen(array $data): void
+    {
+        $this->regNo = $data['regNo'] ?? null;
+        $this->apsList = is_array($data['pulangApsUGD'] ?? null) ? $data['pulangApsUGD'] : [];
+        $this->regName = $data['regName'] ?? null;
+    }
+
+    /* ===============================
+     | MOUNT
+     =============================== */
+    public function mount(?int $rjNo = null, bool $disabled = false): void
+    {
+        $this->rjNo = $rjNo ?: null;
+        $this->disabled = $disabled;
+        $this->registerAreas(['modal-pulang-aps-ugd']);
+
+        if ($this->rjNo) {
+            $data = $this->findDataUGD($this->rjNo);
+            if ($data) {
+                $this->muatDariDokumen($data);
+                $this->isFormLocked = $this->checkEmrUGDStatus($this->rjNo) || $disabled;
+            }
+        }
+    }
+
+    /* ===============================
+     | OPEN MODAL
+     =============================== */
+    public function openModal(): void
+    {
+        if (!$this->rjNo || $this->disabled) {
+            return;
+        }
+
+        $this->resetNewForm();
+        $this->signature = '';
+        $this->signatureSaksi = '';
+        $this->editingKey = null;
+        $this->viewOnly = false;
+        $this->resetValidation();
+
+        $data = $this->findDataUGD($this->rjNo);
+        if (!$data) {
+            $this->dispatch('toast', type: 'error', message: 'Data UGD tidak ditemukan.');
+            return;
+        }
+
+        $this->muatDariDokumen($data);
+        $this->newForm['pembuatNama'] = $this->regName ?? '';
+        $this->isFormLocked = $this->checkEmrUGDStatus($this->rjNo) || $this->disabled;
+        $this->incrementVersion('modal-pulang-aps-ugd');
+
+        $this->layar = 'daftar';
+
+        $this->dispatch('open-modal', name: "rm-pulang-aps-ugd-{$this->rjNo}");
+    }
+
+    /* ===============================
+     | CLOSE
+     =============================== */
+    public function closeModal(): void
+    {
+        $this->dispatch('close-modal', name: "rm-pulang-aps-ugd-{$this->rjNo}");
+    }
+
+    /* ===============================
+     | VALIDATION
+     =============================== */
+    protected function rules(): array
+    {
+        return [
+            'newForm.pembuatNama' => 'required|string|max:200',
+            'newForm.hubunganPasien' => 'required|string|max:50',
+            'newForm.alasanPulang' => 'required|string|max:500',
+            'newForm.keterangan' => 'nullable|string|max:500',
+            'newForm.risikoDijelaskan' => 'nullable|string|max:1000',
+            'newForm.saksiNama' => 'required|string|max:200',
+            'signature' => 'required|string',
+            'signatureSaksi' => 'required|string',
+        ];
+    }
+
+    protected function messages(): array
+    {
+        return [
+            'required' => ':attribute wajib diisi.',
+            'max' => ':attribute maksimal :max karakter.',
+        ];
+    }
+
+    protected function validationAttributes(): array
+    {
+        return [
+            'newForm.pembuatNama' => 'Nama pembuat pernyataan',
+            'newForm.hubunganPasien' => 'Hubungan dengan pasien',
+            'newForm.alasanPulang' => 'Alasan pulang',
+            'newForm.keterangan' => 'Keterangan tambahan',
+            'newForm.risikoDijelaskan' => 'Risiko/akibat yang dijelaskan',
+            'newForm.saksiNama' => 'Nama saksi',
+            'signature' => 'Tanda tangan pembuat pernyataan',
+            'signatureSaksi' => 'Tanda tangan saksi',
+        ];
+    }
+
+    /* ===============================
+     | SIGNATURE (pembuat pernyataan)
+     =============================== */
+    public function setSignature(string $dataUrl): void
+    {
+        if ($this->isFormLocked || $this->viewOnly) {
+            return;
+        }
+        $this->signature = TtdPasien::simpan($dataUrl, $this->regNo);   // gambar ke RSTXN_TTDS; di sini cukup referensi "TTD:<no>"
+        $this->incrementVersion('modal-pulang-aps-ugd');
+    }
+
+    public function clearSignature(): void
+    {
+        if ($this->isFormLocked || $this->viewOnly) {
+            return;
+        }
+        $this->signature = '';
+        $this->incrementVersion('modal-pulang-aps-ugd');
+    }
+
+    public function setSignatureSaksi(string $dataUrl): void
+    {
+        if ($this->isFormLocked || $this->viewOnly) {
+            return;
+        }
+        $this->signatureSaksi = TtdPasien::simpan($dataUrl, $this->regNo);   // gambar ke RSTXN_TTDS; di sini cukup referensi "TTD:<no>"
+        $this->incrementVersion('modal-pulang-aps-ugd');
+    }
+
+    public function clearSignatureSaksi(): void
+    {
+        if ($this->isFormLocked || $this->viewOnly) {
+            return;
+        }
+        $this->signatureSaksi = '';
+        $this->incrementVersion('modal-pulang-aps-ugd');
+    }
+
+    /* ===============================
+     | TTD PETUGAS RS = FINALIZE
+     | Petugas TTD di akhir → validasi lengkap + kunci entri.
+     =============================== */
+    public function setPetugasRS(): void
+    {
+        if ($this->isFormLocked || $this->viewOnly) {
+            $this->dispatch('toast', type: 'error', message: 'Form read-only.');
+            return;
+        }
+        if (empty($this->signature)) {
+            $this->dispatch('toast', type: 'error', message: 'TTD pembuat pernyataan wajib sebelum TTD petugas.');
+            return;
+        }
+
+        $this->validateWithToast();
+
+        // Stempel TTD petugas RS = user login.
+        $this->newForm['petugas'] = auth()->user()->myuser_name ?? '';
+        $this->newForm['petugasCode'] = auth()->user()->myuser_code ?? '';
+        $this->newForm['petugasDate'] = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
+
+        $key = $this->editingKey ?: Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
+
+        try {
+            $this->persistEntry($key, true, 'Kunci (TTD Petugas)');
+            $this->resetNewForm();
+            $this->newForm['pembuatNama'] = $this->regName ?? '';
+            $this->signature = '';
+            $this->signatureSaksi = '';
+            $this->editingKey = null;
+            $this->viewOnly = false;
+            $this->incrementVersion('modal-pulang-aps-ugd');
+            $this->dispatch('toast', type: 'success', message: 'Surat pernyataan pulang APS ditandatangani petugas dan terkunci.');
+        } catch (\RuntimeException $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
+        } catch (\Exception $e) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal mengunci: ' . $e->getMessage());
+        }
+    }
+
+    /* ===============================
+     | HELPER — status & bentuk entri
+     =============================== */
+    public function entryIsFinal(array $e): bool
+    {
+        return array_key_exists('finalized', $e) ? (bool) $e['finalized'] : !empty($e['signature']);
+    }
+
+    // Susun array entri dari state form. $key = signatureDate (kunci stabil); $finalized = status kunci.
+    private function buildEntry(string $key, bool $finalized): array
+    {
+        return [
+            'pembuatNama' => $this->newForm['pembuatNama'] ?? '',
+            'hubunganPasien' => $this->newForm['hubunganPasien'] ?? 'pasien',
+            'alasanPulang' => $this->newForm['alasanPulang'] ?? '',
+            'keterangan' => $this->newForm['keterangan'] ?? '',
+            'risikoDijelaskan' => $this->newForm['risikoDijelaskan'] ?? '',
+            'saksiNama' => $this->newForm['saksiNama'] ?? '',
+            'signatureSaksi' => $this->signatureSaksi,
+            'signature' => $this->signature,
+            'signatureDate' => $key,
+            'petugas' => $this->newForm['petugas'] ?? '',
+            'petugasCode' => $this->newForm['petugasCode'] ?? '',
+            'petugasDate' => $this->newForm['petugasDate'] ?? '',
+            'clauseVersion' => $this->newForm['clauseVersion'] ?? PulangApsClause::CURRENT,
+            'finalized' => $finalized,
+        ];
+    }
+
+    // Simpan entri (add/update by $key) dengan status $finalized. Dipakai draft & kunci.
+    private function persistEntry(string $key, bool $finalized, string $logVerb): void
+    {
+        $entry = $this->buildEntry($key, $finalized);
+
+        DB::transaction(function () use ($entry, $key, $logVerb) {
+            $this->lockUGDRow($this->rjNo);
+
+            $data = $this->findDataUGD($this->rjNo);
+            if (empty($data)) {
+                throw new \RuntimeException('Data UGD tidak ditemukan, simpan dibatalkan.');
+            }
+            if (!isset($data['pulangApsUGD']) || !is_array($data['pulangApsUGD'])) {
+                $data['pulangApsUGD'] = [];
+            }
+
+            $list = $data['pulangApsUGD'];
+            $idx = collect($list)->search(fn($it) => ($it['signatureDate'] ?? '') === $key);
+            if ($idx === false) {
+                $list[] = $entry;
+            } else {
+                if ($this->entryIsFinal($list[$idx])) {
+                    throw new \RuntimeException('Entri sudah terkunci, tidak dapat diubah.');
+                }
+                $list[$idx] = $entry;
+            }
+            $data['pulangApsUGD'] = array_values($list);
+
+            $this->updateJsonUGD($this->rjNo, $data);
+            $this->muatDariDokumen($data);
+
+            $this->appendAdminLogUGD((int) $this->rjNo, $logVerb . ' Surat Pernyataan Pulang APS UGD — oleh "' . ($entry['pembuatNama'] ?: '-') . '" (' . $key . ')', 'MR');
+        });
+    }
+
+    /* ===============================
+     | SIMPAN DRAFT (nyicil, tanpa validasi lengkap)
+     =============================== */
+    public function saveDraft(): void
+    {
+        if ($this->isFormLocked || $this->viewOnly) {
+            $this->dispatch('toast', type: 'error', message: 'Form read-only, tidak dapat menyimpan.');
+            return;
+        }
+        if (trim($this->newForm['pembuatNama'] ?? '') === '') {
+            $this->dispatch('toast', type: 'error', message: 'Nama pembuat pernyataan wajib diisi untuk menyimpan draft.');
+            return;
+        }
+
+        $key = $this->editingKey ?: Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
+
+        try {
+            $this->persistEntry($key, false, 'Simpan draft');
+            $this->editingKey = $key; // lanjut edit entri yang sama, tidak buat duplikat
+            $this->incrementVersion('modal-pulang-aps-ugd');
+            $this->dispatch('toast', type: 'success', message: 'Draft tersimpan.');
+        } catch (\RuntimeException $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
+        } catch (\Exception $e) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal menyimpan draft: ' . $e->getMessage());
+        }
+    }
+
+    /* ===============================
+     | EDIT / LIHAT / BATAL entri
+     =============================== */
+    // Muat 1 entri ke form atas (dipakai edit draft & lihat entri terkunci).
+    private function hydrateFormFromEntry(array $entry, string $key): void
+    {
+        $this->newForm = [
+            'pembuatNama' => $entry['pembuatNama'] ?? '',
+            'hubunganPasien' => $entry['hubunganPasien'] ?? 'pasien',
+            'alasanPulang' => $entry['alasanPulang'] ?? '',
+            'keterangan' => $entry['keterangan'] ?? '',
+            'risikoDijelaskan' => $entry['risikoDijelaskan'] ?? '',
+            'saksiNama' => $entry['saksiNama'] ?? '',
+            'petugas' => $entry['petugas'] ?? '',
+            'petugasCode' => $entry['petugasCode'] ?? '',
+            'petugasDate' => $entry['petugasDate'] ?? '',
+            'clauseVersion' => $entry['clauseVersion'] ?? PulangApsClause::CURRENT,
+        ];
+        $this->signature = $entry['signature'] ?? '';
+        $this->signatureSaksi = $entry['signatureSaksi'] ?? '';
+        $this->editingKey = $key;
+        $this->resetValidation();
+        $this->incrementVersion('modal-pulang-aps-ugd');
+    }
+
+    public function editEntry(string $key): void
+    {
+        if ($this->isFormLocked) {
+            $this->dispatch('toast', type: 'error', message: 'Form read-only.');
+            return;
+        }
+        $entry = collect($this->apsList)->firstWhere('signatureDate', $key);
+        if (!$entry) {
+            $this->dispatch('toast', type: 'error', message: 'Entri tidak ditemukan.');
+            return;
+        }
+        if ($this->entryIsFinal($entry)) {
+            $this->dispatch('toast', type: 'warning', message: 'Entri sudah terkunci, tidak dapat diedit.');
+            return;
+        }
+
+        $this->viewOnly = false;
+        $this->hydrateFormFromEntry($entry, $key);
+        $this->dispatch('toast', type: 'info', message: 'Draft dimuat untuk dilanjutkan.');
+    }
+
+    // Lihat entri terkunci: muat ke form atas dalam mode read-only.
+    public function viewEntry(string $key): void
+    {
+        $entry = collect($this->apsList)->firstWhere('signatureDate', $key);
+        if (!$entry) {
+            $this->dispatch('toast', type: 'error', message: 'Entri tidak ditemukan.');
+            return;
+        }
+
+        $this->viewOnly = true;
+        $this->hydrateFormFromEntry($entry, $key);
+        $this->dispatch('toast', type: 'info', message: 'Menampilkan entri terkunci (hanya lihat).');
+    }
+
+    public function cancelEdit(): void
+    {
+        $this->resetNewForm();
+        $this->newForm['pembuatNama'] = $this->regName ?? '';
+        $this->signature = '';
+        $this->signatureSaksi = '';
+        $this->editingKey = null;
+        $this->viewOnly = false;
+        $this->resetValidation();
+        $this->incrementVersion('modal-pulang-aps-ugd');
+    }
+
+    /** Layar formulir sedang tampil? Saat terkunci, formulir tak pernah dirender. */
+    public function diForm(): bool
+    {
+        return !$this->isFormLocked && ($this->viewOnly || $this->editingKey !== null || $this->layar === 'form');
+    }
+
+    /** Buka formulir kosong untuk entri baru. */
+    public function tambahEntri(): void
+    {
+        if ($this->isFormLocked || $this->disabled) {
+            $this->dispatch('toast', type: 'error', message: 'Form read-only, tidak dapat menambah entri.');
+            return;
+        }
+        $this->cancelEdit();     // kosongkan formulir (sekaligus balik ke daftar)…
+        $this->layar = 'form';   // …lalu naikkan formulirnya
+    }
+
+    /** Tutup formulir, kembali ke daftar entri. Formulir selalu ditinggalkan kosong. */
+    public function kembaliKeDaftar(): void
+    {
+        $this->cancelEdit();
+    }
+
+    /* ===============================
+     | BUKA KUNCI (gate terpusat dokumen.bukaKunci)
+     | Cabut finalized + TTD petugas; TTD pembuat pernyataan TETAP.
+     =============================== */
+    public function bukaKunci(string $key): void
+    {
+        if (!auth()->user()?->can('dokumen.bukaKunci')) {
+            $this->dispatch('toast', type: 'error', message: 'Hanya Admin / Manager yang dapat membuka kunci.');
+            return;
+        }
+        if ($this->isFormLocked) {
+            $this->dispatch('toast', type: 'error', message: 'Pasien sudah pulang — form read-only.');
+            return;
+        }
+
+        try {
+            DB::transaction(function () use ($key) {
+                $this->lockUGDRow($this->rjNo);
+
+                $fresh = $this->findDataUGD($this->rjNo) ?: [];
+                $list = $fresh['pulangApsUGD'] ?? [];
+                $index = collect($list)->search(fn($it) => ($it['signatureDate'] ?? '') === $key);
+                if ($index === false) {
+                    throw new \RuntimeException('Entri tidak ditemukan.');
+                }
+
+                // Cabut kunci + TTD petugas; TTD pembuat pernyataan tetap.
+                $list[$index]['finalized'] = false;
+                $list[$index]['petugas'] = '';
+                $list[$index]['petugasCode'] = '';
+                $list[$index]['petugasDate'] = '';
+
+                $fresh['pulangApsUGD'] = array_values($list);
+                $this->updateJsonUGD($this->rjNo, $fresh);
+                $this->muatDariDokumen($fresh);
+
+                $this->appendAdminLogUGD((int) $this->rjNo, 'Buka kunci Surat Pernyataan Pulang APS — entri ' . $key . ' (oleh ' . (auth()->user()->myuser_name ?? auth()->user()->name ?? '-') . ')', 'MR');
+            });
+
+            $this->incrementVersion('modal-pulang-aps-ugd');
+            $this->dispatch('toast', type: 'success', message: 'Kunci dibuka — entri kembali draft & TTD petugas dicabut. Silakan koreksi lalu kunci ulang.');
+        } catch (\RuntimeException $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal membuka kunci: ' . $e->getMessage());
+        }
+    }
+
+    /* ===============================
+     | CETAK (stream PDF)
+     =============================== */
+    public function cetak(string $signatureDate)
+    {
+        $entry = collect($this->apsList)->firstWhere('signatureDate', $signatureDate);
+        if (!$entry) {
+            $this->dispatch('toast', type: 'error', message: 'Data formulir tidak ditemukan.');
+            return;
+        }
+
+        try {
+            $identitasRs = DB::table('rsmst_identitases')->select('int_name', 'int_phone1', 'int_phone2', 'int_fax', 'int_address', 'int_city')->first();
+            $pasienData = $this->findDataMasterPasien($this->regNo ?? '');
+            $pasien = $pasienData['pasien'] ?? [];
+
+            if (!empty($pasien['tglLahir'])) {
+                try {
+                    $pasien['thn'] = Carbon::createFromFormat('d/m/Y', $pasien['tglLahir'])->diff(Carbon::now(config('app.timezone')))->format('%y Thn, %m Bln %d Hr');
+                } catch (\Throwable) {
+                    $pasien['thn'] = '-';
+                }
+            }
+
+            // TTD Petugas RS (myuser_code → myuser_ttd_image)
+            $ttdPetugasPath = null;
+            $petugasCode = $entry['petugasCode'] ?? null;
+            if ($petugasCode) {
+                $ttdPath = DB::table('users')->where('myuser_code', $petugasCode)->value('myuser_ttd_image');
+                if (!empty($ttdPath) && file_exists(TtdUser::pathBerkas($ttdPath))) {
+                    $ttdPetugasPath = TtdUser::pathBerkas($ttdPath);
+                }
+            }
+
+            $data = array_merge($pasien, [
+                'dataRi' => $this->findDataUGD($this->rjNo) ?: [],
+                'form' => $entry,
+                'identitasRs' => $identitasRs,
+                'ttdPetugasPath' => $ttdPetugasPath,
+                'tglCetak' => Carbon::now(config('app.timezone'))->translatedFormat('d F Y'),
+            ]);
+
+            set_time_limit(300);
+
+            $pdf = Pdf::loadView('pages.components.modul-dokumen.ugd.pulang-aps.cetak-pulang-aps-print', ['data' => $data])->setPaper('A4');
+
+            $this->dispatch('toast', type: 'success', message: 'Berhasil mencetak surat pernyataan pulang APS.');
+            return response()->streamDownload(fn() => print $pdf->output(), 'pulang-aps-ugd-' . ($pasien['regNo'] ?? $this->rjNo) . '.pdf');
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal cetak: ' . $e->getMessage());
+        }
+    }
+
+    /* ===============================
+     | HAPUS (gate terpusat dokumen.hapus)
+     =============================== */
+    public function hapus(string $signatureDate): void
+    {
+        if (!auth()->user()?->can('dokumen.hapus')) {
+            $this->dispatch('toast', type: 'error', message: 'Anda tidak berwenang menghapus entri.');
+            return;
+        }
+
+        if ($this->isFormLocked) {
+            $this->dispatch('toast', type: 'error', message: 'Form read-only, tidak dapat menghapus.');
+            return;
+        }
+
+        try {
+            DB::transaction(function () use ($signatureDate) {
+                $this->lockUGDRow($this->rjNo);
+
+                $data = $this->findDataUGD($this->rjNo);
+                if (empty($data) || !isset($data['pulangApsUGD'])) {
+                    throw new \RuntimeException('Data formulir tidak ditemukan.');
+                }
+
+                $data['pulangApsUGD'] = collect($data['pulangApsUGD'])
+                    ->reject(fn($item) => ($item['signatureDate'] ?? '') === $signatureDate)
+                    ->values()
+                    ->toArray();
+
+                $this->updateJsonUGD($this->rjNo, $data);
+                $this->muatDariDokumen($data);
+                $this->appendAdminLogUGD((int) $this->rjNo, 'Hapus Surat Pernyataan Pulang APS — TTD ' . $signatureDate, 'MR');
+            });
+
+            $this->incrementVersion('modal-pulang-aps-ugd');
+            $this->dispatch('toast', type: 'success', message: 'Surat pernyataan pulang APS berhasil dihapus.');
+        } catch (\RuntimeException $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal menghapus: ' . $e->getMessage());
+        }
+    }
+
+    /* ===============================
+     | RESET
+     =============================== */
+    private function resetNewForm(): void
+    {
+        $this->newForm = [
+            'pembuatNama' => '',
+            'hubunganPasien' => 'pasien',
+            'alasanPulang' => '',
+            'keterangan' => '',
+            'risikoDijelaskan' => '',
+            'saksiNama' => '',
+            'petugas' => '',
+            'petugasCode' => '',
+            'petugasDate' => '',
+            'clauseVersion' => PulangApsClause::CURRENT,
+        ];
+        $this->layar = 'daftar';   // mengosongkan formulir = kembali ke daftar
+    }
+
+    protected function resetForm(): void
+    {
+        $this->resetVersion();
+        $this->isFormLocked = false;
+        $this->apsList = [];
+        $this->resetNewForm();
+        $this->signature = '';
+        $this->signatureSaksi = '';
+        $this->editingKey = null;
+        $this->viewOnly = false;
+    }
+};
+?>
+
+<div>
+    {{-- ══ SUMMARY CARD (inline) ══ --}}
+    @php $poCount = count($apsList ?? []); @endphp
+
+    <x-modul-dokumen.kartu judul="Pulang Atas Permintaan Sendiri"
+        :jumlah="$poCount"
+        satuan="surat"
+        :nonaktif="$disabled || !$rjNo">
+        <x-slot:deskripsi>Surat pernyataan pasien/keluarga yang meminta pulang sebelum perawatan dinyatakan selesai, setelah mendapat penjelasan dokter/petugas. Dapat lebih dari satu surat.</x-slot:deskripsi>
+        <div class="overflow-x-auto rounded-2xl border border-hairline dark:border-gray-700">
+            <table class="min-w-full text-sm">
+                <thead class="bg-surface-card dark:bg-gray-800">
+                    <tr class="text-xs font-semibold tracking-wide text-left text-muted uppercase dark:text-gray-300">
+                        <th class="px-3 py-2 border-b">Pembuat Pernyataan</th>
+                        <th class="px-3 py-2 border-b">Alasan Pulang</th>
+                        <th class="px-3 py-2 border-b">Tanggal</th>
+                        <th class="px-3 py-2 border-b">Petugas RS</th>
+                        <th class="px-3 py-2 border-b text-center">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse (collect($apsList)->sortByDesc(fn($entri) => strtotime(strtr(($entri['tanggal'] ?? '') ?: ($entri['createdAt'] ?? ''), '/', '-')))->values()->all() as $po)
+                        <tr class="border-b border-hairline dark:border-gray-700">
+                            <td class="px-3 py-2 font-medium text-ink dark:text-gray-200">
+                                {{ Str::limit($po['pembuatNama'] ?? '-', 50) ?: '-' }}
+                            </td>
+                            <td class="px-3 py-2 text-muted dark:text-gray-400">
+                                {{ Str::limit($po['alasanPulang'] ?? '-', 40) ?: '-' }}
+                            </td>
+                            <td class="px-3 py-2 text-muted dark:text-gray-400">{{ $po['signatureDate'] ?? '-' }}</td>
+                            <td class="px-3 py-2 text-muted dark:text-gray-400">
+                                <x-modul-dokumen.status-ttd :nama="$po['petugas'] ?? ''" gaya="polos" />
+                            </td>
+                            <td class="px-3 py-2 text-center">
+                                <x-modul-dokumen.status-entri :final="$this->entryIsFinal($po)" />
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="5" class="px-3 py-6 text-center text-muted-soft">Belum ada data tersimpan</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </x-modul-dokumen.kartu>
+
+    {{-- ══ MODAL FORM ══ --}}
+    <x-modal name="rm-pulang-aps-ugd-{{ $rjNo ?? 'init' }}" size="full" height="full" focusable>
+        <div class="flex flex-col min-h-full"
+            wire:key="{{ $this->renderKey('modal-pulang-aps-ugd', [$rjNo ?? 'new']) }}">
+            <x-modul-dokumen.header judul="Surat Pernyataan Pulang Atas Permintaan Sendiri"
+                ikon="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"
+                jalur="UGD" :jumlah="count($apsList)" :readOnly="$isFormLocked">
+                Formulir diisi & dijelaskan kepada pasien/keluarga — tampilan dapat diputar ke arah pasien
+            </x-modul-dokumen.header>
+
+            {{-- DISPLAY PASIEN — paling atas, mengikuti pola EMR --}}
+            <div class="px-4 pt-2">
+                <livewire:pages::transaksi.ugd.display-pasien-ugd.display-pasien-ugd :rjNo="$rjNo"
+                    wire:key="aps-ugd-display-pasien-{{ $rjNo ?? 'init' }}" />
+            </div>
+
+            {{-- BODY --}}
+            <div class="flex-1 px-4 py-4 bg-surface-soft/70 dark:bg-gray-950/20">
+                <div class="max-w-full mx-auto space-y-4">
+
+                    {{-- Display Pasien --}}
+
+                    <div
+                        class="{{ $this->diForm() ? 'p-6 sm:p-8 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700' : '' }} space-y-6">
+
+                        @php $formReadOnly = $isFormLocked || $viewOnly; @endphp
+
+                        @if ($isFormLocked)
+                            <x-modul-dokumen.banner jenis="terkunci" />
+                        @endif
+
+                        @if ($viewOnly)
+                            <x-modul-dokumen.banner jenis="lihat" />
+                        @elseif ($editingKey && !$isFormLocked)
+                            <x-modul-dokumen.banner jenis="lanjut" />
+                        @endif
+
+                        {{-- ══ ALASAN PULANG ══ --}}
+                        @if ($this->diForm())
+                        <section class="space-y-3">
+                            <h3 class="text-base font-semibold text-ink dark:text-gray-200">
+                                Alasan Pulang
+                            </h3>
+
+                            {{-- Tiga isian sebaris. Semuanya textarea rows=3 supaya tinggi kolomnya
+                                 rata; di layar sempit tetap menumpuk sendiri. --}}
+                            <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+                                <div>
+                                    <x-input-label value="Alasan Pulang *" class="mb-1" />
+                                    <x-textarea wire:model.live="newForm.alasanPulang" :error="$errors->has('newForm.alasanPulang')" rows="3"
+                                        placeholder="cth: ingin dirawat di rumah / kendala biaya / permintaan keluarga..." :disabled="$formReadOnly"
+                                        class="w-full" />
+                                    <x-input-error :messages="$errors->get('newForm.alasanPulang')" class="mt-1" />
+                                </div>
+
+                                <div>
+                                    <x-input-label value="Keterangan Tambahan (opsional)" class="mb-1" />
+                                    <x-textarea wire:model.live="newForm.keterangan" :error="$errors->has('newForm.keterangan')" rows="3"
+                                        placeholder="Catatan lain yang perlu direkam (mis. rencana kontrol, kondisi saat pulang)..." :disabled="$formReadOnly"
+                                        class="w-full" />
+                                    <x-input-error :messages="$errors->get('newForm.keterangan')" class="mt-1" />
+                                </div>
+
+                                <div>
+                                    <x-input-label value="Risiko / Akibat yang Dijelaskan (opsional)" class="mb-1" />
+                                    <x-textarea wire:model.live="newForm.risikoDijelaskan" :error="$errors->has('newForm.risikoDijelaskan')" rows="3"
+                                        placeholder="cth: infeksi dapat memburuk/meluas, penyembuhan lebih lama, nyeri tidak terkontrol..."
+                                        :disabled="$formReadOnly" class="w-full" />
+                                    <x-input-error :messages="$errors->get('newForm.risikoDijelaskan')" class="mt-1" />
+                                    <p class="mt-1 text-xs text-muted dark:text-gray-400">
+                                        Ikut tercetak di surat sebagai bukti penjelasan.
+                                    </p>
+                                </div>
+                            </div>
+                        </section>
+
+                        {{-- ══ PERNYATAAN (teks klausul ber-versi) ══ --}}
+                        @php $clause = App\Support\Clause\PulangApsClause::get($newForm['clauseVersion'] ?? null); @endphp
+                        <div
+                            class="px-4 py-3 space-y-2 text-sm border rounded-2xl bg-red-50 border-red-200 text-red-900 dark:bg-red-900/20 dark:border-red-800 dark:text-red-200">
+                            <p class="font-semibold">Isi pernyataan yang ditandatangani:</p>
+                            {{-- Urutan butir WAJIB sama dengan berkas cetak — layar adalah pratinjau
+                                 surat, bukan susunan lain. Nomor di sini artefak format (<ol>), teksnya
+                                 sendiri tetap satu sumber dari PulangApsClause. --}}
+                            <ol class="pl-5 space-y-2 list-decimal">
+                                <li>{{ $clause['statementPre'] }} <em>(identitas pasien tercetak otomatis)</em>.</li>
+                                <li>{{ $clause['penjelasanRisiko'] }}</li>
+                                <li>{{ $clause['tanggungJawab'] }}</li>
+                                <li>{{ $clause['kontrolUlang'] }}</li>
+                            </ol>
+                        </div>
+
+                        {{-- ══ TANDA TANGAN ══ --}}
+                        <section class="pt-6 space-y-4 border-t border-hairline dark:border-gray-700">
+                            <h3 class="text-base font-semibold text-ink dark:text-gray-200">
+                                Tanda Tangan
+                            </h3>
+
+                            <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                                {{-- Pembuat pernyataan --}}
+                                <div class="flex flex-col">
+                                    <div
+                                        class="mb-2 text-sm font-semibold tracking-wide text-center text-muted uppercase dark:text-gray-400">
+                                        Yang Membuat Pernyataan
+                                    </div>
+                                    <x-input-error :messages="$errors->get('signature')" class="mb-2" />
+                                    @if (!empty($signature))
+                                        <x-signature.signature-result :signature="$signature" :date="''"
+                                            :disabled="$formReadOnly" wireMethod="clearSignature" />
+                                    @elseif (!$formReadOnly)
+                                        <x-signature.signature-pad wireMethod="setSignature" />
+                                    @else
+                                        <p class="py-8 text-base italic text-center text-muted-soft">Belum
+                                            ditandatangani.</p>
+                                    @endif
+
+                                    {{-- Data penanda tangan DI BAWAH pad — pola inform-consent --}}
+                                    <div class="mt-3">
+                                        <x-input-label value="Nama Pembuat Pernyataan *" class="mb-1" />
+                                        <x-text-input wire:model.live="newForm.pembuatNama" :error="$errors->has('newForm.pembuatNama')"
+                                            placeholder="Nama pasien / keluarga yang membuat pernyataan..."
+                                            :disabled="$formReadOnly" class="w-full" />
+                                        <x-input-error :messages="$errors->get('newForm.pembuatNama')" class="mt-1" />
+                                    </div>
+
+                                    <div class="mt-2">
+                                        <x-input-label value="Hubungan dengan Pasien *" class="mb-1" />
+                                        <x-select-input wire:model.live="newForm.hubunganPasien" :error="$errors->has('newForm.hubunganPasien')"
+                                            :disabled="$formReadOnly" class="w-full">
+                                            @foreach ($hubunganPasienOptions as $opt)
+                                                <option value="{{ $opt['value'] }}">{{ $opt['label'] }}</option>
+                                            @endforeach
+                                        </x-select-input>
+                                        <x-input-error :messages="$errors->get('newForm.hubunganPasien')" class="mt-1" />
+                                    </div>
+                                </div>
+
+                                {{-- Saksi (opsional — pola inform-consent) --}}
+                                <div class="flex flex-col">
+                                    <div
+                                        class="mb-2 text-sm font-semibold tracking-wide text-center text-muted uppercase dark:text-gray-400">
+                                        Saksi
+                                    </div>
+                                    <x-input-error :messages="$errors->get('signatureSaksi')" class="mb-2" />
+                                    @if (!empty($signatureSaksi))
+                                        <x-signature.signature-result :signature="$signatureSaksi" :date="''"
+                                            :disabled="$formReadOnly" wireMethod="clearSignatureSaksi" />
+                                    @elseif (!$formReadOnly)
+                                        <x-signature.signature-pad wireMethod="setSignatureSaksi" />
+                                    @else
+                                        <p class="py-8 text-base italic text-center text-muted-soft">Belum
+                                            ditandatangani.</p>
+                                    @endif
+
+                                    <div class="mt-3">
+                                        <x-input-label value="Nama Saksi" class="mb-1" />
+                                        <x-text-input wire:model.live="newForm.saksiNama" :error="$errors->has('newForm.saksiNama')"
+                                            placeholder="Nama saksi..." :disabled="$formReadOnly" class="w-full" />
+                                        <x-input-error :messages="$errors->get('newForm.saksiNama')" class="mt-1" />
+                                    </div>
+                                </div>
+
+                                {{-- Petugas RS --}}
+                                <div class="flex flex-col">
+                                    <div
+                                        class="mb-2 text-sm font-semibold tracking-wide text-center text-muted uppercase dark:text-gray-400">
+                                        Petugas RS
+                                    </div>
+                                    @if (empty($newForm['petugas']))
+                                        @if (!$formReadOnly)
+                                            <div
+                                                class="flex flex-col items-center justify-center flex-1 gap-2 p-6 border-2 border-gray-300 border-dashed rounded-xl dark:border-gray-700">
+                                                <x-primary-button wire:click.prevent="setPetugasRS"
+                                                    wire:loading.attr="disabled" wire:target="setPetugasRS"
+                                                    class="gap-2">
+                                                    <span wire:loading.remove wire:target="setPetugasRS"
+                                                        class="flex items-center gap-1.5">
+                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                            viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                                stroke-width="2"
+                                                                d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 012.828 2.828L11.828 15.828a4 4 0 01-2.828 1.172H7v-2a4 4 0 011.172-2.828z" />
+                                                        </svg>
+                                                        TTD Petugas &amp; Kunci
+                                                    </span>
+                                                    <span wire:loading wire:target="setPetugasRS">
+                                                        <x-loading class="w-4 h-4" /> Mengunci...
+                                                    </span>
+                                                </x-primary-button>
+                                                <p class="text-xs text-center text-muted">Menandatangani = validasi &amp; mengunci surat pernyataan ini.</p>
+                                            </div>
+                                        @else
+                                            <p class="py-8 text-base italic text-center text-muted-soft">Belum
+                                                ditandatangani.</p>
+                                        @endif
+                                    @else
+                                        {{-- Stempel petugas: gambar TTD + field nama readonly + kode/waktu — seragam dgn kolom pasien/saksi --}}
+                                        <x-signature.ttd-petugas :framed="false" :ttd="$newForm['petugas']" :code="$newForm['petugasCode'] ?? ''"
+                                            :date="$newForm['petugasDate'] ?? ''" :locked="true" nameLabel="Nama Petugas" />
+                                    @endif
+                                </div>
+                            </div>
+                        </section>
+
+                        {{-- ══ DAFTAR TERSIMPAN (expandable) ══ --}}
+                        @endif
+                        @unless ($this->diForm())
+                            <x-modul-dokumen.tabel-daftar :kolom="['', 'Pembuat Pernyataan', 'Alasan Pulang', 'Tanggal Dibuat', 'Petugas RS', 'Status' => 'text-center', 'Aksi' => 'text-center']">
+                                    @forelse (collect($apsList)->sortByDesc(fn($entri) => strtotime(strtr(($entri['tanggal'] ?? '') ?: ($entri['createdAt'] ?? ''), '/', '-')))->values()->all() as $entry)
+                                        @php
+                                            // Normalisasi entri agar semua key ada (cegah "Undefined array key")
+                                            $entry = array_replace([
+                                                'pembuatNama' => '',
+                                                'hubunganPasien' => '', 'alasanPulang' => '', 'keterangan' => '', 'risikoDijelaskan' => '',
+                                                'saksiNama' => '', 'signatureSaksi' => '',
+                                                'petugas' => '', 'petugasCode' => '', 'petugasDate' => '',
+                                                'signature' => '', 'signatureDate' => '',
+                                            ], $entry);
+                                            $isFinal = $this->entryIsFinal($entry);
+                                            $rowKey = $entry['signatureDate'] ?? '';
+                                            $hubLabel = collect($hubunganPasienOptions)->firstWhere('value', $entry['hubunganPasien'] ?? '')['label'] ?? ($entry['hubunganPasien'] ?? '');
+                                        @endphp
+                                        {{-- Semua baris mulai TERTUTUP: daftar dipakai untuk MEMILIH entri, bukan
+                                             membacanya. Baris teratas yang terbuka sendiri bikin grid langsung panjang. --}}
+                                        <tbody x-data="{ open: false }" class="border-b border-hairline dark:border-gray-700">
+                                            <tr @click="open = !open"
+                                                class="cursor-pointer hover:bg-surface-soft dark:hover:bg-gray-800 {{ $editingKey && $editingKey === $rowKey ? 'bg-brand-lime/10 dark:bg-brand-lime/5' : '' }}">
+                                                <td class="px-2 py-3 text-center align-middle">
+                                                    <svg class="w-4 h-4 mx-auto text-muted transition-transform" :class="{ 'rotate-90': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                                                    </svg>
+                                                </td>
+                                                <td class="px-4 py-3 align-middle font-semibold text-ink dark:text-gray-100">
+                                                    {{ Str::limit($entry['pembuatNama'] ?: '(tanpa nama)', 50) }}
+                                                </td>
+                                                <td class="px-4 py-3 align-middle text-muted dark:text-gray-300">
+                                                    {{ Str::limit($entry['alasanPulang'] ?: '-', 40) }}
+                                                </td>
+                                                <td class="px-4 py-3 align-middle text-sm tabular-nums text-muted dark:text-gray-400">
+                                                    {{ $rowKey ?: '-' }}
+                                                </td>
+                                                <td class="px-4 py-3 align-middle text-muted dark:text-gray-300">
+                                                    <x-modul-dokumen.status-ttd :nama="$entry['petugas'] ?? ''" />
+                                                </td>
+                                                <td class="px-4 py-3 align-middle text-center">
+                                                    <x-modul-dokumen.status-entri :final="$isFinal" />
+                                                </td>
+                                                <td class="px-4 py-3 align-middle text-center whitespace-nowrap" @click.stop>
+                                                    <x-modul-dokumen.aksi-entri kunci="{{ $rowKey }}" :final="$isFinal" :terkunci="$isFormLocked"
+                                                        :cetakHanyaFinal="true"
+                                                        judulLihat="Lihat detail (read-only) di form atas"
+                                                        judulBukaKunci="Buka Kunci Surat Pernyataan Pulang APS"
+                                                        pesanBukaKunci="TTD petugas akan dicabut & entri kembali menjadi draft untuk dikoreksi. TTD pembuat pernyataan tetap. Lanjutkan?"
+                                                        konfirmasiHapus="Yakin hapus surat pernyataan ini?" />
+                                                </td>
+                                            </tr>
+
+                                            {{-- DETAIL (expand) --}}
+                                            <tr x-show="open" x-cloak>
+                                                <td colspan="7" class="px-4 py-4 bg-surface-soft/60 dark:bg-gray-950/30">
+                                                    <dl class="grid grid-cols-1 gap-x-8 gap-y-3 md:grid-cols-2">
+                                                        <div>
+                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Pembuat Pernyataan</dt>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['pembuatNama'] ?: '-' }}@if ($hubLabel) <span class="text-muted">({{ $hubLabel }})</span>@endif</dd>
+                                                        </div>
+                                                        <div class="md:col-span-2">
+                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Alasan Pulang</dt>
+                                                            <dd class="mt-0.5 font-semibold text-red-700 dark:text-red-400">{{ $entry['alasanPulang'] ?: '-' }}</dd>
+                                                        </div>
+                                                        @if ($entry['keterangan'] !== '')
+                                                            <div class="md:col-span-2">
+                                                                <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Keterangan Tambahan</dt>
+                                                                <dd class="mt-0.5 whitespace-pre-line text-ink dark:text-gray-200">{{ $entry['keterangan'] }}</dd>
+                                                            </div>
+                                                        @endif
+                                                        @if ($entry['risikoDijelaskan'] !== '')
+                                                            <div class="md:col-span-2">
+                                                                <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Risiko / Akibat yang Dijelaskan</dt>
+                                                                <dd class="mt-0.5 whitespace-pre-line text-ink dark:text-gray-200">{{ $entry['risikoDijelaskan'] }}</dd>
+                                                            </div>
+                                                        @endif
+                                                        <div>
+                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">TTD Pembuat Pernyataan</dt>
+                                                            <dd class="mt-0.5">
+                                                                <x-modul-dokumen.status-ttd :sudah="!empty($entry['signature'])" :waktu="$entry['signatureDate'] ?? '-'" gaya="biasa" />
+                                                            </dd>
+                                                        </div>
+                                                        <div>
+                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Saksi</dt>
+                                                            <dd class="mt-0.5">
+                                                                @if (!empty($entry['saksiNama']) || !empty($entry['signatureSaksi']))
+                                                                    <span class="text-ink dark:text-gray-200">{{ $entry['saksiNama'] ?: '-' }}</span>
+                                                                    @if (!empty($entry['signatureSaksi']))
+                                                                        <span class="text-sm text-success-deep dark:text-green-300">— Sudah TTD</span>
+                                                                    @endif
+                                                                @else
+                                                                    <span class="text-muted-soft">-</span>
+                                                                @endif
+                                                            </dd>
+                                                        </div>
+                                                        <div>
+                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Petugas RS</dt>
+                                                            <dd class="mt-0.5">
+                                                                <x-modul-dokumen.status-ttd :nama="$entry['petugas'] ?? ''" :waktu="$entry['petugasDate'] ?? '-'" gaya="biasa" />
+                                                            </dd>
+                                                        </div>
+                                                    </dl>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    @empty
+                                        <x-modul-dokumen.baris-kosong :kolom="7" />
+                                    @endforelse
+                            </x-modul-dokumen.tabel-daftar>
+                        @endunless
+
+                    </div>
+                </div>
+            </div>
+
+            {{-- FOOTER --}}
+            <x-modul-dokumen.footer :formulir="$this->diForm()" :terkunci="$isFormLocked"
+                :lihat="$viewOnly"
+                :bisaSimpan="$rjNo && !$isFormLocked"
+                :mengedit="$editingKey">
+                Simpan draft dulu, lalu <strong>kunci</strong> lewat tombol <strong>TTD Petugas &amp; Kunci</strong> di kolom Petugas RS.
+            </x-modul-dokumen.footer>
+
+        </div>
+    </x-modal>
+</div>

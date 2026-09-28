@@ -29,6 +29,7 @@ new class extends Component {
     public int $jumlahPenundaan = 0;
     public int $jumlahPenolakanObat = 0;
     public int $jumlahPenolakanResusitasi = 0;
+    public int $jumlahPulangAps = 0;
     public int $jumlahSecondOpinion = 0;
     public int $jumlahEso = 0;
     public int $jumlahAkhirHayat = 0;
@@ -46,6 +47,7 @@ new class extends Component {
         $this->jumlahPenundaan = count($data['penundaanPelayananUGD'] ?? []);
         $this->jumlahPenolakanObat = count($data['penolakanObatUGD'] ?? []);
         $this->jumlahPenolakanResusitasi = count($data['penolakanResusitasiUGD'] ?? []);
+        $this->jumlahPulangAps = count($data['pulangApsUGD'] ?? []);
         $this->jumlahSecondOpinion = count($data['secondOpinionUGD'] ?? []);
         $this->jumlahEso = count($data['pelaporanEsoUGD'] ?? []);
         $this->jumlahAkhirHayat = count($data['pengkajianAkhirHayatUGD'] ?? []);
@@ -132,7 +134,7 @@ new class extends Component {
         $this->reset([
             'rjNo', 'adaSuket', 'adaTrfUgd', 'adaGeneralConsent', 'adaBedah',
             'adaSuratKematianFinal', 'triaseSaran', 'jumlahInformConsent', 'jumlahPenjaminan',
-            'jumlahPenundaan', 'jumlahPenolakanObat', 'jumlahPenolakanResusitasi',
+            'jumlahPenundaan', 'jumlahPenolakanObat', 'jumlahPenolakanResusitasi', 'jumlahPulangAps',
             'jumlahSecondOpinion', 'jumlahEso', 'jumlahAkhirHayat',
         ]);
         $this->resetVersion();
@@ -291,6 +293,21 @@ new class extends Component {
                                         @endif
                                     </x-tab>
 
+                                    {{-- Pulang Atas Permintaan Sendiri --}}
+                                    <x-tab variant="underline" active-expr="activeTab === 'pulangAps'"
+                                        x-on:click="activeTab = 'pulangAps'"
+                                        class="inline-flex items-center gap-2">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                                        </svg>
+                                        Pulang APS
+                                        @if ($jumlahPulangAps > 0)
+                                            <x-badge variant="success"
+                                                class="text-[10px] px-1.5 py-0">{{ $jumlahPulangAps }}</x-badge>
+                                        @endif
+                                    </x-tab>
+
                                     {{-- Permintaan Second Opinion --}}
                                     <x-tab variant="underline" active-expr="activeTab === 'secondOpinion'"
                                         x-on:click="activeTab = 'secondOpinion'"
@@ -422,6 +439,13 @@ new class extends Component {
                                 <livewire:pages::transaksi.ugd.emr-ugd.modul-dokumen.penolakan-resusitasi-ugd.rm-penolakan-resusitasi-ugd-actions
                                     :rjNo="$rjNo" :disabled="$isFormLocked"
                                     wire:key="penolakan-resusitasi-ugd-{{ $rjNo ?? 'init' }}" />
+                            </div>
+
+                            {{-- Panel: Pulang Atas Permintaan Sendiri --}}
+                            <div x-show="activeTab === 'pulangAps'" x-transition.opacity.duration.300ms>
+                                <livewire:pages::transaksi.ugd.emr-ugd.modul-dokumen.pulang-aps-ugd.rm-pulang-aps-ugd-actions
+                                    :rjNo="$rjNo" :disabled="$isFormLocked"
+                                    wire:key="pulang-aps-ugd-{{ $rjNo ?? 'init' }}" />
                             </div>
 
                             {{-- Panel: Permintaan Second Opinion --}}

@@ -26,7 +26,7 @@ new class extends Component {
             'generalConsentPasienUGD' => 'General Consent', 'informConsentPasienUGD' => 'Inform Consent',
             'trfUgd' => 'Transfer UGD ke RI', 'formPenjaminanOrientasiKamar' => 'Form Penjaminan', 'suratKematianUGD' => 'Surat Kematian',
             'pelaporanEsoUGD' => 'Pelaporan ESO', 'pengkajianAkhirHayatUGD' => 'Akhir Hayat', 'penolakanObatUGD' => 'Penolakan Obat',
-            'penolakanResusitasiUGD' => 'Penolakan Resusitasi', 'secondOpinionUGD' => 'Second Opinion',
+            'penolakanResusitasiUGD' => 'Penolakan Resusitasi', 'pulangApsUGD' => 'Pulang APS', 'secondOpinionUGD' => 'Second Opinion',
             'pengkajianPreOpUGD' => 'Pengkajian Pre-Op', 'praAnestesiUGD' => 'Pra Anestesi', 'praInduksiUGD' => 'Pra Induksi',
             'surgicalSafetyChecklistUGD' => 'Surgical Safety Checklist', 'laporanOperasiUGD' => 'Laporan Operasi',
             'laporanAnestesiUGD' => 'Laporan Anestesi', 'pascaAnestesiUGD' => 'Pasca Anestesi', 'instruksiPascaBedahUGD' => 'Instruksi Pasca Bedah',
