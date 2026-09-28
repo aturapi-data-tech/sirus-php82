@@ -1,200 +1,236 @@
-                    {{-- ====== PACS / IMAGING STUDY ====== --}}
+                    {{-- ====== PACS / DICOM ROUTER / IMAGING STUDY ====== --}}
                     <section x-show="section === 'pacs'" x-cloak>
-                        <div class="ds-eyebrow mb-3">PACS — Adopsi</div>
-                        <h1 class="ds-display-md mb-4">PACS Orthanc &amp; ImagingStudy</h1>
+                        <div class="ds-eyebrow mb-3">Radiologi — DICOM System SATUSEHAT</div>
+                        <h1 class="ds-display-md mb-4">PACS, DICOM Router &amp; ImagingStudy</h1>
                         <p class="ds-body-md mb-4" style="max-width:62ch">
-                            Koneksi SIRUS ke PACS Orthanc untuk mendapatkan <strong>UID DICOM asli</strong>,
-                            lalu mengirim <span class="ds-code">ImagingStudy</span> ke SATUSEHAT dengan identitas
-                            yang bisa ditelusuri ke gambar di PACS.
+                            SATUSEHAT kini punya <strong>DICOM System</strong>: gambar radiologi dikirim lewat
+                            <strong>DICOM Router</strong> yang dipasang di RS, dan <strong>router itulah yang membuat
+                            <span class="ds-code">ImagingStudy</span></strong> &mdash; bukan SIMRS. Tugas SIRUS bergeser:
+                            mengirim <span class="ds-code">ServiceRequest</span> ber-<strong>Accession Number</strong>
+                            <em>saat order</em>, lalu bacaan dokter radiologi (<span class="ds-code">Observation</span> +
+                            <span class="ds-code">DiagnosticReport</span>).
                         </p>
+
+                        <div class="ds-card-outline mb-8" style="padding:16px 20px; border-color:var(--warning)">
+                            <span class="ds-body-sm" style="color:var(--body-strong)">
+                                <strong>Status: KONSEP.</strong> Halaman ini menjelaskan alur yang BENAR menurut dokumentasi
+                                SATUSEHAT (audit 28/09/2026). Kode kirim radiologi RJ/UGD/RI <strong>belum</strong> diubah
+                                ke alur ini &mdash; selisihnya dirinci di bab <strong>Kondisi Kode Sekarang</strong>.
+                            </span>
+                        </div>
 
                         {{-- Status ringkas --}}
                         <div class="grid grid-cols-1 gap-4 sm:grid-cols-3 mb-8">
                             <div class="ds-card-outline" style="padding:20px; border-color:var(--success)">
-                                <div class="ds-title-sm mb-2" style="color:var(--success)">Orthanc</div>
+                                <div class="ds-title-sm mb-2" style="color:var(--success)">Sudah ada</div>
                                 <ul class="ds-body-sm space-y-1" style="list-style:disc; padding-left:18px">
-                                    <li>Docker, port 4242 (DICOM) + 8042 (HTTP)</li>
-                                    <li>AET <span class="ds-code">ORTHANC_RSIM</span></li>
-                                    <li>SQLite (cukup ~400 pemeriksaan/bulan)</li>
-                                </ul>
-                            </div>
-                            <div class="ds-card-outline" style="padding:20px; border-color:var(--success)">
-                                <div class="ds-title-sm mb-2" style="color:var(--success)">Trait</div>
-                                <ul class="ds-body-sm space-y-1" style="list-style:disc; padding-left:18px">
-                                    <li><span class="ds-code">OrthancTrait</span> — koneksi SIRUS &rarr; Orthanc</li>
-                                    <li><span class="ds-code">ImagingStudyTrait</span> — kirim ke SATUSEHAT</li>
-                                    <li>Lolos uji staging</li>
+                                    <li>Orthanc (PACS lokal, port 4242/8042)</li>
+                                    <li><span class="ds-code">RADNUM_NO</span> + <span class="ds-code">STUDY_UID</span> di tabel order</li>
+                                    <li>SR + Observation + DR terkirim (versi lama)</li>
                                 </ul>
                             </div>
                             <div class="ds-card-outline" style="padding:20px; border-color:var(--warning)">
-                                <div class="ds-title-sm mb-2" style="color:var(--warning)">Belum</div>
+                                <div class="ds-title-sm mb-2" style="color:var(--warning)">Perlu keputusan</div>
                                 <ul class="ds-body-sm space-y-1" style="list-style:disc; padding-left:18px">
-                                    <li>Konfirmasi alat DICOM</li>
+                                    <li>Sumber Accession Number</li>
+                                    <li>Order &ldquo;kirim ke rad luar&rdquo; dikirim atau tidak</li>
+                                    <li>Alat X-ray/USG: DICOM Store + Worklist?</li>
+                                </ul>
+                            </div>
+                            <div class="ds-card-outline" style="padding:20px; border-color:var(--error)">
+                                <div class="ds-title-sm mb-2" style="color:var(--error)">Belum</div>
+                                <ul class="ds-body-sm space-y-1" style="list-style:disc; padding-left:18px">
+                                    <li>DICOM Router terpasang</li>
+                                    <li>SR ber-identifier ACSN, dikirim saat order</li>
+                                    <li>Bacaan radiolog terstruktur</li>
                                 </ul>
                             </div>
                         </div>
 
+                        {{-- Pembagian tugas --}}
+                        <h2 class="ds-title-lg mb-3">Siapa Mengirim Apa</h2>
+                        <div class="ds-card-outline mb-8" style="padding:0; overflow-x:auto">
+                            <table class="ds-table">
+                                <thead><tr><th>Resource</th><th>Pengirim</th><th>Kapan</th><th>Isi kunci</th></tr></thead>
+                                <tbody>
+                                    <tr><td class="ds-td-strong">ServiceRequest</td><td class="ds-body-sm"><strong>SIRUS</strong></td><td class="ds-body-sm"><strong>Saat order dibuat</strong> &mdash; sebelum pasien difoto</td><td class="ds-body-sm">identifier <span class="ds-code">servicerequest/{org}</span> <strong>+ <span class="ds-code">acsn/{org}</span></strong>, category Imaging, code LOINC</td></tr>
+                                    <tr><td class="ds-td-strong">ImagingStudy</td><td class="ds-body-sm"><strong>DICOM Router</strong></td><td class="ds-body-sm">Otomatis saat gambar tiba (C-STORE)</td><td class="ds-body-sm">UID DICOM asli, <span class="ds-code">basedOn</span> SR, file diunggah ke NIDR</td></tr>
+                                    <tr><td class="ds-td-strong">Observation</td><td class="ds-body-sm"><strong>SIRUS</strong> (bacaan radiolog)</td><td class="ds-body-sm">Sesudah dibaca</td><td class="ds-body-sm"><span class="ds-code">basedOn</span> SR, <span class="ds-code">derivedFrom</span> ImagingStudy, performer = radiolog</td></tr>
+                                    <tr><td class="ds-td-strong">DiagnosticReport</td><td class="ds-body-sm"><strong>SIRUS</strong> (kesimpulan)</td><td class="ds-body-sm">Sesudah dibaca</td><td class="ds-body-sm">identifier <span class="ds-code">diagnostic/{org}/rad</span>, <span class="ds-code">result</span> Observation, <span class="ds-code">conclusion</span>, <span class="ds-code">imagingStudy</span></td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+
                         {{-- Alur End-to-End --}}
-                        <h2 class="ds-title-lg mb-3">Alur Lengkap: Order &rarr; Upload &rarr; PACS &rarr; SATUSEHAT</h2>
-                        <p class="ds-body-md mb-4" style="max-width:62ch">
-                            Lima langkah dari permintaan dokter sampai data terkirim ke SATUSEHAT.
-                            Langkah 3&ndash;4 hanya aktif kalau alat radiologi support DICOM.
-                        </p>
-
+                        <h2 class="ds-title-lg mb-3">Alur Lengkap (target)</h2>
                         <div class="space-y-4 mb-8">
-                            {{-- Step 1 --}}
                             <div class="ds-card-outline" style="padding:20px">
                                 <div class="flex items-center gap-3 mb-2">
-                                    <div class="flex items-center justify-center w-7 h-7 rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400" style="flex-shrink:0">
-                                        <span class="text-xs font-bold">1</span>
-                                    </div>
-                                    <div class="ds-title-sm">Dokter Order Radiologi (EMR)</div>
-                                    <span class="ds-caption px-2 py-0.5 rounded" style="background:var(--success-soft); color:var(--success)">aktif</span>
+                                    <div class="flex items-center justify-center w-7 h-7 rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400" style="flex-shrink:0"><span class="text-xs font-bold">1</span></div>
+                                    <div class="ds-title-sm">Dokter order radiologi &rarr; Accession Number terbit</div>
                                 </div>
                                 <div class="ds-body-sm" style="padding-left:40px">
-                                    EMR &rarr; tab Penunjang &rarr; Radiologi &rarr; pilih pemeriksaan &rarr; Kirim.<br>
-                                    <strong>Insert</strong> ke <span class="ds-code">rstxn_rjrads</span> / <span class="ds-code">ugdrads</span> / <span class="ds-code">riradiologs</span>
-                                    dengan <span class="ds-code">RADNUM_NO</span> auto-generate
-                                    (<span class="ds-code">NomorRadiologi::generate()</span> &rarr; format <span class="ds-code">R-YYMMDD-NNNNN</span>, 14 char).<br>
-                                    <strong>File:</strong> <span class="ds-code">⚡rm-radiologi-rj-actions.blade.php</span> (RJ),
-                                    <span class="ds-code">⚡rm-radiologi-ugd-actions.blade.php</span> (UGD),
-                                    <span class="ds-code">⚡rm-radiologi-ri-actions.blade.php</span> (RI),
-                                    <span class="ds-code">⚡upload-radiologi-tambah-actions.blade.php</span> (penunjang).
+                                    Insert ke <span class="ds-code">rstxn_rjrads</span> / <span class="ds-code">rstxn_ugdrads</span> / <span class="ds-code">rstxn_riradiologs</span>.
+                                    Accession Number wajib <strong>unik per faskes</strong> dan <strong>persis sama</strong> dengan tag
+                                    <span class="ds-code">AccessionNumber</span> di file DICOM. Bila ada Modality Worklist, order ditulis ke worklist;
+                                    bila tidak, radiografer mengetik nomornya di alat.
                                 </div>
                             </div>
-
-                            {{-- Step 2 --}}
                             <div class="ds-card-outline" style="padding:20px">
                                 <div class="flex items-center gap-3 mb-2">
-                                    <div class="flex items-center justify-center w-7 h-7 rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400" style="flex-shrink:0">
-                                        <span class="text-xs font-bold">2</span>
-                                    </div>
-                                    <div class="ds-title-sm">Petugas Radiologi Upload Foto &amp; Bacaan</div>
-                                    <span class="ds-caption px-2 py-0.5 rounded" style="background:var(--success-soft); color:var(--success)">aktif</span>
+                                    <div class="flex items-center justify-center w-7 h-7 rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400" style="flex-shrink:0"><span class="text-xs font-bold">2</span></div>
+                                    <div class="ds-title-sm">SIRUS langsung POST ServiceRequest</div>
                                 </div>
                                 <div class="ds-body-sm" style="padding-left:40px">
-                                    Modul Penunjang Radiologi (<span class="ds-code">/transaksi/penunjang/radiologi</span>):<br>
-                                    &bull; Upload <strong>foto</strong> (JPG/PDF) &rarr; <span class="ds-code">rad_upload_pdf_foto</span><br>
-                                    &bull; Upload <strong>hasil bacaan</strong> (PDF) &rarr; <span class="ds-code">rad_upload_pdf</span><br>
-                                    &bull; Tulis bacaan di editor &rarr; <span class="ds-code">hasil_bacaan</span> (CLOB)<br>
-                                    <strong>File:</strong> <span class="ds-code">⚡upload-radiologi-foto-actions.blade.php</span>,
-                                    <span class="ds-code">⚡upload-radiologi-bacaan-actions.blade.php</span>
+                                    Dikirim <strong>saat order</strong>, bukan di akhir kunjungan. Alasannya: router memeriksa SR
+                                    <em>pada detik gambar tiba</em>. SR yang belum ada = gambar tak bisa dicocokkan.
+                                    ID balikan disimpan di indeks per-order (<span class="ds-code">radKirim</span>).
                                 </div>
                             </div>
-
-                            {{-- Step 3 --}}
                             <div class="ds-card-outline" style="padding:20px; border-style:dashed">
                                 <div class="flex items-center gap-3 mb-2">
-                                    <div class="flex items-center justify-center w-7 h-7 rounded-full" style="flex-shrink:0; background:var(--surface-soft); color:var(--muted-soft)">
-                                        <span class="text-xs font-bold">3</span>
-                                    </div>
-                                    <div class="ds-title-sm">Alat Radiologi Kirim Gambar ke Orthanc</div>
-                                    <span class="ds-caption px-2 py-0.5 rounded" style="background:var(--warning-soft); color:var(--warning)">menunggu alat DICOM</span>
+                                    <div class="flex items-center justify-center w-7 h-7 rounded-full" style="flex-shrink:0; background:var(--surface-soft); color:var(--muted-soft)"><span class="text-xs font-bold">3</span></div>
+                                    <div class="ds-title-sm">Alat kirim gambar (C-STORE) &rarr; Orthanc &rarr; DICOM Router</div>
                                 </div>
                                 <div class="ds-body-sm" style="padding-left:40px">
-                                    Alat X-ray/USG mengirim gambar via <strong>C-STORE</strong> ke Orthanc (port 4242).<br>
-                                    Orthanc menerbitkan <span class="ds-code">StudyInstanceUID</span> asli. <span class="ds-code">AccessionNumber</span> di gambar
-                                    = <span class="ds-code">RADNUM_NO</span> dari worklist SIMRS.<br>
-                                    <strong>Prasyarat:</strong> alat harus punya DICOM Store SCU + Modality Worklist SCU.
-                                    Kalau alat hanya cetak film / simpan JPEG ke USB, langkah ini <strong>dilewati</strong>.
+                                    Orthanc tetap berguna sebagai PACS lokal (arsip &amp; viewer RS) dan meneruskan gambar ke router
+                                    sebagai <em>DICOM peer</em>. Tanpa Orthanc, alat boleh langsung ke router.
+                                    <strong>Prasyarat:</strong> alat punya DICOM Store SCU (+ Worklist SCU bila ingin nomor otomatis).
                                 </div>
                             </div>
-
-                            {{-- Step 4 --}}
                             <div class="ds-card-outline" style="padding:20px; border-style:dashed">
                                 <div class="flex items-center gap-3 mb-2">
-                                    <div class="flex items-center justify-center w-7 h-7 rounded-full" style="flex-shrink:0; background:var(--surface-soft); color:var(--muted-soft)">
-                                        <span class="text-xs font-bold">4</span>
-                                    </div>
-                                    <div class="ds-title-sm">SIRUS Sinkron UID dari Orthanc</div>
-                                    <span class="ds-caption px-2 py-0.5 rounded" style="background:var(--success-soft); color:var(--success)">infra siap</span>
+                                    <div class="flex items-center justify-center w-7 h-7 rounded-full" style="flex-shrink:0; background:var(--surface-soft); color:var(--muted-soft)"><span class="text-xs font-bold">4</span></div>
+                                    <div class="ds-title-sm">Router: cocokkan ACSN &rarr; unggah DICOM &rarr; POST ImagingStudy</div>
                                 </div>
                                 <div class="ds-body-sm" style="padding-left:40px">
-                                    <span class="ds-code">OrthancTrait::cariStudyUid($radnumNo)</span> &rarr; query
-                                    <span class="ds-code">POST /tools/find</span> by AccessionNumber &rarr; dapat <span class="ds-code">StudyInstanceUID</span>.<br>
-                                    Simpan ke kolom <span class="ds-code">STUDY_UID</span> di tabel order.<br>
-                                    <strong>Tanpa PACS (fallback):</strong> <span class="ds-code">STUDY_UID</span> tetap kosong &rarr;
-                                    <span class="ds-code">uidStudi()</span> generate UID turunan arc <span class="ds-code">2.25</span> (sah bentuk, tidak bisa ditelusuri).
+                                    Router mengekstrak <span class="ds-code">AccessionNumber</span>, mencari
+                                    <span class="ds-code">ServiceRequest?identifier=http://sys-ids.kemkes.go.id/acsn/{org}|{ACSN}</span>,
+                                    lalu mengunggah file ke NIDR dan membuat ImagingStudy (<span class="ds-code">basedOn</span> SR).
+                                    SIRUS <strong>tidak</strong> membuat ImagingStudy sendiri.
                                 </div>
                             </div>
-
-                            {{-- Step 5 --}}
                             <div class="ds-card-outline" style="padding:20px">
                                 <div class="flex items-center gap-3 mb-2">
-                                    <div class="flex items-center justify-center w-7 h-7 rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400" style="flex-shrink:0">
-                                        <span class="text-xs font-bold">5</span>
-                                    </div>
-                                    <div class="ds-title-sm">Kirim ke SATUSEHAT (Kartu 10)</div>
-                                    <span class="ds-caption px-2 py-0.5 rounded" style="background:var(--success-soft); color:var(--success)">SR+DR aktif</span>
-                                    <span class="ds-caption px-2 py-0.5 rounded" style="background:var(--success-soft); color:var(--success)">ImagingStudy RJ+UGD+RI aktif</span>
+                                    <div class="flex items-center justify-center w-7 h-7 rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400" style="flex-shrink:0"><span class="text-xs font-bold">5</span></div>
+                                    <div class="ds-title-sm">Radiolog membaca &rarr; SIRUS kirim Observation + DiagnosticReport</div>
                                 </div>
                                 <div class="ds-body-sm" style="padding-left:40px">
-                                    Petugas buka halaman SATUSEHAT pasien &rarr; klik Kirim di kartu Radiologi.<br>
-                                    <strong>File:</strong> <span class="ds-code">⚡kirim-radiologi.blade.php</span> (per modul RJ/UGD/RI).<br><br>
-                                    Loop tiap order radiologi:<br>
-                                    <span class="ds-code" style="display:inline-block; margin:4px 0">&nbsp;① ServiceRequest</span> — order radiologi (LOINC 18748-4 atau spesifik dari master)<br>
-                                    <span class="ds-code" style="display:inline-block; margin:4px 0">&nbsp;② DiagnosticReport</span> — laporan (basedOn SR, kategori RAD)<br>
-                                    <span class="ds-code" style="display:inline-block; margin:4px 0">&nbsp;③ ImagingStudy</span> — metadata studi pencitraan (UID DICOM + modality) &mdash; <strong>aktif RJ + UGD + RI, auto upload foto ke Orthanc</strong><br><br>
-                                    ID hasil kirim disimpan ke JSON <span class="ds-code">satusehat</span> di record kunjungan
-                                    (<span class="ds-code">radServiceRequestIds</span>, <span class="ds-code">radDiagnosticReportIds</span>, <span class="ds-code">radImagingStudyIds</span>),
-                                    dan yang menentukan sebuah order sudah lengkap atau belum adalah indeks per-order
-                                    <span class="ds-code">radKirim</span> — termasuk yang membuat foto yang diupload
-                                    <strong>sesudah</strong> kiriman pertama masih bisa disusulkan ImagingStudy-nya.
+                                    Hanya bila bacaan <strong>sudah ada</strong>. ImagingStudy milik router dicari lewat identifier ACSN yang sama,
+                                    lalu dirujuk di <span class="ds-code">Observation.derivedFrom</span> dan
+                                    <span class="ds-code">DiagnosticReport.imagingStudy</span>. Performer = dokter radiologi, waktu = waktu bacaan.
                                 </div>
                             </div>
                         </div>
 
-                        {{-- Diagram sequence --}}
+                        {{-- Diagram --}}
                         <h2 class="ds-title-lg mb-3">Diagram Alur Antar Aktor</h2>
                         <div class="ds-card-dark mb-8" style="padding:20px 24px; overflow-x:auto">
-<pre class="ds-code" style="margin:0; color:var(--on-dark-soft); line-height:1.9">DOKTER                    PETUGAS RAD              ORTHANC              SATUSEHAT
-  │                           │                      │                     │
-  ├─ Order Radiologi ────────▶│                      │                     │
-  │  (RADNUM_NO generated)    │                      │                     │
-  │                           ├─ Upload foto/PDF     │                     │
-  │                           │                      │                     │
-  │                   [kalau PACS aktif]              │                     │
-  │                           │  Alat ──C-STORE────▶ │                     │
-  │                           │                      ├─ Study + UID asli   │
-  │                           ├─ Sinkron UID ◀───────┤                     │
-  │                           │  (OrthancTrait)      │                     │
-  │                           │  STUDY_UID tersimpan  │                     │
-  │                           │                      │                     │
-  ├─ Kirim SATUSEHAT ────────▶│                      │                     │
-  │  (kartu 10)               │                      │                     │
-  │                           ├──── ServiceRequest ──────────────────────▶ │
-  │                           ├──── DiagnosticReport ────────────────────▶ │
-  │                           ├──── ImagingStudy (soon) ─────────────────▶ │
-  │                           │                      │                     │</pre>
+<pre class="ds-code" style="margin:0; color:var(--on-dark-soft); line-height:1.9">SIRUS                ALAT / ORTHANC        DICOM ROUTER            SATUSEHAT
+  │                        │                     │                      │
+  ├─ Order + ACSN ─────────┼─ (worklist)         │                      │
+  ├─ POST ServiceRequest ──┼─────────────────────┼────────────────────▶ │ SR (identifier acsn)
+  │                        ├─ C-STORE ─────────▶ │                      │
+  │                        │                     ├─ GET SR?identifier ▶ │ cocokkan ACSN
+  │                        │                     ├─ unggah DICOM ─────▶ │ NIDR
+  │                        │                     ├─ POST ImagingStudy ▶ │ basedOn SR
+  ├─ (radiolog membaca)    │                     │                      │
+  ├─ GET ImagingStudy?identifier=acsn ───────────┼────────────────────▶ │
+  ├─ POST Observation ─────┼─────────────────────┼────────────────────▶ │ derivedFrom IS
+  └─ POST DiagnosticReport ┼─────────────────────┼────────────────────▶ │ result + conclusion</pre>
                         </div>
 
-                        {{-- Arsitektur --}}
-                        <h2 class="ds-title-lg mb-3">Arsitektur Koneksi</h2>
-                        <div class="ds-card-dark mb-8" style="padding:20px 24px; overflow-x:auto">
-<pre class="ds-code" style="margin:0; color:var(--on-dark-soft); line-height:1.9">┌─────────────────┐     ┌──────────────┐     ┌──────────────────┐     ┌───────────────┐
-│  Order Radiologi│────▶│   Orthanc    │────▶│     SIRUS        │────▶│   SATUSEHAT   │
-│  (RADNUM_NO)    │     │  /tools/find │     │ ImagingStudyTrait│     │ POST          │
-│  AccessionNumber│     │  StudyUID    │     │ UID asli/turunan │     │ /ImagingStudy │
-└─────────────────┘     └──────────────┘     └──────────────────┘     └───────────────┘
+                        {{-- Identifier ACSN --}}
+                        <h2 class="ds-title-lg mb-3">Identifier Accession Number pada ServiceRequest</h2>
+                        <p class="ds-body-md mb-3" style="max-width:62ch">
+                            SR memuat <strong>dua</strong> identifier: milik kita (untuk pemulihan/anti-duplikat) dan ACSN
+                            (untuk router). <span class="ds-code">ServiceRequestTrait</span> saat ini hanya menerima satu &mdash;
+                            perlu diperluas.
+                        </p>
+                        <div class="ds-card-dark mb-4" style="padding:0; overflow:hidden">
+                            <div class="px-4 py-2.5" style="background:var(--surface-dark-soft)">
+                                <span class="ds-caption-up" style="color:var(--on-dark-soft)">ServiceRequest.identifier (target)</span>
+                            </div>
+<pre class="ds-code" style="margin:0; padding:20px 24px; color:var(--on-dark-soft); overflow-x:auto; line-height:1.7">"identifier": [
+  { "system": "http://sys-ids.kemkes.go.id/servicerequest/{org}",
+    "value":  "rad-{rjNo}-{rad_dtl}" },
+  { "use": "usual",
+    "type": { "coding": [{ "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                           "code": "ACSN" }] },
+    "system": "http://sys-ids.kemkes.go.id/acsn/{org}",
+    "value":  "&lt;Accession Number = tag DICOM&gt;" }
+]</pre>
+                        </div>
+                        <div class="ds-card-outline mb-8" style="padding:16px 20px">
+                            <span class="ds-spike" style="vertical-align:middle"></span>
+                            <span class="ds-body-sm" style="color:var(--body-strong)">
+                                <strong>Belum dipastikan resmi.</strong> System <span class="ds-code">acsn/{org}</span> diambil dari kode
+                                DICOM Router (<span class="ds-code">interface/satusehat.py</span>). Dokumen lain menyebut varian
+                                <span class="ds-code">accessionno/{org}</span> (halaman ImagingStudy) dan
+                                <span class="ds-code">img-accession-no/&lt;subject&gt;</span> (API catalogue). Konfirmasi ke koleksi Postman
+                                &ldquo;ServiceRequest - Create - For MWL di dalam DICOM Router&rdquo; sebelum dikodekan.
+                            </span>
+                        </div>
 
-Alat radiologi ──C-STORE──▶ Orthanc (port 4242)
-                            │
-SIRUS ──REST /tools/find───▶│ AccessionNumber = RADNUM_NO
-      ◀── StudyInstanceUID──┘
-      │
-      ├── simpan ke STUDY_UID (kolom baru di tabel order)
-      └── POST /ImagingStudy ke SATUSEHAT (pakai UID asli)</pre>
+                        {{-- Kondisi kode sekarang --}}
+                        <h2 class="ds-title-lg mb-3">Kondisi Kode Sekarang (RJ, UGD, RI)</h2>
+                        <p class="ds-body-md mb-3" style="max-width:62ch">
+                            Ketiga <span class="ds-code">⚡kirim-radiologi.blade.php</span> berlogika identik
+                            (beda tabel &amp; kunci <span class="ds-code">rad-</span> / <span class="ds-code">ugd-rad-</span> /
+                            <span class="ds-code">ri-rad-</span>), jadi selisih di bawah berlaku ketiganya.
+                        </p>
+                        <div class="ds-card-outline mb-4" style="padding:0; overflow-x:auto">
+                            <table class="ds-table">
+                                <thead><tr><th>Bagian</th><th>Sekarang</th><th>Seharusnya</th></tr></thead>
+                                <tbody>
+                                    <tr><td class="ds-td-strong">SR identifier</td><td class="ds-body-sm">hanya <span class="ds-code">servicerequest/{org}</span></td><td class="ds-body-sm">+ identifier ACSN &mdash; tanpa ini router tak menemukan order</td></tr>
+                                    <tr><td class="ds-td-strong">Waktu kirim SR</td><td class="ds-body-sm">saat tombol Kirim (sesudah hasil)</td><td class="ds-body-sm">saat order dibuat</td></tr>
+                                    <tr><td class="ds-td-strong">ImagingStudy</td><td class="ds-body-sm">SIRUS POST sendiri bila ada foto; UID turunan <span class="ds-code">uidStudi()</span> bila Orthanc tak ketemu</td><td class="ds-body-sm">dibuat router &mdash; SIRUS berhenti mengirim (dipagari saklar selama transisi)</td></tr>
+                                    <tr><td class="ds-td-strong">Observation</td><td class="ds-body-sm"><span class="ds-code">valueString</span> &ldquo;Lihat hasil pada lampiran radiologi&rdquo;, tanpa basedOn/derivedFrom</td><td class="ds-body-sm">bacaan radiolog, <span class="ds-code">basedOn</span> SR, <span class="ds-code">derivedFrom</span> ImagingStudy</td></tr>
+                                    <tr><td class="ds-td-strong">Performer Obs/DR</td><td class="ds-body-sm">dokter pengirim (DPJP)</td><td class="ds-body-sm">dokter radiologi</td></tr>
+                                    <tr><td class="ds-td-strong">DiagnosticReport</td><td class="ds-body-sm"><span class="ds-code">final</span> walau belum ada bacaan; tanpa <span class="ds-code">conclusion</span> &amp; <span class="ds-code">imagingStudy</span></td><td class="ds-body-sm">dikirim hanya bila bacaan ada; conclusion + ref ImagingStudy</td></tr>
+                                    <tr><td class="ds-td-strong">Waktu</td><td class="ds-body-sm">RJ/UGD: tgl kunjungan · <strong>RI: tgl MASUK rawat inap</strong></td><td class="ds-body-sm">waktu order (<span class="ds-code">rirad_date</span> / <span class="ds-code">waktu_entry</span>) &amp; waktu bacaan</td></tr>
+                                    <tr><td class="ds-td-strong">Kode tanpa LOINC</td><td class="ds-body-sm">fallback senyap <span class="ds-code">18748-4</span> (RI 1.896 order, UGD 12, RJ 0)</td><td class="ds-body-sm">kode nasional <span class="ds-code">X</span>+6 digit, system <span class="ds-code">http://terminology.kemkes.go.id/CodeSystem/examination</span></td></tr>
+                                    <tr><td class="ds-td-strong">Prioritas &amp; indikasi</td><td class="ds-body-sm">selalu <span class="ds-code">routine</span>; <span class="ds-code">reasonCode</span> tak dikirim</td><td class="ds-body-sm"><span class="ds-code">cito_status</span> &rarr; <span class="ds-code">stat</span>; <span class="ds-code">klinis_desc</span> &rarr; <span class="ds-code">reasonCode</span></td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {{-- Fakta data --}}
+                        <h2 class="ds-title-lg mb-3">Fakta Data yang Membatasi</h2>
+                        <div class="ds-card-outline mb-4" style="padding:0; overflow-x:auto">
+                            <table class="ds-table">
+                                <thead><tr><th>Kolom</th><th>RJ</th><th>UGD</th><th>RI</th><th>Arti</th></tr></thead>
+                                <tbody>
+                                    <tr><td class="ds-td-strong">total order</td><td class="ds-body-sm">11.125</td><td class="ds-body-sm">5.885</td><td class="ds-body-sm">15.069</td><td class="ds-body-sm">&mdash;</td></tr>
+                                    <tr><td class="ds-td-strong"><span class="ds-code">rad_upload_pdf</span></td><td class="ds-body-sm">7.061</td><td class="ds-body-sm">4.262</td><td class="ds-body-sm">7.472</td><td class="ds-body-sm">bacaan mayoritas <strong>PDF</strong>, bukan teks</td></tr>
+                                    <tr><td class="ds-td-strong"><span class="ds-code">rad_result</span> + <span class="ds-code">hasil_bacaan</span></td><td class="ds-body-sm">32</td><td class="ds-body-sm">3</td><td class="ds-body-sm">53</td><td class="ds-body-sm">teks untuk <span class="ds-code">conclusion</span> nyaris tak ada</td></tr>
+                                    <tr><td class="ds-td-strong"><span class="ds-code">dr_radiologi</span></td><td class="ds-body-sm">~70% (NAMA)</td><td class="ds-body-sm">19</td><td class="ds-body-sm">52</td><td class="ds-body-sm">berisi nama, bukan ID &mdash; perlu peta ke <span class="ds-code">dr_uuid</span></td></tr>
+                                    <tr><td class="ds-td-strong"><span class="ds-code">tgl_bacaan</span> / CITO</td><td class="ds-body-sm">0 / 0</td><td class="ds-body-sm">0 / 0</td><td class="ds-body-sm">0 / 0</td><td class="ds-body-sm">waktu bacaan belum pernah dicatat</td></tr>
+                                    <tr><td class="ds-td-strong"><span class="ds-code">radnum_no</span></td><td class="ds-body-sm">7.086</td><td class="ds-body-sm">4.273</td><td class="ds-body-sm">7.506</td><td class="ds-body-sm">kandidat ACSN, tapi masih dua skema (lihat bawah)</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="ds-card-outline mb-8" style="padding:16px 20px">
+                            <span class="ds-spike" style="vertical-align:middle"></span>
+                            <span class="ds-body-sm" style="color:var(--body-strong)">
+                                <strong>Order &ldquo;kirim ke luar&rdquo;.</strong> Di RI, fallback 18748-4 terbanyak berasal dari item yang
+                                bukan pemeriksaan kita: <span class="ds-code">2G KIRIM KE RAD LUAR</span> (1.197),
+                                <span class="ds-code">3A USG KE LUAR</span> (52), juga <span class="ds-code">2D BACAAN MADINAH</span> dan item generik
+                                <span class="ds-code">2E USG DI MADINAH</span> / <span class="ds-code">2F CT SCAN</span>. Perlu diputuskan apakah item
+                                ini dikirim sebagai SR kita sama sekali.
+                            </span>
                         </div>
 
                         {{-- Tabel & kolom --}}
                         <h2 class="ds-title-lg mb-3">Tabel &amp; Kolom Terkait</h2>
-                        <div class="ds-card-outline mb-8" style="padding:0; overflow-x:auto">
+                        <div class="ds-card-outline mb-4" style="padding:0; overflow-x:auto">
                             <table class="ds-table">
-                                <thead><tr><th>Tabel</th><th>PK</th><th>Pengikat DICOM</th><th>UID DICOM</th></tr></thead>
+                                <thead><tr><th>Tabel</th><th>PK</th><th>Accession (kandidat)</th><th>UID DICOM</th></tr></thead>
                                 <tbody>
-                                    <tr><td class="ds-td-strong">RSTXN_RJRADS</td><td class="ds-body-sm"><span class="ds-code">RJ_NO, RAD_DTL</span></td><td class="ds-body-sm"><span class="ds-code">RADNUM_NO</span> VARCHAR2(15)</td><td class="ds-body-sm"><span class="ds-code">STUDY_UID</span> VARCHAR2(64) <strong class="text-emerald-600">&check;</strong></td></tr>
-                                    <tr><td class="ds-td-strong">RSTXN_UGDRADS</td><td class="ds-body-sm"><span class="ds-code">RJ_NO, RAD_DTL</span></td><td class="ds-body-sm"><span class="ds-code">RADNUM_NO</span> VARCHAR2(15)</td><td class="ds-body-sm"><span class="ds-code">STUDY_UID</span> VARCHAR2(64) <strong class="text-emerald-600">&check;</strong></td></tr>
-                                    <tr><td class="ds-td-strong">RSTXN_RIRADIOLOGS</td><td class="ds-body-sm"><span class="ds-code">RIHDR_NO, RIRAD_NO</span></td><td class="ds-body-sm"><span class="ds-code">RADNUM_NO</span> VARCHAR2(15)</td><td class="ds-body-sm"><span class="ds-code">STUDY_UID</span> VARCHAR2(64) <strong class="text-emerald-600">&check;</strong></td></tr>
+                                    <tr><td class="ds-td-strong">RSTXN_RJRADS</td><td class="ds-body-sm"><span class="ds-code">RJ_NO, RAD_DTL</span></td><td class="ds-body-sm"><span class="ds-code">RADNUM_NO</span> VARCHAR2(15)</td><td class="ds-body-sm"><span class="ds-code">STUDY_UID</span> VARCHAR2(64)</td></tr>
+                                    <tr><td class="ds-td-strong">RSTXN_UGDRADS</td><td class="ds-body-sm"><span class="ds-code">RJ_NO, RAD_DTL</span></td><td class="ds-body-sm"><span class="ds-code">RADNUM_NO</span> VARCHAR2(15)</td><td class="ds-body-sm"><span class="ds-code">STUDY_UID</span> VARCHAR2(64)</td></tr>
+                                    <tr><td class="ds-td-strong">RSTXN_RIRADIOLOGS</td><td class="ds-body-sm"><span class="ds-code">RIHDR_NO, RIRAD_NO</span></td><td class="ds-body-sm"><span class="ds-code">RADNUM_NO</span> VARCHAR2(15)</td><td class="ds-body-sm"><span class="ds-code">STUDY_UID</span> VARCHAR2(64)</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -202,86 +238,61 @@ SIRUS ──REST /tools/find───▶│ AccessionNumber = RADNUM_NO
                             <span class="ds-spike" style="vertical-align:middle"></span>
                             <span class="ds-body-sm" style="color:var(--body-strong)">
                                 <strong>Penamaan tabel RI:</strong> <span class="ds-code">RSTXN_RIRADIOLOGS</span>, <strong>bukan</strong>
-                                <span class="ds-code">rstxn_rirads</span>. RJ/UGD memakai pola <span class="ds-code">*rads</span> —
-                                RI berbeda. Sudah pernah menyesatkan.
+                                <span class="ds-code">rstxn_rirads</span>. <span class="ds-code">STUDY_UID</span> tetap berguna untuk arsip &amp;
+                                viewer lokal walau ImagingStudy dibuat router.
+                            </span>
+                        </div>
+
+                        {{-- RADNUM_NO --}}
+                        <h2 class="ds-title-lg mb-3">RADNUM_NO sebagai Accession Number &mdash; belum beres</h2>
+                        <div class="ds-card-outline mb-4" style="padding:16px 20px">
+                            <span class="ds-body-sm" style="color:var(--body-strong)">
+                                <span class="ds-code">App\Support\NomorRadiologi::generate()</span> menulis format
+                                <span class="ds-code">R-YYMMDD-NNNNN</span> di 4 titik insert order. Masalahnya kolom yang sama
+                                <strong>masih dinomori sistem Oracle Dev 6i</strong> dengan sekuens numerik per bulan
+                                (master <span class="ds-code">RSMST_RADNUMBERS</span>), yang berulang tiap bulan. Dua skema di satu kolom
+                                tidak memenuhi syarat &ldquo;unik per faskes&rdquo;. Pilihannya: ikut sekuens legacy dan
+                                mendaftarkannya, atau kolom Accession tersendiri.
                             </span>
                         </div>
 
                         {{-- OrthancTrait --}}
-                        <h2 class="ds-title-lg mb-3">OrthancTrait — Koneksi SIRUS &rarr; Orthanc</h2>
+                        <h2 class="ds-title-lg mb-3">OrthancTrait &mdash; PACS lokal</h2>
                         <p class="ds-body-md mb-3" style="max-width:62ch">
-                            <span class="ds-code">App\Http\Traits\SATUSEHAT\OrthancTrait</span> — REST client
-                            ke Orthanc via Basic Auth. Konfigurasi di <span class="ds-code">.env</span>:
+                            <span class="ds-code">App\Http\Traits\SATUSEHAT\OrthancTrait</span> tetap dipakai untuk arsip &amp; viewer RS:
+                            mencari <span class="ds-code">StudyInstanceUID</span> per AccessionNumber dan menyimpannya ke
+                            <span class="ds-code">STUDY_UID</span>. Konfigurasi <span class="ds-code">.env</span>:
                         </p>
-
                         <div class="ds-card-dark mb-4" style="padding:0; overflow:hidden">
-                            <div class="px-4 py-2.5" style="background:var(--surface-dark-soft)">
-                                <span class="ds-caption-up" style="color:var(--on-dark-soft)">.env — konfigurasi Orthanc</span>
-                            </div>
 <pre class="ds-code" style="margin:0; padding:20px 24px; color:var(--on-dark-soft); overflow-x:auto; line-height:1.7">ORTHANC_URL=http://localhost:8042
 ORTHANC_USER=sirus
 ORTHANC_PASSWORD=&lt;password&gt;</pre>
                         </div>
-
                         <div class="ds-card-outline mb-8" style="padding:0; overflow-x:auto">
                             <table class="ds-table">
                                 <thead><tr><th>Method</th><th>Fungsi</th><th>Return</th></tr></thead>
                                 <tbody>
-                                    <tr><td class="ds-td-strong"><span class="ds-code">cariStudyUid($accNo)</span></td><td class="ds-body-sm">Query <span class="ds-code">/tools/find</span> by AccessionNumber &rarr; ambil StudyInstanceUID</td><td class="ds-body-sm"><span class="ds-code">string|null</span></td></tr>
-                                    <tr><td class="ds-td-strong"><span class="ds-code">sinkronStudyUid($tabel, $where, $radnumNo)</span></td><td class="ds-body-sm">Cari UID + simpan ke kolom <span class="ds-code">STUDY_UID</span> per row</td><td class="ds-body-sm"><span class="ds-code">string|null</span></td></tr>
-                                    <tr><td class="ds-td-strong"><span class="ds-code">sinkronStudyUidBatch($tabel, $pkRef, $pkDtl, $limit)</span></td><td class="ds-body-sm">Batch: semua row dengan <span class="ds-code">RADNUM_NO</span> &ne; null, <span class="ds-code">STUDY_UID</span> kosong</td><td class="ds-body-sm"><span class="ds-code">int</span> (jumlah synced)</td></tr>
+                                    <tr><td class="ds-td-strong"><span class="ds-code">cariStudyUid($accNo)</span></td><td class="ds-body-sm">Query <span class="ds-code">/tools/find</span> by AccessionNumber &rarr; StudyInstanceUID</td><td class="ds-body-sm"><span class="ds-code">string|null</span></td></tr>
+                                    <tr><td class="ds-td-strong"><span class="ds-code">sinkronStudyUid($tabel, $where, $radnumNo)</span></td><td class="ds-body-sm">Cari UID + simpan ke <span class="ds-code">STUDY_UID</span> per row</td><td class="ds-body-sm"><span class="ds-code">string|null</span></td></tr>
+                                    <tr><td class="ds-td-strong"><span class="ds-code">sinkronStudyUidBatch(...)</span></td><td class="ds-body-sm">Batch row ber-<span class="ds-code">RADNUM_NO</span> yang <span class="ds-code">STUDY_UID</span>-nya kosong</td><td class="ds-body-sm"><span class="ds-code">int</span></td></tr>
                                 </tbody>
                             </table>
                         </div>
 
-                        <div class="ds-card-dark mb-8" style="padding:0; overflow:hidden">
-                            <div class="px-4 py-2.5" style="background:var(--surface-dark-soft)">
-                                <span class="ds-caption-up" style="color:var(--on-dark-soft)">Contoh pemakaian OrthancTrait</span>
-                            </div>
-<pre class="ds-code" style="margin:0; padding:20px 24px; color:var(--on-dark-soft); overflow-x:auto; line-height:1.7">use App\Http\Traits\SATUSEHAT\OrthancTrait;
-
-// Cari UID satu order:
-$uid = $this->cariStudyUid('R00123');   // → '2.25.1041823759...' atau null
-
-// Sinkron satu row RJ (cari + simpan ke STUDY_UID):
-$this->sinkronStudyUid('rstxn_rjrads', ['rj_no' => $rjNo, 'rad_dtl' => $dtl], $radnumNo);
-
-// Batch sinkron semua RJ yang belum punya STUDY_UID:
-$count = $this->sinkronStudyUidBatch('rstxn_rjrads', 'rj_no', 'rad_dtl');
-// → return jumlah row yang berhasil disinkronkan</pre>
-                        </div>
-
                         {{-- ImagingStudyTrait --}}
-                        <h2 class="ds-title-lg mb-3">ImagingStudyTrait — Kirim ke SATUSEHAT</h2>
+                        <h2 class="ds-title-lg mb-3">ImagingStudyTrait &mdash; hanya masa transisi</h2>
                         <p class="ds-body-md mb-3" style="max-width:62ch">
-                            <span class="ds-code">App\Http\Traits\SATUSEHAT\ImagingStudyTrait</span> — rakit payload
-                            FHIR R4 &amp; <span class="ds-code">POST /ImagingStudy</span>. Sudah lolos uji staging.
+                            <span class="ds-code">App\Http\Traits\SATUSEHAT\ImagingStudyTrait</span> lolos uji staging
+                            (<span class="ds-code">ImagingStudy/16744a38-...</span>, validator tak menuntut UID asli). Namun dalam
+                            arsitektur baru ImagingStudy adalah <strong>milik router</strong>. Begitu router terpasang, pengiriman dari
+                            SIRUS wajib dimatikan &mdash; kalau tidak, satu studi tercatat dua kali, salah satunya dengan UID turunan
+                            <span class="ds-code">2.25</span> yang tidak menunjuk gambar apa pun.
                         </p>
-
-                        <div class="ds-card-dark mb-4" style="padding:0; overflow:hidden">
+                        <div class="ds-card-dark mb-8" style="padding:0; overflow:hidden">
                             <div class="px-4 py-2.5" style="background:var(--surface-dark-soft)">
                                 <span class="ds-caption-up" style="color:var(--on-dark-soft)">ImagingStudyTrait::postImagingStudy()</span>
                             </div>
 <pre class="ds-code" style="margin:0; padding:20px 24px; color:var(--on-dark-soft); overflow-x:auto; line-height:1.7">{{ $snip['ss-imaging'] }}</pre>
-                        </div>
-
-                        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 mb-8">
-                            <div class="ds-card-outline" style="padding:20px">
-                                <div class="ds-title-sm mb-2">Sumber UID</div>
-                                <ul class="ds-body-sm space-y-1.5" style="list-style:disc; padding-left:18px">
-                                    <li><strong>STUDY_UID terisi</strong> &rarr; UID asli dari Orthanc (bisa ditelusuri ke gambar DICOM)</li>
-                                    <li><strong>STUDY_UID kosong</strong> &rarr; <span class="ds-code">uidStudi()</span> — UID turunan arc <span class="ds-code">2.25</span> (sah bentuknya, tidak bisa ditelusuri)</li>
-                                </ul>
-                            </div>
-                            <div class="ds-card-outline" style="padding:20px">
-                                <div class="ds-title-sm mb-2">Hasil uji staging</div>
-                                <ul class="ds-body-sm space-y-1.5" style="list-style:disc; padding-left:18px">
-                                    <li>ID: <span class="ds-code">ImagingStudy/16744a38-...</span></li>
-                                    <li>Encounter UGD 203859, THORAX PA/AP</li>
-                                    <li>SATUSEHAT tidak menuntut UID asli</li>
-                                    <li><span class="ds-code">basedOn</span> (ServiceRequest) tidak wajib</li>
-                                </ul>
-                            </div>
                         </div>
 
                         {{-- Helper modalitas --}}
@@ -305,51 +316,39 @@ $count = $this->sinkronStudyUidBatch('rstxn_rjrads', 'rj_no', 'rad_dtl');
                             </table>
                         </div>
 
-                        {{-- NomorRadiologi --}}
-                        <h2 class="ds-title-lg mb-3">RADNUM_NO &mdash; <span class="ds-code">NomorRadiologi</span></h2>
-                        <div class="ds-card-outline mb-4" style="padding:16px 20px">
-                            <span class="ds-body-sm" style="color:var(--body-strong)">
-                                <strong>Class:</strong> <span class="ds-code">App\Support\NomorRadiologi</span><br>
-                                <strong>Method:</strong> <span class="ds-code">NomorRadiologi::generate()</span><br>
-                                <strong>Format:</strong> <span class="ds-code">R-YYMMDD-NNNNN</span> (14 char, fit VARCHAR2(15))<br>
-                                <strong>Contoh:</strong> <span class="ds-code">R-260824-00001</span>, <span class="ds-code">R-260824-00002</span>, &hellip;<br>
-                                <strong>Sequence:</strong> per hari, UNION ALL dari 3 tabel radiologi (RJ + UGD + RI).<br>
-                                <strong>Kapasitas:</strong> 99.999 nomor per hari.
-                            </span>
+                        {{-- DICOM Router --}}
+                        <h2 class="ds-title-lg mb-3">Memasang DICOM Router</h2>
+                        <div class="ds-card-outline mb-8" style="padding:16px 20px">
+                            <ul class="ds-body-sm space-y-1.5" style="list-style:disc; padding-left:18px">
+                                <li>Dua cara: <strong>Docker</strong> (disarankan, port bisa diatur) atau <strong>Installer</strong> (lebih ringan, port tetap).</li>
+                                <li>Installer memakai port <span class="ds-code">8080</span> dan <span class="ds-code">11112</span> &mdash; pastikan tak dipakai layanan lain.</li>
+                                <li>Konfigurasi memuat Organization ID, client key &amp; secret SATUSEHAT, serta daftar alat/PACS yang boleh mengirim.</li>
+                                <li>Orthanc diarahkan meneruskan gambar ke router sebagai <em>DICOM modality/peer</em>.</li>
+                            </ul>
                         </div>
-                        <div class="ds-card-dark mb-4" style="padding:16px 20px; overflow-x:auto">
-<pre class="ds-code" style="margin:0; color:var(--on-dark-soft); line-height:1.7">// Di setiap insert order radiologi:
-use App\Support\NomorRadiologi;
-
-DB::table('rstxn_rjrads')->insert([
-    ...
-    'radnum_no' => NomorRadiologi::generate(),
-]);</pre>
-                        </div>
-                        <p class="ds-body-sm mb-6" style="color:var(--muted)">
-                            Sudah di-wire di 4 file insert: <span class="ds-code">⚡rm-radiologi-rj-actions</span>,
-                            <span class="ds-code">⚡rm-radiologi-ugd-actions</span>,
-                            <span class="ds-code">⚡rm-radiologi-ri-actions</span>,
-                            <span class="ds-code">⚡upload-radiologi-tambah-actions</span>.
-                            Data historis (11.404 row RJ) belum terisi &mdash; akan terisi untuk order baru ke depan.
-                        </p>
 
                         {{-- Langkah selanjutnya --}}
-                        <h2 class="ds-title-lg mb-3">Langkah Selanjutnya</h2>
+                        <h2 class="ds-title-lg mb-3">Urutan Pekerjaan</h2>
                         <div class="ds-card-outline" style="padding:16px 20px">
                             <span class="ds-spike" style="vertical-align:middle"></span>
                             <span class="ds-body-sm" style="color:var(--body-strong)">
-                                <strong>1. <s>Generate RADNUM_NO</s></strong> <strong class="text-emerald-600">&check; Done</strong> &mdash; otomatis via <span class="ds-code">NomorRadiologi::generate()</span> di semua insert order.
-                                <br><strong>2. <s>Wire ImagingStudy ke UI</s></strong> <strong class="text-emerald-600">&check; RJ + UGD + RI Done</strong> &mdash; auto upload foto ke Orthanc + kirim ImagingStudy.
-                                <br><strong>3. Konfirmasi alat DICOM</strong> — tanya vendor apakah X-ray &amp; USG punya DICOM Store SCU + Modality Worklist SCU.
-                                <br><strong>4. Production</strong> — pindah Orthanc ke VM Proxmox dedicated, disk terpisah &ge; 500 GB.
+                                <strong>1. Putuskan sumber Accession Number</strong> &mdash; <span class="ds-code">RADNUM_NO</span> dibereskan atau kolom sendiri.
+                                <br><strong>2. Pastikan system identifier ACSN</strong> dari Postman resmi.
+                                <br><strong>3. <span class="ds-code">ServiceRequestTrait</span> multi-identifier</strong> + tambah identifier ACSN di SR radiologi RJ/UGD/RI.
+                                <br><strong>4. SR dikirim saat order</strong>, bukan di tombol Kirim.
+                                <br><strong>5. Saklar matikan ImagingStudy SIRUS</strong> begitu router aktif.
+                                <br><strong>6. Obs/DR hanya bila bacaan ada</strong>; performer radiolog; <span class="ds-code">basedOn</span>, <span class="ds-code">derivedFrom</span>, <span class="ds-code">imagingStudy</span>, <span class="ds-code">conclusion</span>.
+                                <br><strong>7. Ganti fallback 18748-4</strong> ke kode nasional X, dan putuskan order &ldquo;kirim ke luar&rdquo;.
+                                <br><strong>8. RI: waktu dari <span class="ds-code">rirad_date</span></strong>, bukan tanggal masuk.
+                                <br><strong>9. Konfirmasi alat</strong> &mdash; DICOM Store SCU + Worklist SCU pada X-ray &amp; USG.
                             </span>
                         </div>
 
                         <div class="ds-card-outline mt-4 mb-4" style="padding:16px 20px">
                             <span class="ds-body-sm" style="color:var(--muted)">
-                                Panduan lengkap instalasi Orthanc, konfigurasi DICOM, dan detail sambungan
-                                &rarr; <span class="ds-code">docs/pacs-orthanc.md</span>
+                                Sumber: dokumentasi SATUSEHAT <em>DICOM System</em> (Arsitektur, DICOM Router, Instalasi),
+                                <em>ImagingStudy</em>, <em>LOINC Radiologi</em>, dan panduan interoperabilitas Rawat Jalan &mdash;
+                                dibaca 28/09/2026. Instalasi Orthanc &rarr; <span class="ds-code">docs/pacs-orthanc.md</span>.
                             </span>
                         </div>
                     </section>

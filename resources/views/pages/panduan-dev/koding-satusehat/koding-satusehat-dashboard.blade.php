@@ -24,7 +24,7 @@
                                     <tr><td class="ds-td-strong">Intoleransi Alergi (AllergyIntolerance)</td><td class="ds-body-sm">✅</td><td class="ds-body-sm" style="color:var(--primary)">✅ tombol (kartu 7)</td><td class="ds-body-sm">SNOMED</td></tr>
                                     <tr><td class="ds-td-strong">Impresi Klinik (ClinicalImpression)</td><td class="ds-body-sm">✅</td><td class="ds-body-sm" style="color:var(--primary)">✅ tombol (kartu 11)</td><td class="ds-body-sm">—</td></tr>
                                     <tr><td class="ds-td-strong">Diet (Composition)</td><td class="ds-body-sm">❌</td><td class="ds-body-sm">❌</td><td class="ds-body-sm">—</td></tr>
-                                    <tr><td class="ds-td-strong">Radiologi (ImagingStudy)</td><td class="ds-body-sm">✅</td><td class="ds-body-sm">⚠️ trait siap + lolos staging; belum di-wire ke UI — <button type="button" class="hover:underline font-semibold" style="color:var(--primary)" x-on:click="go('pacs')">lihat §PACS</button></td><td class="ds-body-sm">LOINC + DICOM UID</td></tr>
+                                    <tr><td class="ds-td-strong">Radiologi (ImagingStudy)</td><td class="ds-body-sm">✅</td><td class="ds-body-sm">⚠️ dikirim SIRUS (RJ/UGD/RI) — menurut arsitektur baru seharusnya oleh <strong>DICOM Router</strong> — <button type="button" class="hover:underline font-semibold" style="color:var(--primary)" x-on:click="go('pacs')">lihat §PACS</button></td><td class="ds-body-sm">LOINC + DICOM UID</td></tr>
                                     <tr><td class="ds-td-strong">Imunisasi (Immunization)</td><td class="ds-body-sm">❌</td><td class="ds-body-sm">❌</td><td class="ds-body-sm">—</td></tr>
                                     <tr><td class="ds-td-strong">Episode Perawatan (EpisodeOfCare)</td><td class="ds-body-sm">❌</td><td class="ds-body-sm">❌</td><td class="ds-body-sm">—</td></tr>
                                     <tr><td class="ds-td-strong">Instruksi Gizi (NutritionOrder)</td><td class="ds-body-sm">❌</td><td class="ds-body-sm">❌</td><td class="ds-body-sm">—</td></tr>
@@ -43,7 +43,7 @@
                             </div>
                             <div class="ds-card" style="padding:20px">
                                 <div class="ds-display-sm mb-1">1</div>
-                                <div class="ds-body-sm"><strong>trait siap, belum di-wire</strong>: ImagingStudy — <button type="button" class="hover:underline font-semibold" style="color:var(--primary)" x-on:click="go('pacs')">PACS Orthanc &amp; ImagingStudy</button></div>
+                                <div class="ds-body-sm"><strong>perlu dirombak</strong>: radiologi ke alur DICOM Router — <button type="button" class="hover:underline font-semibold" style="color:var(--primary)" x-on:click="go('pacs')">PACS, DICOM Router &amp; ImagingStudy</button></div>
                             </div>
                         </div>
                     </section>
@@ -69,7 +69,7 @@
                                     <tr><td class="ds-td-strong">ClinicalImpression</td><td class="ds-td-class">POST /ClinicalImpression</td><td class="ds-body-sm">SNOMED (finding)</td><td class="ds-body-sm" style="color:var(--primary)">✅ ada — asesmen "A" EMR</td></tr>
                                     <tr><td class="ds-td-strong">NutritionOrder</td><td class="ds-td-class">POST /NutritionOrder</td><td class="ds-body-sm">SNOMED (diet)</td><td class="ds-body-sm">◑ sebagian — order diet EMR (role Gizi)</td></tr>
                                     <tr><td class="ds-td-strong">Composition</td><td class="ds-td-class">POST /Composition</td><td class="ds-body-sm">LOINC (doc type)</td><td class="ds-body-sm">◑ sebagian — narasi EMR jadi section</td></tr>
-                                    <tr><td class="ds-td-strong">ImagingStudy</td><td class="ds-td-class">POST /ImagingStudy</td><td class="ds-body-sm">LOINC + DICOM UID</td><td class="ds-body-sm" style="color:var(--primary)">✅ trait siap + Orthanc — <button type="button" class="hover:underline font-semibold" style="color:var(--primary)" x-on:click="go('pacs')">§PACS</button></td></tr>
+                                    <tr><td class="ds-td-strong">ImagingStudy</td><td class="ds-td-class">POST /ImagingStudy</td><td class="ds-body-sm">LOINC + DICOM UID</td><td class="ds-body-sm" style="color:var(--primary)">⚠️ milik DICOM Router; SIRUS cukup SR ber-ACSN — <button type="button" class="hover:underline font-semibold" style="color:var(--primary)" x-on:click="go('pacs')">§PACS</button></td></tr>
                                     <tr><td class="ds-td-strong">QuestionnaireResponse</td><td class="ds-td-class">POST /QuestionnaireResponse</td><td class="ds-body-sm">Q0007 + clinical-term</td><td class="ds-body-sm" style="color:var(--primary)">✅ ada — telaahResep RJ &amp; UGD (15 butir), pengirim di kedua jalur</td></tr>
                                     <tr><td class="ds-td-strong">Immunization</td><td class="ds-td-class">POST /Immunization</td><td class="ds-body-sm">KFA (vaksin)</td><td class="ds-body-sm">⚠️ gap — belum ada modul imunisasi</td></tr>
                                 </tbody>
@@ -83,7 +83,7 @@
                                 terkirim (semua resource ini mereferensikan <span class="ds-code">Encounter/{id}</span>
                                 &amp; <span class="ds-code">Patient/{id}</span>). Urutan implementasi disarankan
                                 dari yang <strong>datanya sudah ada</strong> (EpisodeOfCare, ClinicalImpression)
-                                ke yang butuh modul baru (Immunization). ImagingStudy sudah ada trait — lihat <button type="button" class="hover:underline font-semibold" style="color:var(--primary)" x-on:click="go('pacs')">§PACS</button>.
+                                ke yang butuh modul baru (Immunization). ImagingStudy kini dibuat DICOM Router — lihat <button type="button" class="hover:underline font-semibold" style="color:var(--primary)" x-on:click="go('pacs')">§PACS</button>.
                             </span>
                         </div>
 
@@ -148,11 +148,10 @@
                         <div class="ds-title-md mb-1">ImagingStudy — Radiologi</div>
                         <div class="ds-card-outline mb-8" style="padding:16px 20px; border-color:var(--success)">
                             <span class="ds-body-sm" style="color:var(--body-strong)">
-                                <strong>Sudah ada trait + Orthanc terpasang.</strong>
-                                <span class="ds-code">ImagingStudyTrait</span> lolos uji staging,
-                                <span class="ds-code">OrthancTrait</span> menyambungkan SIRUS ke PACS.
-                                Tinggal wire ke UI kirim radiologi.
-                                <br>Detail lengkap &rarr; <button type="button" class="hover:underline font-semibold" style="color:var(--primary)" x-on:click="go('pacs')">PACS Orthanc &amp; ImagingStudy</button>
+                                <strong>Arsitektur berubah.</strong> ImagingStudy dibuat <strong>DICOM Router</strong> yang dipasang RS;
+                                SIRUS mengirim <span class="ds-code">ServiceRequest</span> ber-Accession Number saat order, lalu bacaan
+                                (Observation + DiagnosticReport). <span class="ds-code">ImagingStudyTrait</span> hanya untuk masa transisi.
+                                <br>Detail lengkap &rarr; <button type="button" class="hover:underline font-semibold" style="color:var(--primary)" x-on:click="go('pacs')">PACS, DICOM Router &amp; ImagingStudy</button>
                             </span>
                         </div>
 

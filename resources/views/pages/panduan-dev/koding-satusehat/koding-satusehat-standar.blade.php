@@ -25,7 +25,7 @@
                                     <tr><td class="ds-td-strong">ServiceRequest</td><td class="ds-td-class">ServiceRequestTrait</td><td class="ds-body-sm"><strong>LOINC</strong> 26436-6 (panel)</td><td class="ds-body-sm"><span class="ds-code">lbtxn_checkuphdrs/dtls</span> + <span class="ds-code">lbmst_clabitems.loinc_code</span> — <strong>wired (kartu 9 Lab)</strong></td></tr>
                                     <tr><td class="ds-td-strong">Specimen</td><td class="ds-td-class">SpecimenTrait</td><td class="ds-body-sm">SNOMED (darah/venipuncture)</td><td class="ds-body-sm">1 per paket checkup — <strong>wired (kartu 9 Lab)</strong></td></tr>
                                     <tr><td class="ds-td-strong">DiagnosticReport</td><td class="ds-td-class">DiagnosticReportTrait</td><td class="ds-body-sm"><strong>LOINC</strong> (kategori LAB)</td><td class="ds-body-sm">merangkum paket lab (<span class="ds-code">lbtxn_checkup*</span>) — <strong>wired (kartu 9 Lab)</strong></td></tr>
-                                    <tr><td class="ds-td-strong">DiagnosticReport (radiologi)</td><td class="ds-td-class">DiagnosticReportTrait</td><td class="ds-body-sm">LOINC (kategori RAD)</td><td class="ds-body-sm">order radiologi + dr_uuid; ImagingStudy trait siap (<button type="button" class="hover:underline font-semibold" style="color:var(--primary)" x-on:click="go('pacs')">§PACS</button>) — <strong>wired (kartu 10)</strong></td></tr>
+                                    <tr><td class="ds-td-strong">DiagnosticReport (radiologi)</td><td class="ds-td-class">DiagnosticReportTrait</td><td class="ds-body-sm">LOINC (kategori RAD)</td><td class="ds-body-sm">order radiologi + dr_uuid; ImagingStudy seharusnya dari DICOM Router (<button type="button" class="hover:underline font-semibold" style="color:var(--primary)" x-on:click="go('pacs')">§PACS</button>) — <strong>wired (kartu 10)</strong></td></tr>
                                     <tr><td class="ds-td-strong">ClinicalImpression</td><td class="ds-td-class">ClinicalImpressionTrait</td><td class="ds-body-sm">— (ringkasan diagnosa)</td><td class="ds-body-sm">diagnosa (Condition) + dr_uuid — <strong>wired (kartu 11)</strong></td></tr>
                                 </tbody>
                             </table>
@@ -74,26 +74,20 @@
                         {{-- ===== DETAIL PENGIRIMAN RADIOLOGI (kartu 10) ===== --}}
                         <h2 class="ds-title-lg mt-8 mb-3">Detail — Pengiriman Penunjang Radiologi (kartu 10)</h2>
                         <p class="ds-body-md mb-3" style="max-width:64ch">
-                            Lebih ringkas dari lab: tiap <strong>order radiologi</strong> hanya menghasilkan 2 resource.
-                            <strong>ImagingStudy</strong>: trait siap + Orthanc terpasang, belum di-wire ke alur ini — <button type="button" class="hover:underline font-semibold" style="color:var(--primary)" x-on:click="go('pacs')">detail §PACS</button>.
-                            Sama untuk RJ &amp; UGD — beda hanya tabel order.
+                            Tiga sender (<span class="ds-code">⚡kirim-radiologi.blade.php</span> RJ/UGD/RI) berlogika identik,
+                            beda tabel order &amp; kunci (<span class="ds-code">rad-</span> / <span class="ds-code">ugd-rad-</span> / <span class="ds-code">ri-rad-</span>).
+                            <strong>Alur ini belum sesuai arsitektur DICOM Router SATUSEHAT</strong> &mdash; konsep yang benar &amp;
+                            daftar selisihnya ada di <button type="button" class="hover:underline font-semibold" style="color:var(--primary)" x-on:click="go('pacs')">§PACS, DICOM Router &amp; ImagingStudy</button>.
                         </p>
 
-                        <div class="ds-card-outline mb-4" style="padding:16px 20px">
-                            <div class="ds-title-sm mb-2">Rantai per order radiologi</div>
-                            <div class="ds-body-sm" style="line-height:1.9">
-                                <span class="ds-code">ServiceRequest</span> (order, LOINC generik 18748-4 · SNOMED 363679005 Imaging)
-                                → <span class="ds-code">DiagnosticReport</span> (laporan minimal, kategori RAD, <strong>tanpa Observation/ImagingStudy</strong>).
-                            </div>
-                        </div>
-
-                        <div class="ds-card-outline" style="padding:0; overflow-x:auto">
+                        <div class="ds-card-outline mb-4" style="padding:0; overflow-x:auto">
                             <table class="ds-table">
-                                <thead><tr><th>Langkah</th><th>Sumber (tabel · kolom)</th><th>Aturan</th></tr></thead>
+                                <thead><tr><th>Resource</th><th>Yang dikirim SEKARANG</th><th>Target</th></tr></thead>
                                 <tbody>
-                                    <tr><td class="ds-td-strong">Ambil order</td><td class="ds-body-sm"><span class="ds-code">rstxn_rjrads</span>/<span class="ds-code">rstxn_ugdrads</span> ⋈ <span class="ds-code">rsmst_radiologis</span>: <span class="ds-code">rad_dtl</span>, <span class="ds-code">rad_id</span>, <span class="ds-code">rad_desc</span> · where <span class="ds-code">rj_no</span></td><td class="ds-body-sm"><strong>Semua order</strong> dikirim (tak difilter status/hasil — beda dari lab). Tak ada order → gagal.</td></tr>
-                                    <tr><td class="ds-td-strong">ServiceRequest</td><td class="ds-body-sm">identifier <span class="ds-code">rad-{rjNo}-{rad_dtl}</span> · display = <span class="ds-code">rad_desc</span></td><td class="ds-body-sm">code generik LOINC 18748-4; requester = <span class="ds-code">dr_uuid</span> DPJP.</td></tr>
-                                    <tr><td class="ds-td-strong">DiagnosticReport</td><td class="ds-body-sm">category RAD, code 18748-4, basedOn = SR</td><td class="ds-body-sm"><strong>Minimal</strong>: tanpa Observation &amp; tanpa lampiran PDF; ImagingStudy dilewati (no DICOM).</td></tr>
+                                    <tr><td class="ds-td-strong">ServiceRequest</td><td class="ds-body-sm">identifier <span class="ds-code">servicerequest/{org}</span> = <span class="ds-code">rad-{rjNo}-{rad_dtl}</span>; LOINC dari master, fallback <span class="ds-code">18748-4</span>; dikirim saat tombol Kirim</td><td class="ds-body-sm">+ identifier <strong>ACSN</strong>; dikirim saat order; kode nasional X bila tak ada LOINC</td></tr>
+                                    <tr><td class="ds-td-strong">Observation</td><td class="ds-body-sm"><span class="ds-code">valueString</span> penunjuk lampiran</td><td class="ds-body-sm">bacaan radiolog, <span class="ds-code">basedOn</span> SR, <span class="ds-code">derivedFrom</span> ImagingStudy</td></tr>
+                                    <tr><td class="ds-td-strong">DiagnosticReport</td><td class="ds-body-sm"><span class="ds-code">diagnostic/{org}/rad</span>, basedOn SR, result Obs; terkirim walau bacaan belum ada</td><td class="ds-body-sm">hanya bila bacaan ada; <span class="ds-code">conclusion</span>, <span class="ds-code">imagingStudy</span>, performer radiolog</td></tr>
+                                    <tr><td class="ds-td-strong">ImagingStudy</td><td class="ds-body-sm">dikirim SIRUS bila foto ada (UID Orthanc / turunan 2.25)</td><td class="ds-body-sm"><strong>dibuat DICOM Router</strong> &mdash; SIRUS berhenti mengirim</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -103,70 +97,7 @@
                             <span class="ds-body-sm" style="color:var(--body-strong)">
                                 <strong>ID disimpan</strong> (<span class="ds-code">satusehat.radServiceRequestIds / radObservationIds / radDiagnosticReportIds / radImagingStudyIds</span>) = UUID balikan SATUSEHAT.
                                 <br><strong>Penanda "sudah pernah dikirim" BUKAN array datar itu</strong>, melainkan indeks per-order <span class="ds-code">satusehat.radKirim</span>. Lihat bab <strong>Indeks per-order</strong>.
-                                <br><strong>Sudah diperbaiki:</strong> LOINC kini diambil dari <span class="ds-code">rsmst_radiologis.loinc_code</span>/<span class="ds-code">loinc_display</span>, generik <span class="ds-code">18748-4</span> hanya bila master kosong. DR juga sudah merujuk satu Observation ringkas (<span class="ds-code">RuleNumber 10385</span>).
-                                <br><strong>⚠️ Yang MASIH jadi gap:</strong> nilai terstruktur belum dikirim — hasil bacaan tetap berupa PDF/foto terlampir (<span class="ds-code">rsview_rads.rad_upload_pdf</span>), dan Observation-nya cuma penunjuk <span class="ds-code">valueString</span>, bukan angka hasil.
-                            </span>
-                        </div>
-
-                        {{-- ===== DETAIL JALUR DICOM / ImagingStudy ===== --}}
-                        <h2 class="ds-title-lg mt-8 mb-3">Detail — Jalur DICOM / ImagingStudy</h2>
-                        <p class="ds-body-md mb-3" style="max-width:64ch">
-                            Jalur <strong>lengkap versi SATUSEHAT</strong> dengan PACS Orthanc.
-                            <span class="ds-code">ImagingStudyTrait</span> + <span class="ds-code">OrthancTrait</span> sudah siap
-                            dan lolos uji staging. Tinggal wire ke UI kirim radiologi. Detail lengkap
-                            &rarr; <button type="button" class="hover:underline font-semibold" style="color:var(--primary)" x-on:click="go('pacs')">PACS Orthanc &amp; ImagingStudy</button>.
-                        </p>
-
-                        <div class="ds-card-outline mb-4" style="padding:16px 20px">
-                            <div class="ds-title-sm mb-2">Rantai ideal per order radiologi (DICOM)</div>
-                            <div class="ds-body-sm" style="line-height:1.9">
-                                <span class="ds-code">ServiceRequest</span> (order, LOINC/ICD spesifik)
-                                → <span class="ds-code">ImagingStudy</span> (UID DICOM + modality DCM: CR/CT/MR/US)
-                                → <span class="ds-code">Observation</span> <em>(opsional — temuan terstruktur)</em>
-                                → <span class="ds-code">DiagnosticReport</span> (basedOn SR, <span class="ds-code">imagingStudy</span> ref, conclusion bacaan + <span class="ds-code">presentedForm</span> PDF).
-                            </div>
-                        </div>
-
-                        <div class="ds-card-outline" style="padding:0; overflow-x:auto">
-                            <table class="ds-table">
-                                <thead><tr><th>Langkah</th><th>Butuh (sumber · field)</th><th>Aturan</th><th>Status</th></tr></thead>
-                                <tbody>
-                                    <tr><td class="ds-td-strong">Ambil order + kode</td><td class="ds-body-sm"><span class="ds-code">rstxn_rjrads/ugdrads</span> ⋈ <span class="ds-code">rsmst_radiologis</span>: <span class="ds-code">loinc_code</span>/<span class="ds-code">loinc_display</span>, ICD-9</td><td class="ds-body-sm">Pakai kode spesifik per tindakan (bukan generik 18748-4).</td><td class="ds-body-sm">🟡 kolom LOINC <strong>ada</strong>, alur kirim belum pakai</td></tr>
-                                    <tr><td class="ds-td-strong">Dapatkan UID DICOM</td><td class="ds-body-sm"><span class="ds-code">studyUid</span> · <span class="ds-code">seriesUid</span> · <span class="ds-code">sopUid</span> dari PACS / modality worklist</td><td class="ds-body-sm">Format <span class="ds-code">urn:oid:{OID}</span>. Tanpa PACS → <span class="ds-code">uidStudi()</span> arc 2.25.</td><td class="ds-body-sm">✅ <span class="ds-code">STUDY_UID</span> kolom + OrthancTrait</td></tr>
-                                    <tr><td class="ds-td-strong">ImagingStudy</td><td class="ds-body-sm"><span class="ds-code">POST /ImagingStudy</span>: identifier <span class="ds-code">urn:dicom:uid</span>, modality DCM, numberOfSeries/Instances, procedureCode</td><td class="ds-body-sm">Referensi ke <span class="ds-code">Encounter</span> + <span class="ds-code">Patient</span>; started = tgl periksa.</td><td class="ds-body-sm">✅ <span class="ds-code">postImagingStudy()</span> lolos staging, belum di-wire UI</td></tr>
-                                    <tr><td class="ds-td-strong">Observation <em>(opsional)</em></td><td class="ds-body-sm">temuan terstruktur ber-LOINC</td><td class="ds-body-sm">Boleh dilewati — banyak radiologi cuma narasi.</td><td class="ds-body-sm">🔴 belum ada capture terstruktur</td></tr>
-                                    <tr><td class="ds-td-strong">DiagnosticReport</td><td class="ds-body-sm">basedOn = SR, <span class="ds-code">imagingStudy</span> = [ref], conclusion = bacaan, <span class="ds-code">presentedForm</span> = PDF base64 (<span class="ds-code">rsview_rads.rad_upload_pdf</span>)</td><td class="ds-body-sm">Lengkap (beda dari DR minimal sekarang).</td><td class="ds-body-sm">🔴 sekarang DR tanpa bacaan/PDF</td></tr>
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <div class="grid grid-cols-1 gap-4 mt-4 sm:grid-cols-2">
-                            <div class="ds-card-outline" style="padding:20px">
-                                <div class="ds-title-sm mb-2">Jalur SEKARANG (aktif)</div>
-                                <ul class="ds-body-sm space-y-1.5" style="list-style:disc; padding-left:18px">
-                                    <li><span class="ds-code">ServiceRequest</span> + <span class="ds-code">DiagnosticReport</span> minimal</li>
-                                    <li>Kode generik LOINC <span class="ds-code">18748-4</span></li>
-                                    <li>Tanpa ImagingStudy · tanpa PDF · tanpa Observation</li>
-                                </ul>
-                            </div>
-                            <div class="ds-card-outline" style="padding:20px">
-                                <div class="ds-title-sm mb-2">Jalur IDEAL (DICOM)</div>
-                                <ul class="ds-body-sm space-y-1.5" style="list-style:disc; padding-left:18px">
-                                    <li>SR + <strong>ImagingStudy</strong> + (Observation) + DR lengkap</li>
-                                    <li>Kode LOINC/ICD spesifik per modalitas</li>
-                                    <li>Bacaan (conclusion) + PDF (<span class="ds-code">presentedForm</span>)</li>
-                                </ul>
-                            </div>
-                        </div>
-
-                        <div class="ds-card-outline mt-4" style="padding:16px 20px">
-                            <span class="ds-spike" style="vertical-align:middle"></span>
-                            <span class="ds-body-sm" style="color:var(--body-strong)">
-                                <strong>Status integrasi PACS:</strong>
-                                <br><strong>1)</strong> Isi <span class="ds-code">loinc_code</span> tindakan di <span class="ds-code">/master/radiologis</span> → ganti kode generik 18748-4.
-                                <br><strong>2)</strong> <strong>Tanpa PACS (fallback):</strong> <span class="ds-code">uidStudi()</span> generate UID arc <span class="ds-code">2.25</span> — sah, tidak bisa ditelusuri.
-                                <br><strong>3)</strong> <strong>Dengan PACS (✅ Orthanc terpasang):</strong> <span class="ds-code">OrthancTrait::cariStudyUid()</span> ambil UID asli → simpan ke <span class="ds-code">STUDY_UID</span> → ImagingStudy penuh.
-                                <br>Detail &rarr; <button type="button" class="hover:underline font-semibold" style="color:var(--primary)" x-on:click="go('pacs')">§PACS Orthanc &amp; ImagingStudy</button>
+                                <br><strong>RI:</strong> waktu SR/Obs/DR saat ini memakai tanggal MASUK rawat inap &mdash; seharusnya <span class="ds-code">rirad_date</span> per order.
                             </span>
                         </div>
 

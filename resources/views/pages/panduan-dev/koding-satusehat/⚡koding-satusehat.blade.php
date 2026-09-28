@@ -176,12 +176,12 @@ TXT,
 
 'ss-imaging' => <<<'TXT'
 // ImagingStudy — Radiologi.  POST /ImagingStudy
-// ✅ Trait: ImagingStudyTrait::postImagingStudy() — lolos uji staging.
-// ✅ OrthancTrait: koneksi SIRUS → Orthanc (REST /tools/find → StudyInstanceUID).
-// ⚠️ Belum di-wire ke UI kirim radiologi.
+// ⚠️ ARSITEKTUR BARU SATUSEHAT: ImagingStudy dibuat DICOM ROUTER, bukan SIMRS.
+//    Trait ini hanya untuk masa transisi — matikan begitu router terpasang,
+//    kalau tidak satu studi tercatat dua kali.
+// Saat ini masih dipanggil ⚡kirim-radiologi RJ/UGD/RI bila foto ada.
 //
-// UID DICOM: STUDY_UID (kolom baru) dari Orthanc, fallback uidStudi() arc 2.25.
-// AccessionNumber = RADNUM_NO (pengikat order → gambar di PACS).
+// UID DICOM: STUDY_UID dari Orthanc, fallback uidStudi() arc 2.25 (tak menunjuk gambar).
 
 // 1) Cari UID asli dari Orthanc (OrthancTrait):
 $uid = $this->cariStudyUid($radnumNo);  // null kalau belum ada di PACS
@@ -428,7 +428,7 @@ TXT,
             ],
             'Adopsi' => [
                 'dashboard'  => 'Peta Dashboard SATUSEHAT',
-                'pacs'       => 'PACS Orthanc & ImagingStudy',
+                'pacs'       => 'PACS, DICOM Router & ImagingStudy',
                 'belum-ada'  => 'Resource Belum Ada — Kirim',
                 'uji-kirim'  => 'Pelajaran Uji Kirim',
                 'backlog'    => 'Backlog & Gotcha',
