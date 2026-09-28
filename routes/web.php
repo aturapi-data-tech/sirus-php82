@@ -99,6 +99,10 @@ Route::middleware(['auth'])->group(function () {
     Route::livewire('/master/karyawan', 'pages::master.master-karyawan.master-karyawan')
         ->name('master.karyawan');
 
+    // Karyawan HR (hrmst_employees) — sumber LOV crew Kamar Operasi & pra-induksi
+    Route::livewire('/master/karyawan-hr', 'pages::master.master-karyawan-hr.master-karyawan-hr')
+        ->name('master.karyawan-hr');
+
     // ===========================================
     // MASTER - SETUP JADWAL PELAYANAN DOKTER BPJS
     // ===========================================
