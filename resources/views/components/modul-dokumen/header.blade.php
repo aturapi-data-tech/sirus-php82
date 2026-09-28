@@ -12,11 +12,19 @@
     'readOnly' => false,
     // Method Livewire tombol tutup.
     'tutup' => 'closeModal',
+    // Nama x-modal untuk modal di luar komponen Livewire (mis. panduan di layout): tombol tutup
+    // mengirim event close-modal lewat Alpine, prop tutup diabaikan. null = pakai wire:click tutup.
+    'namaModal' => null,
 ])
 
 @php
     $labelJalur = ['RJ' => 'Rawat Jalan', 'UGD' => 'UGD', 'RI' => 'Rawat Inap'][$jalur] ?? null;
     $teksDeskripsi = trim(strip_tags((string) $slot));
+    $atributTutup = new \Illuminate\View\ComponentAttributeBag(
+        $namaModal
+            ? ['x-on:click' => "\$dispatch('close-modal', { name: '{$namaModal}' })"]
+            : ['wire:click' => $tutup],
+    );
 @endphp
 
 {{-- Header modal modul dokumen (docs/modul-dokumen-ri-pattern.md §2a):
@@ -56,7 +64,7 @@
             @endif
         </div>
 
-        <x-icon-button color="gray" type="button" wire:click="{{ $tutup }}" class="ml-auto shrink-0">
+        <x-icon-button color="gray" type="button" :attributes="$atributTutup" class="ml-auto shrink-0">
             <span class="sr-only">Tutup</span>
             <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
                 <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
