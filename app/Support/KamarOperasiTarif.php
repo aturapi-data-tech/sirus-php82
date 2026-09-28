@@ -102,7 +102,8 @@ final class KamarOperasiTarif
         'emp_id_asistopr' => ['label' => 'Asisten Operator', 'fee' => 'asistopr_fee', 'oncall' => 'oncallasistopr_fee', 'jenis' => 'karyawan'],
         'emp_id_asistanes' => ['label' => 'Asisten Anestesi', 'fee' => 'asistanes_fee', 'oncall' => 'oncallasistanes_fee', 'jenis' => 'karyawan'],
         'emp_id_instrument' => ['label' => 'Instrument', 'fee' => 'instrument_fee', 'oncall' => 'oncallinstrument_fee', 'jenis' => 'karyawan'],
-        'omlop' => ['label' => 'ON LOOP', 'fee' => 'omlop_fee', 'oncall' => null, 'jenis' => 'pos'],
+        // emp_id_omlop: kolom baru (database/sql/2026_09_28_alter_rstxn_oks_add_emp_id_omlop.sql).
+        'emp_id_omlop' => ['label' => 'ON LOOP', 'fee' => 'omlop_fee', 'oncall' => null, 'jenis' => 'karyawan'],
     ];
 
     /**

@@ -39,6 +39,7 @@ new class extends Component {
     public ?string $empIdAsistopr = null;
     public ?string $empIdAsistanes = null;
     public ?string $empIdInstrument = null;
+    public ?string $empIdOmlop = null;
     public ?string $empIdChangeanesdoc = null;
 
     /** Nilai kolom fee terakhir dari DB — pembanding "berubah/tidak". */
@@ -52,6 +53,7 @@ new class extends Component {
         'emp_id_asistopr' => 'kamar-operasi-asistopr',
         'emp_id_asistanes' => 'kamar-operasi-asistanes',
         'emp_id_instrument' => 'kamar-operasi-instrument',
+        'emp_id_omlop' => 'kamar-operasi-onloop',
     ];
 
     public function mount(string $okReg = ''): void
@@ -73,7 +75,7 @@ new class extends Component {
             ->leftJoin('rsmst_doctors as dopr', 'dopr.dr_id', '=', 'o.dr_id')
             ->leftJoin('rsmst_doctors as danes', 'danes.dr_id', '=', 'o.dr_id_ok')
             ->leftJoin('rsmst_mstdiags as dg', 'dg.diag_id', '=', 'o.diag_id')
-            ->select('o.ok_reg', 'o.rihdr_no', 'o.ok_status', 'o.dr_id', 'o.dr_id_ok', 'o.emp_id_asistopr', 'o.emp_id_asistanes', 'o.emp_id_instrument', 'o.emp_id_changeanesdoc', 'dg.diag_desc', 'dopr.dr_name as operator_name', 'danes.dr_name as anestesi_name', ...$kolomFee)
+            ->select('o.ok_reg', 'o.rihdr_no', 'o.ok_status', 'o.dr_id', 'o.dr_id_ok', 'o.emp_id_asistopr', 'o.emp_id_asistanes', 'o.emp_id_instrument', 'o.emp_id_omlop', 'o.emp_id_changeanesdoc', 'dg.diag_desc', 'dopr.dr_name as operator_name', 'danes.dr_name as anestesi_name', ...$kolomFee)
             ->where('o.ok_reg', $this->okReg)
             ->first();
 
@@ -98,6 +100,7 @@ new class extends Component {
         $this->empIdAsistopr = $data['emp_id_asistopr'] ?? null;
         $this->empIdAsistanes = $data['emp_id_asistanes'] ?? null;
         $this->empIdInstrument = $data['emp_id_instrument'] ?? null;
+        $this->empIdOmlop = $data['emp_id_omlop'] ?? null;
         $this->empIdChangeanesdoc = $data['emp_id_changeanesdoc'] ?? null;
 
         $this->susunBarisTampilan($data);
@@ -107,7 +110,7 @@ new class extends Component {
     private function susunBarisTampilan(array $data): void
     {
         // Nama karyawan diambil sekali untuk semua posisi — bukan satu query per baris.
-        $empIds = array_values(array_filter([$this->empIdChangeanesdoc, $this->empIdAsistopr, $this->empIdAsistanes, $this->empIdInstrument]));
+        $empIds = array_values(array_filter([$this->empIdChangeanesdoc, $this->empIdAsistopr, $this->empIdAsistanes, $this->empIdInstrument, $this->empIdOmlop]));
         $namaKaryawan = $empIds === [] ? [] : DB::table('hrmst_employees')->whereIn('emp_id', $empIds)->pluck('name', 'emp_id')->all();
 
         $idPerKolom = [
@@ -117,6 +120,7 @@ new class extends Component {
             'emp_id_asistopr' => $this->empIdAsistopr,
             'emp_id_asistanes' => $this->empIdAsistanes,
             'emp_id_instrument' => $this->empIdInstrument,
+            'emp_id_omlop' => $this->empIdOmlop,
         ];
 
         $this->crewRows = [];
@@ -286,6 +290,12 @@ new class extends Component {
     public function pilihInstrument($target = null, $payload = null): void
     {
         $this->simpanCrew('emp_id_instrument', $payload['emp_id'] ?? null, 'Instrument');
+    }
+
+    #[On('lov.selected.kamar-operasi-onloop')]
+    public function pilihOmlop($target = null, $payload = null): void
+    {
+        $this->simpanCrew('emp_id_omlop', $payload['emp_id'] ?? null, 'ON LOOP');
     }
 
     /**

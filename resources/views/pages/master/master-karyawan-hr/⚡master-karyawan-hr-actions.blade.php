@@ -230,6 +230,7 @@ new class extends Component {
                 $subQuery->where('emp_id_asistopr', $empId)
                     ->orWhere('emp_id_asistanes', $empId)
                     ->orWhere('emp_id_instrument', $empId)
+                    ->orWhere('emp_id_omlop', $empId)
                     ->orWhere('emp_id_changeanesdoc', $empId);
             })
             ->exists() || DB::table('rstxn_okomlops')->where('emp_id', $empId)->exists();
