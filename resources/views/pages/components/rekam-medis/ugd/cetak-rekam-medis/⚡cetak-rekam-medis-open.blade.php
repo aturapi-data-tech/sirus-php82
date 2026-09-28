@@ -889,6 +889,10 @@ new class extends Component {
                     <livewire:pages::components.rekam-medis.ugd.dokumen-view.penolakan-obat-view-ugd :rjNo="$rjNo"
                         :entries="$dataDaftarTxn['penolakanObatUGD'] ?? []" wire:key="rm-view-penolakan-obat-ugd-{{ $rjNo }}" />
 
+                    {{-- ── Pulang Atas Permintaan Sendiri (APS) — viewer (Lihat + Cetak dalam modal) ── --}}
+                    <livewire:pages::components.rekam-medis.ugd.dokumen-view.pulang-aps-view-ugd :rjNo="$rjNo"
+                        :entries="$dataDaftarTxn['pulangApsUGD'] ?? []" wire:key="rm-view-pulang-aps-ugd-{{ $rjNo }}" />
+
                     <livewire:pages::components.rekam-medis.ugd.dokumen-view.penolakan-resusitasi-view-ugd :rjNo="$rjNo"
                         :entries="$dataDaftarTxn['penolakanResusitasiUGD'] ?? []" wire:key="rm-view-penolakan-resusitasi-ugd-{{ $rjNo }}" />
 
