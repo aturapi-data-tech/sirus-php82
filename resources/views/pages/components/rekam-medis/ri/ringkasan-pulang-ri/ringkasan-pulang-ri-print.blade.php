@@ -50,6 +50,15 @@
     }
 
     $savedBy = (string) data_get($ri, 'ringkasanPulangSavedBy', '');
+
+    // TTD tersimpan (ringkasanPulangTtd). Record lama tanpa stempel: kolom Diserahkan
+    // tetap menampilkan nama penyimpan (savedBy) tanpa gambar, seperti sebelumnya.
+    $ttdRingkasan = (array) data_get($ri, 'ringkasanPulangTtd', []);
+    $diserahkan = (array) ($ttdRingkasan['diserahkan'] ?? []);
+    $penerima = (array) ($ttdRingkasan['penerima'] ?? []);
+    $disetujui = (array) ($ttdRingkasan['disetujui'] ?? []);
+    $gambarDiserahkan = \App\Support\TtdUser::pathBerkasDariKode($diserahkan['kode'] ?? null);
+    $gambarDisetujui = \App\Support\TtdUser::pathBerkasDariKode($disetujui['kode'] ?? null);
 @endphp
 
 <x-pdf.layout-a4-with-out-background kode="RM-09.02 · Rev.0" title="RINGKASAN PEMULANGAN PASIEN">
@@ -99,20 +108,42 @@
         <tr>
             <td class="w-1/3 px-1 align-top text-center">
                 <div class="mb-0.5">Diserahkan,</div>
-                <div class="h-16">&nbsp;</div>
-                <div><span class="inline-block min-w-[120px] border-t border-black pt-0.5">{{ $savedBy ?: ' ' }}</span></div>
+                <div class="text-[8px]">Perawat / Bidan</div>
+                @if ($gambarDiserahkan)
+                    <img src="{{ $gambarDiserahkan }}" class="h-16" alt="TTD yang menyerahkan" />
+                @else
+                    <div class="h-16">&nbsp;</div>
+                @endif
+                <div><span class="inline-block min-w-[120px] border-t border-black pt-0.5">{{ ($diserahkan['nama'] ?? '') ?: ($savedBy ?: ' ') }}</span></div>
+                @if (!empty($diserahkan['waktu']))
+                    <div class="text-gray-500" style="font-size:8px">{{ $diserahkan['waktu'] }}</div>
+                @endif
             </td>
             <td class="w-1/3 px-1 align-top text-center">
                 <div class="mb-0.5">Diterima,</div>
                 <div class="text-[8px]">Pasien / Penanggung Jawab</div>
-                <div class="h-16">&nbsp;</div>
-                <div><span class="inline-block min-w-[120px] border-t border-black pt-0.5">&nbsp;</span></div>
+                @if (!empty($penerima['ttd']))
+                    <img src="{{ \App\Support\TtdPasien::sumberGambar($penerima['ttd']) }}" class="h-16" alt="TTD penerima" />
+                @else
+                    <div class="h-16">&nbsp;</div>
+                @endif
+                <div><span class="inline-block min-w-[120px] border-t border-black pt-0.5">{{ ($penerima['nama'] ?? '') ?: ' ' }}</span></div>
+                @if (!empty($penerima['hubungan']) || !empty($penerima['waktu']))
+                    <div class="text-gray-500" style="font-size:8px">{{ trim(($penerima['hubungan'] ?? '') . ' ' . ($penerima['waktu'] ?? '')) }}</div>
+                @endif
             </td>
             <td class="w-1/3 px-1 align-top text-center">
                 <div class="mb-0.5">Disetujui,</div>
                 <div class="text-[8px]">Ka.Ru / PJ Shift / Ka.Tim</div>
-                <div class="h-16">&nbsp;</div>
-                <div><span class="inline-block min-w-[120px] border-t border-black pt-0.5">&nbsp;</span></div>
+                @if ($gambarDisetujui)
+                    <img src="{{ $gambarDisetujui }}" class="h-16" alt="TTD yang menyetujui" />
+                @else
+                    <div class="h-16">&nbsp;</div>
+                @endif
+                <div><span class="inline-block min-w-[120px] border-t border-black pt-0.5">{{ ($disetujui['nama'] ?? '') ?: ' ' }}</span></div>
+                @if (!empty($disetujui['waktu']))
+                    <div class="text-gray-500" style="font-size:8px">{{ $disetujui['waktu'] }}</div>
+                @endif
             </td>
         </tr>
     </table>

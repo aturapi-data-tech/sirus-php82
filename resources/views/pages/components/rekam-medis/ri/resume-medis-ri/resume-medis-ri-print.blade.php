@@ -58,13 +58,24 @@
     } catch (\Throwable) {
     }
 
-    /* 3) DPJP Utama (untuk TTD) */
-    $dokterUtamaRow = collect(data_get($ri, 'pengkajianAwalPasienRawatInap.levelingDokter', []))->first(
-        fn($r) => strcasecmp((string) data_get($r, 'levelDokter', ''), 'Utama') === 0,
-    );
-    $dpjpName = (string) data_get($dokterUtamaRow, 'drName', '');
-    $dpjpDrId = (string) data_get($dokterUtamaRow, 'drId', '');
-    $ttdDpjp = $dpjpDrId ? \App\Models\User::where('myuser_code', $dpjpDrId)->value('myuser_ttd_image') : null;
+    /* 3) TTD DPJP — dari STEMPEL tersimpan (resumeMedisTtd), bukan ditempel otomatis.
+          Belum TTD → kotak kosong + nama DPJP Utama sebagai penanda siapa yang semestinya. */
+    $stempelDpjp = (array) data_get($ri, 'resumeMedisTtd', []);
+    $sudahTtdDpjp = !empty($stempelDpjp['nama']);
+    if ($sudahTtdDpjp) {
+        $dpjpName = (string) $stempelDpjp['nama'];
+        $waktuTtdDpjp = (string) ($stempelDpjp['waktu'] ?? '');
+        $ttdDpjp = !empty($stempelDpjp['kode'])
+            ? \App\Models\User::where('myuser_code', $stempelDpjp['kode'])->value('myuser_ttd_image')
+            : null;
+    } else {
+        $dokterUtamaRow = collect(data_get($ri, 'pengkajianAwalPasienRawatInap.levelingDokter', []))->first(
+            fn($r) => strcasecmp((string) data_get($r, 'levelDokter', ''), 'Utama') === 0,
+        );
+        $dpjpName = (string) data_get($dokterUtamaRow, 'drName', '');
+        $waktuTtdDpjp = '';
+        $ttdDpjp = null;
+    }
 @endphp
 
 <x-pdf.layout-a4-with-out-background kode="RM-09.01 · Rev.0" title="RESUME MEDIS">
@@ -217,6 +228,11 @@
                         {{ $dpjpName ?: '-' }}
                     </span>
                 </div>
+                @if ($sudahTtdDpjp)
+                    <div class="text-center text-gray-500" style="font-size:8px">TTD {{ $waktuTtdDpjp }}</div>
+                @else
+                    <div class="text-center text-gray-500" style="font-size:8px">(belum ditandatangani)</div>
+                @endif
             </td>
         </tr>
     </table>

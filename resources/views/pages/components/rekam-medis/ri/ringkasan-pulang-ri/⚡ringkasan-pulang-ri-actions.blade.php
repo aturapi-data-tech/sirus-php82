@@ -5,11 +5,19 @@
 // Pola sama persis Resume Medis: editor TinyMCE (HTML), template auto pre-fill dari
 // data EMR, disimpan sebagai HTML string di datadaftarri_json.ringkasanPulang,
 // cetak PDF via ringkasan-pulang-ri-print (raw HTML + footer 3 TTD).
+//
+// TTD (sejak 2026-09-28, pola modul dokumen varian multi-TTD): tiga penanda tangan di
+// `datadaftarri_json.ringkasanPulangTtd` — diserahkan (stempel perawat/bidan login),
+// penerima (signature-pad pasien/keluarga, gambar ke RSTXN_TTDS via TtdPasien), disetujui
+// (stempel Ka.Ru/PJ Shift/Ka.Tim login). Terkunci OTOMATIS begitu ketiganya lengkap.
+// Buka Kunci (Gate dokumen.bukaKunci) mencabut TTD PETUGAS saja; TTD penerima dipertahankan.
 
 use Livewire\Component;
 use Livewire\Attributes\On;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
+use App\Support\TtdPasien;
 use Carbon\Carbon;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Support\Terminologi\DischargeDisposition;
@@ -21,8 +29,18 @@ new class extends Component {
     public ?int $riHdrNo = null;
     public string $ringkasanPulang = '';
 
-    /** Tidak di-lock (sama alasan dgn Resume Medis: dibuat saat/sesudah pulang). */
+    /** true = ketiga TTD lengkap → editor & Simpan ditutup. */
     public bool $isFormLocked = false;
+
+    /** ['diserahkan' => [nama,kode,waktu], 'penerima' => [nama,hubungan,ttd,waktu], 'disetujui' => [nama,kode,waktu]] */
+    public array $ttd = [];
+
+    /** Isian penerima sebelum pad ditandatangani. */
+    public string $penerimaNama = '';
+    public string $penerimaHubungan = 'Pasien Sendiri';
+    public ?string $regNo = null;
+
+    public array $hubunganOptions = ['Pasien Sendiri', 'Suami', 'Istri', 'Ayah', 'Ibu', 'Anak', 'Saudara', 'Wali Hukum', 'Lainnya'];
 
     /* ═══════════════ OPEN ═══════════════ */
     #[On('ringkasan-pulang-ri.open')]
@@ -37,7 +55,8 @@ new class extends Component {
             return;
         }
 
-        $this->isFormLocked = false;
+        $this->regNo = (string) ($dataRI['regNo'] ?? '');
+        $this->muatTtd($dataRI);
 
         $existing = (string) data_get($dataRI, 'ringkasanPulang', '');
         $this->ringkasanPulang = $existing !== '' ? $existing : $this->buildPreFilledTemplate($dataRI);
@@ -50,6 +69,10 @@ new class extends Component {
     {
         if (empty($this->riHdrNo)) {
             $this->dispatch('toast', type: 'error', message: 'Sesi expired, buka ulang dari EMR RI.');
+            return;
+        }
+        if ($this->isFormLocked) {
+            $this->dispatch('toast', type: 'error', message: 'Ringkasan sudah lengkap ditandatangani — terkunci.');
             return;
         }
         $dataRI = $this->findDataRI($this->riHdrNo);
@@ -264,6 +287,10 @@ new class extends Component {
             $this->dispatch('toast', type: 'error', message: 'Sesi expired, buka ulang dari EMR RI.');
             return;
         }
+        if ($this->isFormLocked) {
+            $this->dispatch('toast', type: 'error', message: 'Ringkasan sudah lengkap ditandatangani — terkunci.');
+            return;
+        }
 
         $plain = trim(strip_tags((string) $this->ringkasanPulang));
         if (mb_strlen($plain) < 5) {
@@ -297,6 +324,191 @@ new class extends Component {
         }
 
         $this->dispatch('toast', type: 'success', message: 'Ringkasan pemulangan tersimpan.');
+    }
+
+    /* ═══════════════ TANDA TANGAN ═══════════════ */
+
+    private function muatTtd(array $dataRI): void
+    {
+        $this->ttd = (array) data_get($dataRI, 'ringkasanPulangTtd', []);
+        $this->penerimaNama = (string) data_get($this->ttd, 'penerima.nama', '') ?: (string) ($dataRI['regName'] ?? '');
+        $this->penerimaHubungan = (string) data_get($this->ttd, 'penerima.hubungan', '') ?: 'Pasien Sendiri';
+        $this->isFormLocked = $this->ttdLengkap($this->ttd);
+    }
+
+    private function ttdLengkap(array $ttd): bool
+    {
+        return !empty(data_get($ttd, 'diserahkan.nama'))
+            && !empty(data_get($ttd, 'penerima.ttd'))
+            && !empty(data_get($ttd, 'disetujui.nama'));
+    }
+
+    private function stempelSaya(): array
+    {
+        return [
+            'nama' => (string) (auth()->user()->myuser_name ?? ''),
+            'kode' => (string) (auth()->user()->myuser_code ?? ''),
+            'waktu' => Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s'),
+        ];
+    }
+
+    /**
+     * Tulis satu perubahan TTD + isi editor saat ini dalam satu transaksi.
+     * $ubah menerima array TTD terbaru dari DB (bukan state komponen) lalu mengembalikannya.
+     */
+    private function simpanTtd(callable $ubah, string $log): bool
+    {
+        if (empty($this->riHdrNo)) {
+            $this->dispatch('toast', type: 'error', message: 'Sesi expired, buka ulang dari EMR RI.');
+            return false;
+        }
+        $plain = trim(strip_tags((string) $this->ringkasanPulang));
+        if (mb_strlen($plain) < 5) {
+            $this->addError('ringkasanPulang', 'Ringkasan harus diisi sebelum ditandatangani.');
+            $this->dispatch('toast', type: 'error', message: 'Ringkasan masih kosong.');
+            return false;
+        }
+
+        try {
+            DB::transaction(function () use ($ubah, $log) {
+                $this->lockRIRow($this->riHdrNo);
+                $dataRI = $this->findDataRI($this->riHdrNo);
+                if (empty($dataRI)) {
+                    throw new \RuntimeException('Data RI tidak ditemukan.');
+                }
+                $ttdDb = (array) data_get($dataRI, 'ringkasanPulangTtd', []);
+                if ($this->ttdLengkap($ttdDb)) {
+                    throw new \RuntimeException('Ringkasan sudah lengkap ditandatangani — terkunci.');
+                }
+                $dataRI['ringkasanPulangTtd'] = $ubah($ttdDb);
+                $dataRI['ringkasanPulang'] = $this->ringkasanPulang;
+                $dataRI['ringkasanPulangSavedBy'] = auth()->user()->myuser_name ?? '';
+                $dataRI['ringkasanPulangSavedAt'] = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
+                $this->updateJsonRI($this->riHdrNo, $dataRI);
+                $this->appendAdminLogRI((int) $this->riHdrNo, $log, 'MR');
+                $this->muatTtd($dataRI);
+            });
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal: ' . $e->getMessage());
+            return false;
+        }
+
+        if ($this->isFormLocked) {
+            $this->dispatch('toast', type: 'success', message: 'Ketiga TTD lengkap — ringkasan pemulangan terkunci.');
+        }
+
+        return true;
+    }
+
+    public function ttdDiserahkan(): void
+    {
+        $stempel = $this->stempelSaya();
+        if ($this->simpanTtd(fn(array $ttd) => array_merge($ttd, ['diserahkan' => $stempel]), 'TTD Diserahkan Ringkasan Pemulangan — ' . $stempel['nama']) && !$this->isFormLocked) {
+            $this->dispatch('toast', type: 'success', message: 'TTD yang menyerahkan tersimpan.');
+        }
+    }
+
+    public function ttdDisetujui(): void
+    {
+        $stempel = $this->stempelSaya();
+        if ($this->simpanTtd(fn(array $ttd) => array_merge($ttd, ['disetujui' => $stempel]), 'TTD Disetujui Ringkasan Pemulangan — ' . $stempel['nama']) && !$this->isFormLocked) {
+            $this->dispatch('toast', type: 'success', message: 'TTD yang menyetujui tersimpan.');
+        }
+    }
+
+    /** Hapus stempel sebelum terkunci — hanya pemilik stempel atau pemegang Gate bukaKunci. */
+    private function hapusStempel(string $peran, string $label): void
+    {
+        $kodeSaya = (string) (auth()->user()->myuser_code ?? '');
+        $pemilik = (string) data_get($this->ttd, "{$peran}.kode", '');
+        if (!($kodeSaya !== '' && $kodeSaya === $pemilik) && !Gate::allows('dokumen.bukaKunci')) {
+            $this->dispatch('toast', type: 'error', message: "Hanya penanda tangan sendiri yang bisa menghapus TTD {$label}.");
+            return;
+        }
+        if ($this->simpanTtd(function (array $ttd) use ($peran) {
+            unset($ttd[$peran]);
+            return $ttd;
+        }, "Hapus TTD {$label} Ringkasan Pemulangan")) {
+            $this->dispatch('toast', type: 'success', message: "TTD {$label} dihapus.");
+        }
+    }
+
+    public function hapusTtdDiserahkan(): void
+    {
+        $this->hapusStempel('diserahkan', 'yang menyerahkan');
+    }
+
+    public function hapusTtdDisetujui(): void
+    {
+        $this->hapusStempel('disetujui', 'yang menyetujui');
+    }
+
+    public function setSignaturePenerima(string $dataUrl): void
+    {
+        if ($this->isFormLocked) {
+            return;
+        }
+        if (trim($this->penerimaNama) === '') {
+            $this->addError('penerimaNama', 'Isi nama penerima dulu sebelum tanda tangan.');
+            $this->dispatch('toast', type: 'error', message: 'Nama penerima wajib diisi.');
+            return;
+        }
+        $this->resetErrorBag('penerimaNama');
+
+        $penerima = [
+            'nama' => trim($this->penerimaNama),
+            'hubungan' => in_array($this->penerimaHubungan, $this->hubunganOptions, true) ? $this->penerimaHubungan : 'Lainnya',
+            'ttd' => TtdPasien::simpan($dataUrl, $this->regNo),   // gambar ke RSTXN_TTDS, JSON cukup referensi
+            'waktu' => Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s'),
+        ];
+        if ($this->simpanTtd(fn(array $ttd) => array_merge($ttd, ['penerima' => $penerima]), 'TTD Penerima Ringkasan Pemulangan — ' . $penerima['nama']) && !$this->isFormLocked) {
+            $this->dispatch('toast', type: 'success', message: 'TTD penerima tersimpan.');
+        }
+    }
+
+    public function clearSignaturePenerima(): void
+    {
+        if ($this->isFormLocked) {
+            return;
+        }
+        $this->simpanTtd(function (array $ttd) {
+            unset($ttd['penerima']);
+            return $ttd;
+        }, 'Hapus TTD Penerima Ringkasan Pemulangan');
+    }
+
+    /** Buka kunci: cabut TTD PETUGAS (diserahkan & disetujui); TTD penerima tetap. */
+    public function bukaKunci(): void
+    {
+        if (empty($this->riHdrNo) || !$this->isFormLocked) {
+            return;
+        }
+        if (!Gate::allows('dokumen.bukaKunci')) {
+            $this->dispatch('toast', type: 'error', message: 'Anda tidak berwenang membuka kunci.');
+            return;
+        }
+        $pelaku = (string) (auth()->user()->myuser_name ?? auth()->user()->name ?? '-');
+
+        try {
+            DB::transaction(function () use ($pelaku) {
+                $this->lockRIRow($this->riHdrNo);
+                $dataRI = $this->findDataRI($this->riHdrNo);
+                if (empty($dataRI)) {
+                    throw new \RuntimeException('Data RI tidak ditemukan.');
+                }
+                $ttd = (array) data_get($dataRI, 'ringkasanPulangTtd', []);
+                unset($ttd['diserahkan'], $ttd['disetujui']);
+                $dataRI['ringkasanPulangTtd'] = $ttd;
+                $this->updateJsonRI($this->riHdrNo, $dataRI);
+                $this->appendAdminLogRI((int) $this->riHdrNo, "Buka kunci Ringkasan Pemulangan — TTD petugas dicabut (oleh {$pelaku})", 'MR');
+                $this->muatTtd($dataRI);
+            });
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal buka kunci: ' . $e->getMessage());
+            return;
+        }
+
+        $this->dispatch('toast', type: 'success', message: 'Kunci dibuka — TTD petugas dicabut, TTD penerima tetap. Koreksi lalu tandatangani ulang.');
     }
 
     /* ═══════════════ CETAK PDF ═══════════════ */
@@ -341,7 +553,8 @@ new class extends Component {
 
     public function closeEditor(): void
     {
-        $this->reset(['riHdrNo', 'ringkasanPulang', 'isFormLocked']);
+        $this->reset(['riHdrNo', 'ringkasanPulang', 'isFormLocked', 'ttd', 'penerimaNama', 'penerimaHubungan', 'regNo']);
+        $this->resetErrorBag();
         $this->dispatch('close-modal', name: 'ringkasan-pulang-ri');
     }
 };
@@ -378,13 +591,26 @@ new class extends Component {
                  editor di-stretch mengisi tinggi modal via .rp-editor .tox-tinymce { height:100% }. --}}
             <style>
                 .rp-editor-wrap .tox-tinymce { height: 100% !important; }
+                .rp-kunci-content { font-size: 12px; line-height: 1.45; color: #1f2937; }
+                .rp-kunci-content table { border-collapse: collapse; width: 100%; }
+                .rp-kunci-content td, .rp-kunci-content th { border: 1px solid #cbd5e1; padding: 3px 6px; vertical-align: top; }
+                .rp-kunci-content .text-muted { color: #6b7280; }
+                .dark .rp-kunci-content { color: #d1d5db; }
             </style>
             <div class="flex flex-col flex-1 min-h-0 px-6 py-4 overflow-hidden">
                 <div class="flex flex-wrap items-center justify-between mb-1 gap-x-2 shrink-0">
                     <x-input-label value="Ringkasan Pemulangan Pasien (oleh Perawat / Bidan)" required class="!mb-0" />
                     <span class="text-xs text-muted dark:text-gray-400">Identitas pasien terisi otomatis saat dicetak. Sebagian field di-isi dari data EMR. Editor mendukung teks ala Word + tabel.</span>
                 </div>
-                <div class="flex-1 min-h-0 mt-1 rp-editor-wrap">
+
+                {{-- Terkunci: isi tersimpan read-only. Editor tetap di DOM (disembunyikan) supaya
+                     langsung bisa dipakai lagi sesudah Buka Kunci. --}}
+                @if ($isFormLocked)
+                    <div class="flex-1 min-h-0 p-3 mt-1 overflow-auto border rounded-md border-hairline dark:border-gray-700 bg-surface-soft dark:bg-gray-800/40">
+                        <div class="rp-kunci-content">{!! $ringkasanPulang !!}</div>
+                    </div>
+                @endif
+                <div @class(['flex-1 min-h-0 mt-1 rp-editor-wrap', 'hidden' => $isFormLocked])>
                     <x-tinymce-editor
                         name="ringkasanPulang"
                         placeholder="Ketik isi ringkasan pemulangan pasien..."
@@ -398,12 +624,94 @@ new class extends Component {
                 @error('ringkasanPulang')
                     <p class="mt-1 text-xs text-red-500 shrink-0">{{ $message }}</p>
                 @enderror
+
+                {{-- ══ TANDA TANGAN ══ — tiga kolom; terkunci otomatis bila ketiganya lengkap.
+                     Bisa dilipat supaya ruang editor lega saat mengetik. --}}
+                @php
+                    $jumlahTtd = (int) !empty($ttd['diserahkan']['nama']) + (int) !empty($ttd['penerima']['ttd']) + (int) !empty($ttd['disetujui']['nama']);
+                @endphp
+                <div x-data="{ bukaTtd: true }" class="pt-3 mt-3 border-t shrink-0 border-hairline dark:border-gray-700">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <button type="button" x-on:click="bukaTtd = !bukaTtd" class="flex items-center gap-2 text-left">
+                            <svg class="w-4 h-4 transition-transform text-muted" :class="bukaTtd && 'rotate-180'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                            <span class="text-sm font-semibold text-ink dark:text-gray-200">Tanda Tangan</span>
+                            <x-badge :variant="$jumlahTtd === 3 ? 'success' : 'warning'" class="text-[10px] px-1.5 py-0">{{ $jumlahTtd }}/3</x-badge>
+                            @if ($isFormLocked)
+                                <x-badge variant="success" class="text-[10px] px-1.5 py-0">Terkunci</x-badge>
+                            @endif
+                        </button>
+                        @if ($isFormLocked)
+                            @can('dokumen.bukaKunci')
+                                <x-confirm-button variant="warning-soft" action="bukaKunci()" title="Buka Kunci Ringkasan Pemulangan"
+                                    message="TTD petugas (menyerahkan & menyetujui) akan dicabut; TTD penerima tetap. Lanjutkan?">Buka Kunci</x-confirm-button>
+                            @endcan
+                        @endif
+                    </div>
+
+                    <div x-show="bukaTtd" x-collapse class="overflow-y-auto max-h-96">
+                        <div class="grid grid-cols-1 gap-6 pt-3 md:grid-cols-3">
+                            {{-- Diserahkan: perawat/bidan --}}
+                            <div class="flex flex-col">
+                                <x-signature.ttd-petugas :framed="false" label="Diserahkan"
+                                    :ttd="$ttd['diserahkan']['nama'] ?? ''" :code="$ttd['diserahkan']['kode'] ?? ''" :date="$ttd['diserahkan']['waktu'] ?? ''"
+                                    :locked="$isFormLocked" sign="ttdDiserahkan" clear="hapusTtdDiserahkan"
+                                    signLabel="TTD Saya (Perawat / Bidan)" nameLabel="Perawat / Bidan" emptyText="Belum ditandatangani." />
+                            </div>
+
+                            {{-- Diterima: pasien / penanggung jawab --}}
+                            <div class="flex flex-col">
+                                <div class="mb-2 text-sm font-semibold tracking-wide text-center uppercase text-muted dark:text-gray-400">Diterima</div>
+                                @if (!empty($ttd['penerima']['ttd']))
+                                    <x-signature.signature-result :signature="$ttd['penerima']['ttd']" :date="$ttd['penerima']['waktu'] ?? ''"
+                                        :disabled="$isFormLocked" wireMethod="clearSignaturePenerima" />
+                                    <div class="mt-3">
+                                        <x-input-label value="Nama Penerima" />
+                                        <x-text-input value="{{ $ttd['penerima']['nama'] ?? '' }}" class="w-full mt-1" :disabled="true" readonly />
+                                    </div>
+                                    <p class="mt-1 text-sm"><span class="text-muted">Hubungan:</span>
+                                        <span class="font-semibold text-ink dark:text-gray-200">{{ $ttd['penerima']['hubungan'] ?? '-' }}</span></p>
+                                @elseif (!$isFormLocked)
+                                    <x-signature.signature-pad wireMethod="setSignaturePenerima" />
+                                    <div class="mt-3">
+                                        <x-input-label value="Nama Penerima (Pasien / Penanggung Jawab) *" />
+                                        <x-text-input wire:model.live.debounce.400ms="penerimaNama" :error="$errors->has('penerimaNama')" class="w-full mt-1" />
+                                        <x-input-error :messages="$errors->get('penerimaNama')" class="mt-1" />
+                                    </div>
+                                    <div class="mt-2">
+                                        <x-input-label value="Hubungan dengan Pasien" />
+                                        <x-select-input wire:model.live="penerimaHubungan" class="mt-1">
+                                            @foreach ($hubunganOptions as $opsi)
+                                                <option value="{{ $opsi }}">{{ $opsi }}</option>
+                                            @endforeach
+                                        </x-select-input>
+                                    </div>
+                                @else
+                                    <p class="py-8 text-sm italic text-center text-muted-soft">Belum ditandatangani.</p>
+                                @endif
+                            </div>
+
+                            {{-- Disetujui: Ka.Ru / PJ Shift / Ka.Tim --}}
+                            <div class="flex flex-col">
+                                <x-signature.ttd-petugas :framed="false" label="Disetujui"
+                                    :ttd="$ttd['disetujui']['nama'] ?? ''" :code="$ttd['disetujui']['kode'] ?? ''" :date="$ttd['disetujui']['waktu'] ?? ''"
+                                    :locked="$isFormLocked" sign="ttdDisetujui" clear="hapusTtdDisetujui"
+                                    signLabel="TTD Saya (Ka.Ru / PJ Shift)" nameLabel="Ka.Ru / PJ Shift / Ka.Tim" emptyText="Belum ditandatangani." />
+                            </div>
+                        </div>
+                        <p class="mt-3 text-xs text-muted dark:text-gray-400">
+                            Tiap TTD ikut menyimpan isi editor saat ini. Begitu ketiganya lengkap, ringkasan terkunci.
+                        </p>
+                    </div>
+                </div>
             </div>
 
             <div class="sticky bottom-0 z-10 flex items-center justify-between gap-2 px-6 py-3 border-t border-hairline bg-canvas dark:bg-gray-900 dark:border-gray-700 shrink-0">
                 <x-secondary-button type="button"
                     wire:click="resetToDefault"
                     wire:confirm="Reset isi ke template default dari data EMR terbaru? Perubahan yang belum disimpan akan hilang."
+                    :disabled="$isFormLocked"
                     wire:loading.attr="disabled" wire:target="resetToDefault"
                     class="text-xs">
                     <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
@@ -424,7 +732,8 @@ new class extends Component {
 
                     <x-primary-button type="button"
                         x-on:click="window.dispatchEvent(new Event('ringkasan-pulang-ri.flush')); $nextTick(() => $wire.save())"
-                        wire:loading.attr="disabled" wire:target="save,cetakPdf">
+                        wire:loading.attr="disabled" wire:target="save,cetakPdf"
+                        :disabled="$isFormLocked">
                         <span wire:loading.remove wire:target="save">Simpan</span>
                         <span wire:loading wire:target="save"><x-loading /> Menyimpan...</span>
                     </x-primary-button>
