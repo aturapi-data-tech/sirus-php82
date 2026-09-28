@@ -145,6 +145,11 @@
             </main>
         </div>
 
+        {{-- Panduan penulisan RM (singkatan & simbol) — sesudah main agar menutupi modal EMR --}}
+        @auth
+            <x-panduan-penulisan-rm.modal />
+        @endauth
+
     </div>
 
     <script>

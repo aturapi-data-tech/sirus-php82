@@ -10,6 +10,7 @@
                 </a>
             </nav>
 
+            <x-panduan-penulisan-rm.tombol />
 
             <x-theme-toggle />
 
