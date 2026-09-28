@@ -529,10 +529,10 @@ new class extends Component {
         return [
             'formEntrySBAR.tglSBAR.required' => 'Tanggal SBAR wajib diisi.',
             'formEntrySBAR.tglSBAR.date_format' => 'Tanggal SBAR harus format dd/mm/yyyy HH:ii:ss.',
-            'formEntrySBAR.sbar.situation.required' => 'Situation (S) wajib diisi.',
-            'formEntrySBAR.sbar.background.required' => 'Background (B) wajib diisi.',
+            'formEntrySBAR.sbar.situation.required' => 'Subjective (S) wajib diisi.',
+            'formEntrySBAR.sbar.background.required' => 'Objective (O) wajib diisi.',
             'formEntrySBAR.sbar.assessment.required' => 'Assessment (A) wajib diisi.',
-            'formEntrySBAR.sbar.recommendation.required' => 'Recommendation (R) wajib diisi.',
+            'formEntrySBAR.sbar.recommendation.required' => 'Plan (P) wajib diisi.',
         ];
     }
 
@@ -609,10 +609,10 @@ new class extends Component {
 
                 <div class="grid grid-cols-4 gap-2">
                     @foreach ([
-                        ['situation', 'S — Situation *', "Pasien & masalah utama + TTV. Cth: 'Tn ... keluhan ..., TD .../..., SpO2 ...%'"],
-                        ['background', 'B — Background *', "Diagnosis/alasan masuk, riwayat, alergi. Cth: 'Diagnosis ..., riwayat ..., alergi ...'"],
-                        ['assessment', 'A — Assessment *', "Penilaian klinis & keparahan. Cth: 'Khawatir terjadi ...'"],
-                        ['recommendation', 'R — Recommendation *', "Tindakan diminta + batas waktu. Cth: 'Mohon visit/order ... cito'"],
+                        ['situation', 'S — Subjective *', "Keluhan / yang disampaikan pasien atau keluarga. Cth: 'Pasien mengeluh ... sejak ...'"],
+                        ['background', 'O — Objective *', "Hasil pemeriksaan: TTV, fisik, penunjang. Cth: 'TD .../..., N ..., SpO2 ...%, lab ...'"],
+                        ['assessment', 'A — Assessment *', "Penilaian klinis / masalah / diagnosis. Cth: 'Suspek ..., kondisi ...'"],
+                        ['recommendation', 'P — Plan *', "Rencana tindakan / terapi / tindak lanjut. Cth: 'Mohon visit/order ... cito'"],
                     ] as [$key, $label, $hint])
                         <div>
                             <x-input-label value="{{ $label }}" />
@@ -874,10 +874,10 @@ new class extends Component {
                                 <div class="grid grid-cols-2 gap-3">
                                     @php
                                         $sbarStyles = [
-                                            'situation'      => ['lbl' => 'S', 'name' => 'Situation',      'wrap' => 'border-l-4 border-blue-500 bg-blue-50/40 dark:bg-blue-900/10', 'text' => 'text-blue-700 dark:text-blue-400'],
-                                            'background'     => ['lbl' => 'B', 'name' => 'Background',     'wrap' => 'border-l-4 border-emerald-500 bg-emerald-50/40 dark:bg-emerald-900/10', 'text' => 'text-success dark:text-success'],
+                                            'situation'      => ['lbl' => 'S', 'name' => 'Subjective', 'wrap' => 'border-l-4 border-blue-500 bg-blue-50/40 dark:bg-blue-900/10', 'text' => 'text-blue-700 dark:text-blue-400'],
+                                            'background'     => ['lbl' => 'O', 'name' => 'Objective', 'wrap' => 'border-l-4 border-emerald-500 bg-emerald-50/40 dark:bg-emerald-900/10', 'text' => 'text-success dark:text-success'],
                                             'assessment'     => ['lbl' => 'A', 'name' => 'Assessment',     'wrap' => 'border-l-4 border-amber-500 bg-amber-50/40 dark:bg-amber-900/10', 'text' => 'text-amber-700 dark:text-amber-400'],
-                                            'recommendation' => ['lbl' => 'R', 'name' => 'Recommendation', 'wrap' => 'border-l-4 border-rose-500 bg-rose-50/40 dark:bg-rose-900/10', 'text' => 'text-error dark:text-rose-400'],
+                                            'recommendation' => ['lbl' => 'P', 'name' => 'Plan', 'wrap' => 'border-l-4 border-rose-500 bg-rose-50/40 dark:bg-rose-900/10', 'text' => 'text-error dark:text-rose-400'],
                                         ];
                                     @endphp
                                     @foreach ($sbarStyles as $k => $s)

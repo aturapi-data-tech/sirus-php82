@@ -17,19 +17,19 @@
                 </td>
             </tr>
             <tr>
-                <td class="dt-tbl-label">S &mdash; Situation<br><span class="dt-kecil">kondisi &amp; keluhan saat ini</span></td>
+                <td class="dt-tbl-label">S &mdash; Subjective<br><span class="dt-kecil">keluhan pasien / keluarga</span></td>
                 <td class="dt-isi-2" colspan="3">&nbsp;</td>
             </tr>
             <tr>
-                <td class="dt-tbl-label">B &mdash; Background<br><span class="dt-kecil">diagnosa, riwayat, terapi berjalan</span></td>
+                <td class="dt-tbl-label">O &mdash; Objective<br><span class="dt-kecil">tanda vital, pemeriksaan fisik &amp; penunjang</span></td>
                 <td class="dt-isi-2" colspan="3">&nbsp;</td>
             </tr>
             <tr>
-                <td class="dt-tbl-label">A &mdash; Assessment<br><span class="dt-kecil">tanda vital, hasil penunjang, masalah</span></td>
+                <td class="dt-tbl-label">A &mdash; Assessment<br><span class="dt-kecil">penilaian klinis / masalah</span></td>
                 <td class="dt-isi-2" colspan="3">&nbsp;</td>
             </tr>
             <tr>
-                <td class="dt-tbl-label">R &mdash; Recommendation<br><span class="dt-kecil">yang perlu dilanjutkan / dipantau</span></td>
+                <td class="dt-tbl-label">P &mdash; Plan<br><span class="dt-kecil">rencana tindakan / yang perlu dipantau</span></td>
                 <td class="dt-isi-2" colspan="3">&nbsp;</td>
             </tr>
             <tr>
