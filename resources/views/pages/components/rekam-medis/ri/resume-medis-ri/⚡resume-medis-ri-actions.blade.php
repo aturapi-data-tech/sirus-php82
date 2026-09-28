@@ -105,10 +105,13 @@
  *
  *   • Untuk audit, kita pakai `savedAt` + `savedBy` di JSON sebagai trail.
  *
- * Property `$isFormLocked` dipertahankan di state component supaya UI binding
- * (badge, disabled state) tidak error — tapi **selalu false**. Kalau di
- * future ada policy lain (mis. lock setelah klaim BPJS lolos verifikasi),
- * tinggal aktifkan lagi `checkEmrRIStatus()` atau ganti dengan policy custom.
+ * **Kunci = TTD DPJP (sejak 2026-09-28), bukan status pulang.** Pola modul dokumen:
+ * tombol "TTD DPJP & Kunci" men-stempel dokter login (nama + myuser_code + waktu) ke
+ * `datadaftarri_json.resumeMedisTtd` sekaligus menyimpan isi editor, lalu resume
+ * terkunci. Koreksi pasca-pulang tetap bisa: "Buka Kunci" (penanda tangan sendiri
+ * atau Gate `dokumen.bukaKunci`) mencabut TTD, dokter mengoreksi, lalu TTD ulang.
+ * Cetak memakai stempel tersimpan — dulu gambar TTD DPJP Utama ditempel otomatis
+ * saat cetak walau dokternya belum pernah menyetujui isinya.
  *
  * ────────────────────────────────────────────────────────────────────────────────
  * 4. EVENTS YANG DIDISPATCH/LISTEN
@@ -146,6 +149,7 @@ use Livewire\Component;
 use Livewire\Attributes\On;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Support\Terminologi\DischargeDisposition;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
@@ -166,12 +170,11 @@ new class extends Component {
     public string $ringkasanPulangSavedBy = '';
     public string $ringkasanPulangSavedAt = '';
 
-    /**
-     * Lock state — saat ini SELALU false untuk Resume Medis (lihat doc block §3).
-     * Property dipertahankan untuk binding UI (badge, :disabled) supaya tidak
-     * error kalau di future kita aktifkan lock-nya kembali.
-     */
+    /** true = sudah TTD DPJP (resumeMedisTtd terisi) → editor & Simpan ditutup. */
     public bool $isFormLocked = false;
+
+    /** Stempel TTD DPJP: ['nama', 'kode' (myuser_code), 'waktu' d/m/Y H:i:s]. Kosong = belum TTD. */
+    public array $ttdDpjp = [];
 
     /* ═══════════════════════════════════════
      | OPEN — buka modal editor Resume Medis
@@ -195,9 +198,9 @@ new class extends Component {
             return;
         }
 
-        // Resume Medis sengaja tidak di-lock — DPJP boleh edit pasca-pulang
-        // (revisi klaim BPJS, tambahan diagnosis). Lihat doc block §3.
-        $this->isFormLocked = false;
+        // Kunci = TTD DPJP, bukan status pulang (doc block §3).
+        $this->ttdDpjp = (array) data_get($dataRI, 'resumeMedisTtd', []);
+        $this->isFormLocked = !empty($this->ttdDpjp['nama']);
 
         // Load existing dari path `resumeMedis` (HTML string) di datadaftarri_json.
         // Kalau kosong (belum pernah disimpan) → auto-build template default dari
@@ -228,6 +231,10 @@ new class extends Component {
     {
         if (empty($this->riHdrNo)) {
             $this->dispatch('toast', type: 'error', message: 'Sesi expired, buka ulang dari EMR RI.');
+            return;
+        }
+        if ($this->isFormLocked) {
+            $this->dispatch('toast', type: 'error', message: 'Resume sudah ditandatangani DPJP — buka kunci dulu untuk mengubah.');
             return;
         }
 
@@ -452,7 +459,7 @@ new class extends Component {
 
     public function closeEditor(): void
     {
-        $this->reset(['riHdrNo', 'resumeMedis', 'isFormLocked', 'ringkasanPulang', 'ringkasanPulangSavedBy', 'ringkasanPulangSavedAt']);
+        $this->reset(['riHdrNo', 'resumeMedis', 'isFormLocked', 'ttdDpjp', 'ringkasanPulang', 'ringkasanPulangSavedBy', 'ringkasanPulangSavedAt']);
         $this->dispatch('close-modal', name: 'resume-medis-ri');
     }
 
@@ -470,6 +477,10 @@ new class extends Component {
     {
         if (empty($this->riHdrNo)) {
             $this->dispatch('toast', type: 'error', message: 'Sesi expired, buka ulang dari EMR RI.');
+            return;
+        }
+        if ($this->isFormLocked) {
+            $this->dispatch('toast', type: 'error', message: 'Resume sudah ditandatangani DPJP — buka kunci dulu untuk mengubah.');
             return;
         }
 
@@ -504,6 +515,113 @@ new class extends Component {
         }
 
         $this->dispatch('toast', type: 'success', message: 'Resume medis tersimpan.');
+    }
+
+    /* ═══════════════════════════════════════
+     | TTD DPJP = SIMPAN + KUNCI
+     |
+     | Aksi terakhir (pola modul dokumen): isi editor saat ini ikut disimpan, lalu
+     | stempel dokter login ditulis ke `resumeMedisTtd`. Hanya role Dokter.
+    ═══════════════════════════════════════ */
+    public function tandaTanganDpjp(): void
+    {
+        if (empty($this->riHdrNo)) {
+            $this->dispatch('toast', type: 'error', message: 'Sesi expired, buka ulang dari EMR RI.');
+            return;
+        }
+        if ($this->isFormLocked) {
+            $this->dispatch('toast', type: 'error', message: 'Resume sudah ditandatangani.');
+            return;
+        }
+        if (!auth()->user()?->hasRole('Dokter')) {
+            $this->dispatch('toast', type: 'error', message: 'TTD Resume Medis hanya untuk dokter (DPJP).');
+            return;
+        }
+
+        $plain = trim(strip_tags((string) $this->resumeMedis));
+        if (mb_strlen($plain) < 5) {
+            $this->addError('resumeMedis', 'Resume medis harus diisi sebelum ditandatangani.');
+            $this->dispatch('toast', type: 'error', message: 'Resume medis masih kosong.');
+            return;
+        }
+        $this->validate(
+            ['resumeMedis' => 'required|string|max:65000'],
+            ['resumeMedis.required' => 'Resume medis harus diisi.'],
+        );
+
+        $stempel = [
+            'nama' => (string) (auth()->user()->myuser_name ?? ''),
+            'kode' => (string) (auth()->user()->myuser_code ?? ''),
+            'waktu' => Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s'),
+        ];
+
+        try {
+            DB::transaction(function () use ($stempel) {
+                $this->lockRIRow($this->riHdrNo);
+                $dataRI = $this->findDataRI($this->riHdrNo);
+                if (empty($dataRI)) {
+                    throw new \RuntimeException('Data RI tidak ditemukan.');
+                }
+                if (!empty(data_get($dataRI, 'resumeMedisTtd.nama'))) {
+                    throw new \RuntimeException('Resume sudah ditandatangani ' . data_get($dataRI, 'resumeMedisTtd.nama') . '.');
+                }
+                $dataRI['resumeMedis'] = $this->resumeMedis;
+                $dataRI['resumeMedisTtd'] = $stempel;
+                $this->updateJsonRI($this->riHdrNo, $dataRI);
+                $this->appendAdminLogRI((int) $this->riHdrNo, 'TTD DPJP & kunci Resume Medis — ' . $stempel['nama'], 'MR');
+            });
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal TTD: ' . $e->getMessage());
+            return;
+        }
+
+        $this->ttdDpjp = $stempel;
+        $this->isFormLocked = true;
+        $this->dispatch('toast', type: 'success', message: 'Resume medis ditandatangani DPJP dan terkunci.');
+    }
+
+    /** Boleh buka kunci: penanda tangan sendiri, atau role pemegang Gate dokumen.bukaKunci. */
+    public function bolehBukaKunci(): bool
+    {
+        $kodeSaya = (string) (auth()->user()->myuser_code ?? '');
+
+        return ($kodeSaya !== '' && $kodeSaya === (string) ($this->ttdDpjp['kode'] ?? ''))
+            || Gate::allows('dokumen.bukaKunci');
+    }
+
+    /* Buka kunci = cabut TTD DPJP; isi resume tetap, bisa dikoreksi lalu TTD ulang. */
+    public function bukaKunci(): void
+    {
+        if (empty($this->riHdrNo) || !$this->isFormLocked) {
+            return;
+        }
+        if (!$this->bolehBukaKunci()) {
+            $this->dispatch('toast', type: 'error', message: 'Hanya dokter penanda tangan atau pemegang wewenang buka kunci.');
+            return;
+        }
+
+        $namaLama = (string) ($this->ttdDpjp['nama'] ?? '-');
+        $pelaku = (string) (auth()->user()->myuser_name ?? auth()->user()->name ?? '-');
+
+        try {
+            DB::transaction(function () use ($namaLama, $pelaku) {
+                $this->lockRIRow($this->riHdrNo);
+                $dataRI = $this->findDataRI($this->riHdrNo);
+                if (empty($dataRI)) {
+                    throw new \RuntimeException('Data RI tidak ditemukan.');
+                }
+                unset($dataRI['resumeMedisTtd']);
+                $this->updateJsonRI($this->riHdrNo, $dataRI);
+                $this->appendAdminLogRI((int) $this->riHdrNo, "Buka kunci Resume Medis — TTD {$namaLama} dicabut (oleh {$pelaku})", 'MR');
+            });
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal buka kunci: ' . $e->getMessage());
+            return;
+        }
+
+        $this->ttdDpjp = [];
+        $this->isFormLocked = false;
+        $this->dispatch('toast', type: 'success', message: 'Kunci dibuka — TTD DPJP dicabut. Koreksi lalu tandatangani ulang.');
     }
 
     /* ═══════════════════════════════════════
@@ -565,7 +683,7 @@ new class extends Component {
                             @if ($isFormLocked)
                                 <span class="inline-flex items-center gap-1 px-2 py-0.5 mt-2 rounded-full text-[10px] font-bold uppercase bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300">
                                     <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/></svg>
-                                    Terkunci (Pasien Pulang)
+                                    Ditandatangani DPJP — terkunci
                                 </span>
                             @endif
                         </div>
@@ -590,6 +708,11 @@ new class extends Component {
                  editor di-stretch mengisi tinggi modal via .rm-editor-wrap .tox-tinymce { height:100% }. --}}
             <style>
                 .rm-editor-wrap .tox-tinymce { height: 100% !important; }
+                .rm-kunci-content { font-size: 12px; line-height: 1.45; color: #1f2937; }
+                .rm-kunci-content table { border-collapse: collapse; width: 100%; }
+                .rm-kunci-content td, .rm-kunci-content th { border: 1px solid #cbd5e1; padding: 3px 6px; vertical-align: top; }
+                .rm-kunci-content .text-muted { color: #6b7280; }
+                .dark .rm-kunci-content { color: #d1d5db; }
             </style>
             <div class="flex flex-col flex-1 min-h-0 px-6 py-4 overflow-hidden">
                 {{-- Referensi: Ringkasan Pemulangan Pasien (perawat) — read-only, collapsible.
@@ -634,9 +757,18 @@ new class extends Component {
 
                 <div class="flex flex-wrap items-center justify-between mb-1 gap-x-2 shrink-0">
                     <x-input-label value="Isi Resume Medis" required class="!mb-0" />
-                    <span class="text-xs text-muted dark:text-gray-400">Identitas pasien &amp; TTD DPJP terisi otomatis saat dicetak. Editor mendukung teks ala Word + tabel.</span>
+                    <span class="text-xs text-muted dark:text-gray-400">Identitas pasien terisi otomatis saat dicetak; TTD dari stempel DPJP di bawah. Editor mendukung teks ala Word + tabel.</span>
                 </div>
-                <div class="flex-1 min-h-0 mt-1 rm-editor-wrap">
+
+                {{-- Terkunci: tampilkan isi tersimpan read-only. Editor TIDAK dibuang dari DOM
+                     (wire:ignore + boot saat open-modal) — cukup disembunyikan, supaya setelah
+                     Buka Kunci editor langsung bisa dipakai tanpa buka ulang modal. --}}
+                @if ($isFormLocked)
+                    <div class="flex-1 min-h-0 p-3 mt-1 overflow-auto border rounded-md border-hairline dark:border-gray-700 bg-surface-soft dark:bg-gray-800/40">
+                        <div class="rm-kunci-content">{!! $resumeMedis !!}</div>
+                    </div>
+                @endif
+                <div @class(['flex-1 min-h-0 mt-1 rm-editor-wrap', 'hidden' => $isFormLocked])>
                     <x-tinymce-editor
                         name="resumeMedis"
                         placeholder="Ketik isi resume medis (Diagnosa Masuk, Anamnesis, Pemeriksaan, Diagnosa Akhir, Tindakan, Obat Pulang, Kondisi Pulang, dll)..."
@@ -650,6 +782,31 @@ new class extends Component {
                 @error('resumeMedis')
                     <p class="mt-1 text-xs text-red-500 shrink-0">{{ $message }}</p>
                 @enderror
+
+                {{-- ══ TANDA TANGAN DPJP ══ — aksi terakhir yang sekaligus mengunci. --}}
+                <div class="flex flex-col gap-4 pt-3 mt-3 border-t shrink-0 border-hairline dark:border-gray-700 sm:flex-row sm:items-end sm:justify-between">
+                    <div class="text-xs text-muted dark:text-gray-400 sm:max-w-md">
+                        @if ($isFormLocked)
+                            Resume terkunci. Untuk koreksi, <strong>Buka Kunci</strong> mencabut TTD DPJP; tandatangani ulang sesudah mengoreksi.
+                        @else
+                            <strong>TTD DPJP &amp; Kunci</strong> menyimpan isi editor saat ini lalu mengunci resume. Hanya dokter.
+                        @endif
+                    </div>
+                    <div class="w-full sm:w-72">
+                        <x-signature.ttd-petugas :framed="false" label="Dokter Penanggung Jawab Pelayanan"
+                            :ttd="$ttdDpjp['nama'] ?? ''" :code="$ttdDpjp['kode'] ?? ''" :date="$ttdDpjp['waktu'] ?? ''"
+                            :locked="$isFormLocked" :canSign="auth()->user()?->hasRole('Dokter')" :allowClear="false"
+                            sign="tandaTanganDpjp" signLabel="TTD DPJP &amp; Kunci" nameLabel="Nama DPJP"
+                            emptyText="Belum ditandatangani DPJP." />
+                        @if ($isFormLocked && $this->bolehBukaKunci())
+                            <div class="mt-2">
+                                <x-confirm-button variant="warning-soft" action="bukaKunci()" title="Buka Kunci Resume Medis"
+                                    message="TTD DPJP akan dicabut dan resume kembali bisa diedit. Lanjutkan?"
+                                    class="justify-center w-full">Buka Kunci</x-confirm-button>
+                            </div>
+                        @endif
+                    </div>
+                </div>
             </div>
 
             <div class="sticky bottom-0 z-10 flex items-center justify-between gap-2 px-6 py-3 border-t border-hairline bg-canvas dark:bg-gray-900 dark:border-gray-700 shrink-0">
