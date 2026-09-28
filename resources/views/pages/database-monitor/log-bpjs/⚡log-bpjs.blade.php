@@ -451,7 +451,12 @@ new class extends Component {
                                 $urlScheme = $parsedUrl['scheme'] ?? 'https';
                                 $codeLabel = match (true) {
                                     !$r->code => 'No Response',
-                                    $r->code >= 200 && $r->code < 300 => $r->code === 200 ? 'OK' : 'Warning',
+                                    // code dari Oracle terbaca string "200" — bandingkan sebagai angka, bukan ===.
+                                    $r->code >= 200 && $r->code < 300 => match ((int) $r->code) {
+                                        200 => 'OK',
+                                        201 => 'Created',
+                                        default => 'Sukses',
+                                    },
                                     $r->code >= 400 && $r->code < 500 => 'Client Error',
                                     $r->code >= 500 => 'Server Error',
                                     default => '-',

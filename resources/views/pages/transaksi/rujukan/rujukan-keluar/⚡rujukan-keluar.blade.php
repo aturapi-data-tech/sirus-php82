@@ -251,6 +251,110 @@ new class extends Component {
     }
 
     /**
+     * Hasil "Cek di SATUSEHAT" per baris: ['<taskId>' => [tingkat, pesan, rincian[], traceId, waktu]].
+     * tingkat: ok | peringatan | gagal.
+     */
+    public array $hasilCek = [];
+
+    /**
+     * Jawaban untuk laporan "rujukan kami tidak tampil di RS tujuan": GET satu Task
+     * lalu cocokkan owner/requester/status. Kalau semua cocok, kiriman kita beres
+     * dan masalahnya ada di penerusan SATUSEHAT → SISRUTE atau aplikasi RS tujuan
+     * — Task ID + identifier disiapkan untuk form laporan Kemkes. trace-id di
+     * meta.tag milik permintaan GET ini (berubah tiap cek), BUKAN trace pengiriman.
+     * Dikunci pada taskId, bukan indeks: indeks $this->rows bergeser saat difilter.
+     */
+    public function cekDiSatusehat(string $taskId): void
+    {
+        $baris = collect($this->daftarRujukan)->firstWhere('taskId', $taskId);
+        if ($taskId === '' || !$baris) {
+            return;
+        }
+
+        $waktu = Carbon::now(env('APP_TIMEZONE'))->format('d/m/Y H:i:s');
+        $hasil = $this->rujukanGetTask($taskId);
+
+        if ($hasil['code'] < 200 || $hasil['code'] >= 300) {
+            $this->hasilCek[$taskId] = [
+                'tingkat' => 'gagal',
+                'pesan' => 'SATUSEHAT tidak bisa dihubungi [' . $hasil['code'] . '] — coba lagi.',
+                'rincian' => [$this->ringkasError($hasil['body'])],
+                'traceId' => '',
+                'waktu' => $waktu,
+            ];
+            return;
+        }
+
+        $task = $this->rujukanTaskDariResponse($hasil['body']);
+        if (!$task) {
+            $this->hasilCek[$taskId] = [
+                'tingkat' => 'gagal',
+                'pesan' => 'Task TIDAK ditemukan di SATUSEHAT — rujukan ini perlu dikirim ulang.',
+                'rincian' => [],
+                'traceId' => '',
+                'waktu' => $waktu,
+            ];
+            return;
+        }
+
+        $traceId = (string) (collect($task['meta']['tag'] ?? [])->firstWhere('system', 'http://terminology.kemkes.go.id/trace-id')['code'] ?? '');
+
+        // Task tanpa status/owner = isinya disensor SATUSEHAT (aturan consent).
+        if (empty($task['status']) && empty($task['owner'])) {
+            $this->hasilCek[$taskId] = [
+                'tingkat' => 'peringatan',
+                'pesan' => 'Task ada, tetapi isinya disembunyikan SATUSEHAT (consent) — RS tujuan kemungkinan juga tidak bisa membacanya.',
+                'rincian' => [],
+                'traceId' => $traceId,
+                'waktu' => $waktu,
+            ];
+            return;
+        }
+
+        $ownerId = Str::after((string) ($task['owner']['reference'] ?? ''), 'Organization/');
+        $requesterId = Str::after((string) ($task['requester']['reference'] ?? ''), 'Organization/');
+        $status = (string) ($task['status'] ?? '');
+        $keputusan = $this->rujukanKeputusanDariTask($task);
+
+        $masalah = [];
+        if ($ownerId !== (string) $baris['tujuanOrgId']) {
+            $masalah[] = 'Owner di SATUSEHAT (' . ($ownerId ?: '-') . ') berbeda dengan RS tujuan di daftar (' . ($baris['tujuanOrgId'] ?: '-') . ').';
+        }
+        if ($requesterId !== $this->rujukanOrgId()) {
+            $masalah[] = 'Requester (' . ($requesterId ?: '-') . ') bukan org RS ini (' . $this->rujukanOrgId() . ').';
+        }
+
+        $rincian = [
+            'Status Task: ' . ($status ?: '-') . ($keputusan !== '' ? ' · keputusan: ' . $keputusan : ' · belum dijawab'),
+            'Owner (RS tujuan): Organization/' . ($ownerId ?: '-'),
+            'Identifier Task: ' . ((string) ($task['identifier'][0]['value'] ?? '') ?: '-'),
+            'Diperbarui: ' . $this->waktuTampil((string) ($task['meta']['lastUpdated'] ?? '')),
+        ];
+
+        // Status di tabel ikut disegarkan dari hasil GET ini — tanpa Muat Ulang semua baris.
+        $this->perbaruiStatusBaris($taskId, $status, $keputusan);
+
+        if ($masalah !== []) {
+            $pesan = 'Task ada di SATUSEHAT, tetapi datanya tidak cocok.';
+            $tingkat = 'gagal';
+        } elseif ($status === 'cancelled') {
+            $pesan = 'Task ada di SATUSEHAT dengan status DIBATALKAN — wajar tidak tampil sebagai permintaan aktif di RS tujuan.';
+            $tingkat = 'peringatan';
+        } else {
+            $pesan = 'Task ada dan datanya cocok. Kalau RS tujuan tetap tidak melihatnya, masalahnya di penerusan SATUSEHAT → SISRUTE / aplikasi RS tujuan — laporkan dengan Task ID di bawah.';
+            $tingkat = 'ok';
+        }
+
+        $this->hasilCek[$taskId] = [
+            'tingkat' => $tingkat,
+            'pesan' => $pesan,
+            'rincian' => array_merge($masalah, $rincian),
+            'traceId' => $traceId,
+            'waktu' => $waktu,
+        ];
+    }
+
+    /**
      * Filter dikerjakan di memori — sekali tarik, banyak saring.
      * Menambah filter TIDAK menambah panggilan API.
      */
@@ -632,9 +736,59 @@ new class extends Component {
                                         </td>
 
                                         <td class="px-6 py-4 text-center rounded-r-2xl">
-                                            <x-lihat-button wire:click="bukaDetail({{ $indeks }})" title="Lihat Detail" />
+                                            <div class="flex flex-col items-center gap-2">
+                                                <x-lihat-button wire:click="bukaDetail({{ $indeks }})" title="Lihat Detail" />
+                                                <x-outline-button type="button"
+                                                    wire:click="cekDiSatusehat('{{ $baris['taskId'] }}')"
+                                                    wire:loading.attr="disabled"
+                                                    wire:target="cekDiSatusehat('{{ $baris['taskId'] }}')"
+                                                    title="GET Task ini langsung dari SATUSEHAT: cocokkan RS tujuan, status, dan ambil trace-id untuk laporan"
+                                                    class="text-xs whitespace-nowrap">
+                                                    <span wire:loading.remove
+                                                        wire:target="cekDiSatusehat('{{ $baris['taskId'] }}')">Cek di SATUSEHAT</span>
+                                                    <span wire:loading
+                                                        wire:target="cekDiSatusehat('{{ $baris['taskId'] }}')">Memeriksa…</span>
+                                                </x-outline-button>
+                                            </div>
                                         </td>
                                     </tr>
+
+                                    @php $cek = $hasilCek[$baris['taskId']] ?? null; @endphp
+                                    @if ($cek)
+                                        @php
+                                            $kelasCek = match ($cek['tingkat']) {
+                                                'ok' => 'bg-success-tint border-green-200 text-success-deep dark:bg-green-900/20 dark:border-green-800 dark:text-green-200',
+                                                'peringatan' => 'bg-warning-tint border-yellow-200 text-warning-deep dark:bg-yellow-900/20 dark:border-yellow-800 dark:text-yellow-200',
+                                                default => 'bg-error-tint border-red-200 text-error-deep dark:bg-red-900/20 dark:border-red-800 dark:text-red-200',
+                                            };
+                                        @endphp
+                                        <tr wire:key="rujukan-keluar-cek-{{ $baris['taskId'] }}">
+                                            <td colspan="6" class="px-6 pb-2 -mt-2">
+                                                <div class="px-4 py-3 text-sm border rounded-2xl {{ $kelasCek }}">
+                                                    <div class="flex flex-wrap items-start justify-between gap-2">
+                                                        <div class="font-semibold">{{ $cek['pesan'] }}</div>
+                                                        <div class="text-xs opacity-80">Dicek {{ $cek['waktu'] }}</div>
+                                                    </div>
+                                                    <ul class="mt-1 space-y-0.5">
+                                                        <li>Task ID: <span class="font-mono">{{ $baris['taskId'] }}</span></li>
+                                                        @foreach ($cek['rincian'] as $rincian)
+                                                            <li>{{ $rincian }}</li>
+                                                        @endforeach
+                                                    </ul>
+                                                    @if ($cek['traceId'] !== '')
+                                                        <div class="flex flex-wrap items-center gap-2 mt-2" x-data="{ tersalin: false }">
+                                                            <span title="Trace dari permintaan cek ini (berubah tiap cek), bukan trace pengiriman rujukan">Trace ID cek: <span class="font-mono">{{ $cek['traceId'] }}</span></span>
+                                                            <button type="button" class="px-2 py-0.5 text-xs border rounded-lg border-current"
+                                                                x-on:click="navigator.clipboard.writeText(@js('Task ID: ' . $baris['taskId'] . ' | Trace ID cek (GET): ' . $cek['traceId'] . ' | Alur: ' . env('SATUSEHAT_ORGANIZATION_NAME', 'RS perujuk') . ' → ' . ($baris['tujuanNama'] ?: $baris['tujuanOrgId']) . ' | Dikirim: ' . $this->waktuTampil($baris['waktu']))); tersalin = true; setTimeout(() => tersalin = false, 2000)">
+                                                                <span x-show="!tersalin">Salin untuk laporan</span>
+                                                                <span x-show="tersalin" x-cloak>Tersalin</span>
+                                                            </button>
+                                                        </div>
+                                                    @endif
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    @endif
                                 @empty
                                     <tr>
                                         <td colspan="6" class="px-6 py-10 text-center text-muted dark:text-gray-400">
