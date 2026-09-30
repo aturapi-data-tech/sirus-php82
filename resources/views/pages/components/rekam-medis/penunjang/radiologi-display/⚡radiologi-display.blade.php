@@ -163,6 +163,11 @@ new class extends Component {
      * ======================= */
     public function openViewPDF(?string $file, string $title = 'Hasil Radiologi'): void
     {
+        if (!auth()->user()?->can('penunjang.lihatHasil')) {
+            $this->dispatch('toast', type: 'error', message: 'Anda tidak berwenang melihat hasil penunjang.');
+            return;
+        }
+
         $url = $this->resolveFileUrl($file);
 
         if (!$url) {
@@ -296,7 +301,7 @@ new class extends Component {
                                                     </div>
 
                                                     {{-- Actions --}}
-                                                    @role(['Dokter', 'Admin', 'Perawat', 'Radiologi'])
+                                                    @can('penunjang.lihatHasil')
                                                         <div class="flex items-center gap-2 mt-3">
 
                                                             {{-- Tombol Hasil Bacaan — outline-button (brand-green, sama dengan lab-luar) --}}
@@ -328,7 +333,7 @@ new class extends Component {
                                                             @endif
 
                                                         </div>
-                                                    @endrole
+                                                    @endcan
 
                                                 </td>
                                             </tr>

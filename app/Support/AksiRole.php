@@ -94,6 +94,23 @@ class AksiRole
      */
     public const REKONSILIASI_OBAT = ['Admin', 'Apoteker', 'Manager Umum', 'Manager Medis'];
 
+    /* ───────────────────────────── PENUNJANG ───────────────────────────── */
+
+    /**
+     * Melihat & mencetak HASIL penunjang pasien: hasil Laboratorium (lihat + cetak),
+     * Hasil Bacaan & Foto Radiologi, dan PDF Lab Luar.
+     *
+     * Komponen tampilannya dipakai bersama di banyak layar — tab Hasil Penunjang EMR
+     * RJ/UGD/RI, Cetak Rekam Medis, Berkas BPJS, layar Laborat/Radiologi — jadi
+     * daftar ini harus memuat SEMUA pembaca sah di layar-layar itu. Dulu tiap
+     * komponen menulis daftarnya sendiri (Lab ≠ Radiologi, Lab Luar terbuka) dan
+     * Casemix/Tu — pemakai Berkas BPJS — justru tak melihat tombolnya.
+     */
+    public const PENUNJANG_LIHAT_HASIL = [
+        'Admin', 'Dokter', 'Perawat', 'Apoteker', 'Gizi', 'Laboratorium', 'Radiologi',
+        'Supervisor Penunjang', 'Casemix', 'Tu', 'Mr', 'Manager Umum', 'Manager Medis',
+    ];
+
     /* ───────────────────────── BRIDGING EKSTERNAL ───────────────────────── */
 
     /** Membuka panel kirim iDRG / INA-CBG (casemix). */

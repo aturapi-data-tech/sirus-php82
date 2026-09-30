@@ -223,6 +223,11 @@ new class extends Component {
      * ======================= */
     public function openDetail($checkupNo, $layanan = ''): void
     {
+        if (!auth()->user()?->can('penunjang.lihatHasil')) {
+            $this->dispatch('toast', type: 'error', message: 'Anda tidak berwenang melihat hasil penunjang.');
+            return;
+        }
+
         $this->selectedCheckupNo = $checkupNo;
         $this->detailLayanan = strtoupper($layanan);
         $this->selectedRows = [];
@@ -366,6 +371,11 @@ new class extends Component {
      * ======================= */
     public function cetakLaborat(string $checkupNo): mixed
     {
+        if (!auth()->user()?->can('penunjang.lihatHasil')) {
+            $this->dispatch('toast', type: 'error', message: 'Anda tidak berwenang melihat hasil penunjang.');
+            return null;
+        }
+
         $header = collect(
             DB::select(
                 "
@@ -581,7 +591,7 @@ new class extends Component {
                                                     </div>
 
                                                     {{-- Actions — hanya tampil jika status Selesai (H) --}}
-                                                    @role(['Dokter', 'Admin', 'Perawat', 'Laboratorium', 'Apoteker'])
+                                                    @can('penunjang.lihatHasil')
                                                         @if ($isSelesai)
                                                             <div class="flex items-center gap-2 mt-3">
                                                                 {{-- Tombol Hasil Laboratorium --}}
@@ -614,7 +624,7 @@ new class extends Component {
                                                                     <x-cetak-button wire:click="cetakLaborat('{{ $row->checkup_no }}')" />
                                                             </div>
                                                         @endif
-                                                    @endrole
+                                                    @endcan
 
                                                 </td>
                                             </tr>
@@ -1082,11 +1092,11 @@ new class extends Component {
                             </x-info-button>
                         @endif
 
-                        @role(['Dokter', 'Admin', 'Laboratorium'])
+                        @can('penunjang.lihatHasil')
                             @if (!empty($selectedCheckupNo))
                                 <x-cetak-button wire:click="cetakLaborat('{{ $selectedCheckupNo }}')" label="Cetak Hasil" />
                             @endif
-                        @endrole
+                        @endcan
                     </div>
                 </div>
             </div>

@@ -75,6 +75,11 @@ new class extends Component {
      * ======================= */
     public function openViewPDF(?string $file): void
     {
+        if (!auth()->user()?->can('penunjang.lihatHasil')) {
+            $this->dispatch('toast', type: 'error', message: 'Anda tidak berwenang melihat hasil penunjang.');
+            return;
+        }
+
         $url = $this->resolveFileUrl($file);
 
         if (!$url) {
@@ -232,7 +237,7 @@ new class extends Component {
                                                     </div>
 
                                                     {{-- Actions --}}
-                                                    @if ($hasPdf)
+                                                    @if ($hasPdf && auth()->user()?->can('penunjang.lihatHasil'))
                                                         <div class="flex items-center gap-2 mt-3">
                                                             <x-outline-button type="button"
                                                                 wire:click="openViewPDF({{ json_encode($row->pdf_path) }})">
