@@ -576,8 +576,11 @@ new class extends Component {
                                 <span wire:loading wire:target="openEresep" class="flex items-center gap-1"><x-loading />
                                     Memuat...</span>
                             </x-primary-button>
+                        @endhasanyrole
 
-                            {{-- Resume Medis — rose solid --}}
+                        {{-- Resume Medis — rose solid. Ikut Gate dokumen.ttdPerwakilan supaya
+                             Manager Umum/Medis bisa membuka modal untuk TTD atas nama DPJP. --}}
+                        @if (auth()->user()?->hasAnyRole(['Dokter', 'Admin', 'Perawat']) || auth()->user()?->can('dokumen.ttdPerwakilan'))
                             <x-primary-button type="button"
                                 wire:click="$dispatch('resume-medis-ri.open', { riHdrNo: {{ $riHdrNo }} })"
                                 class="gap-1 !bg-rose-600 hover:!bg-rose-700 !text-white focus:!ring-rose-300 dark:!bg-rose-600 dark:!text-white dark:hover:!bg-rose-700 dark:focus:!ring-rose-900">
@@ -588,7 +591,7 @@ new class extends Component {
                                 </svg>
                                 Resume Medis
                             </x-primary-button>
-                        @endhasanyrole
+                        @endif
 
                         {{-- Ringkasan Pemulangan Pasien — diisi Perawat/Bidan (teal) --}}
                         @hasanyrole('Perawat|Admin')
