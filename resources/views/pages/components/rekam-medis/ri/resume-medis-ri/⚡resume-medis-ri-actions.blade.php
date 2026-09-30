@@ -514,7 +514,7 @@ new class extends Component {
             return;
         }
 
-        $this->dispatch('toast', type: 'success', message: 'Resume medis tersimpan.');
+        $this->dispatch('toast', type: 'success', message: 'Draft resume medis tersimpan — belum ditandatangani.');
     }
 
     /* ═══════════════════════════════════════
@@ -704,17 +704,20 @@ new class extends Component {
                 @endif
             </div>
 
-            {{-- Body: SATU scroll saja (di dalam editor). Body tidak scroll sendiri;
-                 editor di-stretch mengisi tinggi modal via .rm-editor-wrap .tox-tinymce { height:100% }. --}}
+            {{-- Body BOLEH scroll sendiri (scrollbar kanan). Editor mengisi sisa tinggi modal di
+                 layar besar, tapi punya tinggi minimum (rm-editor-wrap / rm-kunci-box) supaya di
+                 layar pendek / zoom browser tidak terjepit jadi satu baris — kelebihannya
+                 digulir lewat body. --}}
             <style>
                 .rm-editor-wrap .tox-tinymce { height: 100% !important; }
+                .rm-editor-wrap, .rm-kunci-box { min-height: 480px; }
                 .rm-kunci-content { font-size: 12px; line-height: 1.45; color: #1f2937; }
                 .rm-kunci-content table { border-collapse: collapse; width: 100%; }
                 .rm-kunci-content td, .rm-kunci-content th { border: 1px solid #cbd5e1; padding: 3px 6px; vertical-align: top; }
                 .rm-kunci-content .text-muted { color: #6b7280; }
                 .dark .rm-kunci-content { color: #d1d5db; }
             </style>
-            <div class="flex flex-col flex-1 min-h-0 px-6 py-4 overflow-hidden">
+            <div class="flex flex-col flex-1 min-h-0 px-6 py-4 overflow-y-auto">
                 {{-- Referensi: Ringkasan Pemulangan Pasien (perawat) — read-only, collapsible.
                      Ditarik dari datadaftarri_json.ringkasanPulang. DPJP bisa baca/salin
                      saat menyusun resume; tidak ikut tersimpan di resume. --}}
@@ -755,6 +758,14 @@ new class extends Component {
                     </div>
                 @endif
 
+                {{-- Banner status baku modul dokumen: terkunci = sudah TTD DPJP. --}}
+                @if ($isFormLocked)
+                    <x-modul-dokumen.banner jenis="terkunci" class="mb-3 shrink-0">
+                        Resume sudah ditandatangani {{ $ttdDpjp['nama'] ?? 'DPJP' }}{{ !empty($ttdDpjp['waktu']) ? ' (' . $ttdDpjp['waktu'] . ')' : '' }}
+                        — terkunci, tidak dapat diubah.
+                    </x-modul-dokumen.banner>
+                @endif
+
                 <div class="flex flex-wrap items-center justify-between mb-1 gap-x-2 shrink-0">
                     <x-input-label value="Isi Resume Medis" required class="!mb-0" />
                     <span class="text-xs text-muted dark:text-gray-400">Identitas pasien terisi otomatis saat dicetak; TTD dari stempel DPJP di bawah. Editor mendukung teks ala Word + tabel.</span>
@@ -764,7 +775,7 @@ new class extends Component {
                      (wire:ignore + boot saat open-modal) — cukup disembunyikan, supaya setelah
                      Buka Kunci editor langsung bisa dipakai tanpa buka ulang modal. --}}
                 @if ($isFormLocked)
-                    <div class="flex-1 min-h-0 p-3 mt-1 overflow-auto border rounded-md border-hairline dark:border-gray-700 bg-surface-soft dark:bg-gray-800/40">
+                    <div class="flex-1 min-h-0 p-3 mt-1 overflow-auto border rounded-md rm-kunci-box border-hairline dark:border-gray-700 bg-surface-soft dark:bg-gray-800/40">
                         <div class="rm-kunci-content">{!! $resumeMedis !!}</div>
                     </div>
                 @endif
@@ -787,9 +798,10 @@ new class extends Component {
                 <div class="flex flex-col gap-4 pt-3 mt-3 border-t shrink-0 border-hairline dark:border-gray-700 sm:flex-row sm:items-end sm:justify-between">
                     <div class="text-xs text-muted dark:text-gray-400 sm:max-w-md">
                         @if ($isFormLocked)
-                            Resume terkunci. Untuk koreksi, <strong>Buka Kunci</strong> mencabut TTD DPJP; tandatangani ulang sesudah mengoreksi.
+                            Untuk koreksi, <strong>Buka Kunci</strong> (kiri bawah) mencabut TTD DPJP; tandatangani ulang sesudah mengoreksi.
                         @else
-                            <strong>TTD DPJP &amp; Kunci</strong> menyimpan isi editor saat ini lalu mengunci resume. Hanya dokter.
+                            <strong>Simpan Draft</strong> boleh berkali-kali selama resume disusun.
+                            <strong>TTD DPJP &amp; Kunci</strong> menyimpan isi editor terakhir lalu mengunci resume. Hanya dokter.
                         @endif
                     </div>
                     <div class="w-full sm:w-72">
@@ -798,11 +810,19 @@ new class extends Component {
                             :locked="$isFormLocked" :canSign="auth()->user()?->hasRole('Dokter')" :allowClear="false"
                             sign="tandaTanganDpjp" signLabel="TTD DPJP &amp; Kunci" nameLabel="Nama DPJP"
                             emptyText="Belum ditandatangani DPJP." />
-                        @if ($isFormLocked && $this->bolehBukaKunci())
-                            <div class="mt-2">
-                                <x-confirm-button variant="warning-soft" action="bukaKunci()" title="Buka Kunci Resume Medis"
-                                    message="TTD DPJP akan dicabut dan resume kembali bisa diedit. Lanjutkan?"
-                                    class="justify-center w-full">Buka Kunci</x-confirm-button>
+                        {{-- Tak berwenang TTD: tombol tetap tampil (nonaktif) + alasannya, supaya tidak
+                             disangka fiturnya belum ada. --}}
+                        @if (!$isFormLocked && !auth()->user()?->hasRole('Dokter'))
+                            <div class="pt-2">
+                                <x-primary-button type="button" disabled class="justify-center w-full gap-1.5 opacity-60 cursor-not-allowed"
+                                    title="TTD DPJP hanya dapat dilakukan akun Dokter.">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                    </svg>
+                                    TTD DPJP &amp; Kunci
+                                </x-primary-button>
+                                <p class="mt-1 text-xs text-amber-700 dark:text-amber-400">TTD DPJP hanya dapat dilakukan akun Dokter.</p>
                             </div>
                         @endif
                     </div>
@@ -810,19 +830,34 @@ new class extends Component {
             </div>
 
             <div class="sticky bottom-0 z-10 flex items-center justify-between gap-2 px-6 py-3 border-t border-hairline bg-canvas dark:bg-gray-900 dark:border-gray-700 shrink-0">
-                {{-- Reset ke Default — pojok kiri sendiri --}}
-                <x-secondary-button type="button"
-                    wire:click="resetToDefault"
-                    wire:confirm="Reset isi Resume Medis ke template default dari data EMR terbaru? Perubahan yang belum disimpan akan hilang."
-                    :disabled="$isFormLocked"
-                    wire:loading.attr="disabled" wire:target="resetToDefault"
-                    class="text-xs">
-                    <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                    <span wire:loading.remove wire:target="resetToDefault">Reset ke Default</span>
-                    <span wire:loading wire:target="resetToDefault"><x-loading /> Reset...</span>
-                </x-secondary-button>
+                {{-- Pojok kiri: Reset ke Default (draft) atau Buka Kunci (terkunci) — pola modul dokumen. --}}
+                @if ($isFormLocked)
+                    @if ($this->bolehBukaKunci())
+                        <x-confirm-button variant="warning-soft" action="bukaKunci()" title="Buka Kunci Resume Medis"
+                            message="TTD DPJP akan dicabut dan resume kembali bisa diedit. Lanjutkan?"
+                            confirmText="Ya, Buka Kunci" wire:key="buka-kunci-resume-{{ $riHdrNo }}">
+                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+                            </svg>
+                            Buka Kunci
+                        </x-confirm-button>
+                    @else
+                        <span></span>
+                    @endif
+                @else
+                    <x-secondary-button type="button"
+                        wire:click="resetToDefault"
+                        wire:confirm="Reset isi Resume Medis ke template default dari data EMR terbaru? Perubahan yang belum disimpan akan hilang."
+                        wire:loading.attr="disabled" wire:target="resetToDefault"
+                        class="text-xs">
+                        <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                        <span wire:loading.remove wire:target="resetToDefault">Reset ke Default</span>
+                        <span wire:loading wire:target="resetToDefault"><x-loading /> Reset...</span>
+                    </x-secondary-button>
+                @endif
 
-                {{-- Aksi kanan: Batal · Cetak · Simpan --}}
+                {{-- Aksi kanan: Batal · Cetak · Simpan Draft (Simpan Draft hilang saat terkunci) --}}
                 <div class="flex items-center gap-2">
                     <x-secondary-button type="button" wire:click="closeEditor">Batal</x-secondary-button>
 
@@ -835,14 +870,22 @@ new class extends Component {
                         <span wire:loading wire:target="cetakPdf"><x-loading /> Cetak...</span>
                     </x-secondary-button>
 
-                    {{-- Simpan saja (modal tetap terbuka, toast sukses). --}}
-                    <x-primary-button type="button"
-                        x-on:click="window.dispatchEvent(new Event('resume-medis-ri.flush')); $nextTick(() => $wire.save())"
-                        wire:loading.attr="disabled" wire:target="save,cetakPdf"
-                        :disabled="$isFormLocked">
-                        <span wire:loading.remove wire:target="save">Simpan</span>
-                        <span wire:loading wire:target="save"><x-loading /> Menyimpan...</span>
-                    </x-primary-button>
+                    {{-- Simpan Draft (modal tetap terbuka, toast sukses) — bisa dicicil; TIDAK mengunci.
+                         Terkunci (sudah TTD) → disembunyikan, sama dengan footer modul dokumen. --}}
+                    @unless ($isFormLocked)
+                        <x-primary-button type="button"
+                            x-on:click="window.dispatchEvent(new Event('resume-medis-ri.flush')); $nextTick(() => $wire.save())"
+                            wire:loading.attr="disabled" wire:target="save,cetakPdf"
+                            class="gap-2 min-w-[160px] justify-center">
+                            <span wire:loading.remove wire:target="save" class="flex items-center gap-1.5">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 21v-8H7v8M7 3v5h8M5 3h11l4 4v12a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z" />
+                                </svg>
+                                Simpan Draft
+                            </span>
+                            <span wire:loading wire:target="save"><x-loading /> Menyimpan...</span>
+                        </x-primary-button>
+                    @endunless
                 </div>
             </div>
         </div>

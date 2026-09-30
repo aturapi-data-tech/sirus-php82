@@ -26,6 +26,7 @@ function loadTinymce() {
             import("tinymce/plugins/autolink"),
             import("tinymce/plugins/code"),
             import("tinymce/plugins/charmap"),
+            import("tinymce/plugins/fullscreen"),
             import("tinymce/skins/ui/oxide/skin.min.css"),
         ]);
         window.__tinymceContentCss = (await import("tinymce/skins/content/default/content.min.css?inline")).default;
@@ -142,11 +143,11 @@ document.addEventListener("alpine:init", () => {
                         menubar: false,
                         branding: false,
                         promotion: false,
-                        plugins: "lists link table autolink code charmap",
+                        plugins: "lists link table autolink code charmap fullscreen",
                         toolbar:
                             "undo redo | blocks | bold italic underline strikethrough | forecolor backcolor | " +
                             "alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | " +
-                            "table | link charmap | removeformat code",
+                            "table | link charmap | removeformat code | fullscreen",
                         placeholder: placeholder,
                         skin: false,
                         content_css: false,

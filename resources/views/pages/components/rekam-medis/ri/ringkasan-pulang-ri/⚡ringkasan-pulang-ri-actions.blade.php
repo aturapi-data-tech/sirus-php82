@@ -323,7 +323,7 @@ new class extends Component {
             return;
         }
 
-        $this->dispatch('toast', type: 'success', message: 'Ringkasan pemulangan tersimpan.');
+        $this->dispatch('toast', type: 'success', message: 'Draft ringkasan pemulangan tersimpan — belum lengkap ditandatangani.');
     }
 
     /* ═══════════════ TANDA TANGAN ═══════════════ */
@@ -400,8 +400,27 @@ new class extends Component {
         return true;
     }
 
+    /** Dokumen perawat: TTD petugas (Diserahkan & Disetujui) hanya role Perawat — sejajar Resume Medis = Dokter. */
+    public function bolehTtdPetugas(): bool
+    {
+        return (bool) auth()->user()?->hasRole('Perawat');
+    }
+
+    private function tolakBukanPerawat(): bool
+    {
+        if ($this->bolehTtdPetugas()) {
+            return false;
+        }
+        $this->dispatch('toast', type: 'error', message: 'TTD Ringkasan Pemulangan hanya untuk perawat / bidan.');
+
+        return true;
+    }
+
     public function ttdDiserahkan(): void
     {
+        if ($this->tolakBukanPerawat()) {
+            return;
+        }
         $stempel = $this->stempelSaya();
         if ($this->simpanTtd(fn(array $ttd) => array_merge($ttd, ['diserahkan' => $stempel]), 'TTD Diserahkan Ringkasan Pemulangan — ' . $stempel['nama']) && !$this->isFormLocked) {
             $this->dispatch('toast', type: 'success', message: 'TTD yang menyerahkan tersimpan.');
@@ -410,6 +429,9 @@ new class extends Component {
 
     public function ttdDisetujui(): void
     {
+        if ($this->tolakBukanPerawat()) {
+            return;
+        }
         $stempel = $this->stempelSaya();
         if ($this->simpanTtd(fn(array $ttd) => array_merge($ttd, ['disetujui' => $stempel]), 'TTD Disetujui Ringkasan Pemulangan — ' . $stempel['nama']) && !$this->isFormLocked) {
             $this->dispatch('toast', type: 'success', message: 'TTD yang menyetujui tersimpan.');
@@ -587,17 +609,29 @@ new class extends Component {
                 @endif
             </div>
 
-            {{-- Body: SATU scroll saja (di dalam editor). Body tidak scroll sendiri;
-                 editor di-stretch mengisi tinggi modal via .rp-editor .tox-tinymce { height:100% }. --}}
+            {{-- Body BOLEH scroll sendiri (scrollbar kanan). Editor mengisi sisa tinggi modal di
+                 layar besar, tapi punya tinggi minimum (rp-editor-wrap / rp-kunci-box) supaya di
+                 layar pendek / zoom browser tidak terjepit jadi satu baris — kelebihannya
+                 digulir lewat body. --}}
             <style>
                 .rp-editor-wrap .tox-tinymce { height: 100% !important; }
+                .rp-editor-wrap, .rp-kunci-box { min-height: 480px; }
                 .rp-kunci-content { font-size: 12px; line-height: 1.45; color: #1f2937; }
                 .rp-kunci-content table { border-collapse: collapse; width: 100%; }
                 .rp-kunci-content td, .rp-kunci-content th { border: 1px solid #cbd5e1; padding: 3px 6px; vertical-align: top; }
                 .rp-kunci-content .text-muted { color: #6b7280; }
                 .dark .rp-kunci-content { color: #d1d5db; }
             </style>
-            <div class="flex flex-col flex-1 min-h-0 px-6 py-4 overflow-hidden">
+            <div class="flex flex-col flex-1 min-h-0 px-6 py-4 overflow-y-auto">
+                {{-- Banner status baku modul dokumen: terkunci = ketiga TTD lengkap. --}}
+                @if ($isFormLocked)
+                    <x-modul-dokumen.banner jenis="terkunci" class="mb-3 shrink-0">
+                        Ringkasan sudah lengkap ditandatangani — diserahkan {{ $ttd['diserahkan']['nama'] ?? '-' }},
+                        diterima {{ $ttd['penerima']['nama'] ?? '-' }}, disetujui {{ $ttd['disetujui']['nama'] ?? '-' }}.
+                        Terkunci, tidak dapat diubah.
+                    </x-modul-dokumen.banner>
+                @endif
+
                 <div class="flex flex-wrap items-center justify-between mb-1 gap-x-2 shrink-0">
                     <x-input-label value="Ringkasan Pemulangan Pasien (oleh Perawat / Bidan)" required class="!mb-0" />
                     <span class="text-xs text-muted dark:text-gray-400">Identitas pasien terisi otomatis saat dicetak. Sebagian field di-isi dari data EMR. Editor mendukung teks ala Word + tabel.</span>
@@ -606,7 +640,7 @@ new class extends Component {
                 {{-- Terkunci: isi tersimpan read-only. Editor tetap di DOM (disembunyikan) supaya
                      langsung bisa dipakai lagi sesudah Buka Kunci. --}}
                 @if ($isFormLocked)
-                    <div class="flex-1 min-h-0 p-3 mt-1 overflow-auto border rounded-md border-hairline dark:border-gray-700 bg-surface-soft dark:bg-gray-800/40">
+                    <div class="flex-1 min-h-0 p-3 mt-1 overflow-auto border rounded-md rp-kunci-box border-hairline dark:border-gray-700 bg-surface-soft dark:bg-gray-800/40">
                         <div class="rp-kunci-content">{!! $ringkasanPulang !!}</div>
                     </div>
                 @endif
@@ -642,12 +676,6 @@ new class extends Component {
                                 <x-badge variant="success" class="text-[10px] px-1.5 py-0">Terkunci</x-badge>
                             @endif
                         </button>
-                        @if ($isFormLocked)
-                            @can('dokumen.bukaKunci')
-                                <x-confirm-button variant="warning-soft" action="bukaKunci()" title="Buka Kunci Ringkasan Pemulangan"
-                                    message="TTD petugas (menyerahkan & menyetujui) akan dicabut; TTD penerima tetap. Lanjutkan?">Buka Kunci</x-confirm-button>
-                            @endcan
-                        @endif
                     </div>
 
                     <div x-show="bukaTtd" x-collapse class="overflow-y-auto max-h-96">
@@ -656,8 +684,21 @@ new class extends Component {
                             <div class="flex flex-col">
                                 <x-signature.ttd-petugas :framed="false" label="Diserahkan"
                                     :ttd="$ttd['diserahkan']['nama'] ?? ''" :code="$ttd['diserahkan']['kode'] ?? ''" :date="$ttd['diserahkan']['waktu'] ?? ''"
-                                    :locked="$isFormLocked" sign="ttdDiserahkan" clear="hapusTtdDiserahkan"
+                                    :locked="$isFormLocked" :canSign="$this->bolehTtdPetugas()" sign="ttdDiserahkan" clear="hapusTtdDiserahkan"
                                     signLabel="TTD Saya (Perawat / Bidan)" nameLabel="Perawat / Bidan" emptyText="Belum ditandatangani." />
+                                @if (!$isFormLocked && empty($ttd['diserahkan']['nama']) && !$this->bolehTtdPetugas())
+                                    <div class="pt-2">
+                                        <x-primary-button type="button" disabled class="justify-center w-full gap-1.5 opacity-60 cursor-not-allowed"
+                                            title="TTD ini hanya dapat dilakukan akun Perawat / Bidan.">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                            </svg>
+                                            TTD Saya (Perawat / Bidan)
+                                        </x-primary-button>
+                                        <p class="mt-1 text-xs text-amber-700 dark:text-amber-400">TTD ini hanya dapat dilakukan akun Perawat / Bidan.</p>
+                                    </div>
+                                @endif
                             </div>
 
                             {{-- Diterima: pasien / penanggung jawab --}}
@@ -696,28 +737,61 @@ new class extends Component {
                             <div class="flex flex-col">
                                 <x-signature.ttd-petugas :framed="false" label="Disetujui"
                                     :ttd="$ttd['disetujui']['nama'] ?? ''" :code="$ttd['disetujui']['kode'] ?? ''" :date="$ttd['disetujui']['waktu'] ?? ''"
-                                    :locked="$isFormLocked" sign="ttdDisetujui" clear="hapusTtdDisetujui"
+                                    :locked="$isFormLocked" :canSign="$this->bolehTtdPetugas()" sign="ttdDisetujui" clear="hapusTtdDisetujui"
                                     signLabel="TTD Saya (Ka.Ru / PJ Shift)" nameLabel="Ka.Ru / PJ Shift / Ka.Tim" emptyText="Belum ditandatangani." />
+                                @if (!$isFormLocked && empty($ttd['disetujui']['nama']) && !$this->bolehTtdPetugas())
+                                    <div class="pt-2">
+                                        <x-primary-button type="button" disabled class="justify-center w-full gap-1.5 opacity-60 cursor-not-allowed"
+                                            title="TTD ini hanya dapat dilakukan akun Perawat / Bidan.">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                            </svg>
+                                            TTD Saya (Ka.Ru / PJ Shift)
+                                        </x-primary-button>
+                                        <p class="mt-1 text-xs text-amber-700 dark:text-amber-400">TTD ini hanya dapat dilakukan akun Perawat / Bidan.</p>
+                                    </div>
+                                @endif
                             </div>
                         </div>
+                        @unless ($isFormLocked)
                         <p class="mt-3 text-xs text-muted dark:text-gray-400">
-                            Tiap TTD ikut menyimpan isi editor saat ini. Begitu ketiganya lengkap, ringkasan terkunci.
+                            <strong>Simpan Draft</strong> boleh berkali-kali selama ringkasan disusun. Tiap TTD ikut menyimpan
+                            isi editor saat ini; begitu ketiganya lengkap, ringkasan terkunci. TTD Diserahkan &amp; Disetujui
+                            hanya untuk akun perawat / bidan.
                         </p>
+                        @endunless
                     </div>
                 </div>
             </div>
 
             <div class="sticky bottom-0 z-10 flex items-center justify-between gap-2 px-6 py-3 border-t border-hairline bg-canvas dark:bg-gray-900 dark:border-gray-700 shrink-0">
-                <x-secondary-button type="button"
-                    wire:click="resetToDefault"
-                    wire:confirm="Reset isi ke template default dari data EMR terbaru? Perubahan yang belum disimpan akan hilang."
-                    :disabled="$isFormLocked"
-                    wire:loading.attr="disabled" wire:target="resetToDefault"
-                    class="text-xs">
-                    <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                    <span wire:loading.remove wire:target="resetToDefault">Reset ke Default</span>
-                    <span wire:loading wire:target="resetToDefault"><x-loading /> Reset...</span>
-                </x-secondary-button>
+                {{-- Pojok kiri: Reset ke Default (draft) atau Buka Kunci (terkunci) — pola modul dokumen. --}}
+                @if ($isFormLocked)
+                    @can('dokumen.bukaKunci')
+                        <x-confirm-button variant="warning-soft" action="bukaKunci()" title="Buka Kunci Ringkasan Pemulangan"
+                            message="TTD petugas (menyerahkan & menyetujui) akan dicabut; TTD penerima tetap. Lanjutkan?"
+                            confirmText="Ya, Buka Kunci" wire:key="buka-kunci-ringkasan-{{ $riHdrNo }}">
+                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+                            </svg>
+                            Buka Kunci
+                        </x-confirm-button>
+                    @else
+                        <span></span>
+                    @endcan
+                @else
+                    <x-secondary-button type="button"
+                        wire:click="resetToDefault"
+                        wire:confirm="Reset isi ke template default dari data EMR terbaru? Perubahan yang belum disimpan akan hilang."
+                        wire:loading.attr="disabled" wire:target="resetToDefault"
+                        class="text-xs">
+                        <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                        <span wire:loading.remove wire:target="resetToDefault">Reset ke Default</span>
+                        <span wire:loading wire:target="resetToDefault"><x-loading /> Reset...</span>
+                    </x-secondary-button>
+                @endif
 
                 <div class="flex items-center gap-2">
                     <x-secondary-button type="button" wire:click="closeEditor">Batal</x-secondary-button>
@@ -730,13 +804,21 @@ new class extends Component {
                         <span wire:loading wire:target="cetakPdf"><x-loading /> Cetak...</span>
                     </x-secondary-button>
 
-                    <x-primary-button type="button"
-                        x-on:click="window.dispatchEvent(new Event('ringkasan-pulang-ri.flush')); $nextTick(() => $wire.save())"
-                        wire:loading.attr="disabled" wire:target="save,cetakPdf"
-                        :disabled="$isFormLocked">
-                        <span wire:loading.remove wire:target="save">Simpan</span>
-                        <span wire:loading wire:target="save"><x-loading /> Menyimpan...</span>
-                    </x-primary-button>
+                    {{-- Simpan Draft — bisa dicicil, TIDAK mengunci. Terkunci → disembunyikan (pola modul dokumen). --}}
+                    @unless ($isFormLocked)
+                        <x-primary-button type="button"
+                            x-on:click="window.dispatchEvent(new Event('ringkasan-pulang-ri.flush')); $nextTick(() => $wire.save())"
+                            wire:loading.attr="disabled" wire:target="save,cetakPdf"
+                            class="gap-2 min-w-[160px] justify-center">
+                            <span wire:loading.remove wire:target="save" class="flex items-center gap-1.5">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 21v-8H7v8M7 3v5h8M5 3h11l4 4v12a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z" />
+                                </svg>
+                                Simpan Draft
+                            </span>
+                            <span wire:loading wire:target="save"><x-loading /> Menyimpan...</span>
+                        </x-primary-button>
+                    @endunless
                 </div>
             </div>
         </div>
