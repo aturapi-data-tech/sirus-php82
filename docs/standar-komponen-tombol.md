@@ -458,11 +458,16 @@ pelayanan, penunjang, dsb.). Tinggi selaras `x-primary-button` (`py-2.5 text-sm`
 
 {{-- method reset custom --}}
 <x-toolbar-refresh-reset reset-action="resetSemua" />
+
+{{-- data disimpan di properti (hasil API), harus ditarik ulang — bukan cuma render --}}
+<x-toolbar-refresh-reset :label="null" refresh-action="muatPermintaan" />
 ```
 
 Perilaku:
 - **Refresh** (biru, ikon reload berputar saat loading) = `$refresh` Livewire —
-  muat ulang data **tanpa mengubah parameter filter**.
+  muat ulang data **tanpa mengubah parameter filter**. `$refresh` hanya me-render ulang:
+  cukup untuk list `#[Computed]`, TIDAK untuk data yang disimpan di properti (hasil API,
+  mis. kotak masuk Rujukan Masuk) — di situ isi `refresh-action` dengan method penarik datanya.
 - **Reset** (abu, ikon panah balik) = panggil `resetFilters` (atau `reset-action`)
   di komponen pemakai — kembalikan semua filter ke kondisi awal.
 

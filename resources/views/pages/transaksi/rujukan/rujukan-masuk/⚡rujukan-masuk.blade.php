@@ -51,6 +51,15 @@ new class extends Component {
     public string $pesanGangguan = '';
     public bool $sudahPernahMuat = false;
 
+    /**
+     * Task ID yang ditarik lewat modal "Cek Task ID" karena tidak ada di kotak masuk.
+     * Diingat supaya tidak hilang dari daftar saat kotak masuk dimuat ulang
+     * (mis. sesudah dijawab) — tiap id = 1 panggilan API, dibatasi MAKS_TASK_DICARI.
+     */
+    public array $taskIdDicariList = [];
+
+    private const MAKS_TASK_DICARI = 5;
+
     public function mount(): void
     {
         $this->muatPermintaan();
@@ -75,18 +84,73 @@ new class extends Component {
         $baris = $this->rujukanParsePermintaanMasuk($hasil['body']);
         $this->permintaanTersensor = $this->rujukanPermintaanTersensor($hasil['body']);
 
-        // Nama RS perujuk tidak ikut di Task; ambil sekali per organisasi (di-cache 1 hari).
+        // Task hasil "Cari Task ID" yang tidak ikut di kotak masuk ditarik ulang satu per
+        // satu, supaya statusnya ikut segar dan barisnya tidak lenyap sesudah dijawab.
+        $taskIdTermuat = array_column($baris, 'taskId');
+        foreach (array_slice($this->taskIdDicariList, 0, self::MAKS_TASK_DICARI) as $taskId) {
+            if (!is_string($taskId) || in_array($taskId, $taskIdTermuat, true)) {
+                continue;
+            }
+            $hasilCari = $this->rujukanTaskMasukById($taskId);
+            if ($hasilCari['code'] >= 200 && $hasilCari['code'] < 300) {
+                $baris = array_merge($baris, $this->rujukanParsePermintaanMasuk($hasilCari['body']));
+                $this->permintaanTersensor += $this->rujukanPermintaanTersensor($hasilCari['body']);
+            }
+        }
+
+        usort($baris, fn($barisPertama, $barisKedua) => strcmp($barisKedua['waktu'], $barisPertama['waktu']));
+
+        $this->daftarPermintaan = $this->lengkapiNamaPerujuk($baris);
+        $this->waktuMuat = Carbon::now(env('APP_TIMEZONE'))->format('d/m/Y H:i:s');
+    }
+
+    /** Nama RS perujuk tidak ikut di Task; ambil sekali per organisasi (di-cache 1 hari). */
+    private function lengkapiNamaPerujuk(array $daftarBaris): array
+    {
         $namaOrganisasi = [];
-        foreach ($baris as $index => $satu) {
+        foreach ($daftarBaris as $index => $satu) {
             $orgId = $satu['perujukOrgId'];
             if ($orgId !== '' && !array_key_exists($orgId, $namaOrganisasi)) {
                 $namaOrganisasi[$orgId] = $this->rujukanNamaOrganisasi($orgId);
             }
-            $baris[$index]['perujukNama'] = $namaOrganisasi[$orgId] ?? '';
+            $daftarBaris[$index]['perujukNama'] = $namaOrganisasi[$orgId] ?? '';
         }
 
-        $this->daftarPermintaan = $baris;
-        $this->waktuMuat = Carbon::now(env('APP_TIMEZONE'))->format('d/m/Y H:i:s');
+        return $daftarBaris;
+    }
+
+    /** Kata kunci berbentuk Task ID (UUID) — penentu tombol "Cek Task ID ini" di tabel kosong. */
+    public function kataKunciTaskId(): string
+    {
+        $kataKunci = strtolower(trim($this->searchKeyword));
+
+        return preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/', $kataKunci) ? $kataKunci : '';
+    }
+
+    /**
+     * Hasil modal "Cek Task ID" yang dipilih petugas: barisnya masuk tabel (atau
+     * menimpa baris lama dengan status terbaru) dan Task ID-nya diingat.
+     */
+    #[On('rujukan-masuk.task-dicek')]
+    public function ingatTaskDicek(array $permintaan): void
+    {
+        $taskId = (string) ($permintaan['taskId'] ?? '');
+        if ($taskId === '') {
+            return;
+        }
+
+        $this->taskIdDicariList = array_slice(array_values(array_unique([$taskId, ...$this->taskIdDicariList])), 0, self::MAKS_TASK_DICARI);
+
+        $daftarBaris = array_values(array_filter($this->daftarPermintaan, fn(array $baris) => $baris['taskId'] !== $taskId));
+        $daftarBaris[] = $permintaan;
+        usort($daftarBaris, fn($barisPertama, $barisKedua) => strcmp($barisKedua['waktu'], $barisPertama['waktu']));
+        $this->daftarPermintaan = $daftarBaris;
+    }
+
+    /** Reset = filter & pencarian kembali ke awal; data kotak masuk tidak ditarik ulang. */
+    public function resetFilters(): void
+    {
+        $this->reset(['searchKeyword', 'filterJalur', 'filterStatus']);
     }
 
     /** Setelah petugas menjawab di modal, kotak masuk disegarkan. */
@@ -130,7 +194,7 @@ new class extends Component {
                     return true;
                 }
 
-                $gabungan = strtolower(implode(' ', [$baris['pasienNama'], $baris['pasienId'], $baris['noPermintaan'], $baris['perujukNama'] ?? '', $baris['perujukOrgId'], $baris['layananNama']]));
+                $gabungan = strtolower(implode(' ', [$baris['taskId'], $baris['pasienNama'], $baris['pasienId'], $baris['noPermintaan'], $baris['perujukNama'] ?? '', $baris['perujukOrgId'], $baris['layananNama']]));
 
                 return str_contains($gabungan, $kataKunci);
             }),
@@ -224,7 +288,7 @@ new class extends Component {
                                 </svg>
                             </div>
                             <x-text-input wire:model.live.debounce.300ms="searchKeyword" class="block w-full pl-10"
-                                placeholder="Cari nama pasien / RS perujuk / nomor permintaan..." />
+                                placeholder="Cari nama pasien / RS perujuk / nomor permintaan / Task ID..." />
                         </div>
                     </div>
 
@@ -253,16 +317,18 @@ new class extends Component {
                                 label="Muat ulang tiap 60 detik" />
                         </div>
 
-                        <x-outline-button type="button" wire:click="muatPermintaan" wire:loading.attr="disabled"
-                            wire:target="muatPermintaan" class="whitespace-nowrap">
+                        <x-primary-button type="button"
+                            wire:click="$dispatch('rujukan-masuk-cek-task.open', { taskId: '' })"
+                            class="whitespace-nowrap" title="Tarik satu permintaan langsung dari SATUSEHAT berdasarkan Task ID">
                             <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"
                                 stroke-width="2">
                                 <path stroke-linecap="round" stroke-linejoin="round"
-                                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                             </svg>
-                            <span wire:loading.remove wire:target="muatPermintaan">Muat Ulang</span>
-                            <span wire:loading wire:target="muatPermintaan">Memuat...</span>
-                        </x-outline-button>
+                            Cek Task ID
+                        </x-primary-button>
+
+                        <x-toolbar-refresh-reset :label="null" refresh-action="muatPermintaan" />
                     </div>
 
                 </div>
@@ -371,6 +437,9 @@ new class extends Component {
                                         <div class="text-xs text-muted-soft">No. Permintaan:
                                             {{ $baris['noPermintaan'] !== '' ? $baris['noPermintaan'] : '-' }}
                                         </div>
+                                        <div class="font-mono text-xs break-all text-muted-soft">Task ID:
+                                            {{ $baris['taskId'] !== '' ? $baris['taskId'] : '-' }}
+                                        </div>
                                     </td>
 
                                     <td class="px-6 py-4">
@@ -425,10 +494,11 @@ new class extends Component {
                                     </td>
 
                                     <td class="px-6 py-4 text-center rounded-r-2xl">
-                                        <x-outline-button type="button"
-                                            wire:click="bukaDetail({{ $indeks }})">
-                                            {{ $this->menunggu($baris) ? 'Tinjau & Jawab' : 'Lihat Detail' }}
-                                        </x-outline-button>
+                                        @if ($this->menunggu($baris))
+                                            <x-lihat-button wire:click="bukaDetail({{ $indeks }})" label="Tinjau & Jawab" />
+                                        @else
+                                            <x-lihat-button wire:click="bukaDetail({{ $indeks }})" title="Lihat Detail" />
+                                        @endif
                                     </td>
                                 </tr>
                             @empty
@@ -438,6 +508,15 @@ new class extends Component {
                                             Kotak masuk belum dimuat.
                                         @elseif ($pesanGangguan !== '')
                                             Kotak masuk tidak dapat dibaca — lihat keterangan gangguan di atas.
+                                        @elseif ($this->kataKunciTaskId() !== '')
+                                            <div>Task ID ini tidak ada di kotak masuk yang termuat.</div>
+                                            <x-outline-button type="button" class="mt-3"
+                                                wire:click="$dispatch('rujukan-masuk-cek-task.open', { taskId: '{{ $this->kataKunciTaskId() }}' })">
+                                                Cek Task ID ini di SATUSEHAT
+                                            </x-outline-button>
+                                            @if ($filterStatus !== '' || $filterJalur !== '')
+                                                <div class="mt-2 text-xs text-muted-soft">Filter Layanan/Status aktif — hasil yang tidak cocok filter tetap tersembunyi.</div>
+                                            @endif
                                         @elseif (count($daftarPermintaan) > 0)
                                             Tidak ada permintaan yang cocok dengan filter.
                                         @else
@@ -455,4 +534,5 @@ new class extends Component {
     </div>
 
     <livewire:pages::transaksi.rujukan.rujukan-masuk.rujukan-masuk-actions />
+    <livewire:pages::transaksi.rujukan.rujukan-masuk.rujukan-masuk-cek-task />
 </div>

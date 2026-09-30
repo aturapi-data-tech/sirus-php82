@@ -1019,6 +1019,22 @@ trait SatuSehatRujukanTrait
     }
 
     /**
+     * Satu permintaan masuk berdasarkan Task ID — untuk Task yang tidak ikut
+     * termuat di kotak masuk. Tetap dikunci `owner` = RS kita + code approval,
+     * jadi Task milik RS lain / jenis lain tidak bisa ditarik lewat layar ini.
+     * Bentuk body sama dengan rujukanTaskMasuk() → parser yang sama dipakai.
+     */
+    protected function rujukanTaskMasukById(string $taskId): array
+    {
+        return $this->rujukanRequest(
+            'GET',
+            'Task?_id=' . urlencode($taskId)
+                . '&owner=' . urlencode($this->rujukanOrgId())
+                . '&code=referral-approval-request&_include=Task:based-on'
+        );
+    }
+
+    /**
      * Sisi PERUJUK — baca keputusan accepted/rejected dari faskes tujuan.
      * Parameter `encounter` sah sebagai filter (konfirmasi tim SATUSEHAT 14/08/26),
      * jadi tak perlu menyapu seluruh Task RS untuk memantau satu kunjungan.
