@@ -638,7 +638,7 @@ new class extends Component {
         }
 
         try {
-            DB::transaction(function () use ($stempel) {
+            DB::transaction(function () use ($stempel, $perwakilan) {
                 $this->lockRIRow($this->riHdrNo);
                 $dataRI = $this->findDataRI($this->riHdrNo);
                 if (empty($dataRI)) {
