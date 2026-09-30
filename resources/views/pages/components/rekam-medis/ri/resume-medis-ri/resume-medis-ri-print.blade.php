@@ -64,7 +64,6 @@
     $sudahTtdDpjp = !empty($stempelDpjp['nama']);
     if ($sudahTtdDpjp) {
         $dpjpName = (string) $stempelDpjp['nama'];
-        $waktuTtdDpjp = (string) ($stempelDpjp['waktu'] ?? '');
         $ttdDpjp = !empty($stempelDpjp['kode'])
             ? \App\Models\User::where('myuser_code', $stempelDpjp['kode'])->value('myuser_ttd_image')
             : null;
@@ -73,7 +72,6 @@
             fn($r) => strcasecmp((string) data_get($r, 'levelDokter', ''), 'Utama') === 0,
         );
         $dpjpName = (string) data_get($dokterUtamaRow, 'drName', '');
-        $waktuTtdDpjp = '';
         $ttdDpjp = null;
     }
 @endphp
@@ -228,11 +226,9 @@
                         {{ $dpjpName ?: '-' }}
                     </span>
                 </div>
-                @if ($sudahTtdDpjp)
-                    <div class="text-center text-gray-500" style="font-size:8px">TTD {{ $waktuTtdDpjp }}</div>
-                @else
+                @unless ($sudahTtdDpjp)
                     <div class="text-center text-gray-500" style="font-size:8px">(belum ditandatangani)</div>
-                @endif
+                @endunless
             </td>
         </tr>
     </table>
