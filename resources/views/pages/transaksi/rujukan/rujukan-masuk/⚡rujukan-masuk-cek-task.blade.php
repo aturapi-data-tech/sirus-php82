@@ -219,29 +219,128 @@ new class extends Component {
         {{-- BODY --}}
         <div class="flex flex-col flex-1 gap-4 px-6 py-5 overflow-y-auto bg-surface-soft/70 dark:bg-gray-950/20">
 
-        {{-- INPUT --}}
-        <div>
-        <form wire:submit="cek" class="flex flex-wrap items-end gap-3">
-            <div class="flex-1 min-w-0">
-                <x-input-label for="taskIdInput" value="Task ID" />
-                <x-text-input id="taskIdInput" wire:model="taskIdInput" class="block w-full mt-1 font-mono"
-                    placeholder="mis. 7a974c5c-1234-4abc-9def-0123456789ab" autocomplete="off" />
-            </div>
-            <x-primary-button type="submit" wire:loading.attr="disabled" wire:target="cek" class="gap-1">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"
-                    wire:loading.remove wire:target="cek">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        {{-- PANDUAN — gaya biru-info standar, default TERTUTUP (pola sama dengan
+             Gaji Dokter / Master Dokter › Penggajian).
+             Lihat memory project_panduan_panel_blue_info_standard. --}}
+        <div x-data="{ buka: false }"
+            class="overflow-hidden border rounded-2xl bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-700">
+            <button type="button" x-on:click="buka = !buka"
+                class="flex items-center justify-between w-full px-4 py-2.5 text-sm font-semibold text-blue-900 transition-colors hover:bg-blue-100 dark:text-blue-200 dark:hover:bg-blue-900/30">
+                <span class="flex items-center min-w-0 gap-2">
+                    <svg class="w-4 h-4 shrink-0 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span class="truncate">Panduan: cara mengecek permintaan rujukan lewat Task ID</span>
+                </span>
+                <svg class="w-4 h-4 ml-2 text-blue-600 transition-transform shrink-0" x-bind:class="buka && 'rotate-180'"
+                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                 </svg>
-                <span wire:loading.remove wire:target="cek">Cek</span>
-                <span wire:loading wire:target="cek">Mengecek...</span>
-            </x-primary-button>
-        </form>
-        <x-input-error :messages="$errors->get('taskIdInput')" class="mt-1" />
+            </button>
+
+            <div x-show="buka" x-cloak class="px-4 pb-4 space-y-4 text-sm text-blue-900 dark:text-blue-100">
+
+                <div>
+                    <div class="font-semibold">Kapan dipakai</div>
+                    <p class="mt-1">RS perujuk mengabarkan sudah mengirim permintaan rujukan, tetapi permintaannya
+                        tidak terlihat di kotak masuk &mdash; atau Anda ingin memastikan status terbarunya langsung
+                        dari SATUSEHAT.</p>
+                </div>
+
+                <div class="pt-3 border-t border-blue-200 dark:border-blue-800">
+                    <div class="font-semibold">Langkah</div>
+                    <ol class="mt-1 ml-4 space-y-1 list-decimal">
+                        <li><span class="font-semibold">Dapatkan Task ID</span> &mdash; kode 36 karakter (mis.
+                            <span class="font-mono">7a974c5c-1234-4abc-9def-0123456789ab</span>) dari petugas RS perujuk.
+                            Boleh juga dalam bentuk <span class="font-mono">Task/&hellip;</span>.</li>
+                        <li><span class="font-semibold">Tempel</span> (Ctrl+V) ke kotak di bawah, lalu klik
+                            <span class="font-semibold">Cek Status di SATUSEHAT</span> (atau tekan Enter).</li>
+                        <li><span class="font-semibold">Bila ditemukan</span>, klik
+                            <span class="font-semibold">Tinjau &amp; Jawab</span> untuk menyetujui/menolak, atau
+                            <span class="font-semibold">Tampilkan di Daftar</span> supaya permintaan itu ikut muncul di
+                            tabel kotak masuk.</li>
+                    </ol>
+                </div>
+
+                <div class="pt-3 border-t border-blue-200 dark:border-blue-800">
+                    <div class="font-semibold">Perlu diketahui</div>
+                    <ul class="mt-1 ml-4 space-y-1 list-disc">
+                        <li>Hanya permintaan yang ditujukan ke RS ini yang bisa dicek.</li>
+                        <li>Tiap cek = 1 panggilan ke SATUSEHAT (kuota terbatas), karena itu tidak ada pengecekan
+                            otomatis saat mengetik.</li>
+                        <li>Permintaan yang disembunyikan SATUSEHAT karena aturan consent/privasi tidak bisa dibaca
+                            maupun dijawab dari sini &mdash; hubungi RS perujuk.</li>
+                    </ul>
+                </div>
+
+            </div>
+        </div>
+
+        {{-- INPUT — validasi format langsung di peramban; server tetap memvalidasi ulang di cek() --}}
+        <div class="p-4 border bg-canvas border-hairline rounded-xl dark:border-gray-700 dark:bg-gray-900"
+            x-data="{
+                get bersih() { return String($wire.taskIdInput ?? '').trim().toLowerCase().replace(/^task\//, ''); },
+                get valid() { return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(this.bersih); },
+            }"
+            x-init="$nextTick(() => $refs.inputTaskId.focus())">
+            <form wire:submit="cek">
+                <x-input-label for="taskIdInput" value="Task ID Permintaan Rujukan" />
+                <p class="mt-0.5 text-xs text-muted dark:text-gray-400">
+                    Kode tugas rujukan dari SATUSEHAT — 36 karakter (angka, huruf a–f, dan tanda hubung), didapat dari RS perujuk.
+                </p>
+
+                <div class="flex flex-wrap items-start gap-3 mt-2">
+                    <div class="relative flex-1 min-w-0">
+                        <x-text-input id="taskIdInput" x-ref="inputTaskId" wire:model="taskIdInput"
+                            class="block w-full pr-16 font-mono" autocomplete="off" spellcheck="false"
+                            placeholder="Tempel Task ID di sini, mis. 7a974c5c-1234-4abc-9def-0123456789ab" />
+                        <div class="absolute inset-y-0 right-0 flex items-center gap-1 pr-2">
+                            <svg x-show="valid" x-cloak class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24" stroke-width="2.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
+                            <button type="button" x-show="bersih !== ''" x-cloak title="Kosongkan"
+                                x-on:click="$wire.taskIdInput = ''; $refs.inputTaskId.focus()"
+                                class="p-1 rounded text-muted hover:text-ink hover:bg-surface-soft dark:hover:bg-gray-800">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <x-primary-button type="submit" x-bind:disabled="!valid" wire:loading.attr="disabled"
+                        wire:target="cek" class="gap-1 whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Ambil status permintaan ini langsung dari SATUSEHAT">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"
+                            wire:loading.remove wire:target="cek">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                        <span wire:loading.remove wire:target="cek">Cek Status di SATUSEHAT</span>
+                        <span wire:loading wire:target="cek">Mengecek ke SATUSEHAT…</span>
+                    </x-primary-button>
+                </div>
+
+                {{-- Umpan balik format, langsung saat mengetik --}}
+                <p class="mt-1.5 text-xs" x-cloak>
+                    <span x-show="bersih === ''" class="text-muted-soft">Belum diisi.</span>
+                    <span x-show="bersih !== '' && !valid" class="text-amber-700 dark:text-amber-400">
+                        Format belum sesuai — <span x-text="bersih.length"></span>/36 karakter. Pastikan Task ID tersalin utuh.
+                    </span>
+                    <span x-show="valid" class="text-emerald-700 dark:text-emerald-400">Format Task ID benar — siap dicek.</span>
+                </p>
+            </form>
+            <x-input-error :messages="$errors->get('taskIdInput')" class="mt-1" />
         </div>
 
         {{-- HASIL --}}
         <div class="space-y-3">
-            @if ($statusCek === 'gagal')
+            @if ($statusCek === '')
+                <div class="px-4 py-8 text-sm text-center border border-dashed rounded-xl text-muted border-hairline dark:border-gray-700 dark:text-gray-400">
+                    Hasil cek akan tampil di sini — pasien, RS perujuk, layanan, dan status permintaannya.
+                </div>
+            @elseif ($statusCek === 'gagal')
                 <div
                     class="px-4 py-3 text-sm border rounded-xl bg-error-tint border-red-200 text-error-deep dark:bg-red-900/20 dark:border-red-800 dark:text-red-200">
                     <div class="font-semibold">Gagal membaca SATUSEHAT</div>
