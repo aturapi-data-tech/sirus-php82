@@ -222,10 +222,9 @@ new class extends Component {
                                     </td>
 
                                     <td class="ds-c">
-                                        {{-- Rujukan Ranap pun didaftarkan lewat UGD: pasien rujukan
-                                             ranap umumnya masuk lewat IGD dulu. Yang langsung ke
-                                             admisi ranap tetap didaftarkan di layar RI, dan janjinya
-                                             akan menunggu di sini sampai jalur RI dibangun. --}}
+                                        {{-- Model satu pintu: rujukan Ranap pun didaftarkan lewat UGD
+                                             (screening dulu), lalu transfer inap menyalin data
+                                             rujukannya ke kunjungan RI. --}}
                                         <x-primary-button type="button" wire:click="daftarkanKeUgd({{ $indeks }})"
                                             class="whitespace-nowrap">
                                             Daftarkan ke UGD

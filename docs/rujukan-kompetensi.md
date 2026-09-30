@@ -199,9 +199,10 @@ daftar tunggu padahal ia belum terdaftar di mana pun.
   nilai lain, atau IHS yang sudah dipegang No. RM lain, dilaporkan sebagai bentrok.
 - **Cara Masuk** diisi dari master (`rsmst_entryugds.rujukan_status = 'Y'`), bukan angka
   yang dipatok — id-nya bisa berbeda antar environment.
-- Rujukan **Ranap pun didaftarkan lewat UGD** untuk sekarang (pasien rujukan ranap umumnya
-  masuk lewat IGD dulu). Jalur admisi RI langsung belum dibangun; janjinya menunggu di
-  daftar yang sama.
+- **Model satu pintu: rujukan IGD maupun Ranap diterima lewat UGD.** Screening dilakukan
+  di UGD, baru transfer inap. Tidak ada jalur admisi RI langsung — memang disengaja.
+  Saat transfer UGD → RI (`transfer-ugd-ke-ri-actions`), node `rujukanMasuk` kunjungan UGD
+  disalin ke kunjungan RI (plus `asalUgdRjNo`), jadi Encounter RI ikut mengisi `basedOn`.
 - Kegagalan menandai janji / menulis IHS **tidak pernah menggagalkan pendaftaran** yang
   sudah tersimpan — dilaporkan lewat toast terpisah, sama seperti pencatatan janji tidak
   boleh menggagalkan persetujuan yang sudah sampai ke SATUSEHAT.
@@ -210,8 +211,8 @@ daftar tunggu padahal ia belum terdaftar di mana pun.
 
 Rujukan resmi (ServiceRequest) **belum ada saat kita menyetujui** — perujuk menerbitkannya
 sesudah melihat jawaban kita, kadang setelah pasiennya terdaftar. Karena itu nomornya
-dicari **tepat sebelum Encounter dibuat** (`⚡kirim-encounter` UGD →
-`serviceRequestRujukan()`): saat paling akhir yang masih berguna, sekaligus peluang
+dicari **tepat sebelum Encounter dibuat** (`⚡kirim-encounter` UGD dan RI →
+`serviceRequestRujukan()`; RI memakai hasil warisan UGD, dan baru mencari sendiri bila masih kosong): saat paling akhir yang masih berguna, sekaligus peluang
 terbesar rujukannya sudah terbit. Kunjungan tanpa node `rujukanMasuk` tidak memicu satu pun
 panggilan API.
 

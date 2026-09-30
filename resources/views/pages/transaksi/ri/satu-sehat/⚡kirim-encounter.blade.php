@@ -15,10 +15,12 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Http\Traits\SATUSEHAT\EncounterTrait;
+use App\Http\Traits\SATUSEHAT\SatuSehatRujukanTrait;
+use App\Http\Traits\Txn\RujukanMasuk\RujukanMasukTrait;
 use App\Support\Terminologi\DischargeDisposition;
 
 new class extends Component {
-    use EmrRITrait, EncounterTrait;
+    use EmrRITrait, EncounterTrait, SatuSehatRujukanTrait, RujukanMasukTrait;
 
     public ?string $riHdrNo = null;
 
@@ -183,7 +185,7 @@ new class extends Component {
                     'locationId'       => $locationId,
                     'class_code'       => 'IMP',
                     'startDate'        => $entryDate->toIso8601String(),
-                    'serviceRequestId' => $dataRI['rujukanMasuk']['serviceRequestId'] ?? '',
+                    'serviceRequestId' => $this->serviceRequestRujukan($riHdrNo, $dataRI),
                 ]);
                 $satuSehat['encounterId'] = $respons['id'] ?? null;
             }
@@ -300,6 +302,65 @@ new class extends Component {
             throw new \RuntimeException('Data Rawat Inap tidak ditemukan.');
         }
         return [$dataRI, $dataRI['satusehat'] ?? []];
+    }
+
+    /**
+     * ServiceRequest rujukan masuk untuk Encounter.basedOn — cermin versi UGD.
+     *
+     * Rujukan IGD maupun Ranap diterima lewat UGD, lalu transfer inap menyalin node
+     * `rujukanMasuk` ke kunjungan RI (lihat transfer-ugd-ke-ri). Biasanya
+     * serviceRequestId-nya sudah ikut karena Encounter UGD yang memungutnya. Bila
+     * masih kosong — perujuk baru menerbitkan rujukan resmi sesudah Encounter UGD
+     * terkirim — dicari sekali lagi di sini.
+     *
+     * Kunjungan RI tanpa node `rujukanMasuk` tidak memicu satu pun panggilan API, dan
+     * rujukan yang belum terbit tidak menahan Encounter (alasan sama dengan UGD).
+     */
+    private function serviceRequestRujukan(string $riHdrNo, array $dataRI): string
+    {
+        $rujukanMasuk = (array) ($dataRI['rujukanMasuk'] ?? []);
+
+        if ($rujukanMasuk === []) {
+            return '';
+        }
+
+        $tersimpan = trim((string) ($rujukanMasuk['serviceRequestId'] ?? ''));
+
+        if ($tersimpan !== '') {
+            return $tersimpan;
+        }
+
+        $hasil = $this->rujukanCariServiceRequestMasuk([
+            'rencanaId' => (string) ($rujukanMasuk['rencanaId'] ?? ''),
+            'taskId' => (string) ($rujukanMasuk['taskId'] ?? ''),
+            'pasienIhs' => (string) ($rujukanMasuk['pasienIhs'] ?? ''),
+        ]);
+
+        if (! $hasil['ditemukan']) {
+            $this->dispatch('toast', type: 'warning', message: 'Rujukan resmi belum bisa dipungut: ' . $hasil['pesan'] . ' Encounter dikirim TANPA basedOn — hubungi RS perujuk bila rujukannya memang belum diterbitkan.', duration: 10000);
+
+            return '';
+        }
+
+        try {
+            DB::transaction(function () use ($riHdrNo, $hasil): void {
+                $this->lockRIRow($riHdrNo);
+                $data = $this->findDataRI($riHdrNo);
+                $data['rujukanMasuk']['serviceRequestId'] = $hasil['serviceRequestId'];
+                $data['rujukanMasuk']['noRujukan'] = $hasil['noRujukan'];
+                $this->updateJsonRI((int) $riHdrNo, $data);
+            });
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'warning', message: 'Rujukan resmi ditemukan tapi gagal dicatat di kunjungan: ' . $e->getMessage());
+        }
+
+        $nomorJanji = (int) ($rujukanMasuk['rujukanMasukNo'] ?? 0);
+
+        if ($nomorJanji > 0) {
+            $this->simpanRujukanResmiJanji($nomorJanji, $hasil['serviceRequestId'], $hasil['noRujukan']);
+        }
+
+        return $hasil['serviceRequestId'];
     }
 
     private function saveResult(string $riHdrNo, array $satuSehat): void

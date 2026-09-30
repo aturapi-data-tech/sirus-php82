@@ -474,6 +474,17 @@ new class extends Component {
                 // Daftar RI selalu mode 'edit' yang menggabung per-field, jadi entri ini
                 // tidak akan tertimpa simpan berikutnya.
                 $this->appendAdminLogRI($riHdrNo, 'Pasien pindahan dari UGD #' . $this->rjNo . ' (total biaya UGD Rp ' . number_format($totalBiayaUGD, 0, ',', '.') . ')');
+
+                // Rujukan masuk (IGD maupun Ranap) selalu diterima lewat UGD — screening
+                // dulu, baru transfer inap. Kunjungan RI mewarisi node rujukanMasuk-nya,
+                // termasuk serviceRequestId bila Encounter UGD sudah menemukannya, supaya
+                // Encounter RI bisa mengisi basedOn tanpa menunggu janji baru.
+                $rujukanMasuk = (array) ($this->findDataUGD($this->rjNo)['rujukanMasuk'] ?? []);
+                if ($rujukanMasuk !== []) {
+                    $dataRI = $this->findDataRI($riHdrNo);
+                    $dataRI['rujukanMasuk'] = $rujukanMasuk + ['asalUgdRjNo' => (int) $this->rjNo];
+                    $this->updateJsonRI($riHdrNo, $dataRI);
+                }
             });
 
             // Tutup modal + refresh: kasir (lock), sibling admin, & list pelayanan
