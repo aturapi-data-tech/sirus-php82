@@ -2,7 +2,6 @@
 
 namespace App\Http\Traits\Manajemen\Rs;
 
-use App\Support\DpjpUtamaRI;
 use App\Support\OracleLob;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -163,9 +162,9 @@ trait HitungDiagnosaTrait
         $daftar = [];
         foreach ($kunjunganList as $nomor => $kunjungan) {
             $detail = $detailList[(string) $nomor] ?? null;
-            $leveling = $jalur === 'RI' && $detail !== null
+            $levelingDokterList = $jalur === 'RI' && $detail !== null
                 ? $this->levelingDokterRI($detail->isi_json ?? null, $konfigurasi, (string) $nomor)
-                : ['utama' => '', 'rawatGabung' => []];
+                : [];
             $kodeList = [];
             foreach ($kunjungan['kode'] as $kode => $deskripsi) {
                 $kodeList[] = ['kode' => (string) $kode, 'desc' => $deskripsi, 'primer' => (bool) ($kunjungan['kodePrimer'][$kode] ?? false)];
@@ -181,10 +180,9 @@ trait HitungDiagnosaTrait
                 'tanggalUrut'   => (string) ($detail->tanggal_urut ?? ''),
                 'tanggalTampil' => (string) ($detail->tanggal_tampil ?? ''),
                 'masukTampil'   => (string) ($detail->masuk_tampil ?? ''),
-                // RJ/UGD: dokter pemeriksa (header). RI: dokter admisi, cadangan bila leveling kosong.
+                // RJ/UGD: dokter pemeriksa. RI: dokter penerima (admisi) — DPJP ada di levelingDokterList.
                 'dokter'        => (string) ($detail->dr_name ?? ''),
-                'dpjpUtama'     => $leveling['utama'],
-                'rawatGabung'   => $leveling['rawatGabung'],
+                'levelingDokterList' => $levelingDokterList,
                 'poli'          => (string) ($detail->poli_desc ?? ''),
                 'penjamin'      => (string) ($detail->klaim_desc ?? ''),
                 'sep'           => (string) ($detail->vno_sep ?? ''),
@@ -198,10 +196,10 @@ trait HitungDiagnosaTrait
     }
 
     /**
-     * Leveling Dokter RI (`pengkajianAwalPasienRawatInap.levelingDokter[]`):
-     * DPJP Utama lewat App\Support\DpjpUtamaRI, sisanya (Rawat Gabung) apa adanya.
+     * Leveling Dokter RI (`pengkajianAwalPasienRawatInap.levelingDokter[]`) apa adanya,
+     * urut sesuai isian — ditampilkan seperti Daftar RI: nama + (Utama/Rawat Gabung).
      *
-     * @return array{utama: string, rawatGabung: string[]}
+     * @return array<int, array{drName: string, levelDokter: string}>
      */
     private function levelingDokterRI(mixed $isiJson, array $konfigurasi, string $nomor): array
     {
@@ -209,23 +207,19 @@ trait HitungDiagnosaTrait
             OracleLob::read($isiJson, $konfigurasi['tabelHeader'], $konfigurasi['kunci'], $nomor, $konfigurasi['json']),
             true,
         );
-        if (!is_array($dataDaftarRi)) {
-            return ['utama' => '', 'rawatGabung' => []];
-        }
 
-        $utama = DpjpUtamaRI::nama($dataDaftarRi);
-        $rawatGabung = [];
-        foreach ($dataDaftarRi['pengkajianAwalPasienRawatInap']['levelingDokter'] ?? [] as $levelingRow) {
-            if (!is_array($levelingRow) || strcasecmp((string) ($levelingRow['levelDokter'] ?? ''), 'Utama') === 0) {
+        $levelingDokterList = [];
+        foreach ($dataDaftarRi['pengkajianAwalPasienRawatInap']['levelingDokter'] ?? [] as $dokterLeveling) {
+            if (!is_array($dokterLeveling) || trim((string) ($dokterLeveling['drName'] ?? '')) === '') {
                 continue;
             }
-            $nama = trim((string) ($levelingRow['drName'] ?? ''));
-            if ($nama !== '' && $nama !== $utama && !in_array($nama, $rawatGabung, true)) {
-                $rawatGabung[] = $nama;
-            }
+            $levelingDokterList[] = [
+                'drName'      => trim((string) $dokterLeveling['drName']),
+                'levelDokter' => (string) ($dokterLeveling['levelDokter'] ?? ''),
+            ];
         }
 
-        return ['utama' => $utama, 'rawatGabung' => $rawatGabung];
+        return $levelingDokterList;
     }
 
     /** Header yang aktif dalam periode — dipakai kedua jenis sumber. */

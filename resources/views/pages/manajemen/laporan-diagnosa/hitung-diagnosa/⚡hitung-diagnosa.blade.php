@@ -20,11 +20,22 @@ new class extends Component {
     public string $filterBulan = ''; // format m/Y — dipakai mode bulanan
     public string $filterTahun = ''; // format Y — dipakai mode tahunan
 
+    /** Naik tiap Reset → wire:key LOV berubah → LOV di-mount ulang dalam keadaan kosong. */
+    public int $versiLovDiagnosa = 0;
+
     public function mount(): void
     {
         $hariIni = Carbon::now(config('app.timezone'));
         $this->filterBulan = $hariIni->format('m/Y');
         $this->filterTahun = $hariIni->format('Y');
+    }
+
+    /** Dipanggil tombol Reset <x-toolbar-refresh-reset>: semua isian kembali ke kondisi awal. */
+    public function resetFilters(): void
+    {
+        $this->reset(['diagnosaTerpilih', 'filterSumber', 'filterMode']);
+        $this->mount();
+        $this->versiLovDiagnosa++;
     }
 
     #[On('lov.selected.laporanDiagnosaHitung')]
@@ -162,7 +173,7 @@ new class extends Component {
                     <div class="w-full sm:flex-1">
                         <livewire:lov.diagnosa.lov-diagnosa label="Diagnosa (ICD-10)" target="laporanDiagnosaHitung"
                             :blockHeader="false" :blockIm="false" :blockNonPrimary="false"
-                            wire:key="lov-diagnosa-laporan-hitung" />
+                            wire:key="lov-diagnosa-laporan-hitung-{{ $versiLovDiagnosa }}" />
                     </div>
 
                     {{-- SUMBER DIAGNOSA — EMR (tabel dtl) atau versi klaim coder di Casemix --}}
@@ -232,6 +243,11 @@ new class extends Component {
                             @endif
                         </div>
                     @endif
+
+                    {{-- Tombol standar Refresh + Reset (komponen; tanpa label kolom) --}}
+                    <div class="flex items-center gap-2 ml-auto self-end">
+                        <x-toolbar-refresh-reset :label="null" />
+                    </div>
 
                 </div>
             </div>

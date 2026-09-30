@@ -194,18 +194,25 @@ new class extends Component {
                                         </td>
                                         <td class="px-6 py-4 space-y-1 text-sm align-top">
                                             @if ($jalurDaftar === 'RI')
-                                                {{-- DPJP dari Leveling Dokter (EMR RI → Pengkajian Awal) --}}
-                                                @if ($row['dpjpUtama'] !== '')
-                                                    <div class="font-medium text-ink dark:text-gray-100">{{ $row['dpjpUtama'] }}</div>
-                                                    <div class="text-xs text-muted-soft">DPJP Utama</div>
-                                                @else
-                                                    <div class="text-body dark:text-gray-300">{{ $row['dokter'] !== '' ? $row['dokter'] : '-' }}</div>
-                                                    <div class="text-xs text-amber-700 dark:text-amber-400">Leveling dokter belum diisi — dokter admisi</div>
+                                                {{-- DPJP dari Leveling Dokter — tampilan disalin dari Daftar RI --}}
+                                                @if (!empty($row['levelingDokterList']))
+                                                    <div class="space-y-0.5">
+                                                        <div class="text-xs text-muted-soft">DPJP:</div>
+                                                        @foreach ($row['levelingDokterList'] as $dokterLeveling)
+                                                            <div class="text-base text-body dark:text-gray-200">
+                                                                {{ $dokterLeveling['drName'] }}
+                                                                @if ($dokterLeveling['levelDokter'] !== '')
+                                                                    <span class="text-xs text-muted">
+                                                                        ({{ $dokterLeveling['levelDokter'] === 'RawatGabung' ? 'Rawat Gabung' : $dokterLeveling['levelDokter'] }})
+                                                                    </span>
+                                                                @endif
+                                                            </div>
+                                                        @endforeach
+                                                    </div>
                                                 @endif
-                                                @if (count($row['rawatGabung']) > 0)
-                                                    <div class="pt-1 text-body dark:text-gray-300">{{ implode(', ', $row['rawatGabung']) }}</div>
-                                                    <div class="text-xs text-muted-soft">Rawat Gabung</div>
-                                                @endif
+                                                <div class="text-xs italic text-muted dark:text-gray-400">
+                                                    Penerima: {{ $row['dokter'] !== '' ? $row['dokter'] : '-' }}
+                                                </div>
                                             @else
                                                 <div class="font-medium text-ink dark:text-gray-100">{{ $row['poli'] !== '' ? $row['poli'] : '-' }}</div>
                                                 <div class="text-body dark:text-gray-300">{{ $row['dokter'] !== '' ? $row['dokter'] : '-' }}</div>
