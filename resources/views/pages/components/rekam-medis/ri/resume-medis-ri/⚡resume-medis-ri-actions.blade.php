@@ -176,6 +176,13 @@ new class extends Component {
     /** Stempel TTD DPJP: ['nama', 'kode' (myuser_code), 'waktu' d/m/Y H:i:s]. Kosong = belum TTD. */
     public array $ttdDpjp = [];
 
+    /**
+     * Dokter yang BOLEH TTD = levelDokter 'Utama' di Leveling Dokter pasien
+     * (pengkajianAwalPasienRawatInap.levelingDokter[]): [['drId' => ..., 'drName' => ...], ...].
+     * Bisa lebih dari satu Utama. Dicocokkan ke akun login lewat users.myuser_code = drId.
+     */
+    public array $dpjpUtamaList = [];
+
     /* ═══════════════════════════════════════
      | OPEN — buka modal editor Resume Medis
      |
@@ -200,6 +207,7 @@ new class extends Component {
 
         // Kunci = TTD DPJP, bukan status pulang (doc block §3).
         $this->ttdDpjp = (array) data_get($dataRI, 'resumeMedisTtd', []);
+        $this->dpjpUtamaList = $this->dpjpUtamaDari($dataRI);
         $this->isFormLocked = !empty($this->ttdDpjp['nama']);
 
         // Load existing dari path `resumeMedis` (HTML string) di datadaftarri_json.
@@ -459,7 +467,7 @@ new class extends Component {
 
     public function closeEditor(): void
     {
-        $this->reset(['riHdrNo', 'resumeMedis', 'isFormLocked', 'ttdDpjp', 'ringkasanPulang', 'ringkasanPulangSavedBy', 'ringkasanPulangSavedAt']);
+        $this->reset(['riHdrNo', 'resumeMedis', 'isFormLocked', 'ttdDpjp', 'dpjpUtamaList', 'ringkasanPulang', 'ringkasanPulangSavedBy', 'ringkasanPulangSavedAt']);
         $this->dispatch('close-modal', name: 'resume-medis-ri');
     }
 
@@ -517,11 +525,65 @@ new class extends Component {
         $this->dispatch('toast', type: 'success', message: 'Draft resume medis tersimpan — belum ditandatangani.');
     }
 
+    /** DPJP Utama dari Leveling Dokter — sumber tunggal hak TTD resume. */
+    private function dpjpUtamaDari(array $dataRI): array
+    {
+        $dpjpUtamaList = [];
+        foreach ((array) data_get($dataRI, 'pengkajianAwalPasienRawatInap.levelingDokter', []) as $dokterLeveling) {
+            if (!is_array($dokterLeveling) || strcasecmp((string) ($dokterLeveling['levelDokter'] ?? ''), 'Utama') !== 0) {
+                continue;
+            }
+            $drId = trim((string) ($dokterLeveling['drId'] ?? ''));
+            if ($drId !== '') {
+                $dpjpUtamaList[] = ['drId' => $drId, 'drName' => trim((string) ($dokterLeveling['drName'] ?? $drId))];
+            }
+        }
+
+        return $dpjpUtamaList;
+    }
+
+    /** Akun login = salah satu DPJP Utama pasien ini? */
+    public function bolehTtdDpjp(?array $dpjpUtamaList = null): bool
+    {
+        $kodeSaya = trim((string) (auth()->user()->myuser_code ?? ''));
+
+        return $kodeSaya !== '' && in_array($kodeSaya, array_column($dpjpUtamaList ?? $this->dpjpUtamaList, 'drId'), true);
+    }
+
+    /**
+     * Perwakilan (manager ke atas, Gate dokumen.ttdPerwakilan): boleh TTD atas nama DPJP
+     * Utama bila dirinya BUKAN DPJP Utama pasien ini dan leveling Utama sudah terisi.
+     */
+    public function bolehTtdPerwakilan(): bool
+    {
+        return count($this->dpjpUtamaList) > 0 && !$this->bolehTtdDpjp() && Gate::allows('dokumen.ttdPerwakilan');
+    }
+
+    /** DPJP Utama yang diwakili = Utama PERTAMA di leveling (urutan isian). */
+    public function dpjpDiwakili(): array
+    {
+        return $this->dpjpUtamaList[0] ?? [];
+    }
+
+    /** Alasan tombol TTD nonaktif, '' bila boleh. */
+    public function alasanTidakBolehTtd(): string
+    {
+        if (count($this->dpjpUtamaList) === 0) {
+            return 'Leveling Dokter Utama belum diisi — isi dulu di EMR RI › Pengkajian Awal › Leveling Dokter.';
+        }
+        if (!$this->bolehTtdDpjp()) {
+            return 'TTD hanya oleh DPJP Utama pasien ini: ' . implode(', ', array_column($this->dpjpUtamaList, 'drName')) . '.';
+        }
+
+        return '';
+    }
+
     /* ═══════════════════════════════════════
      | TTD DPJP = SIMPAN + KUNCI
      |
      | Aksi terakhir (pola modul dokumen): isi editor saat ini ikut disimpan, lalu
-     | stempel dokter login ditulis ke `resumeMedisTtd`. Hanya role Dokter.
+     | stempel dokter login ditulis ke `resumeMedisTtd`. Hanya DPJP Utama di Leveling Dokter
+     | pasien (dicek ulang dari DB di dalam transaksi — leveling bisa berubah sejak modal dibuka).
     ═══════════════════════════════════════ */
     public function tandaTanganDpjp(): void
     {
@@ -533,8 +595,9 @@ new class extends Component {
             $this->dispatch('toast', type: 'error', message: 'Resume sudah ditandatangani.');
             return;
         }
-        if (!auth()->user()?->hasRole('Dokter')) {
-            $this->dispatch('toast', type: 'error', message: 'TTD Resume Medis hanya untuk dokter (DPJP).');
+        $perwakilan = $this->bolehTtdPerwakilan();
+        if ($this->alasanTidakBolehTtd() !== '' && !$perwakilan) {
+            $this->dispatch('toast', type: 'error', message: $this->alasanTidakBolehTtd());
             return;
         }
 
@@ -549,11 +612,30 @@ new class extends Component {
             ['resumeMedis.required' => 'Resume medis harus diisi.'],
         );
 
-        $stempel = [
-            'nama' => (string) (auth()->user()->myuser_name ?? ''),
-            'kode' => (string) (auth()->user()->myuser_code ?? ''),
-            'waktu' => Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s'),
-        ];
+        // Stempel SELALU atas nama dokter: DPJP Utama sendiri, atau — bila perwakilan — DPJP Utama
+        // pertama di leveling (nama + kode dokter → gambar TTD dokter itu yang tercetak).
+        // Yang benar-benar menekan tombol dicatat di `diwakilkanOleh` + log.
+        $user = auth()->user();
+        $waktu = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
+        if ($perwakilan) {
+            $dpjp = $this->dpjpDiwakili();
+            $stempel = [
+                'nama' => (string) $dpjp['drName'],
+                'kode' => (string) $dpjp['drId'],
+                'waktu' => $waktu,
+                'diwakilkanOleh' => [
+                    'nama' => (string) ($user->myuser_name ?? $user->name ?? ''),
+                    'kode' => (string) ($user->myuser_code ?? ''),
+                    'role' => $user->getRoleNames()->implode(', '),
+                ],
+            ];
+        } else {
+            $stempel = [
+                'nama' => (string) ($user->myuser_name ?? ''),
+                'kode' => (string) ($user->myuser_code ?? ''),
+                'waktu' => $waktu,
+            ];
+        }
 
         try {
             DB::transaction(function () use ($stempel) {
@@ -565,10 +647,23 @@ new class extends Component {
                 if (!empty(data_get($dataRI, 'resumeMedisTtd.nama'))) {
                     throw new \RuntimeException('Resume sudah ditandatangani ' . data_get($dataRI, 'resumeMedisTtd.nama') . '.');
                 }
+                // Cek ulang dari data terbaru: leveling bisa diubah sejak modal dibuka.
+                $this->dpjpUtamaList = $this->dpjpUtamaDari($dataRI);
+                if ($perwakilan) {
+                    // Perwakilan: DPJP yang diwakili harus MASIH Utama di leveling terbaru.
+                    if (!in_array($stempel['kode'], array_column($this->dpjpUtamaList, 'drId'), true)) {
+                        throw new \RuntimeException('Leveling Dokter berubah — buka ulang Resume Medis lalu TTD kembali.');
+                    }
+                } elseif (!$this->bolehTtdDpjp()) {
+                    throw new \RuntimeException($this->alasanTidakBolehTtd() ?: 'TTD hanya oleh DPJP Utama pasien ini.');
+                }
                 $dataRI['resumeMedis'] = $this->resumeMedis;
                 $dataRI['resumeMedisTtd'] = $stempel;
                 $this->updateJsonRI($this->riHdrNo, $dataRI);
-                $this->appendAdminLogRI((int) $this->riHdrNo, 'TTD DPJP & kunci Resume Medis — ' . $stempel['nama'], 'MR');
+                $this->appendAdminLogRI((int) $this->riHdrNo, 'TTD DPJP & kunci Resume Medis — ' . $stempel['nama']
+                    . (isset($stempel['diwakilkanOleh'])
+                        ? ' (DIWAKILKAN oleh ' . $stempel['diwakilkanOleh']['nama'] . ' [' . $stempel['diwakilkanOleh']['role'] . '])'
+                        : ''), 'MR');
             });
         } catch (\Throwable $e) {
             $this->dispatch('toast', type: 'error', message: 'Gagal TTD: ' . $e->getMessage());
@@ -577,7 +672,9 @@ new class extends Component {
 
         $this->ttdDpjp = $stempel;
         $this->isFormLocked = true;
-        $this->dispatch('toast', type: 'success', message: 'Resume medis ditandatangani DPJP dan terkunci.');
+        $this->dispatch('toast', type: 'success', message: isset($stempel['diwakilkanOleh'])
+            ? 'Resume medis ditandatangani atas nama ' . $stempel['nama'] . ' (perwakilan tercatat di log) dan terkunci.'
+            : 'Resume medis ditandatangani DPJP dan terkunci.');
     }
 
     /** Boleh buka kunci: penanda tangan sendiri, atau role pemegang Gate dokumen.bukaKunci. */
@@ -801,28 +898,49 @@ new class extends Component {
                             Untuk koreksi, <strong>Buka Kunci</strong> (kiri bawah) mencabut TTD DPJP; tandatangani ulang sesudah mengoreksi.
                         @else
                             <strong>Simpan Draft</strong> boleh berkali-kali selama resume disusun.
-                            <strong>TTD DPJP &amp; Kunci</strong> menyimpan isi editor terakhir lalu mengunci resume. Hanya dokter.
+                            <strong>TTD DPJP &amp; Kunci</strong> menyimpan isi editor terakhir lalu mengunci resume. Hanya DPJP Utama (Leveling Dokter).
                         @endif
                     </div>
                     <div class="w-full sm:w-72">
                         <x-signature.ttd-petugas :framed="false" label="Dokter Penanggung Jawab Pelayanan"
                             :ttd="$ttdDpjp['nama'] ?? ''" :code="$ttdDpjp['kode'] ?? ''" :date="$ttdDpjp['waktu'] ?? ''"
-                            :locked="$isFormLocked" :canSign="auth()->user()?->hasRole('Dokter')" :allowClear="false"
+                            :locked="$isFormLocked" :canSign="$this->bolehTtdDpjp()" :allowClear="false"
                             sign="tandaTanganDpjp" signLabel="TTD DPJP &amp; Kunci" nameLabel="Nama DPJP"
                             emptyText="Belum ditandatangani DPJP." />
+                        @if (!empty($ttdDpjp['diwakilkanOleh']['nama']))
+                            <p class="mt-1 text-xs text-amber-700 dark:text-amber-400">
+                                Diwakilkan oleh {{ $ttdDpjp['diwakilkanOleh']['nama'] }}
+                                @if (!empty($ttdDpjp['diwakilkanOleh']['role'])) ({{ $ttdDpjp['diwakilkanOleh']['role'] }}) @endif
+                            </p>
+                        @endif
                         {{-- Tak berwenang TTD: tombol tetap tampil (nonaktif) + alasannya, supaya tidak
                              disangka fiturnya belum ada. --}}
-                        @if (!$isFormLocked && !auth()->user()?->hasRole('Dokter'))
+                        {{-- Perwakilan manager ke atas: TTD atas nama DPJP Utama, user penekan tercatat. --}}
+                        @if (!$isFormLocked && $this->bolehTtdPerwakilan())
+                            <div class="pt-2">
+                                <x-confirm-button variant="primary" action="tandaTanganDpjp()"
+                                    title="TTD atas nama {{ $this->dpjpDiwakili()['drName'] ?? 'DPJP' }}?"
+                                    message="Resume akan ditandatangani ATAS NAMA DPJP Utama dan langsung terkunci. Nama Anda tercatat sebagai perwakilan di stempel & log. Bila keliru: Buka Kunci lalu TTD ulang."
+                                    confirmText="Ya, TTD Perwakilan" class="justify-center w-full"
+                                    wire:key="ttd-perwakilan-{{ $riHdrNo }}">
+                                    TTD atas nama DPJP &amp; Kunci
+                                </x-confirm-button>
+                                <p class="mt-1 text-xs text-muted dark:text-gray-400">
+                                    Anda bukan DPJP Utama — TTD sebagai perwakilan atas nama
+                                    <strong>{{ $this->dpjpDiwakili()['drName'] ?? '-' }}</strong>.
+                                </p>
+                            </div>
+                        @elseif (!$isFormLocked && !$this->bolehTtdDpjp())
                             <div class="pt-2">
                                 <x-primary-button type="button" disabled class="justify-center w-full gap-1.5 opacity-60 cursor-not-allowed"
-                                    title="TTD DPJP hanya dapat dilakukan akun Dokter.">
+                                    title="{{ $this->alasanTidakBolehTtd() }}">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                                     </svg>
                                     TTD DPJP &amp; Kunci
                                 </x-primary-button>
-                                <p class="mt-1 text-xs text-amber-700 dark:text-amber-400">TTD DPJP hanya dapat dilakukan akun Dokter.</p>
+                                <p class="mt-1 text-xs text-amber-700 dark:text-amber-400">{{ $this->alasanTidakBolehTtd() }}</p>
                             </div>
                         @endif
                     </div>

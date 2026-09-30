@@ -44,6 +44,15 @@ class AksiRole
     /** Role yang boleh MEMBUKA KUNCI (mencabut TTD petugas) entri dokumen. */
     public const DOKUMEN_BUKA_KUNCI = ['Admin', 'Manager Umum', 'Manager Medis'];
 
+    /**
+     * Role yang boleh menandatangani ATAS NAMA pejabat yang semestinya (sistem perwakilan)
+     * — dipakai Resume Medis RI: stempel tetap DPJP Utama dari Leveling Dokter, tetapi
+     * user yang menekan tombol ikut tersimpan di stempel (`diwakilkanOleh`) & log RI.
+     * Dipisah dari DOKUMEN_BUKA_KUNCI walau isinya kini sama: menandatangani atas nama
+     * orang lain adalah hak yang berbeda dari mencabut TTD.
+     */
+    public const DOKUMEN_TTD_PERWAKILAN = ['Admin', 'Manager Umum', 'Manager Medis'];
+
     /* ─────────────────────────────── EMR ─────────────────────────────── */
 
     /** Melihat Log Aktivitas EMR/Administrasi (jejak audit) — manager ke atas. */

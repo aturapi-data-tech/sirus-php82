@@ -36,6 +36,7 @@ class AppServiceProvider extends ServiceProvider
         // yang dipakai blade (@can) & server (->can()) tidak perlu ikut berubah.
         Gate::define('dokumen.hapus', fn ($user) => $user->hasAnyRole(AksiRole::DOKUMEN_HAPUS));
         Gate::define('dokumen.bukaKunci', fn ($user) => $user->hasAnyRole(AksiRole::DOKUMEN_BUKA_KUNCI));
+        Gate::define('dokumen.ttdPerwakilan', fn ($user) => $user->hasAnyRole(AksiRole::DOKUMEN_TTD_PERWAKILAN));
 
         Gate::define('emr.logAktivitas', fn ($user) => $user->hasAnyRole(AksiRole::EMR_LOG_AKTIVITAS));
         Gate::define('emr.cetakEresep', fn ($user) => $user->hasAnyRole(AksiRole::EMR_CETAK_ERESEP));
