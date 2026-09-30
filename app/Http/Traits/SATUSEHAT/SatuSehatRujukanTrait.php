@@ -1143,7 +1143,26 @@ trait SatuSehatRujukanTrait
             ],
         ];
 
-        return $this->rujukanRequest('PATCH', 'Task/' . $taskId, $patch, 'application/json-patch+json');
+        $hasil = $this->rujukanRequest('PATCH', 'Task/' . $taskId, $patch, 'application/json-patch+json');
+
+        $sukses = $hasil['code'] >= 200 && $hasil['code'] < 300 && $this->rujukanOperationOutcomeGagal($hasil['body']) === '';
+        if ($sukses || $hasil['code'] === 0) {
+            return $hasil;
+        }
+
+        // Balasan GAGAL BELUM TENTU GAGAL. Sejak 28/09/26 SATUSEHAT membalas PATCH
+        // ini "duplicate — Task … sudah ada" (sisrute_status=409, kadang HTTP 409,
+        // kadang HTTP 200 berisi OperationOutcome), padahal GET Task sesudahnya
+        // sudah completed + keputusan kita. Kalau dipercaya mentah, petugas
+        // menekan Setujui lagi dan janji rujukan tak pernah tercatat. Jadi Task-nya
+        // dibaca ulang: keputusan kita sudah tercatat = sukses; selain itu balasan
+        // aslinya diteruskan (2xx dijadikan 422 supaya pemanggil tahu gagal).
+        $task = $this->rujukanTaskDariResponse($this->rujukanGetTask($taskId)['body'] ?? null);
+        if ($task && ($task['status'] ?? '') === 'completed' && $this->rujukanKeputusanDariTask($task) === $keputusan) {
+            return ['code' => 200, 'body' => $task];
+        }
+
+        return ['code' => $hasil['code'] >= 300 ? $hasil['code'] : 422, 'body' => $hasil['body']];
     }
 
     /**
