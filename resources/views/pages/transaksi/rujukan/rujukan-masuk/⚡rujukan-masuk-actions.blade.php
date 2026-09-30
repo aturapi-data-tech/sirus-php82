@@ -55,7 +55,7 @@ new class extends Component {
             return;
         }
         if (!$this->menunggu()) {
-            $this->dispatch('toast', type: 'error', message: 'Permintaan ini sudah dijawab atau dibatalkan perujuk.');
+            $this->dispatch('toast', type: 'error', message: 'Permintaan ini sudah dijawab atau dibatalkan oleh faskes perujuk.');
             return;
         }
 
@@ -89,11 +89,11 @@ new class extends Component {
                 : ['tersimpan' => false, 'sudahAda' => false, 'pesan' => 'Tabel RSTXN_RUJUKANMASUKS belum dipasang — jalankan docs/ddl-rujukan-masuk-disetujui.sql.'];
 
             if (!$catatan['tersimpan'] && !$catatan['sudahAda']) {
-                $this->dispatch('toast', type: 'warning', message: 'Persetujuan SUDAH terkirim ke SATUSEHAT, tapi gagal dicatat di sistem kita: ' . $catatan['pesan'] . ' Catat manual nomor permintaannya.');
+                $this->dispatch('toast', type: 'warning', message: 'Persetujuan sudah terkirim ke SATUSEHAT, tetapi gagal dicatat di SIRUS: ' . $catatan['pesan'] . ' Mohon catat nomor permintaannya secara manual.');
             }
         }
 
-        $this->dispatch('toast', type: 'success', message: $keputusan === 'accepted' ? 'Permintaan rujukan DISETUJUI dan sudah dikirim ke SATUSEHAT.' : 'Permintaan rujukan DITOLAK dan sudah dikirim ke SATUSEHAT.');
+        $this->dispatch('toast', type: 'success', message: $keputusan === 'accepted' ? 'Permintaan rujukan disetujui dan telah dikirim ke SATUSEHAT.' : 'Permintaan rujukan ditolak dan telah dikirim ke SATUSEHAT.');
         $this->dispatch('rujukan-masuk.dijawab');
         $this->dispatch('close-modal', name: 'rujukan-masuk-actions');
     }
@@ -158,8 +158,8 @@ new class extends Component {
                         Permintaan Rujukan Masuk
                     </h2>
                     <p class="mt-1 text-sm text-muted dark:text-gray-400">
-                        Tinjau data klinis dari RS perujuk, lalu setujui atau tolak. Keputusan langsung
-                        dikirim ke SATUSEHAT dan terbaca oleh perujuk.
+                        Tinjau data klinis dari faskes perujuk, lalu setujui atau tolak permintaan ini.
+                        Keputusan Anda langsung dikirim ke SATUSEHAT dan diterima faskes perujuk.
                     </p>
                 </div>
                 <div class="flex flex-col items-end gap-1">
@@ -174,11 +174,11 @@ new class extends Component {
                     @endif
 
                     @if ($statusTask === 'cancelled')
-                        <x-badge variant="gray">Dibatalkan perujuk</x-badge>
+                        <x-badge variant="gray">Dibatalkan Perujuk</x-badge>
                     @elseif ($keputusan === 'accepted')
-                        <x-badge variant="success">Sudah Disetujui</x-badge>
+                        <x-badge variant="success">Disetujui</x-badge>
                     @elseif ($keputusan === 'rejected')
-                        <x-badge variant="danger">Sudah Ditolak</x-badge>
+                        <x-badge variant="danger">Ditolak</x-badge>
                     @else
                         <x-badge variant="warning">Menunggu Jawaban</x-badge>
                     @endif
@@ -195,26 +195,26 @@ new class extends Component {
                         <div class="text-xs font-semibold tracking-wide uppercase text-muted dark:text-gray-400">Pasien
                         </div>
                         <div class="mt-1 font-semibold text-ink dark:text-gray-100">
-                            {{ ($permintaan['pasienNama'] ?? '') !== '' ? $permintaan['pasienNama'] : ($kosongKarena ?: '(nama tidak dikirim perujuk)') }}
+                            {{ ($permintaan['pasienNama'] ?? '') !== '' ? $permintaan['pasienNama'] : ($kosongKarena ?: '(nama pasien tidak disertakan perujuk)') }}
                         </div>
                         <div class="text-sm text-muted dark:text-gray-400">
-                            IHS Pasien: {{ ($permintaan['pasienId'] ?? '') !== '' ? $permintaan['pasienId'] : '-' }}
+                            No. IHS: {{ ($permintaan['pasienId'] ?? '') !== '' ? $permintaan['pasienId'] : '-' }}
                         </div>
                     </div>
 
                     <div
                         class="p-4 border bg-surface-soft border-hairline rounded-xl dark:bg-gray-800 dark:border-gray-700">
-                        <div class="text-xs font-semibold tracking-wide uppercase text-muted dark:text-gray-400">RS
+                        <div class="text-xs font-semibold tracking-wide uppercase text-muted dark:text-gray-400">Faskes
                             Perujuk
                         </div>
                         <div class="mt-1 font-semibold text-ink dark:text-gray-100">
-                            {{ ($permintaan['perujukNama'] ?? '') !== '' ? $permintaan['perujukNama'] : '(nama RS belum terbaca)' }}
+                            {{ ($permintaan['perujukNama'] ?? '') !== '' ? $permintaan['perujukNama'] : '(nama faskes belum terbaca)' }}
                         </div>
                         <div class="text-sm text-muted dark:text-gray-400">
-                            Org ID: {{ ($permintaan['perujukOrgId'] ?? '') !== '' ? $permintaan['perujukOrgId'] : '-' }}
+                            ID Organisasi: {{ ($permintaan['perujukOrgId'] ?? '') !== '' ? $permintaan['perujukOrgId'] : '-' }}
                         </div>
                         @if (($permintaan['dokterPerujuk'] ?? '') !== '')
-                            <div class="text-sm text-muted dark:text-gray-400">DPJP: {{ $permintaan['dokterPerujuk'] }}
+                            <div class="text-sm text-muted dark:text-gray-400">Dokter perujuk: {{ $permintaan['dokterPerujuk'] }}
                             </div>
                         @endif
                     </div>
@@ -239,8 +239,8 @@ new class extends Component {
                         {{ ($permintaan['deskripsi'] ?? '') !== ''
                             ? $permintaan['deskripsi']
                             : ($diblokir
-                                ? 'Keterangan klinis tidak dapat dibaca — lihat catatan di bawah.'
-                                : 'Perujuk tidak mengisi keterangan klinis.') }}
+                                ? 'Keterangan klinis belum dapat ditampilkan — lihat catatan di bawah.'
+                                : 'Faskes perujuk tidak menyertakan keterangan klinis.') }}
                     </p>
 
                     <div class="mt-3 text-sm text-muted dark:text-gray-400">
@@ -259,12 +259,12 @@ new class extends Component {
                         <p class="mt-1">
                             SATUSEHAT membalas <span class="font-mono text-xs">No consent available</span> untuk
                             CarePlan rujukan ini, sehingga layanan yang diminta, jalur, dan keterangan klinis belum
-                            sampai ke kita. Ini <strong>perilaku normal</strong>, bukan gangguan dan bukan berarti
-                            perujuk tidak mengisi: isinya memang baru terbuka begitu permintaan dijawab.
+                            dapat ditampilkan. Ini <strong>hal yang wajar</strong>, bukan gangguan sistem dan bukan
+                            berarti perujuk tidak mengisinya: datanya baru terbuka setelah permintaan dijawab.
                         </p>
                         <p class="mt-2">
-                            Artinya keputusan di bawah diambil tanpa data klinis. Kalau butuh kepastian sebelum
-                            memutuskan, konfirmasikan dulu ke RS perujuk lewat jalur komunikasi RS.
+                            Dengan demikian, keputusan di bawah diambil tanpa data klinis. Bila perlu kepastian,
+                            silakan konfirmasi terlebih dahulu kepada faskes perujuk melalui jalur komunikasi RS.
                         </p>
                     </div>
                 @endif
@@ -306,10 +306,10 @@ new class extends Component {
                     <div
                         class="p-3 text-sm border rounded-xl bg-blue-50 border-blue-200 text-info-deep dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-200">
                         @if ($statusTask === 'cancelled')
-                            Perujuk sudah membatalkan permintaan ini, jadi tidak bisa dijawab lagi.
+                            Faskes perujuk telah membatalkan permintaan ini, sehingga tidak dapat dijawab lagi.
                         @else
-                            Permintaan ini sudah dijawab. Keputusan tidak dapat diubah dari sini —
-                            perujuk perlu mengirim permintaan baru bila kondisinya berubah.
+                            Permintaan ini sudah dijawab dan keputusannya tidak dapat diubah. Bila kondisi pasien
+                            berubah, faskes perujuk perlu mengirim permintaan baru.
                         @endif
                     </div>
                 @endif
@@ -325,16 +325,18 @@ new class extends Component {
                 </x-secondary-button>
 
                 @if ($this->menunggu())
-                    <x-confirm-button variant="danger" action="tolak()" title="Tolak permintaan rujukan?"
-                        message="Penolakan langsung terkirim ke SATUSEHAT dan terbaca RS perujuk. Pastikan alasannya sudah dikomunikasikan lewat jalur komunikasi RS."
+                    <x-confirm-button variant="danger" action="tolak()" title="Tolak permintaan rujukan ini?"
+                        message="Penolakan akan langsung dikirim ke SATUSEHAT dan diterima faskes perujuk. Sebaiknya alasan penolakan sudah disampaikan kepada faskes perujuk melalui jalur komunikasi RS."
                         confirmText="Ya, Tolak" wire:key="tolak-{{ $permintaan['taskId'] ?? 'x' }}">
-                        Tolak
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                        Tolak Rujukan
                     </x-confirm-button>
 
-                    <x-confirm-button variant="primary" action="setujui()" title="Setujui permintaan rujukan?"
-                        message="Pastikan tempat tidur / layanan yang diminta memang tersedia. Persetujuan langsung terkirim ke SATUSEHAT."
+                    <x-confirm-button variant="primary" action="setujui()" title="Setujui permintaan rujukan ini?"
+                        message="Pastikan tempat tidur dan layanan yang diminta tersedia. Persetujuan akan langsung dikirim ke SATUSEHAT dan diterima faskes perujuk."
                         confirmText="Ya, Setujui" wire:key="setujui-{{ $permintaan['taskId'] ?? 'x' }}">
-                        Setujui
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+                        Setujui Rujukan
                     </x-confirm-button>
                 @endif
             </div>
