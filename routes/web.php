@@ -573,6 +573,9 @@ Route::middleware(['auth'])->group(function () {
     Route::livewire('/manajemen/laporan-diagnosa', 'pages::manajemen.laporan-diagnosa.laporan-diagnosa')
         ->name('manajemen.laporan-diagnosa');
 
+    Route::livewire('/manajemen/laporan-diagnosa/hitung-diagnosa', 'pages::manajemen.laporan-diagnosa.hitung-diagnosa.hitung-diagnosa')
+        ->name('manajemen.laporan-diagnosa.hitung-diagnosa');
+
     Route::livewire('/database-monitor/log-bpjs', 'pages::database-monitor.log-bpjs.log-bpjs')
         ->name('database-monitor.log-bpjs');
 

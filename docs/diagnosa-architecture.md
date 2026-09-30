@@ -89,7 +89,7 @@ memakai kode `valid_code`=0, **83.559** sebenarnya punya baris valid (kasus kemb
 atas) dan **210.311** memakai kode kategori asli seperti `E11` / `K29` — yang benar
 adalah kode anaknya (`E11.9`, `K29.7`).
 
-**Setup di SELURUH pemakai LOV.** 12 call site, hasil audit langsung ke berkas
+**Setup di SELURUH pemakai LOV.** 13 call site, hasil audit langsung ke berkas
 (semua call site MENULIS ketiga prop eksplisit; cetak tebal = menutup / aktif):
 
 | # | Konsumen | File : baris | `target` | `blockHeader` | `blockIm` | `blockNonPrimary` |
@@ -106,9 +106,10 @@ adalah kode anaknya (`E11.9`, `K29.7`).
 | 10 | Coder INACBG | `transaksi/rj/idrg/⚡kirim-diagnosa-inacbg.blade.php` : 473 | `rjFormDiagnosaInacbgCoder` | false | false | false |
 | 11 | Coder INACBG | `transaksi/ugd/idrg/⚡kirim-diagnosa-inacbg.blade.php` : 473 | `ugdFormDiagnosaInacbgCoder` | false | false | false |
 | 12 | Coder INACBG | `transaksi/ri/idrg/⚡kirim-diagnosa-inacbg.blade.php` : 473 | `riFormDiagnosaInacbgCoder` | false | false | false |
+| 13 | Laporan Diagnosa (hitung jumlah, baca saja) | `manajemen/laporan-diagnosa/hitung-diagnosa/⚡hitung-diagnosa.blade.php` : 106 | `laporanDiagnosaHitung` | false | false | false |
 
-Rekap: `blockHeader` menutup HANYA di 3 coder iDRG; DIBUKA di 9 lainnya (SEP/VClaim +
-coder INACBG + EMR diagnosis — dibuka 2026-09-11 atas keputusan user supaya dokter bisa
+Rekap: `blockHeader` menutup HANYA di 3 coder iDRG; DIBUKA di 10 lainnya (SEP/VClaim +
+coder INACBG + EMR diagnosis + Laporan Diagnosa — dibuka 2026-09-11 atas keputusan user supaya dokter bisa
 memilih kode induk seperti N40/E11). `blockIm` aktif hanya di 3 coder iDRG.
 `blockNonPrimary` tidak aktif di mana pun — aturan primer ditegakkan server-side di tiap
 konsumen (§4).
