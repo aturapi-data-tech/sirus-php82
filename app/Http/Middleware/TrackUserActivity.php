@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -42,7 +43,15 @@ class TrackUserActivity
                     'last_seen_at' => Carbon::now(),
                     'last_seen_route' => $routeName,
                 ]);
-                Cache::put($cacheKey, 1, now()->addMinute());
+                // Livewire mengirim beberapa request paralel; saat cache kedaluwarsa,
+                // dua request bisa lolos Cache::has() bersamaan lalu sama-sama MERGE
+                // ke tabel CACHE → yang kalah kena ORA-00001 (CACHE_KEY_PK). Key-nya
+                // sudah ditulis request pemenang, jadi aman diabaikan.
+                try {
+                    Cache::put($cacheKey, 1, now()->addMinute());
+                } catch (UniqueConstraintViolationException) {
+                    // no-op
+                }
             }
         }
         return $next($request);
