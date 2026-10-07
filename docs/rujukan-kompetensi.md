@@ -22,7 +22,7 @@ Narasumber kunci: Septian & Hantoro (BPJS), Bofandra & Tricha (SATUSEHAT Rujukan
 | Appointment | **JANGAN dikirim dulu** | Masuk use case antrian online, dibahas terpisah (23/06). |
 
 - Piloting 4 wilayah: Kota Bandung, Kota Makassar, **Kab. Tulungagung (kita)**, Kab. Muara Enim.
-- Base URL dev FKRTL: `https://apijkn-dev.bpjs-kesehatan.go.id/vclaim-sisrute-rest`. Staging FHIR: `https://api-satusehat-stg.dto.kemkes.go.id/fhir-r4/v1/`.
+- Base URL dev FKRTL: `https://apijkn-dev.bpjs-kesehatan.go.id/vclaim-sisrute-rest/api/v1.0` (sejak ±07/10/26; base lama tanpa `/api/v1.0` kini berbalas 404 `{"metadata":{"message":"Not Found","code":404}}`). Staging FHIR: `https://api-satusehat-stg.dto.kemkes.go.id/fhir-r4/v1/`.
 - Auth/signature/decrypt **sama persis VClaim eksisting** (X-cons-id, X-signature HMAC, X-timestamp, user_key). Tapi **cons-id harus didaftarkan TERPISAH untuk service SISRUTE** — cons-id yang jalan di vclaim biasa tetap ditolak (`Unauthorized! You are not registered for this service!`).
 - Kredensial SATUSEHAT staging untuk rujukan = **client_id/secret KHUSUS dari tim SATUSEHAT Rujukan** (japri: email login platform + org-id production) — BUKAN yang tampil di dashboard platform.
 - Jebakan env dev: server **dvlp** BPJS gagal jika header `Content-Type` dikirim; production justru wajib pakai.

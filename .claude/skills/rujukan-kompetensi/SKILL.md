@@ -184,6 +184,7 @@ dari sheet (docs §6).
 | 429 `Rate limit quota violation` | Kuota staging habis | Hemat panggilan; lapor |
 | **Error identik di ≥2 endpoint** | Hampir pasti gangguan jaringan SATUSEHAT | Tampilkan hint "gangguan pusat"; JANGAN debug payload |
 | `404 Transaksi tidak dapat diproses. Silakan coba lagi nanti.` | **Consumer ID expired/belum aktif** — bukan endpoint/payload salah | Koordinasi TI BPJS kantor wilayah; jangan debug body |
+| 404 `{"metadata":{"message":"Not Found","code":404}}` di SEMUA endpoint RJ, payload sama dgn yang dulu sukses | **Base URL berubah** (07/10/26): kini `…/vclaim-sisrute-rest/api/v1.0` | Perbarui `SISRUTE_URL` di `.env` tiap server (+ `config:clear` bila di-cache); kode tak perlu diubah |
 | `dokter tidak valid` saat `postKunjungan` | Bukan `kdDokterSatuSehat` — **kode dokter BPJS** di faskes itu belum ada | Lengkapi pemetaan dokter BPJS, bukan IHS-nya |
 
 Sumber lampiran (Postman V30062026, **Playbook v6.1**, Skenario UAT FKTL/FKTP ver 1.0, sample JSON):
