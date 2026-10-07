@@ -95,6 +95,7 @@ new class extends Component {
 
             'RM-08.01' => 'Transfer Pasien Gawat Darurat ke Rawat Inap',
             'RM-08.02' => 'Pemindahan Pasien Antar Ruang',
+            'RM-08.03' => 'Surat Permintaan Rawat Inap',
 
             'RM-09.01' => 'Resume Medis',
             'RM-09.02' => 'Ringkasan Pasien Pulang',
