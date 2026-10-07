@@ -300,6 +300,53 @@ new class extends Component {
         $this->save();
     }
 
+    /* ===============================
+     | BUKA KUNCI TTD (Gate dokumen.bukaKunci) — cabut TTD petugas pengkaji.
+     | Hanya 3 key TTD yang dikosongkan di DB; isi pengkajian di layar yang belum
+     | disimpan tidak ikut ditimpa.
+     =============================== */
+    public function bukaKunciTtd(): void
+    {
+        if (!auth()->user()?->can('dokumen.bukaKunci')) {
+            $this->dispatch('toast', type: 'error', message: 'Anda tidak berwenang membuka kunci TTD.');
+            return;
+        }
+        if ($this->isFormLocked) {
+            $this->dispatch('toast', type: 'error', message: 'Pasien sudah pulang, form terkunci.');
+            return;
+        }
+
+        try {
+            DB::transaction(function () {
+                $this->lockRIRow($this->riHdrNo);
+
+                $fresh = $this->findDataRI($this->riHdrNo) ?? [];
+                $penandaTangan = (string) data_get($fresh, 'pengkajianAwalPasienRawatInap.bagian5CatatanDanTandaTangan.petugasPengkaji', '');
+                if ($penandaTangan === '') {
+                    throw new \RuntimeException('Pengkajian Awal belum ditandatangani.');
+                }
+
+                foreach (['petugasPengkaji', 'petugasPengkajiCode', 'jamPengkaji'] as $key) {
+                    $fresh['pengkajianAwalPasienRawatInap']['bagian5CatatanDanTandaTangan'][$key] = '';
+                }
+                $this->updateJsonRI((int) $this->riHdrNo, $fresh);
+
+                $pembukaKunci = auth()->user()->myuser_name ?? '-';
+                $this->appendAdminLogRI((int) $this->riHdrNo, 'Buka kunci TTD Pengkajian Awal RI oleh ' . $pembukaKunci . ' - TTD ' . $penandaTangan . ' dicabut', 'MR');
+            });
+
+            foreach (['petugasPengkaji', 'petugasPengkajiCode', 'jamPengkaji'] as $key) {
+                $this->pengkajianAwal['bagian5CatatanDanTandaTangan'][$key] = '';
+            }
+            $this->incrementVersion('modal-pengkajian-awal-ri');
+            $this->dispatch('toast', type: 'success', message: 'Kunci dibuka — TTD petugas pengkaji dicabut.');
+        } catch (\RuntimeException $exception) {
+            $this->dispatch('toast', type: 'error', message: $exception->getMessage());
+        } catch (\Throwable $exception) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal membuka kunci: ' . $exception->getMessage());
+        }
+    }
+
     #[On('lov.selected.leveling-dokter-ri')]
     public function onDokterSelected(string $target, array $payload): void
     {
@@ -1178,6 +1225,22 @@ new class extends Component {
                     ->user()
                     ?->hasAnyRole(['Perawat', 'Admin'])" sign="setPetugasPengkaji"
                 nameLabel="Petugas Pengkaji" dateLabel="Jam Pengkajian" signLabel="TTD Saya" />
+
+            @if (!$isFormLocked && filled($pengkajianAwal['bagian5CatatanDanTandaTangan']['petugasPengkaji'] ?? ''))
+                @can('dokumen.bukaKunci')
+                    <div class="pt-2">
+                        <x-confirm-button variant="warning-soft" action="bukaKunciTtd()" title="Buka Kunci TTD"
+                            message="TTD petugas pengkaji akan dicabut dan harus ditandatangani ulang. Lanjutkan?"
+                            confirmText="Ya, Buka Kunci" class="gap-1.5 whitespace-nowrap">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M8 11V7a4 4 0 118 0m-8 4h10a2 2 0 012 2v5a2 2 0 01-2 2H8a2 2 0 01-2-2v-5a2 2 0 012-2z" />
+                            </svg>
+                            Buka Kunci TTD
+                        </x-confirm-button>
+                    </div>
+                @endcan
+            @endif
         </div>
     </x-border-form>
 
