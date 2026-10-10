@@ -591,7 +591,18 @@ new class extends Component {
                                 @if ($isRisiko)
                                     <div>
                                         <p class="font-bold text-muted dark:text-gray-400 mb-1">Faktor Risiko</p>
-                                        @foreach ($sdki['faktor_risiko'] as $i => $fr)
+                                        {{-- faktor_risiko bisa daftar datar atau berkelompok (mis. D.0136: Eksternal/Internal) --}}
+                                        @php
+                                            $faktorRisikoGrup = collect($sdki['faktor_risiko'])->contains(fn($v) => is_array($v))
+                                                ? $sdki['faktor_risiko']
+                                                : ['' => $sdki['faktor_risiko']];
+                                        @endphp
+                                        @foreach ($faktorRisikoGrup as $jenis => $frItems)
+                                            @if ($jenis !== '' && is_array($frItems) && count($frItems))
+                                                <p class="font-semibold text-muted italic mt-1 mb-0.5">
+                                                    {{ ucfirst($jenis) }}:</p>
+                                            @endif
+                                        @foreach ((array) $frItems as $i => $fr)
                                             @php $isOn = in_array($fr, $perumusan['faktorResikoDipilih'] ?? []); @endphp
                                             <div class="flex items-start gap-2 py-0.5 cursor-pointer hover:bg-orange-50 dark:hover:bg-orange-900/10 rounded px-1 -mx-1"
                                                 wire:click="togglePerumusan('faktorResikoDipilih', '{{ addslashes($fr) }}')">
@@ -605,6 +616,7 @@ new class extends Component {
                                                     class="{{ $isOn ? 'text-ink dark:text-gray-100 font-medium' : 'text-muted dark:text-gray-400' }}">{{ $i + 1 }}.
                                                     {{ $fr }}</span>
                                             </div>
+                                        @endforeach
                                         @endforeach
                                     </div>
                                 @endif

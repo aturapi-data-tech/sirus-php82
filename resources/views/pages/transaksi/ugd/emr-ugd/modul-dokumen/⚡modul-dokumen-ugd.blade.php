@@ -31,6 +31,7 @@ new class extends Component {
     public int $jumlahPenolakanResusitasi = 0;
     public int $jumlahPulangAps = 0;
     public int $jumlahSecondOpinion = 0;
+    public int $jumlahPermintaanRawatInap = 0;
     public int $jumlahEso = 0;
     public int $jumlahAkhirHayat = 0;
 
@@ -49,6 +50,7 @@ new class extends Component {
         $this->jumlahPenolakanResusitasi = count($data['penolakanResusitasiUGD'] ?? []);
         $this->jumlahPulangAps = count($data['pulangApsUGD'] ?? []);
         $this->jumlahSecondOpinion = count($data['secondOpinionUGD'] ?? []);
+        $this->jumlahPermintaanRawatInap = count($data['permintaanRawatInapUGD'] ?? []);
         $this->jumlahEso = count($data['pelaporanEsoUGD'] ?? []);
         $this->jumlahAkhirHayat = count($data['pengkajianAkhirHayatUGD'] ?? []);
         $this->adaBedah = collect([
@@ -73,7 +75,7 @@ new class extends Component {
     public string $tabAwal = 'suket';
 
     /** Tab yang boleh diminta pemanggil lewat event open. */
-    private const TAB_BOLEH = ['suket', 'trf-ri', 'general-consent', 'inform-consent', 'form-penjaminan', 'penundaan-pelayanan', 'akhir-hayat', 'surat-kematian', 'pelayanan-bedah'];
+    private const TAB_BOLEH = ['suket', 'permintaan-rawat-inap', 'trf-ri', 'general-consent', 'inform-consent', 'form-penjaminan', 'penundaan-pelayanan', 'akhir-hayat', 'surat-kematian', 'pelayanan-bedah'];
 
     #[On('emr-ugd.modul-dokumen.open')]
     public function openModulDokumen(int $rjNo, string $tab = 'suket'): void
@@ -135,7 +137,7 @@ new class extends Component {
             'rjNo', 'adaSuket', 'adaTrfUgd', 'adaGeneralConsent', 'adaBedah',
             'adaSuratKematianFinal', 'triaseSaran', 'jumlahInformConsent', 'jumlahPenjaminan',
             'jumlahPenundaan', 'jumlahPenolakanObat', 'jumlahPenolakanResusitasi', 'jumlahPulangAps',
-            'jumlahSecondOpinion', 'jumlahEso', 'jumlahAkhirHayat',
+            'jumlahSecondOpinion', 'jumlahEso', 'jumlahAkhirHayat', 'jumlahPermintaanRawatInap',
         ]);
         $this->resetVersion();
         $this->isFormLocked = false;
@@ -185,6 +187,21 @@ new class extends Component {
                                         Surat Keterangan
                                         @if ($adaSuket)
                                             <x-badge variant="success" class="text-[10px] px-1.5 py-0">&#10003;</x-badge>
+                                        @endif
+                                    </x-tab>
+
+                                    {{-- Surat Permintaan Rawat Inap --}}
+                                    <x-tab variant="underline" active-expr="activeTab === 'permintaan-rawat-inap'"
+                                        x-on:click="activeTab = 'permintaan-rawat-inap'" class="inline-flex items-center gap-2">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                            viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        </svg>
+                                        Permintaan Rawat Inap
+                                        @if ($jumlahPermintaanRawatInap > 0)
+                                            <x-badge variant="success"
+                                                class="text-[10px] px-1.5 py-0">{{ $jumlahPermintaanRawatInap }}</x-badge>
                                         @endif
                                     </x-tab>
 
@@ -392,6 +409,13 @@ new class extends Component {
                             <div x-show="activeTab === 'suket'" x-transition.opacity.duration.300ms>
                                 <livewire:pages::transaksi.ugd.emr-ugd.modul-dokumen.suket-ugd.rm-suket-ugd-actions
                                     :rjNo="$rjNo" wire:key="suket-ugd-{{ $rjNo }}" />
+                            </div>
+
+                            {{-- Panel: Surat Permintaan Rawat Inap --}}
+                            <div x-show="activeTab === 'permintaan-rawat-inap'" x-transition.opacity.duration.300ms>
+                                <livewire:pages::transaksi.ugd.emr-ugd.modul-dokumen.permintaan-rawat-inap-ugd.rm-permintaan-rawat-inap-ugd-actions
+                                    :rjNo="$rjNo" :disabled="$isFormLocked"
+                                    wire:key="permintaan-rawat-inap-ugd-{{ $rjNo ?? 'init' }}" />
                             </div>
 
                             {{-- Panel: Form Transfer UGD → RI --}}
