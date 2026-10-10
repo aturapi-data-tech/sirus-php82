@@ -956,7 +956,7 @@ new class extends Component {
 
         {{-- TTV --}}
         <div class="mt-3 grid grid-cols-9 gap-2">
-            @foreach ([['key' => 'sistolik', 'label' => 'Sistolik (mmHg)'], ['key' => 'distolik', 'label' => 'Diastolik (mmHg)'], ['key' => 'frekuensiNadi', 'label' => 'Nadi (x/mnt)'], ['key' => 'frekuensiNafas', 'label' => 'Nafas (x/mnt)'], ['key' => 'suhu', 'label' => 'Suhu (°C)'], ['key' => 'spo2', 'label' => 'SPO2 (%)'], ['key' => 'gda', 'label' => 'GDA (g/dl)'], ['key' => 'bb', 'label' => 'BB (Kg)'], ['key' => 'tb', 'label' => 'TB (Cm)']] as $ttv)
+            @foreach ([['key' => 'sistolik', 'label' => 'Sistolik (mmHg)'], ['key' => 'distolik', 'label' => 'Diastolik (mmHg)'], ['key' => 'frekuensiNadi', 'label' => 'Nadi (x/mnt)'], ['key' => 'frekuensiNafas', 'label' => 'Nafas (x/mnt)'], ['key' => 'suhu', 'label' => 'Suhu (°C)'], ['key' => 'spo2', 'label' => 'SPO2 (%)'], ['key' => 'gda', 'label' => 'GDA (mg/dL)'], ['key' => 'bb', 'label' => 'BB (Kg)'], ['key' => 'tb', 'label' => 'TB (Cm)']] as $ttv)
                 <div>
                     <x-input-label value="{{ $ttv['label'] }}" />
                     <x-text-input

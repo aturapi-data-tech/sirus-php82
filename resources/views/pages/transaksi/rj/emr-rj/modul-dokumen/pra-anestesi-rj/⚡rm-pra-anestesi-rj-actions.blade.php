@@ -915,7 +915,7 @@ new class extends Component {
                                                             </div>
                                                             <div>
                                                                 <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">SPO2 / GDA</dt>
-                                                                <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['spo2'] ?? '') ?: '-' }} % · {{ ($entry['gda'] ?? '') ?: '-' }} g/dl</dd>
+                                                                <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['spo2'] ?? '') ?: '-' }} % · {{ ($entry['gda'] ?? '') ?: '-' }} mg/dL</dd>
                                                             </div>
                                                             <div>
                                                                 <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Skor Nyeri</dt>

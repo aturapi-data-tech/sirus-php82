@@ -58,7 +58,7 @@
                 · RR {!! $val($form['rr'] ?? '') !!} x/mnt
                 · S {!! $val($form['suhu'] ?? '') !!} °C
                 · SpO2 {!! $val($form['spo2'] ?? '') !!}%
-                · GDA {!! $val($form['gda'] ?? '') !!} g/dl
+                · GDA {!! $val($form['gda'] ?? '') !!} mg/dL
             </td>
         </tr>
 

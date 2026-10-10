@@ -170,7 +170,7 @@
                     <x-input-error :messages="$errors->get('pemeriksaan.tandaVital.spo2')" class="mt-1" />
                 </div>
                 <div>
-                    <x-input-label value="GDA (g/dl)" class="whitespace-nowrap" />
+                    <x-input-label value="GDA (mg/dL)" class="whitespace-nowrap" />
                     <x-text-input wire:model.live="pemeriksaan.tandaVital.gda" placeholder=""
                         :error="$errors->has('pemeriksaan.tandaVital.gda')" :disabled="$isFormLocked" class="w-full mt-1" />
                     <x-input-error :messages="$errors->get('pemeriksaan.tandaVital.gda')" class="mt-1" />
