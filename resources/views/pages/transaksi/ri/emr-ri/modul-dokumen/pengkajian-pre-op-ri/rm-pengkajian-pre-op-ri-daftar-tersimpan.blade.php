@@ -84,7 +84,7 @@
                                                                 <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['spo2'] ?? '') ?: '-' }}</dd>
                                                             </div>
                                                             <div>
-                                                                <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">GDA (g/dl)</dt>
+                                                                <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">GDA (mg/dL)</dt>
                                                                 <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['gda'] ?? '') ?: '-' }}</dd>
                                                             </div>
                                                             <div>

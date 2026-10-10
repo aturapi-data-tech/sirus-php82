@@ -12,6 +12,7 @@
     @endif
 
     @include('pages.transaksi.rj.emr-rj.pemeriksaan.tabs.fisik-tab')
+    @include('pages.transaksi.rj.emr-rj.pemeriksaan.tabs.psikiatri-tab')
     @include('pages.transaksi.rj.emr-rj.pemeriksaan.tabs.suspek-akibat-kercelakaan-kerja-tab')
 
     {{-- Uji Fungsi + Pemeriksaan Penunjang sebelahan --}}

@@ -312,6 +312,31 @@
                 <span class="font-bold">Fisik dan Uji Fungsi:</span><br>
                 {!! nl2br(e($dataDaftarTxn['pemeriksaan']['fisik'] ?? '-')) !!}
                 {!! nl2br(e($dataDaftarTxn['pemeriksaan']['FisikujiFungsi']['FisikujiFungsi'] ?? '')) !!}
+                @php
+                    $psk = $dataDaftarTxn['pemeriksaan']['pemeriksaanPsikiatri'] ?? [];
+                    $pskPb = $psk['prosesBerpikir'] ?? [];
+                    $pskIsi = $pskPb['isiPikir'] ?? [];
+                    $pskYaKet = fn($jawab, $ket) => $jawab === 'Ya' && trim((string) $ket) !== '' ? 'Ya (' . trim($ket) . ')' : $jawab;
+                    $pskBaris = array_filter([
+                        'Kesadaran' => $psk['kesadaran'] ?? '',
+                        'Kontak Mata' => $psk['kontak']['mata'] ?? '',
+                        'Kontak Verbal' => $psk['kontak']['verbal'] ?? '',
+                        'Mood / Afek' => $psk['moodAfek'] ?? '',
+                        'Bentuk Pikir' => $pskPb['bentukPikir'] ?? '',
+                        'Arus Pikir' => $pskPb['arusPikir'] ?? '',
+                        'Isi Pikir: Pikiran Tidak Masuk Akal' => $pskYaKet($pskIsi['pikiranTidakMasukAkal'] ?? '', $pskIsi['keteranganPikiranTidakMasukAkal'] ?? ''),
+                        'Isi Pikir: Waham' => $pskYaKet($pskIsi['waham'] ?? '', $pskIsi['keteranganWaham'] ?? ''),
+                        'Persepsi' => $psk['persepsi'] ?? '',
+                        'Kemauan' => $psk['kemauan'] ?? '',
+                        'Psikomotor' => $psk['psikomotor'] ?? '',
+                    ], fn($v) => trim((string) $v) !== '');
+                @endphp
+                @if ($pskBaris)
+                    <br><span class="font-bold">Pemeriksaan Psikiatri:</span><br>
+                    @foreach ($pskBaris as $label => $nilai)
+                        {{ $label }} : {{ $nilai }}<br>
+                    @endforeach
+                @endif
             </td>
             <td class="border border-black px-1.5 py-0.5 align-top">
                 <span class="font-bold">Anatomi :</span><br>

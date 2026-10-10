@@ -39,7 +39,7 @@
             <th style="width:14.28%;">Nafas (x/mnt)</th>
             <th style="width:14.28%;">Suhu (&deg;C)</th>
             <th style="width:14.28%;">SPO2 (%)</th>
-            <th>GDA (g/dl)</th>
+            <th>GDA (mg/dL)</th>
         </tr>
         <tr>
             <td class="dt-isi-2">&nbsp;</td>

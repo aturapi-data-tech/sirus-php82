@@ -160,6 +160,28 @@ new class extends Component {
 
             'fisik' => '',
 
+            'pemeriksaanPsikiatri' => [
+                'kesadaran' => '',
+                'kontak' => [
+                    'mata' => '',
+                    'verbal' => '',
+                ],
+                'moodAfek' => '',
+                'prosesBerpikir' => [
+                    'bentukPikir' => '', // Realistik / Non Realistik
+                    'arusPikir' => '', // Lancar / Tidak Lancar
+                    'isiPikir' => [
+                        'pikiranTidakMasukAkal' => '', // Ya / Tidak
+                        'keteranganPikiranTidakMasukAkal' => '',
+                        'waham' => '', // Ya / Tidak
+                        'keteranganWaham' => '',
+                    ],
+                ],
+                'persepsi' => '',
+                'kemauan' => '',
+                'psikomotor' => '',
+            ],
+
             'anatomi' => collect(['kepala', 'mata', 'telinga', 'hidung', 'rambut', 'bibir', 'gigiGeligi', 'lidah', 'langitLangit', 'leher', 'tenggorokan', 'tonsil', 'dada', 'payudarah', 'punggung', 'perut', 'genital', 'anus', 'lenganAtas', 'lenganBawah', 'jariTangan', 'kukuTangan', 'persendianTangan', 'tungkaiAtas', 'tungkaiBawah', 'jariKaki', 'kukuKaki', 'persendianKaki', 'faring'])
                 ->mapWithKeys(
                     fn($part) => [
@@ -667,6 +689,13 @@ new class extends Component {
         // Auto-hitung IMT saat BB atau TB berubah
         if (str_contains($propertyName, 'pemeriksaan.nutrisi.bb') || str_contains($propertyName, 'pemeriksaan.nutrisi.tb')) {
             $this->hitungIMT();
+        }
+
+        // Psikiatri: keterangan hanya berlaku bila jawabannya Ya
+        foreach (['pikiranTidakMasukAkal', 'waham'] as $field) {
+            if ($propertyName === "pemeriksaan.pemeriksaanPsikiatri.prosesBerpikir.isiPikir.{$field}" && $value !== 'Ya') {
+                $this->pemeriksaan['pemeriksaanPsikiatri']['prosesBerpikir']['isiPikir']['keterangan' . ucfirst($field)] = '';
+            }
         }
 
         // Sync radio button suspekAkibatKerja ke irisan pemeriksaan

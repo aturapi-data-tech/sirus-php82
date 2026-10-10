@@ -958,7 +958,7 @@ new class extends Component {
                                             <x-text-input wire:model.live="newForm.spo2" :error="$errors->has('newForm.spo2')" class="w-full mt-1" />
                                         </div>
                                         <div>
-                                            <x-input-label value="GDA (g/dl)" class="whitespace-nowrap" />
+                                            <x-input-label value="GDA (mg/dL)" class="whitespace-nowrap" />
                                             <x-text-input wire:model.live="newForm.gda" :error="$errors->has('newForm.gda')" class="w-full mt-1" />
                                         </div>
                                     </div>
@@ -1202,7 +1202,7 @@ new class extends Component {
                                                                     &nbsp;&bull;&nbsp; RR {{ $entry['rr'] ?: '-' }} x/mnt
                                                                     &nbsp;&bull;&nbsp; S {{ $entry['suhu'] ?: '-' }} °C
                                                                     &nbsp;&bull;&nbsp; SpO2 {{ $entry['spo2'] ?: '-' }}%
-                                                                    &nbsp;&bull;&nbsp; GDA {{ $entry['gda'] ?: '-' }} g/dl
+                                                                    &nbsp;&bull;&nbsp; GDA {{ $entry['gda'] ?: '-' }} mg/dL
                                                                 </dd>
                                                             </div>
                                                             <div>

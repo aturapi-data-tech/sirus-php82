@@ -72,7 +72,7 @@
                 <span class="text-sm font-medium text-muted dark:text-gray-400">GDA</span>
                 <span class="col-span-2 text-base font-medium text-ink dark:text-gray-200">
                     {{ $pemeriksaan['tandaVital']['gda'] ?? '-' }}
-                    <span class="text-sm text-muted-soft">g/dl</span>
+                    <span class="text-sm text-muted-soft">mg/dL</span>
                     <x-input-error :messages="$errors->get('pemeriksaan.tandaVital.gda')" class="mt-1" />
                 </span>
             </div>
