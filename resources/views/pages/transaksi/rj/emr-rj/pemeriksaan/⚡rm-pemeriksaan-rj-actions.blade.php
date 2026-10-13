@@ -617,8 +617,8 @@ new class extends Component {
         }
 
         // Mime dari isi file — upload menerima PDF & JPG; dipaksa application/pdf membuat JPG tampil kosong.
-        $mime = mime_content_type($fullPath) ?: 'application/pdf';
-        $this->viewFilePDF = 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($fullPath));
+        $jenisFile = mime_content_type($fullPath) ?: 'application/pdf';
+        $this->viewFilePDF = 'data:' . $jenisFile . ';base64,' . base64_encode(file_get_contents($fullPath));
         $this->dispatch('open-modal', name: 'view-penunjang-pdf');
     }
 

@@ -199,8 +199,8 @@ new class extends Component {
         }
 
         // Mime dari isi file — upload menerima PDF & JPG; dipaksa application/pdf membuat JPG tampil kosong.
-        $mime = mime_content_type($fullPath) ?: 'application/pdf';
-        $this->viewFilePDF = 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($fullPath));
+        $jenisFile = mime_content_type($fullPath) ?: 'application/pdf';
+        $this->viewFilePDF = 'data:' . $jenisFile . ';base64,' . base64_encode(file_get_contents($fullPath));
         $this->dispatch('open-modal', name: 'view-penunjang-pdf-ri');
     }
 
@@ -513,9 +513,13 @@ new class extends Component {
             </div>
 
             <div class="flex-1 min-h-0 bg-surface-soft dark:bg-gray-950">
-                @if ($viewFilePDF)
-                    <iframe src="{{ $viewFilePDF }}" class="w-full h-full border-0"
-                        type="application/pdf"></iframe>
+                @if ($viewFilePDF && (str_starts_with($viewFilePDF, 'data:image/') || preg_match('/\.(jpe?g|png)$/i', $viewFilePDF)))
+                    {{-- JPG: tampil utuh di tengah, iframe menaruh gambar di pojok kiri atas ukuran asli --}}
+                    <div class="flex items-center justify-center w-full h-full p-4 overflow-auto">
+                        <img src="{{ $viewFilePDF }}" alt="Hasil penunjang" class="object-contain max-w-full max-h-full rounded shadow" />
+                    </div>
+                @elseif ($viewFilePDF)
+                    <iframe src="{{ $viewFilePDF }}" class="w-full h-full border-0"></iframe>
                 @endif
             </div>
 
