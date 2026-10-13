@@ -7,6 +7,8 @@ use Livewire\Attributes\Computed;
 use Livewire\Attributes\Reactive;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Pagination\LengthAwarePaginator;
+use App\Support\OracleLob;
 
 new class extends Component {
     use WithPagination;
@@ -59,89 +61,115 @@ new class extends Component {
     }
 
     /* =======================
-     | Daftar Tahun Filter
+     | Daftar Tahun Filter — dari tahun upload yang benar-benar ada
      * ======================= */
     #[Computed]
     public function tahunList()
     {
-        if (!$this->regNo) {
-            return collect();
-        }
-
-        return DB::table('rstxn_rjhdrs as rj')->join('rsview_rjkasir as v', 'v.rj_no', '=', 'rj.rj_no')->where('v.reg_no', $this->regNo)->whereNotNull('rj.datadaftarpolirj_json')->select(DB::raw('DISTINCT EXTRACT(YEAR FROM rj.rj_date) as tahun'))->orderByDesc('tahun')->pluck('tahun');
+        return collect($this->semuaUpload)->pluck('tahun')->filter()->unique()->sortDesc()->values();
     }
 
     /* =======================
-     | Semua Items — flat dari semua kunjungan
-                                     *
-                                     * Struktur array per item (dari datadaftarpolirj_json):
-                                     *   pemeriksaan.uploadHasilPenunjang[]:
-                                     *     file        → path Storage::disk('local')
-                                     *     desc        → keterangan
-                                     *     tglUpload   → tanggal upload
-                                     *     penanggungJawab:
-                                     *       userLog      → nama petugas
-                                     *       userLogDate  → tanggal log
-                                     *       userLogCode  → kode petugas
+     | Semua upload pasien — flat dari kunjungan RJ, UGD, dan RI (termasuk yang
+     | masih dilayani: upload EMR langsung tersimpan di JSON kunjungan, jadi DPJP
+     | sudah bisa melihat sebelum pasien pulang).
+     |
+     | Struktur array per item (pemeriksaan.uploadHasilPenunjang[] di JSON kunjungan):
+     |   file → filename (dmYHis.ext) · desc → keterangan · tglUpload
+     |   penanggungJawab: userLog · userLogDate · userLogCode
      * ======================= */
     #[Computed]
-    public function allItems(): array
+    public function semuaUpload(): array
     {
         if (!$this->regNo) {
             return [];
         }
 
-        $rows = DB::table('rstxn_rjhdrs as rj')
-            ->join('rsview_rjkasir as v', 'v.rj_no', '=', 'rj.rj_no')
-            ->where('v.reg_no', $this->regNo)
-            ->whereNotNull('rj.datadaftarpolirj_json')
-            ->select(['rj.rj_no', DB::raw("TO_CHAR(rj.rj_date, 'dd/mm/yyyy hh24:mi:ss') as rj_date"), 'v.reg_name', 'v.poli_desc', 'v.dr_name', 'rj.datadaftarpolirj_json'])
-            ->when($this->filterTahun, fn($q) => $q->whereYear('rj.rj_date', $this->filterTahun))
-            ->orderByDesc('rj.rj_date')
-            ->get();
+        $sumberList = [
+            [
+                'jalur' => 'RJ',
+                'rows' => DB::table('rstxn_rjhdrs as rj')
+                    ->join('rsview_rjkasir as v', 'v.rj_no', '=', 'rj.rj_no')
+                    ->where('v.reg_no', $this->regNo)
+                    ->whereNotNull('rj.datadaftarpolirj_json')
+                    ->select(['rj.rj_no as no_kunjungan', DB::raw("TO_CHAR(rj.rj_date, 'dd/mm/yyyy hh24:mi:ss') as tgl_kunjungan"), 'v.poli_desc as unit', 'v.dr_name', 'rj.datadaftarpolirj_json as json'])
+                    ->get(),
+                'tabel' => ['rstxn_rjhdrs', 'rj_no', 'datadaftarpolirj_json'],
+            ],
+            [
+                'jalur' => 'UGD',
+                'rows' => DB::table('rsview_ugdkasir')
+                    ->where('reg_no', $this->regNo)
+                    ->whereNotNull('datadaftarugd_json')
+                    ->select(['rj_no as no_kunjungan', DB::raw("TO_CHAR(rj_date, 'dd/mm/yyyy hh24:mi:ss') as tgl_kunjungan"), DB::raw("'UGD' as unit"), 'dr_name', 'datadaftarugd_json as json'])
+                    ->get(),
+                'tabel' => ['rstxn_ugdhdrs', 'rj_no', 'datadaftarugd_json'],
+            ],
+            [
+                'jalur' => 'RI',
+                'rows' => DB::table('rsview_rihdrs')
+                    ->where('reg_no', $this->regNo)
+                    ->whereNotNull('datadaftarri_json')
+                    ->select(['rihdr_no as no_kunjungan', DB::raw("TO_CHAR(entry_date, 'dd/mm/yyyy hh24:mi:ss') as tgl_kunjungan"), 'bangsal_name as unit', 'dr_name', 'datadaftarri_json as json'])
+                    ->get(),
+                'tabel' => ['rstxn_rihdrs', 'rihdr_no', 'datadaftarri_json'],
+            ],
+        ];
 
-        $items = [];
-        $keyword = mb_strtoupper(trim($this->searchKeyword));
+        $uploadList = [];
+        foreach ($sumberList as $sumber) {
+            [$tabel, $kolomKunci, $kolomJson] = $sumber['tabel'];
 
-        foreach ($rows as $row) {
-            try {
-                $json = json_decode($row->datadaftarpolirj_json, true, 512, JSON_THROW_ON_ERROR);
-            } catch (\Throwable) {
-                continue;
-            }
-
-            $uploads = $json['pemeriksaan']['uploadHasilPenunjang'] ?? [];
-
-            if (empty($uploads)) {
-                continue;
-            }
-
-            foreach ($uploads as $upload) {
-                if ($keyword !== '') {
-                    $haystack = mb_strtoupper(($upload['desc'] ?? '') . ' ' . ($upload['penanggungJawab']['userLog'] ?? ''));
-                    if (!str_contains($haystack, $keyword)) {
-                        continue;
-                    }
+            foreach ($sumber['rows'] as $row) {
+                try {
+                    $isiJson = OracleLob::read($row->json ?? null, $tabel, $kolomKunci, $row->no_kunjungan, $kolomJson);
+                    $dataKunjungan = json_decode($isiJson, true, 512, JSON_THROW_ON_ERROR);
+                } catch (\Throwable) {
+                    continue;
                 }
 
-                $items[] = [
-                    'rjNo' => $row->rj_no,
-                    'rjDate' => $row->rj_date,
-                    'regName' => $row->reg_name,
-                    'poliDesc' => $row->poli_desc,
-                    'drName' => $row->dr_name,
-                    // ── dari array uploadHasilPenunjang ──────────────────
-                    'file' => $upload['file'] ?? '',
-                    'desc' => $upload['desc'] ?? '-',
-                    'tglUpload' => $upload['tglUpload'] ?? '-',
-                    'userLog' => $upload['penanggungJawab']['userLog'] ?? '-',
-                    'userLogDate' => $upload['penanggungJawab']['userLogDate'] ?? '-',
-                    'userLogCode' => $upload['penanggungJawab']['userLogCode'] ?? '',
-                ];
+                foreach ($dataKunjungan['pemeriksaan']['uploadHasilPenunjang'] ?? [] as $upload) {
+                    $tglUpload = $upload['tglUpload'] ?? '';
+                    $waktu = DateTime::createFromFormat('d/m/Y H:i:s', $tglUpload) ?: null;
+
+                    $uploadList[] = [
+                        'jalur' => $sumber['jalur'],
+                        'noKunjungan' => $row->no_kunjungan,
+                        'tglKunjungan' => $row->tgl_kunjungan,
+                        'unit' => $row->unit ?? '-',
+                        'drName' => $row->dr_name ?? '-',
+                        'file' => $upload['file'] ?? '',
+                        'desc' => $upload['desc'] ?? '-',
+                        'tglUpload' => $tglUpload ?: '-',
+                        'tahun' => $waktu?->format('Y'),
+                        'urut' => $waktu?->format('YmdHis') ?? '0',
+                        'userLog' => $upload['penanggungJawab']['userLog'] ?? '-',
+                    ];
+                }
             }
         }
 
-        return $items;
+        usort($uploadList, fn($rowPertama, $rowKedua) => strcmp($rowKedua['urut'], $rowPertama['urut']));
+
+        return $uploadList;
+    }
+
+    /* =======================
+     | Items setelah filter tahun & kata kunci
+     * ======================= */
+    #[Computed]
+    public function allItems(): array
+    {
+        $keyword = mb_strtoupper(trim($this->searchKeyword));
+
+        return array_values(
+            array_filter($this->semuaUpload, function ($row) use ($keyword) {
+                if ($this->filterTahun && $row['tahun'] !== (string) $this->filterTahun) {
+                    return false;
+                }
+                return $keyword === '' || str_contains(mb_strtoupper($row['desc'] . ' ' . $row['userLog']), $keyword);
+            }),
+        );
     }
 
     /* =======================
@@ -150,16 +178,12 @@ new class extends Component {
     #[Computed]
     public function statsUpload(): array
     {
-        if (!$this->regNo) {
-            return ['total' => 0, 'ada_file' => 0, 'total_kunjungan' => 0];
-        }
-
-        $all = $this->allItems;
+        $uploadList = collect($this->allItems);
 
         return [
-            'total' => count($all),
-            'ada_file' => collect($all)->filter(fn($i) => !empty($i['file']) && Storage::disk('local')->exists($i['file']))->count(),
-            'total_kunjungan' => collect($all)->pluck('rjNo')->unique()->count(),
+            'total' => $uploadList->count(),
+            'ada_file' => $uploadList->filter(fn($row) => $this->fileExists($row['file']))->count(),
+            'total_kunjungan' => $uploadList->map(fn($row) => $row['jalur'] . $row['noKunjungan'])->unique()->count(),
         ];
     }
 
@@ -169,11 +193,11 @@ new class extends Component {
     #[Computed]
     public function rows()
     {
-        $all = $this->allItems;
-        $page = $this->getPage();
-        $per = $this->itemsPerPage;
+        $uploadList = $this->allItems;
+        $halaman = $this->getPage();
+        $perHalaman = $this->itemsPerPage;
 
-        return new \Illuminate\Pagination\LengthAwarePaginator(array_slice($all, ($page - 1) * $per, $per), count($all), $per, $page, ['path' => request()->url()]);
+        return new LengthAwarePaginator(array_slice($uploadList, ($halaman - 1) * $perHalaman, $perHalaman), count($uploadList), $perHalaman, $halaman, ['path' => request()->url()]);
     }
 
     /* =======================
@@ -181,7 +205,7 @@ new class extends Component {
      |
      | Strategi: mount/... (SMB share) → upload/... (lokal sementara sebelum sync)
      | → legacy raw path. Pakai disk 'local' (root: storage/app/private).
-     | Pola identik dengan rm-pemeriksaan-ri-actions.blade.php:153-170.
+     | Kandidat sama dengan openModalViewPenunjang di EMR RJ/UGD/RI.
      * ======================= */
     public function resolveFileUrl(?string $file): ?string
     {
@@ -191,11 +215,14 @@ new class extends Component {
 
         $disk = Storage::disk('local');
         $filename = basename($file);
-        $candidates = array_filter(array_unique(['mount/penunjang/emr/uploadHasilPenunjang/' . $filename, 'upload/penunjang/emr/uploadHasilPenunjang/' . $filename, $file]));
+        $kandidatList = array_filter(array_unique(['mount/penunjang/emr/uploadHasilPenunjang/' . $filename, 'upload/penunjang/emr/uploadHasilPenunjang/' . $filename, $file]));
 
-        foreach ($candidates as $cand) {
-            if ($disk->exists($cand)) {
-                return route('files.show', ['path' => $cand]);
+        foreach ($kandidatList as $kandidat) {
+            if ($disk->exists($kandidat)) {
+                // Whitelist files.show hanya mount/...; route sendiri yang fallback ke upload/.
+                // Mengirim path upload/ (file belum ter-sync) = 403.
+                $path = preg_replace('#^upload/penunjang/emr/#', 'mount/penunjang/emr/', $kandidat, 1);
+                return route('files.show', ['path' => $path]);
             }
         }
 
@@ -237,281 +264,161 @@ new class extends Component {
 ?>
 
 <div>
-    <div class="flex flex-col w-full">
-        <div class="w-full mx-auto">
-            <div
-                class="w-full p-4 space-y-4 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
+    <div
+        class="w-full p-4 space-y-3 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
 
-                {{-- ── TABEL ───────────────────────────────────────────── --}}
-                <div class="flex flex-col my-2">
-                    <div class="overflow-x-auto rounded-lg">
-                        <div class="inline-block min-w-full align-middle">
-                            <div class="mb-2 overflow-hidden shadow sm:rounded-lg">
+        {{-- ── HEADER + FILTER ─────────────────────────────────────── --}}
+        <div class="flex flex-wrap items-center justify-between gap-3">
+            <div class="flex flex-wrap items-center gap-2">
+                <h3 class="text-sm font-semibold tracking-wide uppercase text-body dark:text-gray-300">
+                    Riwayat Upload Hasil Penunjang
+                </h3>
+                @if ($regNo)
+                    <span class="px-2 py-0.5 text-xs rounded-full bg-primary/10 text-primary">
+                        {{ $this->statsUpload['total'] }} File
+                    </span>
+                    <span class="px-2 py-0.5 text-xs rounded-full text-muted bg-surface-soft dark:bg-gray-700 dark:text-gray-300">
+                        {{ $this->statsUpload['total_kunjungan'] }} Kunjungan
+                    </span>
+                @endif
+            </div>
 
-                                <table class="w-full text-sm text-left text-muted table-auto dark:text-gray-400">
-
-                                    <thead
-                                        class="text-sm text-body uppercase bg-surface-soft dark:bg-gray-700 dark:text-gray-400">
-                                        <tr>
-                                            <th scope="col" class="px-4 py-3">
-                                                <div class="flex items-center space-x-2">
-                                                    <span>Riwayat Upload Hasil Penunjang</span>
-                                                    @if ($regNo && count($this->allItems) > 0)
-                                                        <span
-                                                            class="px-2 py-0.5 text-sm bg-primary/10 text-primary rounded-full">
-                                                            {{ count($this->allItems) }} File
-                                                        </span>
-                                                    @endif
-                                                </div>
-                                            </th>
-                                        </tr>
-                                    </thead>
-
-                                    <tbody class="bg-canvas dark:bg-gray-800">
-
-                                        @forelse ($this->rows as $item)
-                                            @php
-                                                $fileExists = $this->fileExists($item['file'] ?? null);
-                                            @endphp
-
-                                            <tr class="border-b group dark:border-gray-700">
-                                                <td
-                                                    class="px-4 py-4 text-ink transition-colors group-hover:bg-surface-soft dark:text-gray-100 dark:group-hover:bg-gray-750">
-
-                                                    {{-- Header Row --}}
-                                                    <div class="flex items-start justify-between">
-                                                        <div class="flex items-center space-x-2">
-
-                                                            {{-- Icon PDF --}}
-                                                            <div
-                                                                class="flex items-center justify-center w-10 h-10 rounded-xl
-                                                                        bg-yellow-400/10 dark:bg-yellow-400/15 shrink-0">
-                                                                <svg class="w-5 h-5 text-yellow-500"
-                                                                    xmlns="http://www.w3.org/2000/svg"
-                                                                    fill="currentColor" viewBox="0 0 24 24">
-                                                                    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0
-                                                                           002-2V8l-6-6zm-1 1.5L18.5 9H13V3.5zM8 13h8v1.5H8V13zm0
-                                                                           3h8v1.5H8V16zm0-6h3v1.5H8V10z" />
-                                                                </svg>
-                                                            </div>
-
-                                                            <div>
-                                                                <div class="flex flex-wrap items-center gap-2">
-                                                                    <span
-                                                                        class="font-bold text-ink dark:text-gray-200">
-                                                                        {{ $item['desc'] }}
-                                                                    </span>
-                                                                    @if ($fileExists)
-                                                                        <span
-                                                                            class="px-2 py-0.5 text-xs font-medium rounded-full text-green-700 bg-green-100">
-                                                                            ✓ File Tersedia
-                                                                        </span>
-                                                                    @else
-                                                                        <span
-                                                                            class="px-2 py-0.5 text-xs font-medium rounded-full text-red-700 bg-red-100">
-                                                                            ✗ File Tidak Ditemukan
-                                                                        </span>
-                                                                    @endif
-                                                                </div>
-                                                                <div class="mt-0.5 text-xs text-muted-soft font-mono">
-                                                                    RJ No: {{ $item['rjNo'] }}
-                                                                </div>
-                                                            </div>
-                                                        </div>
-
-                                                        {{-- Tgl Upload --}}
-                                                        <div class="text-right text-muted shrink-0">
-                                                            <div class="text-xs font-mono">{{ $item['tglUpload'] }}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-
-                                                    {{-- Info Kunjungan --}}
-                                                    <div class="p-2 mt-3 rounded bg-surface-soft dark:bg-gray-700">
-                                                        <div class="flex items-center mb-1.5 space-x-1">
-                                                            <svg class="w-3 h-3 text-primary" fill="none"
-                                                                stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path stroke-linecap="round" stroke-linejoin="round"
-                                                                    stroke-width="2"
-                                                                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                                            </svg>
-                                                            <span
-                                                                class="text-xs font-semibold text-muted dark:text-gray-300">Info
-                                                                Kunjungan:</span>
-                                                        </div>
-                                                        <div class="flex flex-wrap gap-1">
-                                                            <span
-                                                                class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary border border-primary/20">
-                                                                {{ $item['rjDate'] }}
-                                                            </span>
-                                                            <span
-                                                                class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-surface-soft text-muted border border-hairline dark:bg-gray-600 dark:text-gray-300">
-                                                                {{ $item['poliDesc'] }}
-                                                            </span>
-                                                            <span
-                                                                class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-surface-soft text-muted border border-hairline dark:bg-gray-600 dark:text-gray-300">
-                                                                {{ $item['drName'] }}
-                                                            </span>
-                                                        </div>
-                                                    </div>
-
-                                                    {{-- Petugas --}}
-                                                    <div class="mt-2 flex items-center gap-1 text-xs text-muted-soft">
-                                                        <svg class="w-3 h-3" fill="none" stroke="currentColor"
-                                                            viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                                stroke-width="2"
-                                                                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                                        </svg>
-                                                        <span>Diupload oleh:</span>
-                                                        <span
-                                                            class="font-medium text-muted dark:text-gray-300">{{ $item['userLog'] }}</span>
-                                                        <span class="font-mono">— {{ $item['userLogDate'] }}</span>
-                                                    </div>
-
-                                                    {{-- Actions --}}
-                                                    @can('penunjang.lihatHasil')
-                                                        @if ($fileExists)
-                                                            <div class="flex items-center gap-2 mt-3">
-                                                                <x-outline-button type="button"
-                                                                    wire:click="openViewPDF({{ json_encode($item['file']) }})">
-                                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                                                    </svg>
-                                                                    Lihat PDF
-                                                                </x-outline-button>
-                                                            </div>
-                                                        @endif
-                                                    @endcan
-
-                                                </td>
-                                            </tr>
-
-                                        @empty
-                                            <tr>
-                                                <td class="px-4 py-8 text-center">
-                                                    @if ($regNo)
-                                                        <svg class="w-12 h-12 mx-auto text-gray-300" fill="none"
-                                                            stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                                stroke-width="2"
-                                                                d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                                        </svg>
-                                                        <p class="mt-2 text-muted">
-                                                            Belum ada file penunjang yang diupload untuk pasien ini.
-                                                        </p>
-                                                    @else
-                                                        <p class="text-muted">Silakan pilih pasien terlebih dahulu.
-                                                        </p>
-                                                    @endif
-                                                </td>
-                                            </tr>
-                                        @endforelse
-
-                                    </tbody>
-                                </table>
-
-                            </div>
-
-                            {{-- Pagination --}}
-                            @if ($regNo && $this->rows->hasPages())
-                                <div class="mt-4">
-                                    {{ $this->rows->links() }}
-                                </div>
-                            @endif
-
-                        </div>
+            @if ($regNo)
+                <div class="flex flex-wrap items-center gap-2">
+                    <div class="relative">
+                        <svg class="absolute left-2.5 top-2.5 w-4 h-4 text-muted-soft" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                        <input type="text" wire:model.live.debounce.400ms="searchKeyword"
+                            placeholder="Cari keterangan / petugas..."
+                            class="pl-8 pr-3 py-1.5 text-sm border border-gray-300 rounded-lg
+                                   focus:ring-2 focus:ring-primary focus:border-primary
+                                   dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
                     </div>
+
+                    <select wire:model.live="filterTahun"
+                        class="px-3 py-1.5 text-sm border border-gray-300 rounded-lg
+                               focus:ring-2 focus:ring-primary focus:border-primary
+                               dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                        <option value="">Semua Tahun</option>
+                        @foreach ($this->tahunList as $tahun)
+                            <option value="{{ $tahun }}">{{ $tahun }}</option>
+                        @endforeach
+                    </select>
+
+                    <select wire:model.live="itemsPerPage"
+                        class="px-3 py-1.5 text-sm border border-gray-300 rounded-lg
+                               focus:ring-2 focus:ring-primary focus:border-primary
+                               dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                        <option value="3">3 / hal</option>
+                        <option value="5">5 / hal</option>
+                        <option value="10">10 / hal</option>
+                    </select>
+
+                    @if ($searchKeyword || $filterTahun)
+                        <x-secondary-button wire:click="resetFilters" type="button">
+                            Reset
+                        </x-secondary-button>
+                    @endif
                 </div>
+            @endif
+        </div>
 
-                {{-- ── TOOLBAR STATS ───────────────────────────────────── --}}
-                <div
-                    class="flex flex-wrap items-center justify-between gap-3 p-3 mb-3 bg-canvas border border-hairline rounded-lg dark:bg-gray-800 dark:border-gray-700">
+        {{-- ── DAFTAR FILE ─────────────────────────────────────────── --}}
+        <div class="border divide-y rounded-lg border-hairline divide-hairline dark:border-gray-700 dark:divide-gray-700">
+            @forelse ($this->rows as $row)
+                @php
+                    $fileExists = $this->fileExists($row['file'] ?? null);
+                    $isImage = (bool) preg_match('/\.(jpe?g|png)$/i', $row['file'] ?? '');
+                    $jalurClass = match ($row['jalur']) {
+                        'RI' => 'text-purple-700 bg-purple-100',
+                        'UGD' => 'text-red-700 bg-red-100',
+                        default => 'text-teal-700 bg-teal-100',
+                    };
+                    $jalurText = match ($row['jalur']) {
+                        'RI' => 'Rawat Inap',
+                        'UGD' => 'UGD',
+                        default => 'Rawat Jalan',
+                    };
+                @endphp
 
-                    {{-- Kiri: No. RM + Stats --}}
-                    <div class="flex items-center space-x-3">
-                        <div class="flex items-center space-x-2">
-                            <svg class="w-5 h-5 text-muted" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
+                <div wire:key="upload-penunjang-{{ $row['jalur'] }}-{{ $row['noKunjungan'] }}-{{ $row['file'] }}"
+                    class="flex items-center gap-3 px-3 py-3 transition-colors bg-canvas hover:bg-surface-soft dark:bg-gray-800 dark:hover:bg-gray-750">
+
+                    {{-- Ikon jenis file --}}
+                    <div
+                        class="flex items-center justify-center w-10 h-10 rounded-xl shrink-0
+                               {{ $isImage ? 'bg-blue-100 dark:bg-blue-400/15' : 'bg-yellow-400/10 dark:bg-yellow-400/15' }}">
+                        @if ($isImage)
+                            <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                             </svg>
-                            <span class="text-sm font-medium">
-                                No. RM: <span class="font-semibold text-primary">{{ $regNo ?: '-' }}</span>
-                            </span>
-                        </div>
-
-                        @if ($regNo)
-                            <div class="flex flex-wrap gap-2">
-                                <span class="px-2 py-1 text-sm rounded-full text-primary bg-primary/10">
-                                    {{ $this->statsUpload['total'] }} Total File
-                                </span>
-                                <span class="px-2 py-1 text-sm text-green-700 bg-green-100 rounded-full">
-                                    ✓ Tersedia: {{ $this->statsUpload['ada_file'] }}
-                                </span>
-                                <span class="px-2 py-1 text-sm text-blue-700 bg-blue-100 rounded-full">
-                                    📋 Kunjungan: {{ $this->statsUpload['total_kunjungan'] }}
-                                </span>
-                            </div>
+                        @else
+                            <svg class="w-5 h-5 text-yellow-500" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm-1 1.5L18.5 9H13V3.5zM8 13h8v1.5H8V13zm0 3h8v1.5H8V16zm0-6h3v1.5H8V10z" />
+                            </svg>
                         @endif
                     </div>
 
-                    {{-- Kanan: Filter --}}
-                    @if ($regNo)
+                    {{-- Isi --}}
+                    <div class="flex-1 min-w-0">
                         <div class="flex flex-wrap items-center gap-2">
-
-                            {{-- Search --}}
-                            <div class="relative">
-                                <svg class="absolute left-2.5 top-2.5 w-4 h-4 text-muted-soft" fill="none"
-                                    stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                </svg>
-                                <input type="text" wire:model.live.debounce.400ms="searchKeyword"
-                                    placeholder="Cari keterangan / petugas..."
-                                    class="pl-8 pr-3 py-1.5 text-sm border border-gray-300 rounded-lg
-                                           focus:ring-2 focus:ring-primary focus:border-primary
-                                           dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
-                            </div>
-
-                            {{-- Filter Tahun --}}
-                            <select wire:model.live="filterTahun"
-                                class="px-3 py-1.5 text-sm border border-gray-300 rounded-lg
-                                       focus:ring-2 focus:ring-primary focus:border-primary
-                                       dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                                <option value="">Semua Tahun</option>
-                                @foreach ($this->tahunList as $tahun)
-                                    <option value="{{ $tahun }}">{{ $tahun }}</option>
-                                @endforeach
-                            </select>
-
-                            {{-- Items per page --}}
-                            <select wire:model.live="itemsPerPage"
-                                class="px-3 py-1.5 text-sm border border-gray-300 rounded-lg
-                                       focus:ring-2 focus:ring-primary focus:border-primary
-                                       dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                                <option value="3">3 / hal</option>
-                                <option value="5">5 / hal</option>
-                                <option value="10">10 / hal</option>
-                            </select>
-
-                            {{-- Reset --}}
-                            @if ($searchKeyword || $filterTahun)
-                                <x-secondary-button wire:click="resetFilters" type="button">
-                                    Reset
-                                </x-secondary-button>
-                            @endif
-
+                            <span class="font-semibold truncate text-ink dark:text-gray-100">{{ $row['desc'] }}</span>
+                            <span class="px-2 py-0.5 text-xs font-medium rounded-full {{ $jalurClass }}">{{ $jalurText }}</span>
+                            @unless ($fileExists)
+                                <span class="px-2 py-0.5 text-xs font-medium rounded-full text-red-700 bg-red-100">
+                                    ✗ File tidak ditemukan
+                                </span>
+                            @endunless
                         </div>
-                    @endif
+                        <div class="mt-0.5 text-xs text-muted dark:text-gray-400">
+                            {{ $row['unit'] }} · {{ $row['drName'] }} · kunjungan {{ $row['tglKunjungan'] }}
+                        </div>
+                        <div class="mt-0.5 text-xs text-muted-soft">
+                            Diupload {{ $row['userLog'] }} — <span class="font-mono">{{ $row['tglUpload'] }}</span>
+                        </div>
+                    </div>
 
+                    {{-- Aksi --}}
+                    @can('penunjang.lihatHasil')
+                        @if ($fileExists)
+                            <x-outline-button type="button" class="shrink-0"
+                                wire:click="openViewPDF({{ json_encode($row['file']) }})">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                                Lihat
+                            </x-outline-button>
+                        @endif
+                    @endcan
                 </div>
-
-            </div>
+            @empty
+                <div class="px-4 py-8 text-center">
+                    @if ($regNo)
+                        <svg class="w-12 h-12 mx-auto text-gray-300" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <p class="mt-2 text-muted">Belum ada file penunjang yang diupload untuk pasien ini.</p>
+                    @else
+                        <p class="text-muted">Silakan pilih pasien terlebih dahulu.</p>
+                    @endif
+                </div>
+            @endforelse
         </div>
+
+        @if ($regNo && $this->rows->hasPages())
+            <div>
+                {{ $this->rows->links() }}
+            </div>
+        @endif
     </div>
 
     {{-- ── MODAL LIHAT PDF ─────────────────────────────────────── --}}
@@ -541,7 +448,7 @@ new class extends Component {
                                 Hasil Penunjang
                             </h2>
                             <p class="mt-0.5 text-sm text-muted dark:text-gray-400">
-                                Preview file PDF hasil penunjang pasien
+                                Preview file hasil penunjang pasien (PDF/JPG)
                             </p>
                         </div>
                     </div>
@@ -561,9 +468,11 @@ new class extends Component {
 
             {{-- BODY — iframe via base64 data URI, tidak perlu route --}}
             <div class="flex-1 min-h-0 bg-surface-soft dark:bg-gray-950">
-                @if ($viewFilePDF)
-                    <iframe src="{{ $viewFilePDF }}" class="w-full h-full border-0"
-                        type="application/pdf"></iframe>
+                @if ($viewFilePDF && (str_starts_with($viewFilePDF, 'data:image/') || preg_match('/\.(jpe?g|png)$/i', $viewFilePDF)))
+                    {{-- JPG: zoom + rotasi; iframe menaruh gambar di pojok kiri atas ukuran asli --}}
+                    <x-pratinjau-gambar :src="$viewFilePDF" />
+                @elseif ($viewFilePDF)
+                    <x-pratinjau-pdf :src="$viewFilePDF" />
                 @endif
             </div>
 

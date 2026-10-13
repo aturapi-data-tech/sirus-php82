@@ -208,3 +208,170 @@ document.addEventListener("alpine:init", () => {
         });
     });
 });
+
+// pdf.js — LAZY-LOADED seperti TinyMCE: bundle baru diunduh saat <x-pratinjau-pdf> pertama dibuka.
+// Build legacy dipilih supaya tetap jalan di browser PC lama di unit pelayanan.
+let _pdfjsPromise = null;
+function loadPdfjs() {
+    if (!_pdfjsPromise) {
+        _pdfjsPromise = (async () => {
+            const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+            // ?worker: Vite membundel worker jadi .js — berkas .mjs bisa ditolak browser
+            // bila web server belum memetakan MIME .mjs ke JavaScript.
+            const { default: PdfjsWorker } = await import(
+                "pdfjs-dist/legacy/build/pdf.worker.min.mjs?worker"
+            );
+            pdfjs.GlobalWorkerOptions.workerPort = new PdfjsWorker();
+            return pdfjs;
+        })();
+    }
+    return _pdfjsPromise;
+}
+
+// Alpine.data factory untuk <x-pratinjau-pdf> — zoom, rotasi, cetak, unduh.
+// src: data URI base64 (modal EMR) atau URL route files.show (Riwayat Upload).
+document.addEventListener("alpine:init", () => {
+    window.Alpine.data("pratinjauPdf", ({ src, namaFile = "hasil-penunjang.pdf" }) => {
+        // Di luar state reaktif: proxy Alpine merusak objek pdf.js (field privat).
+        let dokumen = null;
+        let isiPdf = null;
+        let urutanRender = 0;
+        let tugasRender = [];
+
+        return {
+            zoom: 1,
+            rotasi: 0,
+            jumlahHalaman: 0,
+            memuat: true,
+            galat: "",
+
+            async init() {
+                try {
+                    isiPdf = await this.ambilIsi();
+                    const pdfjs = await loadPdfjs();
+                    // slice(): buffer dipindah ke worker; salinan asli tetap untuk cetak/unduh.
+                    dokumen = await pdfjs.getDocument({ data: isiPdf.slice() }).promise;
+                    this.jumlahHalaman = dokumen.numPages;
+                    await this.render();
+                } catch (e) {
+                    this.galat = "File PDF tidak dapat ditampilkan.";
+                    console.error("[pratinjauPdf]", e);
+                } finally {
+                    this.memuat = false;
+                }
+            },
+
+            destroy() {
+                tugasRender.forEach((tugas) => tugas.cancel());
+                dokumen?.destroy();
+                dokumen = null;
+            },
+
+            async ambilIsi() {
+                if (src.startsWith("data:")) {
+                    const biner = atob(src.slice(src.indexOf(",") + 1));
+                    const hasil = new Uint8Array(biner.length);
+                    for (let i = 0; i < biner.length; i++) hasil[i] = biner.charCodeAt(i);
+                    return hasil;
+                }
+                const respon = await fetch(src, { credentials: "same-origin" });
+                if (!respon.ok) throw new Error("HTTP " + respon.status);
+                return new Uint8Array(await respon.arrayBuffer());
+            },
+
+            async render() {
+                if (!dokumen) return;
+                const urutan = ++urutanRender;
+                tugasRender.forEach((tugas) => tugas.cancel());
+                tugasRender = [];
+
+                const wadah = this.$refs.halaman;
+                const lebarArea = Math.max(this.$refs.area.clientWidth - 32, 200);
+                const rasioPiksel = window.devicePixelRatio || 1;
+                const kanvasList = [];
+
+                for (let nomor = 1; nomor <= dokumen.numPages; nomor++) {
+                    const halaman = await dokumen.getPage(nomor);
+                    if (urutan !== urutanRender) return;
+
+                    const ukuranAsli = halaman.getViewport({ scale: 1, rotation: this.rotasi });
+                    const skala = (lebarArea / ukuranAsli.width) * this.zoom;
+                    const viewport = halaman.getViewport({ scale: skala, rotation: this.rotasi });
+
+                    const kanvas = document.createElement("canvas");
+                    kanvas.width = Math.floor(viewport.width * rasioPiksel);
+                    kanvas.height = Math.floor(viewport.height * rasioPiksel);
+                    kanvas.style.width = Math.floor(viewport.width) + "px";
+                    kanvas.style.height = Math.floor(viewport.height) + "px";
+                    kanvas.style.display = "block";
+                    kanvas.style.margin = "0 auto 16px";
+                    kanvas.style.background = "#fff";
+                    kanvas.style.boxShadow = "0 1px 3px rgba(0,0,0,.25)";
+                    kanvasList.push(kanvas);
+
+                    const tugas = halaman.render({
+                        canvasContext: kanvas.getContext("2d"),
+                        viewport,
+                        transform: rasioPiksel !== 1 ? [rasioPiksel, 0, 0, rasioPiksel, 0, 0] : null,
+                    });
+                    tugasRender.push(tugas);
+                    // Halaman pertama tampil secepatnya; sisanya menyusul.
+                    if (nomor === 1) wadah.replaceChildren(kanvas);
+                    else wadah.appendChild(kanvas);
+                    try {
+                        await tugas.promise;
+                    } catch (e) {
+                        if (e?.name === "RenderingCancelledException") return;
+                        throw e;
+                    }
+                }
+            },
+
+            perbesar() {
+                this.zoom = Math.min(+(this.zoom + 0.25).toFixed(2), 5);
+                this.render();
+            },
+            perkecil() {
+                this.zoom = Math.max(+(this.zoom - 0.25).toFixed(2), 0.25);
+                this.render();
+            },
+            putar(derajat) {
+                this.rotasi = (this.rotasi + derajat + 360) % 360;
+                this.render();
+            },
+            pasLebar() {
+                this.zoom = 1;
+                this.render();
+            },
+
+            urlBlob() {
+                return URL.createObjectURL(new Blob([isiPdf], { type: "application/pdf" }));
+            },
+            cetak() {
+                if (!isiPdf) return;
+                const url = this.urlBlob();
+                const bingkai = document.createElement("iframe");
+                bingkai.style.cssText = "position:fixed;width:0;height:0;border:0;right:0;bottom:0";
+                bingkai.src = url;
+                bingkai.onload = () => {
+                    bingkai.contentWindow.focus();
+                    bingkai.contentWindow.print();
+                };
+                document.body.appendChild(bingkai);
+                setTimeout(() => {
+                    bingkai.remove();
+                    URL.revokeObjectURL(url);
+                }, 60000);
+            },
+            unduh() {
+                if (!isiPdf) return;
+                const url = this.urlBlob();
+                const tautan = document.createElement("a");
+                tautan.href = url;
+                tautan.download = namaFile;
+                tautan.click();
+                setTimeout(() => URL.revokeObjectURL(url), 10000);
+            },
+        };
+    });
+});

@@ -150,7 +150,7 @@
                         <div>
                             <h2 class="font-semibold text-2xl text-ink dark:text-gray-100">Hasil Penunjang</h2>
                             <p class="mt-0.5 text-base text-muted dark:text-gray-400">
-                                Preview file PDF hasil penunjang pasien
+                                Preview file hasil penunjang pasien (PDF/JPG)
                             </p>
                         </div>
                     </div>
@@ -168,8 +168,11 @@
 
             {{-- Body --}}
             <div class="flex-1 min-h-0 bg-surface-soft dark:bg-gray-950">
-                @if ($viewFilePDF)
-                    <iframe src="{{ $viewFilePDF }}" class="w-full h-full border-0" type="application/pdf"></iframe>
+                @if ($viewFilePDF && (str_starts_with($viewFilePDF, 'data:image/') || preg_match('/\.(jpe?g|png)$/i', $viewFilePDF)))
+                    {{-- JPG: zoom + rotasi; iframe menaruh gambar di pojok kiri atas ukuran asli --}}
+                    <x-pratinjau-gambar :src="$viewFilePDF" />
+                @elseif ($viewFilePDF)
+                    <x-pratinjau-pdf :src="$viewFilePDF" />
                 @endif
             </div>
 

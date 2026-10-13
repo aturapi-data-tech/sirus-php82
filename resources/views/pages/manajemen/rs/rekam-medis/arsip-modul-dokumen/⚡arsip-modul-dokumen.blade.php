@@ -31,6 +31,11 @@ new class extends Component {
             'pengkajianPreOpUGD' => 'Pengkajian Pre-Op', 'praAnestesiUGD' => 'Pra Anestesi', 'praInduksiUGD' => 'Pra Induksi',
             'surgicalSafetyChecklistUGD' => 'Surgical Safety Checklist', 'laporanOperasiUGD' => 'Laporan Operasi',
             'laporanAnestesiUGD' => 'Laporan Anestesi', 'pascaAnestesiUGD' => 'Pasca Anestesi', 'instruksiPascaBedahUGD' => 'Instruksi Pasca Bedah',
+            'pengkajianAwalObstetriUGD' => 'Pengkajian Awal Obstetri', 'riwayatObstetriUGD' => 'Riwayat Obstetri',
+            'observasiPersalinanUGD' => 'Observasi Persalinan', 'laporanPersalinanUGD' => 'Laporan Persalinan', 'kriteriaRobsonUGD' => 'Kriteria Robson', 'indikatorScUGD' => 'Indikator SC',
+            'observasiNifasUGD' => 'Observasi Nifas', 'pengkajianAwalGinekologiUGD' => 'Pengkajian Awal Ginekologi',
+            'pengkajianAwalBayiUGD' => 'Pengkajian Awal Bayi', 'pengkajianNeonatalPerawatUGD' => 'Pengkajian Neonatal Perawat',
+            'identifikasiBayiUGD' => 'Identifikasi Bayi', 'catatanTerapiNeonatalUGD' => 'Catatan Terapi Neonatal',
         ],
         'RI' => [
             'generalConsentPasienRI' => 'General Consent', 'informConsentPasienRI' => 'Inform Consent', 'suratKematianRI' => 'Surat Kematian',

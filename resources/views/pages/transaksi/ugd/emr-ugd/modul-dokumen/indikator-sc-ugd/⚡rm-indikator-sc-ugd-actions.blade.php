@@ -1,0 +1,858 @@
+<?php
+// resources/views/pages/transaksi/ugd/emr-ugd/modul-dokumen/indikator-sc-ugd/rm-indikator-sc-ugd-actions.blade.php
+// Port dari RI (indikator-sc-ri) — blade cetak DIPAKAI BERSAMA RI (satu formulir satu kode RM).
+// Ubah logika di RI = ubah juga salinan UGD ini.
+// Dokumen VK/Kebidanan — Indikator Proses SC (audit sectio caesaria).
+// Pola: multi-entri append-only (Draft + Lanjutkan Pengisian + TTD-Kunci + Lihat read-only + tabel expandable),
+// disimpan ke datadaftarugd_json. Kunci entri stabil = createdAt.
+// TTD = stempel nama user login (ttdSaya = FINALIZE/kunci), tanpa TTD gambar.
+
+use Livewire\Component;
+use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
+use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
+use App\Http\Traits\Concerns\WithRenderVersioningTrait;
+use App\Http\Traits\Concerns\WithValidationToastTrait;
+use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
+use Barryvdh\DomPDF\Facade\Pdf;
+use App\Support\TtdUser;
+
+new class extends Component {
+    use EmrUGDTrait, MasterPasienTrait, WithRenderVersioningTrait, WithValidationToastTrait;
+
+    public bool $isFormLocked = false;
+    public ?string $rjNo = null;
+    public ?string $regNo = null;
+    public bool $disabled = false;
+
+    public array $renderVersions = [];
+    protected array $renderAreas = ['modal-indikator-sc-ugd'];
+
+    /** Key penyimpanan di datadaftarugd_json */
+    private string $jsonKey = 'indikatorScUGD';
+
+    public array $newForm = [
+        'indikator'            => [], // array 15 item: '' | 'Ya' | 'Tidak'
+        'diagnosisKlasifikasi' => '', // radio a-j
+        'indikasiSc'           => [], // checkbox multi
+        'indikasiScLain'       => '',
+        'ttd'                  => '',   // nama penanda-tangan (myuser_name)
+        'ttdDate'              => '',   // tgl/jam TTD (d/m/Y H:i:s)
+        'ttdCode'              => '',   // myuser_code penanda-tangan
+    ];
+
+    public array $entriList = [];
+
+    // Kunci entri yang sedang diedit (createdAt = kunci stabil, di-set saat entri pertama dibuat).
+    // null = sedang membuat entri baru.
+    public ?string $editingKey = null;
+
+    // Layar aktif di modal: 'daftar' (grid entri) atau 'form' (tambah/edit/lihat).
+    // Formulir sengaja tidak nongkrong bersama daftarnya: dulu ia ikut tampil terus lalu
+    // dikosongkan diam-diam sesudah tersimpan, dan petugas yang mengira itu masih formulir
+    // yang tadi diisi mengetik ulang — tersimpan sebagai draft baru.
+    public string $layar = 'daftar';
+
+    // true = entri terkunci sedang ditampilkan di form dalam mode read-only (lihat saja, tak bisa edit).
+    public bool $viewOnly = false;
+
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan di bawah ini yang disimpan. */
+    private function muatDariDokumen(array $data): void
+    {
+        $this->regNo = $data['regNo'] ?? null;
+        $this->entriList = is_array($data[$this->jsonKey] ?? null) ? $data[$this->jsonKey] : [];
+    }
+
+    /** 15 pertanyaan indikator proses SC */
+    public array $indikatorPertanyaan = [
+        'Pasien melakukan ANC minimal 3x di RS tersebut',
+        'Pasien memiliki & membawa buku pink KIA sebelum SC',
+        'Pasien datang dengan KU baik sebelum tindakan SC',
+        'Pasien datang dengan GCS normal (14-15) sebelum SC',
+        'Perubahan TD sistolik >30 mnt sebelum & sesudah SC disertai gejala syok',
+        'Diperiksa darah lengkap sebelum SC (Hb, Leukosit, Trombosit, Ht)',
+        'Diperiksa darah lengkap setelah SC (Hb, Leukosit, Trombosit, Ht)',
+        'Diperiksa PT/APTT atau CT/BT sebelum SC',
+        'Dicatat golongan darah sebelum SC',
+        'Dilakukan transfusi sesuai indikasi dan/atau Hb <8 g/dl sebelum SC',
+        'Diperiksa urinalisis sebelum SC',
+        'Memiliki data USG sebelum SC',
+        'Memiliki data laboratorium HIV sebelum SC',
+        'Memiliki data laboratorium Hepatitis sebelum SC',
+        'Asesmen persalinan menggunakan partograf ditulis lengkap sebelum SC',
+    ];
+
+    /** Klasifikasi Robson (ringkas) a-j */
+    public array $klasifikasiOptions = [
+        'a' => 'Nulipara tunggal presentasi kepala >=37mgg spontan',
+        'b' => 'Nulipara tunggal presentasi kepala >=37mgg induksi',
+        'c' => 'Multipara tanpa riwayat perlukaan uterus tunggal presentasi kepala >=37mgg spontan',
+        'd' => 'Multipara tanpa riwayat perlukaan uterus tunggal presentasi kepala >=37mgg induksi/SC',
+        'e' => 'Multipara riwayat perlukaan uterus tunggal presentasi kepala >=37mgg',
+        'f' => 'Nulipara tunggal sungsang',
+        'g' => 'Multipara tunggal sungsang riwayat perlukaan uterus',
+        'h' => 'Kehamilan multipel riwayat perlukaan uterus',
+        'i' => 'Tunggal oblik/melintang riwayat perlukaan uterus',
+        'j' => 'Tunggal presentasi kepala <36mgg riwayat perlukaan uterus',
+    ];
+
+    public array $indikasiScOptions = [
+        'PEB', 'Ketuban pecah dini', 'Bekas Sectio', 'Kelainan Letak Janin',
+        'Gagal Induksi', 'Kelainan Letak Plasenta', 'Persalinan Tidak Maju',
+        'Disproporsi Kepala Panggul', 'Lain-lain',
+    ];
+
+    /** LOV Dokter aktif untuk pengisi */
+    public function getDokterListProperty()
+    {
+        return DB::table('rsmst_doctors')
+            ->where('active_status', '1')
+            ->select('dr_id', 'dr_name')
+            ->orderBy('dr_name')
+            ->get();
+    }
+
+    protected function rules(): array
+    {
+        return [];
+    }
+
+    protected function messages(): array
+    {
+        return [];
+    }
+
+    /* ===============================
+     | MOUNT
+     =============================== */
+    public function mount(?string $rjNo = null, bool $disabled = false): void
+    {
+        $this->rjNo = $rjNo ?: null;
+        $this->disabled = $disabled;
+        $this->registerAreas(['modal-indikator-sc-ugd']);
+        $this->resetNewForm();
+
+        if ($this->rjNo) {
+            $data = $this->findDataUGD($this->rjNo);
+            if ($data) {
+                $this->muatDariDokumen($data);
+                $this->isFormLocked = $this->checkEmrUGDStatus($this->rjNo) || $disabled;
+            }
+        }
+    }
+
+    /* ===============================
+     | OPEN / CLOSE MODAL
+     =============================== */
+    public function openModal(): void
+    {
+        if (!$this->rjNo || $this->disabled) {
+            return;
+        }
+
+        $this->resetNewForm();
+        $this->editingKey = null;
+        $this->viewOnly = false;
+        $this->resetValidation();
+
+        $data = $this->findDataUGD($this->rjNo);
+        if (!$data) {
+            $this->dispatch('toast', type: 'error', message: 'Data UGD tidak ditemukan.');
+            return;
+        }
+
+        $this->muatDariDokumen($data);
+        $this->isFormLocked = $this->checkEmrUGDStatus($this->rjNo) || $this->disabled;
+
+        $this->incrementVersion('modal-indikator-sc-ugd');
+        $this->layar = 'daftar';
+        $this->dispatch('open-modal', name: 'indikator-sc-ugd');
+    }
+
+    public function closeModal(): void
+    {
+        $this->dispatch('close-modal', name: 'indikator-sc-ugd');
+    }
+
+    /* ===============================
+     | HELPER — status & bentuk entri
+     =============================== */
+    // Entri dianggap FINAL/terkunci bila flag finalized true; entri lama (tanpa flag) yang sudah
+    // ada TTD (nama penanda) dianggap final (kompatibilitas data lama).
+    public function entryIsFinal(array $entri): bool
+    {
+        return array_key_exists('finalized', $entri) ? (bool) $entri['finalized'] : !empty($entri['ttd']);
+    }
+
+    // Susun array entri dari state form. $key = createdAt (kunci stabil); $finalized = status kunci.
+    private function buildEntry(string $key, bool $finalized): array
+    {
+        return [
+            'indikator'            => array_values($this->newForm['indikator'] ?? []),
+            'diagnosisKlasifikasi' => $this->newForm['diagnosisKlasifikasi'] ?? '',
+            'indikasiSc'           => array_values($this->newForm['indikasiSc'] ?? []),
+            'indikasiScLain'       => $this->newForm['indikasiScLain'] ?? '',
+            'ttd'                  => $this->newForm['ttd'] ?? '',
+            'ttdCode'              => $this->newForm['ttdCode'] ?? '',
+            'ttdDate'              => $this->newForm['ttdDate'] ?? '',
+            'createdAt'            => $key,
+            'finalized'            => $finalized,
+        ];
+    }
+
+    // Cek: minimal salah satu isi inti terisi (indikator terjawab / klasifikasi / indikasi SC).
+    private function adaIsiInti(): bool
+    {
+        $adaIndikator = collect($this->newForm['indikator'] ?? [])->contains(fn($x) => filled($x));
+        return $adaIndikator
+            || filled($this->newForm['diagnosisKlasifikasi'] ?? null)
+            || !empty($this->newForm['indikasiSc'] ?? [])
+            || filled($this->newForm['indikasiScLain'] ?? null);
+    }
+
+    // Simpan entri (add/update by createdAt) dengan status $finalized. Dipakai draft & kunci.
+    private function persistEntry(string $key, bool $finalized, string $logVerb): void
+    {
+        $entry = $this->buildEntry($key, $finalized);
+
+        DB::transaction(function () use ($entry, $key, $logVerb) {
+            $this->lockUGDRow($this->rjNo);
+
+            $fresh = $this->findDataUGD($this->rjNo) ?: [];
+            if (empty($fresh)) {
+                throw new \RuntimeException('Data UGD tidak ditemukan, simpan dibatalkan.');
+            }
+            if (!isset($fresh[$this->jsonKey]) || !is_array($fresh[$this->jsonKey])) {
+                $fresh[$this->jsonKey] = [];
+            }
+
+            $list = $fresh[$this->jsonKey];
+            $idx = collect($list)->search(fn($it) => ($it['createdAt'] ?? '') === $key);
+            if ($idx === false) {
+                $list[] = $entry;
+            } else {
+                if ($this->entryIsFinal($list[$idx])) {
+                    throw new \RuntimeException('Entri sudah terkunci, tidak dapat diubah.');
+                }
+                $list[$idx] = $entry;
+            }
+            $fresh[$this->jsonKey] = array_values($list);
+
+            $this->updateJsonUGD((int) $this->rjNo, $fresh);
+            $this->muatDariDokumen($fresh);
+
+            $this->appendAdminLogUGD((int) $this->rjNo, $logVerb . ' Indikator Proses SC — ' . (($entry['ttd'] ?? '') ?: '-') . ' (' . $key . ')', 'MR');
+        });
+    }
+
+    /* ===============================
+     | SIMPAN DRAFT (nyicil, tanpa wajib TTD)
+     =============================== */
+    public function saveDraft(): void
+    {
+        if ($this->isFormLocked || $this->viewOnly) {
+            $this->dispatch('toast', type: 'error', message: 'Form read-only, tidak dapat menyimpan.');
+            return;
+        }
+        if (!$this->adaIsiInti()) {
+            $this->dispatch('toast', type: 'error', message: 'Isi minimal salah satu: indikator, klasifikasi Robson, atau indikasi SC.');
+            return;
+        }
+
+        $key = $this->editingKey ?: Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
+
+        try {
+            $this->persistEntry($key, false, 'Simpan draft');
+            $this->editingKey = $key; // lanjut edit entri yang sama, tidak buat duplikat
+            $this->incrementVersion('modal-indikator-sc-ugd');
+            $this->dispatch('toast', type: 'success', message: 'Draft tersimpan.');
+        } catch (\RuntimeException $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal menyimpan draft: ' . $e->getMessage());
+        }
+    }
+
+    /* ===============================
+     | TTD PETUGAS = FINALIZE (kunci entri)
+     | Stempel nama user login + tgl/jam → kunci entri.
+     =============================== */
+    public function ttdSaya(): void
+    {
+        if ($this->isFormLocked || $this->viewOnly) {
+            $this->dispatch('toast', type: 'error', message: 'Form read-only.');
+            return;
+        }
+        if (!$this->adaIsiInti()) {
+            $this->dispatch('toast', type: 'error', message: 'Isi minimal salah satu: indikator, klasifikasi Robson, atau indikasi SC sebelum TTD.');
+            return;
+        }
+
+        // Stempel TTD petugas = user login.
+        $this->newForm['ttd']     = auth()->user()->myuser_name ?? '';
+        $this->newForm['ttdCode'] = auth()->user()->myuser_code ?? '';
+        $this->newForm['ttdDate'] = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
+
+        $key = $this->editingKey ?: Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
+
+        try {
+            $this->persistEntry($key, true, 'Kunci (TTD)');
+            $this->resetNewForm();
+            $this->editingKey = null;
+            $this->viewOnly = false;
+            $this->incrementVersion('modal-indikator-sc-ugd');
+            $this->dispatch('toast', type: 'success', message: 'Indikator SC ditandatangani & terkunci.');
+        } catch (\RuntimeException $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal mengunci: ' . $e->getMessage());
+        }
+    }
+
+    /** Batalkan TTD pada form (saat draft/edit, sebelum finalize benar-benar tersimpan). */
+    public function hapusTtd(): void
+    {
+        if ($this->isFormLocked || $this->viewOnly) {
+            return;
+        }
+        $this->newForm['ttd']     = '';
+        $this->newForm['ttdCode'] = '';
+        $this->newForm['ttdDate'] = '';
+    }
+
+    /* ===============================
+     | BUKA KUNCI (Gate dokumen.bukaKunci) — cabut TTD petugas, entri kembali Draft.
+     =============================== */
+    public function bukaKunci(string $createdAt): void
+    {
+        if (!auth()->user()?->can('dokumen.bukaKunci')) {
+            $this->dispatch('toast', type: 'error', message: 'Anda tidak berwenang membuka kunci.');
+            return;
+        }
+        if ($this->isFormLocked) {
+            $this->dispatch('toast', type: 'error', message: 'Form read-only.');
+            return;
+        }
+
+        try {
+            DB::transaction(function () use ($createdAt) {
+                $this->lockUGDRow($this->rjNo);
+
+                $fresh = $this->findDataUGD($this->rjNo) ?: [];
+                $list = is_array($fresh[$this->jsonKey] ?? null) ? $fresh[$this->jsonKey] : [];
+                $index = collect($list)->search(fn($item) => ($item['createdAt'] ?? '') === $createdAt);
+                if ($index === false) {
+                    throw new \RuntimeException('Entri tidak ditemukan.');
+                }
+
+                $list[$index]['finalized'] = false;
+                $list[$index]['ttd'] = '';
+                $list[$index]['ttdCode'] = '';
+                $list[$index]['ttdDate'] = '';
+                $fresh[$this->jsonKey] = array_values($list);
+
+                $this->updateJsonUGD((int) $this->rjNo, $fresh);
+                $this->muatDariDokumen($fresh);
+
+                $pembukaKunci = auth()->user()->myuser_name ?? '-';
+                $this->appendAdminLogUGD((int) $this->rjNo, 'Buka kunci Indikator Proses SC (' . $createdAt . ') oleh ' . $pembukaKunci . ' — TTD petugas dicabut', 'MR');
+            });
+
+            if ($this->editingKey === $createdAt) {
+                $this->cancelEdit();
+            }
+            $this->incrementVersion('modal-indikator-sc-ugd');
+            $this->dispatch('toast', type: 'success', message: 'Kunci dibuka — TTD petugas dicabut, entri kembali Draft.');
+        } catch (\RuntimeException $exception) {
+            $this->dispatch('toast', type: 'error', message: $exception->getMessage());
+        } catch (\Throwable $exception) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal membuka kunci: ' . $exception->getMessage());
+        }
+    }
+
+    public function toggleIndikasiSc(string $opt): void
+    {
+        if ($this->isFormLocked || $this->viewOnly) {
+            return;
+        }
+        $list = $this->newForm['indikasiSc'] ?? [];
+        if (($k = array_search($opt, $list, true)) !== false) {
+            unset($list[$k]);
+        } else {
+            $list[] = $opt;
+        }
+        $this->newForm['indikasiSc'] = array_values($list);
+    }
+
+    /* ===============================
+     | EDIT / LIHAT / BATAL entri
+     =============================== */
+    // Muat 1 entri ke form atas (dipakai edit draft & lihat entri terkunci). TANPA TTD gambar.
+    private function hydrateFormFromEntry(array $entry, string $key): void
+    {
+        foreach ($this->newForm as $k => $v) {
+            $this->newForm[$k] = $entry[$k] ?? (is_array($v) ? [] : '');
+        }
+        // Normalisasi indikator = 15 slot.
+        $ind = array_values($this->newForm['indikator'] ?? []);
+        $total = count($this->indikatorPertanyaan);
+        for ($i = 0; $i < $total; $i++) {
+            $ind[$i] = $ind[$i] ?? '';
+        }
+        $this->newForm['indikator'] = array_slice($ind, 0, $total);
+
+        $this->editingKey = $key;
+        $this->resetValidation();
+        $this->incrementVersion('modal-indikator-sc-ugd');
+    }
+
+    public function editEntry(string $key): void
+    {
+        if ($this->isFormLocked) {
+            $this->dispatch('toast', type: 'error', message: 'Form read-only.');
+            return;
+        }
+        $entry = collect($this->entriList)->firstWhere('createdAt', $key);
+        if (!$entry) {
+            $this->dispatch('toast', type: 'error', message: 'Entri tidak ditemukan.');
+            return;
+        }
+        if ($this->entryIsFinal($entry)) {
+            $this->dispatch('toast', type: 'warning', message: 'Entri sudah terkunci, tidak dapat diedit.');
+            return;
+        }
+
+        $this->viewOnly = false;
+        $this->hydrateFormFromEntry($entry, $key);
+        $this->dispatch('toast', type: 'info', message: 'Draft dimuat untuk dilanjutkan.');
+    }
+
+    // Lihat entri terkunci: muat ke form atas dalam mode read-only.
+    public function viewEntry(string $key): void
+    {
+        $entry = collect($this->entriList)->firstWhere('createdAt', $key);
+        if (!$entry) {
+            $this->dispatch('toast', type: 'error', message: 'Entri tidak ditemukan.');
+            return;
+        }
+
+        $this->viewOnly = true;
+        $this->hydrateFormFromEntry($entry, $key);
+        $this->dispatch('toast', type: 'info', message: 'Menampilkan entri terkunci (hanya lihat).');
+    }
+
+    public function cancelEdit(): void
+    {
+        $this->resetNewForm();
+        $this->editingKey = null;
+        $this->viewOnly = false;
+        $this->resetValidation();
+        $this->incrementVersion('modal-indikator-sc-ugd');
+    }
+
+    /** Layar formulir sedang tampil? Saat terkunci, formulir tak pernah dirender. */
+    public function diForm(): bool
+    {
+        return !$this->isFormLocked && ($this->viewOnly || $this->editingKey !== null || $this->layar === 'form');
+    }
+
+    /** Buka formulir kosong untuk entri baru. */
+    public function tambahEntri(): void
+    {
+        if ($this->isFormLocked || $this->disabled) {
+            $this->dispatch('toast', type: 'error', message: 'Form read-only, tidak dapat menambah entri.');
+            return;
+        }
+        $this->cancelEdit();     // kosongkan formulir (sekaligus balik ke daftar)…
+        $this->layar = 'form';   // …lalu naikkan formulirnya
+    }
+
+    /** Tutup formulir, kembali ke daftar entri. Formulir selalu ditinggalkan kosong. */
+    public function kembaliKeDaftar(): void
+    {
+        $this->cancelEdit();
+    }
+
+    private function resetNewForm(): void
+    {
+        foreach ($this->newForm as $k => $v) {
+            $this->newForm[$k] = is_array($v) ? [] : '';
+        }
+        // indikator: 15 slot kosong
+        $this->newForm['indikator'] = array_fill(0, count($this->indikatorPertanyaan), '');
+        $this->layar = 'daftar';   // mengosongkan formulir = kembali ke daftar
+    }
+
+    protected function resetForm(): void
+    {
+        $this->resetVersion();
+        $this->isFormLocked = false;
+        $this->entriList = [];
+        $this->resetNewForm();
+        $this->editingKey = null;
+        $this->viewOnly = false;
+    }
+
+    /* ===============================
+     | HAPUS entri (final atau draft)
+     =============================== */
+    public function hapus(string $createdAt): void
+    {
+        if (!auth()->user()?->can('dokumen.hapus')) {
+            $this->dispatch('toast', type: 'error', message: 'Anda tidak berwenang menghapus entri.');
+            return;
+        }
+        if ($this->isFormLocked) {
+            $this->dispatch('toast', type: 'error', message: 'Form read-only, tidak dapat menghapus.');
+            return;
+        }
+
+        try {
+            DB::transaction(function () use ($createdAt) {
+                $this->lockUGDRow($this->rjNo);
+
+                $fresh = $this->findDataUGD($this->rjNo) ?: [];
+                $fresh[$this->jsonKey] = collect($fresh[$this->jsonKey] ?? [])
+                    ->reject(fn($entri) => ($entri['createdAt'] ?? null) === $createdAt)
+                    ->values()
+                    ->all();
+
+                $this->updateJsonUGD((int) $this->rjNo, $fresh);
+                $this->muatDariDokumen($fresh);
+
+                $this->appendAdminLogUGD((int) $this->rjNo, 'Hapus Indikator Proses SC — ' . $createdAt, 'MR');
+            });
+
+            // Jika entri yang dihapus sedang di form, kosongkan form.
+            if ($this->editingKey === $createdAt) {
+                $this->cancelEdit();
+            }
+
+            $this->incrementVersion('modal-indikator-sc-ugd');
+            $this->dispatch('toast', type: 'success', message: 'Entri dihapus.');
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal menghapus: ' . $e->getMessage());
+        }
+    }
+
+    /* ===============================
+     | CETAK (per-entri by createdAt)
+     =============================== */
+    public function cetak(string $createdAt)
+    {
+        $entry = collect($this->entriList)->firstWhere('createdAt', $createdAt);
+        if (!$entry) {
+            $this->dispatch('toast', type: 'error', message: 'Data indikator SC tidak ditemukan.');
+            return;
+        }
+
+        try {
+            $identitasRs = DB::table('rsmst_identitases')
+                ->select('int_name', 'int_phone1', 'int_phone2', 'int_fax', 'int_address', 'int_city')->first();
+            $pasienData = $this->findDataMasterPasien($this->regNo ?? '');
+            $pasien = $pasienData['pasien'] ?? [];
+
+            if (!empty($pasien['tglLahir'])) {
+                try {
+                    $pasien['thn'] = Carbon::createFromFormat('d/m/Y', $pasien['tglLahir'])
+                        ->diff(Carbon::now(config('app.timezone')))->format('%y Thn, %m Bln %d Hr');
+                } catch (\Throwable) {
+                    $pasien['thn'] = '-';
+                }
+            }
+
+            // TTD (myuser_code -> myuser_ttd_image) untuk stempel di cetakan
+            $ttdPath = null;
+            $ttdCode = $entry['ttdCode'] ?? null;
+            if ($ttdCode) {
+                $ttdImg = DB::table('users')->where('myuser_code', $ttdCode)->value('myuser_ttd_image');
+                if (!empty($ttdImg) && file_exists(TtdUser::pathBerkas($ttdImg))) {
+                    $ttdPath = TtdUser::pathBerkas($ttdImg);
+                }
+            }
+
+            $data = array_merge($pasien, [
+                'ttdPath'              => $ttdPath,
+                'dataRi'               => $this->findDataUGD($this->rjNo) ?: [],
+                'form'                 => $entry,
+                'indikatorPertanyaan'  => $this->indikatorPertanyaan,
+                'klasifikasiOptions'   => $this->klasifikasiOptions,
+                'identitasRs'          => $identitasRs,
+                'tglCetak'             => Carbon::now(config('app.timezone'))->translatedFormat('d F Y'),
+            ]);
+
+            set_time_limit(300);
+            $pdf = Pdf::loadView('pages.components.modul-dokumen.ri.indikator-sc-ri.cetak-indikator-sc-ri-print', ['data' => $data])->setPaper('A4');
+
+            return response()->streamDownload(fn() => print $pdf->output(), 'indikator-sc-ugd-' . ($pasien['regNo'] ?? $this->rjNo) . '.pdf');
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal cetak: ' . $e->getMessage());
+        }
+    }
+};
+?>
+
+<div>
+    {{-- ══ SUMMARY CARD (inline di tab) ══ --}}
+    @php $scCount = count($entriList ?? []); @endphp
+    <x-modul-dokumen.kartu judul="Indikator Proses Sectio Caesarea"
+        :jumlah="$scCount"
+        satuan="entri"
+        :nonaktif="$disabled || !$rjNo">
+        <x-slot:deskripsi>Audit sectio caesaria — 15 indikator proses (Ya/Tidak), klasifikasi Robson, dan indikasi SC. Diisi Dokter.</x-slot:deskripsi>
+        <div class="overflow-x-auto rounded-2xl border border-hairline dark:border-gray-700">
+            <table class="min-w-full text-sm">
+                <thead class="bg-surface-card dark:bg-gray-800">
+                    <tr class="text-xs font-semibold tracking-wide text-left text-muted uppercase dark:text-gray-300">
+                        <th class="px-3 py-2 border-b">Waktu</th>
+                        <th class="px-3 py-2 border-b">Petugas (TTD)</th>
+                        <th class="px-3 py-2 text-center border-b">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse (collect($entriList)->sortByDesc(fn($entri) => strtotime(strtr(($entri['tanggal'] ?? '') ?: ($entri['createdAt'] ?? ''), '/', '-')))->values()->all() as $entri)
+                        <tr class="border-b border-hairline dark:border-gray-700">
+                            <td class="px-3 py-2 font-medium text-ink dark:text-gray-200">{{ $entri['createdAt'] ?? '-' }}</td>
+                            <td class="px-3 py-2 text-muted dark:text-gray-400">
+                                <x-modul-dokumen.status-ttd :nama="$entri['ttd'] ?? ''" gaya="polos" />
+                            </td>
+                            <td class="px-3 py-2 text-center">
+                                <x-modul-dokumen.status-entri :final="$this->entryIsFinal($entri)" />
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="3" class="px-3 py-6 text-center text-muted-soft">Belum ada data tersimpan</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </x-modul-dokumen.kartu>
+
+    {{-- ══ MODAL FORM ══ --}}
+    <x-modal name="indikator-sc-ugd" size="full" height="full" focusable>
+        <div class="flex flex-col min-h-full"
+             wire:key="{{ $this->renderKey('modal-indikator-sc-ugd', [$rjNo ?? 'new']) }}">
+            <x-modul-dokumen.header judul="Indikator Proses Sectio Caesarea"
+                ikon="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                Audit sectio caesaria (VK) — tiap entri = 1 audit. Diisi Dokter.
+            </x-modul-dokumen.header>
+
+            {{-- DISPLAY PASIEN — paling atas, mengikuti pola EMR --}}
+            <div class="px-4 pt-2">
+                <livewire:pages::transaksi.ugd.display-pasien-ugd.display-pasien-ugd :rjNo="$rjNo"
+                    wire:key="indikator-sc-display-pasien-{{ $rjNo }}" />
+            </div>
+
+            {{-- BODY --}}
+            <div class="flex-1 px-4 py-4 overflow-y-auto bg-surface-soft dark:bg-gray-950/20">
+                <div class="max-w-full mx-auto space-y-4">
+
+                    @php $formReadOnly = $isFormLocked || $viewOnly; @endphp
+
+                    @if ($isFormLocked)
+                        <div class="flex items-center gap-2 px-4 py-2.5 text-sm font-medium border rounded-lg text-amber-800 bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-300">
+                            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                            </svg>
+                            Mode tampilan saja (read-only) — pasien sudah pulang / form terkunci.
+                        </div>
+                    @endif
+
+                    @if ($viewOnly)
+                        <x-modul-dokumen.banner jenis="lihat" />
+                    @elseif ($editingKey && !$isFormLocked)
+                        <x-modul-dokumen.banner jenis="lanjut" />
+                    @endif
+
+                    {{-- ── FORM ENTRI ── --}}
+                    @if ($this->diForm())
+                    <fieldset @disabled($formReadOnly) class="space-y-4">
+
+                        {{-- 1. Indikator Proses SC (15 item) --}}
+                        <x-border-form title="1. Indikator Proses SC">
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-sm">
+                                    <thead>
+                                        <tr class="text-left border-b border-hairline dark:border-gray-700">
+                                            <th class="w-8 px-2 py-2 text-muted">No</th>
+                                            <th class="px-2 py-2 text-muted">Pertanyaan</th>
+                                            <th class="w-16 px-2 py-2 text-center text-muted">Ya</th>
+                                            <th class="w-16 px-2 py-2 text-center text-muted">Tidak</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach ($indikatorPertanyaan as $i => $pertanyaan)
+                                            <tr class="border-b border-hairline/60 dark:border-gray-800">
+                                                <td class="px-2 py-2 align-top text-muted">{{ $i + 1 }}</td>
+                                                <td class="px-2 py-2 align-top text-ink dark:text-gray-200">{{ $pertanyaan }}</td>
+                                                <td class="px-2 py-2 text-center align-top">
+                                                    <input type="radio" value="Ya" wire:model="newForm.indikator.{{ $i }}"
+                                                        @disabled($formReadOnly)
+                                                        class="text-brand-green focus:ring-brand-green">
+                                                </td>
+                                                <td class="px-2 py-2 text-center align-top">
+                                                    <input type="radio" value="Tidak" wire:model="newForm.indikator.{{ $i }}"
+                                                        @disabled($formReadOnly)
+                                                        class="text-brand-green focus:ring-brand-green">
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        </x-border-form>
+
+                        {{-- 2. Klasifikasi Diagnosis (Robson) --}}
+                        <x-border-form title="2. Klasifikasi Diagnosis (Robson)">
+                            <div class="space-y-2">
+                                @foreach ($klasifikasiOptions as $kode => $label)
+                                    <x-radio-button name="newForm.diagnosisKlasifikasi" value="{{ $kode }}"
+                                        wire="newForm.diagnosisKlasifikasi"
+                                        :checked="($newForm['diagnosisKlasifikasi'] ?? '') === (string) $kode"
+                                        :disabled="$formReadOnly"
+                                        label="{{ $kode }}. {{ $label }}" />
+                                @endforeach
+                            </div>
+                        </x-border-form>
+
+                        {{-- 3. Indikasi SC --}}
+                        <x-border-form title="3. Indikasi SC">
+                            <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                                @foreach ($indikasiScOptions as $opt)
+                                    <x-toggle :current="in_array($opt, $newForm['indikasiSc'] ?? [], true) ? 1 : 0"
+                                        trueValue="1" falseValue="0"
+                                        wireClick="toggleIndikasiSc('{{ $opt }}')"
+                                        :disabled="$formReadOnly">{{ $opt }}</x-toggle>
+                                @endforeach
+                            </div>
+                            <x-text-input wire:model="newForm.indikasiScLain" class="w-full mt-2" placeholder="Indikasi lain (bila Lain-lain)" />
+                        </x-border-form>
+
+                        {{-- ══ TTD PETUGAS & KUNCI ══ --}}
+                        <x-signature.ttd-petugas :ttd="$newForm['ttd']" :code="$newForm['ttdCode'] ?? ''"
+                            :date="$newForm['ttdDate'] ?? ''" :locked="$formReadOnly" sign="ttdSaya" clear="hapusTtd"
+                            title="Tanda Tangan Petugas"
+                            nameLabel="Petugas (Dokter)" dateLabel="Waktu TTD"
+                            signLabel="TTD Petugas & Kunci" clearLabel="Batal TTD" />
+                        @if (!$formReadOnly)
+                            <p class="-mt-2 text-xs text-center text-muted">Menandatangani = mengunci audit indikator SC ini.</p>
+                        @endif
+                    </fieldset>
+
+                    {{-- ── DAFTAR ENTRI TERSIMPAN (expandable) ── --}}
+                    @endif
+                    @unless ($this->diForm())
+                    <x-modul-dokumen.tabel-daftar :kolom="['', 'Waktu', 'Ringkas', 'Petugas (TTD)', 'Status' => 'text-center', 'Aksi' => 'text-center']">
+                                    @forelse (collect($entriList)->sortByDesc(fn($entri) => strtotime(strtr(($entri['tanggal'] ?? '') ?: ($entri['createdAt'] ?? ''), '/', '-')))->values()->all() as $entry)
+                                        @php
+                                            $isFinal = $this->entryIsFinal($entry);
+                                            $rowKey = $entry['createdAt'] ?? '';
+                                            $yaCount = collect($entry['indikator'] ?? [])->filter(fn($x) => $x === 'Ya')->count();
+                                            $indikasiRingkas = collect($entry['indikasiSc'] ?? [])->filter()->implode(', ');
+                                        @endphp
+                                        {{-- Semua baris mulai TERTUTUP: daftar dipakai untuk MEMILIH entri, bukan
+                                             membacanya. Baris teratas yang terbuka sendiri bikin grid langsung panjang. --}}
+                                        <tbody x-data="{ open: false }" class="border-b border-hairline dark:border-gray-700">
+                                            <tr @click="open = !open"
+                                                class="cursor-pointer hover:bg-surface-soft dark:hover:bg-gray-800 {{ $editingKey && $editingKey === $rowKey ? 'bg-brand-lime/10 dark:bg-brand-lime/5' : '' }}">
+                                                <td class="px-2 py-3 text-center align-middle">
+                                                    <svg class="w-4 h-4 mx-auto transition-transform text-muted" :class="{ 'rotate-90': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                                                    </svg>
+                                                </td>
+                                                <td class="px-4 py-3 font-semibold align-middle text-ink dark:text-gray-100">
+                                                    {{ $rowKey ?: '-' }}
+                                                </td>
+                                                <td class="px-4 py-3 align-middle text-muted dark:text-gray-300">
+                                                    <span class="whitespace-nowrap">{{ $yaCount }}/{{ count($indikatorPertanyaan) }} Ya</span>
+                                                    {{-- Indikasi dipotong satu baris: kolom ini ringkasan, detailnya ada di baris expand. --}}
+                                                    <span class="block max-w-[220px] text-xs truncate text-muted-soft"
+                                                        title="{{ $indikasiRingkas ?: '-' }}">{{ $indikasiRingkas ?: '-' }}</span>
+                                                </td>
+                                                <td class="px-4 py-3 align-middle text-muted dark:text-gray-300">
+                                                    <x-modul-dokumen.status-ttd :nama="$entry['ttd'] ?? ''" />
+                                                </td>
+                                                <td class="px-4 py-3 text-center align-middle">
+                                                    <x-modul-dokumen.status-entri :final="$isFinal" />
+                                                </td>
+                                                <td class="px-4 py-3 text-center align-middle whitespace-nowrap" @click.stop>
+                                                    <x-modul-dokumen.aksi-entri kunci="{{ $rowKey }}" :final="$isFinal" :terkunci="$isFormLocked"
+                                                        judulLihat="Lihat detail (read-only) di form atas"
+                                                        judulBukaKunci="Buka Kunci Indikator Proses SC"
+                                                        pesanBukaKunci="TTD petugas akan dicabut & entri kembali menjadi Draft — proses TTD diulang dari awal. Lanjutkan?"
+                                                        konfirmasiHapus="Yakin hapus entri indikator SC ini?" />
+                                                </td>
+                                            </tr>
+
+                                            {{-- DETAIL (expand) --}}
+                                            <tr x-show="open" x-cloak>
+                                                <td colspan="6" class="px-4 py-4 bg-surface-soft/60 dark:bg-gray-950/30">
+                                                    <dl class="grid grid-cols-1 gap-x-8 gap-y-3 md:grid-cols-2">
+                                                        <div>
+                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Waktu</dt>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $rowKey ?: '-' }}</dd>
+                                                        </div>
+                                                        <div>
+                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Klasifikasi Robson</dt>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">
+                                                                @php $kls = $entry['diagnosisKlasifikasi'] ?? ''; @endphp
+                                                                @if ($kls)
+                                                                    {{ strtoupper($kls) }}. {{ $klasifikasiOptions[$kls] ?? '-' }}
+                                                                @else
+                                                                    -
+                                                                @endif
+                                                            </dd>
+                                                        </div>
+                                                        <div class="md:col-span-2">
+                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Indikasi SC</dt>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ collect($entry['indikasiSc'] ?? [])->filter()->implode(', ') ?: '-' }}</dd>
+                                                        </div>
+                                                        <div class="md:col-span-2">
+                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Indikasi SC Lain</dt>
+                                                            <dd class="mt-0.5 whitespace-pre-line text-ink dark:text-gray-200">{{ ($entry['indikasiScLain'] ?? '') ?: '-' }}</dd>
+                                                        </div>
+                                                        <div class="md:col-span-2">
+                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Indikator Proses (Ya/Tidak)</dt>
+                                                            <dd class="mt-1 space-y-1">
+                                                                @foreach ($indikatorPertanyaan as $i => $q)
+                                                                    @php $ans = $entry['indikator'][$i] ?? ''; @endphp
+                                                                    <div class="flex items-start gap-2 text-sm">
+                                                                        <span class="text-muted-soft shrink-0">{{ $i + 1 }}.</span>
+                                                                        <span class="flex-1 text-ink dark:text-gray-200">{{ $q }}</span>
+                                                                        <span class="font-medium shrink-0 {{ $ans === 'Ya' ? 'text-brand-green dark:text-brand-lime' : ($ans === 'Tidak' ? 'text-red-600 dark:text-red-400' : 'text-muted-soft') }}">{{ $ans ?: '-' }}</span>
+                                                                    </div>
+                                                                @endforeach
+                                                            </dd>
+                                                        </div>
+                                                        <div>
+                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Petugas (TTD)</dt>
+                                                            <dd class="mt-0.5">
+                                                                <x-modul-dokumen.status-ttd :nama="$entry['ttd'] ?? ''" :waktu="$entry['ttdDate'] ?? '-'" gaya="biasa" />
+                                                            </dd>
+                                                        </div>
+                                                    </dl>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    @empty
+                                        <x-modul-dokumen.baris-kosong :kolom="6" />
+                                    @endforelse
+                    </x-modul-dokumen.tabel-daftar>
+                    @endunless
+
+                </div>
+            </div>
+
+            {{-- FOOTER --}}
+            <x-modul-dokumen.footer :formulir="$this->diForm()" :terkunci="$isFormLocked"
+                :lihat="$viewOnly"
+                :mengedit="$editingKey">
+                Simpan draft dulu, lalu <strong>kunci</strong> lewat tombol <strong>TTD Petugas &amp; Kunci</strong>.
+            </x-modul-dokumen.footer>
+
+        </div>
+    </x-modal>
+</div>

@@ -22,6 +22,7 @@ new class extends Component {
     public bool $adaTrfUgd = false;
     public bool $adaGeneralConsent = false;
     public bool $adaBedah = false;
+    public bool $adaObstetriNeonatal = false;
     public bool $adaSuratKematianFinal = false;
     public string $triaseSaran = '';
     public int $jumlahInformConsent = 0;
@@ -57,6 +58,11 @@ new class extends Component {
             'pengkajianPreOpUGD', 'praAnestesiUGD', 'praInduksiUGD', 'surgicalSafetyChecklistUGD',
             'laporanOperasiUGD', 'laporanAnestesiUGD', 'pascaAnestesiUGD', 'instruksiPascaBedahUGD',
         ])->contains(fn($k) => !empty($data[$k]));
+        $this->adaObstetriNeonatal = collect([
+            'pengkajianAwalObstetriUGD', 'riwayatObstetriUGD', 'observasiPersalinanUGD', 'laporanPersalinanUGD',
+            'kriteriaRobsonUGD', 'indikatorScUGD', 'observasiNifasUGD', 'pengkajianAwalGinekologiUGD',
+            'pengkajianAwalBayiUGD', 'pengkajianNeonatalPerawatUGD', 'identifikasiBayiUGD', 'catatanTerapiNeonatalUGD',
+        ])->contains(fn($k) => !empty($data[$k]));
     }
 
     public array $renderVersions = [];
@@ -75,7 +81,7 @@ new class extends Component {
     public string $tabAwal = 'suket';
 
     /** Tab yang boleh diminta pemanggil lewat event open. */
-    private const TAB_BOLEH = ['suket', 'permintaan-rawat-inap', 'trf-ri', 'general-consent', 'inform-consent', 'form-penjaminan', 'penundaan-pelayanan', 'akhir-hayat', 'surat-kematian', 'pelayanan-bedah'];
+    private const TAB_BOLEH = ['suket', 'permintaan-rawat-inap', 'trf-ri', 'general-consent', 'inform-consent', 'form-penjaminan', 'penundaan-pelayanan', 'akhir-hayat', 'surat-kematian', 'pelayanan-bedah', 'vk-kebidanan'];
 
     #[On('emr-ugd.modul-dokumen.open')]
     public function openModulDokumen(int $rjNo, string $tab = 'suket'): void
@@ -134,7 +140,7 @@ new class extends Component {
     {
         $this->tabAwal = 'suket';
         $this->reset([
-            'rjNo', 'adaSuket', 'adaTrfUgd', 'adaGeneralConsent', 'adaBedah',
+            'rjNo', 'adaSuket', 'adaTrfUgd', 'adaGeneralConsent', 'adaBedah', 'adaObstetriNeonatal',
             'adaSuratKematianFinal', 'triaseSaran', 'jumlahInformConsent', 'jumlahPenjaminan',
             'jumlahPenundaan', 'jumlahPenolakanObat', 'jumlahPenolakanResusitasi', 'jumlahPulangAps',
             'jumlahSecondOpinion', 'jumlahEso', 'jumlahAkhirHayat', 'jumlahPermintaanRawatInap',
@@ -353,6 +359,20 @@ new class extends Component {
                                         @endif
                                     </x-tab>
 
+                                    {{-- VK / Kebidanan — 12 dokumen (port dari RI) --}}
+                                    <x-tab variant="underline" active-expr="activeTab === 'vk-kebidanan'"
+                                        x-on:click="activeTab = 'vk-kebidanan'"
+                                        class="inline-flex items-center gap-2">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                                        </svg>
+                                        VK / Kebidanan
+                                        @if ($adaObstetriNeonatal)
+                                            <x-badge variant="success" class="text-[10px] px-1.5 py-0">&#10003;</x-badge>
+                                        @endif
+                                    </x-tab>
+
                                     {{-- Pelaporan Efek Samping Obat (RM 37) --}}
                                     <x-tab variant="underline" active-expr="activeTab === 'pelaporan-eso'"
                                         x-on:click="activeTab = 'pelaporan-eso'"
@@ -484,6 +504,13 @@ new class extends Component {
                                 <livewire:pages::transaksi.ugd.emr-ugd.modul-dokumen.pelayanan-bedah-ugd.rm-pelayanan-bedah-ugd-actions
                                     :rjNo="$rjNo" :disabled="$isFormLocked"
                                     wire:key="pelayanan-bedah-ugd-{{ $rjNo ?? 'init' }}" />
+                            </div>
+
+                            {{-- Panel: VK / Kebidanan — 12 dokumen obstetri, ginekologi & neonatal (pola sama dengan EMR RI). --}}
+                            <div x-show="activeTab === 'vk-kebidanan'" x-transition.opacity.duration.300ms>
+                                <livewire:pages::transaksi.ugd.emr-ugd.modul-dokumen.vk-kebidanan-ugd.rm-vk-kebidanan-ugd-actions
+                                    :rjNo="$rjNo" :disabled="$isFormLocked"
+                                    wire:key="vk-kebidanan-ugd-{{ $rjNo ?? 'init' }}" />
                             </div>
 
                             {{-- Panel: Pengkajian Akhir Hayat --}}

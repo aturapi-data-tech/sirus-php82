@@ -929,6 +929,47 @@ new class extends Component {
 
                     <livewire:pages::components.rekam-medis.ugd.dokumen-view.instruksi-pasca-bedah-view-ugd :rjNo="$rjNo"
                         :entries="$dataDaftarTxn['instruksiPascaBedahUGD'] ?? []" wire:key="rm-view-instruksi-pasca-bedah-ugd-{{ $rjNo }}" />
+
+                    {{-- ════ VK / Kebidanan — viewer per dokumen (Lihat + Cetak dalam modal) ════ --}}
+                    <div class="pt-2 mt-2 text-xs font-semibold tracking-wide uppercase text-muted-soft border-t border-hairline dark:border-gray-700">
+                        VK / Kebidanan (Obstetri, Ginekologi &amp; Neonatal)
+                    </div>
+
+                    <livewire:pages::components.rekam-medis.ugd.dokumen-view.pengkajian-awal-obstetri-view-ugd :rjNo="$rjNo"
+                        :entries="$dataDaftarTxn['pengkajianAwalObstetriUGD'] ?? []" wire:key="rm-view-pengkajian-awal-obstetri-ugd-{{ $rjNo }}" />
+
+                    <livewire:pages::components.rekam-medis.ugd.dokumen-view.riwayat-obstetri-view-ugd :rjNo="$rjNo"
+                        :entries="$dataDaftarTxn['riwayatObstetriUGD'] ?? []" wire:key="rm-view-riwayat-obstetri-ugd-{{ $rjNo }}" />
+
+                    <livewire:pages::components.rekam-medis.ugd.dokumen-view.observasi-persalinan-view-ugd :rjNo="$rjNo"
+                        :entries="$dataDaftarTxn['observasiPersalinanUGD'] ?? []" wire:key="rm-view-observasi-persalinan-ugd-{{ $rjNo }}" />
+
+                    <livewire:pages::components.rekam-medis.ugd.dokumen-view.laporan-persalinan-view-ugd :rjNo="$rjNo"
+                        :entries="$dataDaftarTxn['laporanPersalinanUGD'] ?? []" wire:key="rm-view-laporan-persalinan-ugd-{{ $rjNo }}" />
+
+                    <livewire:pages::components.rekam-medis.ugd.dokumen-view.kriteria-robson-view-ugd :rjNo="$rjNo"
+                        :entries="$dataDaftarTxn['kriteriaRobsonUGD'] ?? []" wire:key="rm-view-kriteria-robson-ugd-{{ $rjNo }}" />
+
+                    <livewire:pages::components.rekam-medis.ugd.dokumen-view.indikator-sc-view-ugd :rjNo="$rjNo"
+                        :entries="$dataDaftarTxn['indikatorScUGD'] ?? []" wire:key="rm-view-indikator-sc-ugd-{{ $rjNo }}" />
+
+                    <livewire:pages::components.rekam-medis.ugd.dokumen-view.observasi-nifas-view-ugd :rjNo="$rjNo"
+                        :entries="$dataDaftarTxn['observasiNifasUGD'] ?? []" wire:key="rm-view-observasi-nifas-ugd-{{ $rjNo }}" />
+
+                    <livewire:pages::components.rekam-medis.ugd.dokumen-view.pengkajian-awal-ginekologi-view-ugd :rjNo="$rjNo"
+                        :entries="$dataDaftarTxn['pengkajianAwalGinekologiUGD'] ?? []" wire:key="rm-view-pengkajian-awal-ginekologi-ugd-{{ $rjNo }}" />
+
+                    <livewire:pages::components.rekam-medis.ugd.dokumen-view.pengkajian-awal-bayi-view-ugd :rjNo="$rjNo"
+                        :entries="$dataDaftarTxn['pengkajianAwalBayiUGD'] ?? []" wire:key="rm-view-pengkajian-awal-bayi-ugd-{{ $rjNo }}" />
+
+                    <livewire:pages::components.rekam-medis.ugd.dokumen-view.pengkajian-neonatal-perawat-view-ugd :rjNo="$rjNo"
+                        :entries="$dataDaftarTxn['pengkajianNeonatalPerawatUGD'] ?? []" wire:key="rm-view-pengkajian-neonatal-perawat-ugd-{{ $rjNo }}" />
+
+                    <livewire:pages::components.rekam-medis.ugd.dokumen-view.identifikasi-bayi-view-ugd :rjNo="$rjNo"
+                        :entries="$dataDaftarTxn['identifikasiBayiUGD'] ?? []" wire:key="rm-view-identifikasi-bayi-ugd-{{ $rjNo }}" />
+
+                    <livewire:pages::components.rekam-medis.ugd.dokumen-view.catatan-terapi-neonatal-view-ugd :rjNo="$rjNo"
+                        :entries="$dataDaftarTxn['catatanTerapiNeonatalUGD'] ?? []" wire:key="rm-view-catatan-terapi-neonatal-ugd-{{ $rjNo }}" />
                 </div>
 
                 {{-- ════ TAB: HASIL PENUNJANG (lab / radiologi / upload — view-only) ════ --}}

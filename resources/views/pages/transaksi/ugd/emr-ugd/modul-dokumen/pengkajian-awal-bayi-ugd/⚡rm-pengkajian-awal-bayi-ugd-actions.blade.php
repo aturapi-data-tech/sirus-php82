@@ -1,0 +1,1031 @@
+<?php
+// resources/views/pages/transaksi/ugd/emr-ugd/modul-dokumen/pengkajian-awal-bayi-ugd/rm-pengkajian-awal-bayi-ugd-actions.blade.php
+// Port dari RI (pengkajian-awal-bayi-ri) — blade cetak DIPAKAI BERSAMA RI (satu formulir satu kode RM).
+// Ubah logika di RI = ubah juga salinan UGD ini.
+// Dokumen VK/Kebidanan — Pengkajian Awal Bayi (RM 14 e.3), diisi Dokter.
+// Pola: multi-entri (Draft + Lanjutkan Pengisian + TTD-Kunci + Lihat read-only + tabel expandable),
+// disimpan ke datadaftarugd_json. Kunci entri stabil = createdAt.
+// TTD = stempel nama user login (ttdSaya = FINALIZE/kunci), tanpa TTD gambar.
+
+use Livewire\Component;
+use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
+use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
+use App\Http\Traits\Concerns\WithRenderVersioningTrait;
+use App\Http\Traits\Concerns\WithValidationToastTrait;
+use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
+use Barryvdh\DomPDF\Facade\Pdf;
+use App\Support\TtdUser;
+
+new class extends Component {
+    use EmrUGDTrait, MasterPasienTrait, WithRenderVersioningTrait, WithValidationToastTrait;
+
+    public bool $isFormLocked = false;
+    public ?string $rjNo = null;
+    public ?string $regNo = null;
+    public bool $disabled = false;
+
+    public array $renderVersions = [];
+    protected array $renderAreas = ['modal-pengkajian-awal-bayi-ugd'];
+
+    /** Key penyimpanan di datadaftarugd_json */
+    private string $jsonKey = 'pengkajianAwalBayiUGD';
+
+    public array $newForm = [
+        // 1. Identitas Bayi
+        'tglLahir'          => '',   // tgl+jam lahir, 'd/m/Y H:i:s' (jam ikut di sini)
+        'caraPersalinan'    => '',
+        'namaAyah'          => '',
+        'namaIbu'           => '',
+        'ruanganIbu'        => '',
+        'noRmIbu'           => '',
+        // 2. APGAR — 5 komponen x 3 menit (0-2)
+        'warnaKulit1'       => '', 'warnaKulit5'   => '', 'warnaKulit10'   => '',
+        'reflek1'           => '', 'reflek5'       => '', 'reflek10'       => '',
+        'denyutJantung1'    => '', 'denyutJantung5'=> '', 'denyutJantung10'=> '',
+        'tonus1'            => '', 'tonus5'        => '', 'tonus10'        => '',
+        'usahaNafas1'       => '', 'usahaNafas5'   => '', 'usahaNafas10'   => '',
+        // 3. Pemeriksaan Fisik
+        'keadaanTaliPusat'  => '',
+        'jantung'           => '',
+        'paru'              => '',
+        'abdomenHati'       => '',
+        'limpa'             => '',
+        'anus'              => '',
+        'ekstremitas'       => '',
+        'imunisasi'         => '',
+        // 4. Antropometri
+        'lingkarKepala'     => '',
+        'beratBadan'        => '',
+        'tinggiBadan'       => '',
+        'lingkarDada'       => '',
+        'jenisKelamin'      => '',
+        // 5. Keadaan Bayi Waktu Lahir
+        'sianosis'          => '', 'sianosisKet'    => '',
+        'asphyxia'          => '', 'asphyxiaKet'    => '',
+        'traumaLahir'       => '', 'traumaLahirKet' => '',
+        // 6. Diagnosa
+        'diagnosaUtama'     => '',
+        // 7. Rencana
+        'rencanaDiagnosa'   => '',
+        'terapi'            => '',
+        'diet'              => '',
+        'edukasi'           => '',
+        'monitoring'        => '',
+        'dischargePlanning' => '',
+        // 8. Tanda Tangan
+        'ttd'                => '',   // nama penanda-tangan (myuser_name)
+        'ttdDate'            => '',   // tgl/jam TTD (d/m/Y H:i:s)
+        'ttdCode'            => '',   // myuser_code penanda-tangan
+    ];
+
+    public array $entriList = [];
+
+    // Kunci entri yang sedang diedit (createdAt = kunci stabil, di-set saat entri pertama dibuat).
+    // null = sedang membuat entri baru.
+    public ?string $editingKey = null;
+
+    // Layar aktif di modal: 'daftar' (grid entri) atau 'form' (tambah/edit/lihat).
+    // Formulir sengaja tidak nongkrong bersama daftarnya: dulu ia ikut tampil terus lalu
+    // dikosongkan diam-diam sesudah tersimpan, dan petugas yang mengira itu masih formulir
+    // yang tadi diisi mengetik ulang — tersimpan sebagai draft baru.
+    public string $layar = 'daftar';
+
+    // true = entri terkunci sedang ditampilkan di form dalam mode read-only (lihat saja, tak bisa edit).
+    public bool $viewOnly = false;
+
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan di bawah ini yang disimpan. */
+    private function muatDariDokumen(array $data): void
+    {
+        $this->regNo = $data['regNo'] ?? null;
+        $this->entriList = is_array($data[$this->jsonKey] ?? null) ? $data[$this->jsonKey] : [];
+    }
+
+    protected function rules(): array
+    {
+        return [];
+    }
+
+    /* ===============================
+     | MOUNT
+     =============================== */
+    public function mount(?string $rjNo = null, bool $disabled = false): void
+    {
+        $this->rjNo = $rjNo ?: null;
+        $this->disabled = $disabled;
+        $this->registerAreas(['modal-pengkajian-awal-bayi-ugd']);
+
+        if ($this->rjNo) {
+            $data = $this->findDataUGD($this->rjNo);
+            if ($data) {
+                $this->muatDariDokumen($data);
+                $this->isFormLocked = $this->checkEmrUGDStatus($this->rjNo) || $disabled;
+            }
+        }
+    }
+
+    /* ===============================
+     | OPEN / CLOSE MODAL
+     =============================== */
+    public function openModal(): void
+    {
+        if (!$this->rjNo || $this->disabled) {
+            return;
+        }
+
+        $this->resetNewForm();
+        $this->editingKey = null;
+        $this->viewOnly = false;
+        $this->resetValidation();
+
+        $data = $this->findDataUGD($this->rjNo);
+        if (!$data) {
+            $this->dispatch('toast', type: 'error', message: 'Data UGD tidak ditemukan.');
+            return;
+        }
+
+        $this->muatDariDokumen($data);
+        $this->isFormLocked = $this->checkEmrUGDStatus($this->rjNo) || $this->disabled;
+
+        $this->incrementVersion('modal-pengkajian-awal-bayi-ugd');
+        $this->layar = 'daftar';
+        $this->dispatch('open-modal', name: 'pengkajian-awal-bayi-ugd');
+    }
+
+    public function closeModal(): void
+    {
+        $this->dispatch('close-modal', name: 'pengkajian-awal-bayi-ugd');
+    }
+
+    /* ===============================
+     | SET TANGGAL/JAM SEKARANG
+     =============================== */
+    public function setNow(string $field): void
+    {
+        if ($this->isFormLocked || $this->viewOnly) {
+            return;
+        }
+        $this->newForm[$field] = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
+    }
+
+    /* ===============================
+     | HELPER — status & bentuk entri
+     =============================== */
+    // Entri dianggap FINAL/terkunci bila flag finalized true; entri lama (tanpa flag) yang sudah
+    // ada TTD (nama penanda) dianggap final (kompatibilitas data lama).
+    public function entryIsFinal(array $entri): bool
+    {
+        return array_key_exists('finalized', $entri) ? (bool) $entri['finalized'] : !empty($entri['ttd']);
+    }
+
+    // Susun array entri dari state form. $key = createdAt (kunci stabil); $finalized = status kunci.
+    private function buildEntry(string $key, bool $finalized): array
+    {
+        $entry = $this->newForm;
+        $entry['createdAt'] = $key;
+        $entry['finalized']  = $finalized;
+        return $entry;
+    }
+
+    // Cek: field inti (Diagnosa Utama) terisi.
+    private function adaIntiTerisi(): bool
+    {
+        return filled($this->newForm['diagnosaUtama'] ?? null);
+    }
+
+    // Simpan entri (add/update by createdAt) dengan status $finalized. Dipakai draft & kunci.
+    private function persistEntry(string $key, bool $finalized, string $logVerb): void
+    {
+        $entry = $this->buildEntry($key, $finalized);
+
+        DB::transaction(function () use ($entry, $key, $logVerb) {
+            $this->lockUGDRow($this->rjNo);
+
+            $fresh = $this->findDataUGD($this->rjNo) ?: [];
+            if (empty($fresh)) {
+                throw new \RuntimeException('Data UGD tidak ditemukan, simpan dibatalkan.');
+            }
+            if (!isset($fresh[$this->jsonKey]) || !is_array($fresh[$this->jsonKey])) {
+                $fresh[$this->jsonKey] = [];
+            }
+
+            $list = $fresh[$this->jsonKey];
+            $idx = collect($list)->search(fn($it) => ($it['createdAt'] ?? '') === $key);
+            if ($idx === false) {
+                $list[] = $entry;
+            } else {
+                if ($this->entryIsFinal($list[$idx])) {
+                    throw new \RuntimeException('Entri sudah terkunci, tidak dapat diubah.');
+                }
+                $list[$idx] = $entry;
+            }
+            $fresh[$this->jsonKey] = array_values($list);
+
+            $this->updateJsonUGD((int) $this->rjNo, $fresh);
+            $this->muatDariDokumen($fresh);
+
+            $this->appendAdminLogUGD((int) $this->rjNo, $logVerb . ' Pengkajian Awal Bayi — ' . (($entry['tglLahir'] ?? '') ?: '-') . ' (' . $key . ')', 'MR');
+        });
+    }
+
+    /* ===============================
+     | SIMPAN DRAFT (nyicil, tanpa wajib TTD)
+     =============================== */
+    public function saveDraft(): void
+    {
+        if ($this->isFormLocked || $this->viewOnly) {
+            $this->dispatch('toast', type: 'error', message: 'Form read-only, tidak dapat menyimpan.');
+            return;
+        }
+        if (!$this->adaIntiTerisi()) {
+            $this->dispatch('toast', type: 'error', message: 'Isi Diagnosa Utama sebelum menyimpan.');
+            return;
+        }
+
+        $key = $this->editingKey ?: Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
+
+        try {
+            $this->persistEntry($key, false, 'Simpan draft');
+            $this->editingKey = $key; // lanjut edit entri yang sama, tidak buat duplikat
+            $this->incrementVersion('modal-pengkajian-awal-bayi-ugd');
+            $this->dispatch('toast', type: 'success', message: 'Draft tersimpan.');
+        } catch (\RuntimeException $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal menyimpan draft: ' . $e->getMessage());
+        }
+    }
+
+    /* ===============================
+     | TTD PETUGAS = FINALIZE (kunci entri)
+     | Stempel nama user login + tgl/jam → kunci entri.
+     =============================== */
+    public function ttdSaya(): void
+    {
+        if ($this->isFormLocked || $this->viewOnly) {
+            $this->dispatch('toast', type: 'error', message: 'Form read-only.');
+            return;
+        }
+        if (!$this->adaIntiTerisi()) {
+            $this->dispatch('toast', type: 'error', message: 'Isi Diagnosa Utama sebelum TTD.');
+            return;
+        }
+
+        // Stempel TTD petugas = user login.
+        $this->newForm['ttd']     = auth()->user()->myuser_name ?? '';
+        $this->newForm['ttdCode'] = auth()->user()->myuser_code ?? '';
+        $this->newForm['ttdDate'] = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
+
+        $key = $this->editingKey ?: Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
+
+        try {
+            $this->persistEntry($key, true, 'Kunci (TTD)');
+            $this->resetNewForm();
+            $this->editingKey = null;
+            $this->viewOnly = false;
+            $this->incrementVersion('modal-pengkajian-awal-bayi-ugd');
+            $this->dispatch('toast', type: 'success', message: 'Pengkajian ditandatangani & terkunci.');
+        } catch (\RuntimeException $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal mengunci: ' . $e->getMessage());
+        }
+    }
+
+    /** Batalkan TTD pada form (saat draft/edit, sebelum finalize benar-benar tersimpan). */
+    public function hapusTtd(): void
+    {
+        if ($this->isFormLocked || $this->viewOnly) {
+            return;
+        }
+        $this->newForm['ttd']     = '';
+        $this->newForm['ttdCode'] = '';
+        $this->newForm['ttdDate'] = '';
+    }
+
+    /* ===============================
+     | BUKA KUNCI (Gate dokumen.bukaKunci) — cabut TTD petugas, entri kembali Draft.
+     =============================== */
+    public function bukaKunci(string $createdAt): void
+    {
+        if (!auth()->user()?->can('dokumen.bukaKunci')) {
+            $this->dispatch('toast', type: 'error', message: 'Anda tidak berwenang membuka kunci.');
+            return;
+        }
+        if ($this->isFormLocked) {
+            $this->dispatch('toast', type: 'error', message: 'Form read-only.');
+            return;
+        }
+
+        try {
+            DB::transaction(function () use ($createdAt) {
+                $this->lockUGDRow($this->rjNo);
+
+                $fresh = $this->findDataUGD($this->rjNo) ?: [];
+                $list = is_array($fresh[$this->jsonKey] ?? null) ? $fresh[$this->jsonKey] : [];
+                $index = collect($list)->search(fn($item) => ($item['createdAt'] ?? '') === $createdAt);
+                if ($index === false) {
+                    throw new \RuntimeException('Entri tidak ditemukan.');
+                }
+
+                $list[$index]['finalized'] = false;
+                $list[$index]['ttd'] = '';
+                $list[$index]['ttdCode'] = '';
+                $list[$index]['ttdDate'] = '';
+                $fresh[$this->jsonKey] = array_values($list);
+
+                $this->updateJsonUGD((int) $this->rjNo, $fresh);
+                $this->muatDariDokumen($fresh);
+
+                $pembukaKunci = auth()->user()->myuser_name ?? '-';
+                $this->appendAdminLogUGD((int) $this->rjNo, 'Buka kunci Pengkajian Awal Bayi (' . $createdAt . ') oleh ' . $pembukaKunci . ' — TTD petugas dicabut', 'MR');
+            });
+
+            if ($this->editingKey === $createdAt) {
+                $this->cancelEdit();
+            }
+            $this->incrementVersion('modal-pengkajian-awal-bayi-ugd');
+            $this->dispatch('toast', type: 'success', message: 'Kunci dibuka — TTD petugas dicabut, entri kembali Draft.');
+        } catch (\RuntimeException $exception) {
+            $this->dispatch('toast', type: 'error', message: $exception->getMessage());
+        } catch (\Throwable $exception) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal membuka kunci: ' . $exception->getMessage());
+        }
+    }
+
+    /* ===============================
+     | EDIT / LIHAT / BATAL entri
+     =============================== */
+    // Muat 1 entri ke form atas (dipakai edit draft & lihat entri terkunci). TANPA TTD gambar.
+    private function hydrateFormFromEntry(array $entry, string $key): void
+    {
+        foreach ($this->newForm as $k => $v) {
+            $this->newForm[$k] = $entry[$k] ?? (is_array($v) ? [] : '');
+        }
+        $this->editingKey = $key;
+        $this->resetValidation();
+        $this->incrementVersion('modal-pengkajian-awal-bayi-ugd');
+    }
+
+    public function editEntry(string $key): void
+    {
+        if ($this->isFormLocked) {
+            $this->dispatch('toast', type: 'error', message: 'Form read-only.');
+            return;
+        }
+        $entry = collect($this->entriList)->firstWhere('createdAt', $key);
+        if (!$entry) {
+            $this->dispatch('toast', type: 'error', message: 'Entri tidak ditemukan.');
+            return;
+        }
+        if ($this->entryIsFinal($entry)) {
+            $this->dispatch('toast', type: 'warning', message: 'Entri sudah terkunci, tidak dapat diedit.');
+            return;
+        }
+
+        $this->viewOnly = false;
+        $this->hydrateFormFromEntry($entry, $key);
+        $this->dispatch('toast', type: 'info', message: 'Draft dimuat untuk dilanjutkan.');
+    }
+
+    // Lihat entri terkunci: muat ke form atas dalam mode read-only.
+    public function viewEntry(string $key): void
+    {
+        $entry = collect($this->entriList)->firstWhere('createdAt', $key);
+        if (!$entry) {
+            $this->dispatch('toast', type: 'error', message: 'Entri tidak ditemukan.');
+            return;
+        }
+
+        $this->viewOnly = true;
+        $this->hydrateFormFromEntry($entry, $key);
+        $this->dispatch('toast', type: 'info', message: 'Menampilkan entri terkunci (hanya lihat).');
+    }
+
+    public function cancelEdit(): void
+    {
+        $this->resetNewForm();
+        $this->editingKey = null;
+        $this->viewOnly = false;
+        $this->resetValidation();
+        $this->incrementVersion('modal-pengkajian-awal-bayi-ugd');
+    }
+
+    /** Layar formulir sedang tampil? Saat terkunci, formulir tak pernah dirender. */
+    public function diForm(): bool
+    {
+        return !$this->isFormLocked && ($this->viewOnly || $this->editingKey !== null || $this->layar === 'form');
+    }
+
+    /** Buka formulir kosong untuk entri baru. */
+    public function tambahEntri(): void
+    {
+        if ($this->isFormLocked || $this->disabled) {
+            $this->dispatch('toast', type: 'error', message: 'Form read-only, tidak dapat menambah entri.');
+            return;
+        }
+        $this->cancelEdit();     // kosongkan formulir (sekaligus balik ke daftar)…
+        $this->layar = 'form';   // …lalu naikkan formulirnya
+    }
+
+    /** Tutup formulir, kembali ke daftar entri. Formulir selalu ditinggalkan kosong. */
+    public function kembaliKeDaftar(): void
+    {
+        $this->cancelEdit();
+    }
+
+    private function resetNewForm(): void
+    {
+        foreach ($this->newForm as $k => $v) {
+            $this->newForm[$k] = is_array($v) ? [] : '';
+        }
+        $this->layar = 'daftar';   // mengosongkan formulir = kembali ke daftar
+    }
+
+    protected function resetForm(): void
+    {
+        $this->resetVersion();
+        $this->isFormLocked = false;
+        $this->entriList = [];
+        $this->resetNewForm();
+        $this->editingKey = null;
+        $this->viewOnly = false;
+    }
+
+    /* ===============================
+     | HAPUS entri (final atau draft)
+     =============================== */
+    public function hapus(string $createdAt): void
+    {
+        if (!auth()->user()?->can('dokumen.hapus')) {
+            $this->dispatch('toast', type: 'error', message: 'Anda tidak berwenang menghapus entri.');
+            return;
+        }
+        if ($this->isFormLocked) {
+            $this->dispatch('toast', type: 'error', message: 'Form read-only, tidak dapat menghapus.');
+            return;
+        }
+
+        try {
+            DB::transaction(function () use ($createdAt) {
+                $this->lockUGDRow($this->rjNo);
+
+                $fresh = $this->findDataUGD($this->rjNo) ?: [];
+                $fresh[$this->jsonKey] = collect($fresh[$this->jsonKey] ?? [])
+                    ->reject(fn($entri) => ($entri['createdAt'] ?? null) === $createdAt)
+                    ->values()
+                    ->all();
+
+                $this->updateJsonUGD((int) $this->rjNo, $fresh);
+                $this->muatDariDokumen($fresh);
+
+                $this->appendAdminLogUGD((int) $this->rjNo, 'Hapus Pengkajian Awal Bayi — ' . $createdAt, 'MR');
+            });
+
+            // Jika entri yang dihapus sedang di form, kosongkan form.
+            if ($this->editingKey === $createdAt) {
+                $this->cancelEdit();
+            }
+
+            $this->incrementVersion('modal-pengkajian-awal-bayi-ugd');
+            $this->dispatch('toast', type: 'success', message: 'Entri dihapus.');
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal menghapus: ' . $e->getMessage());
+        }
+    }
+
+    /* ===============================
+     | CETAK (per-ENTRI, by createdAt)
+     =============================== */
+    public function cetak(string $createdAt)
+    {
+        $entry = collect($this->entriList)->firstWhere('createdAt', $createdAt);
+        if (!$entry) {
+            $this->dispatch('toast', type: 'error', message: 'Data pengkajian tidak ditemukan.');
+            return;
+        }
+
+        try {
+            $identitasRs = DB::table('rsmst_identitases')
+                ->select('int_name', 'int_phone1', 'int_phone2', 'int_fax', 'int_address', 'int_city')->first();
+            $pasienData = $this->findDataMasterPasien($this->regNo ?? '');
+            $pasien = $pasienData['pasien'] ?? [];
+
+            if (!empty($pasien['tglLahir'])) {
+                try {
+                    $pasien['thn'] = Carbon::createFromFormat('d/m/Y', $pasien['tglLahir'])
+                        ->diff(Carbon::now(config('app.timezone')))->format('%y Thn, %m Bln %d Hr');
+                } catch (\Throwable) {
+                    $pasien['thn'] = '-';
+                }
+            }
+
+            // TTD (myuser_code -> myuser_ttd_image) untuk stempel di cetakan
+            $ttdPath = null;
+            $ttdCode = $entry['ttdCode'] ?? null;
+            if ($ttdCode) {
+                $ttdImg = DB::table('users')->where('myuser_code', $ttdCode)->value('myuser_ttd_image');
+                if (!empty($ttdImg) && file_exists(TtdUser::pathBerkas($ttdImg))) {
+                    $ttdPath = TtdUser::pathBerkas($ttdImg);
+                }
+            }
+
+            $data = array_merge($pasien, [
+                'ttdPath'      => $ttdPath,
+                'dataRi'       => $this->findDataUGD($this->rjNo) ?: [],
+                'form'         => $entry,
+                'identitasRs'  => $identitasRs,
+                'tglCetak'     => Carbon::now(config('app.timezone'))->translatedFormat('d F Y'),
+            ]);
+
+            set_time_limit(300);
+            $pdf = Pdf::loadView('pages.components.modul-dokumen.ri.pengkajian-awal-bayi-ri.cetak-pengkajian-awal-bayi-ri-print', ['data' => $data])->setPaper('A4');
+
+            return response()->streamDownload(fn() => print $pdf->output(), 'pengkajian-awal-bayi-ugd-' . ($pasien['regNo'] ?? $this->rjNo) . '.pdf');
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal cetak: ' . $e->getMessage());
+        }
+    }
+};
+?>
+
+<div>
+    {{-- ══ SUMMARY CARD (inline di tab) ══ --}}
+    @php $paCount = count($entriList ?? []); @endphp
+    <x-modul-dokumen.kartu judul="Pengkajian Awal Bayi"
+        :jumlah="$paCount"
+        satuan="entri"
+        :nonaktif="$disabled || !$rjNo">
+        <x-slot:deskripsi>Pengkajian awal bayi baru lahir (RM 14 e.3) — identitas bayi, nilai APGAR (1'/5'/10'), pemeriksaan fisik, antropometri, keadaan waktu lahir, diagnosa &amp; rencana. Diisi Dokter.</x-slot:deskripsi>
+        <div class="overflow-x-auto rounded-2xl border border-hairline dark:border-gray-700">
+            <table class="min-w-full text-sm">
+                <thead class="bg-surface-card dark:bg-gray-800">
+                    <tr class="text-xs font-semibold tracking-wide text-left text-muted uppercase dark:text-gray-300">
+                        <th class="px-3 py-2 border-b">Tgl / Jam Lahir</th>
+                        <th class="px-3 py-2 border-b">Jenis Kelamin</th>
+                        <th class="px-3 py-2 border-b">Petugas (TTD)</th>
+                        <th class="px-3 py-2 text-center border-b">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse (collect($entriList)->sortByDesc(fn($entri) => strtotime(strtr(($entri['tanggal'] ?? '') ?: ($entri['createdAt'] ?? ''), '/', '-')))->values()->all() as $entri)
+                        <tr class="border-b border-hairline dark:border-gray-700">
+                            <td class="px-3 py-2 font-medium text-ink dark:text-gray-200">{{ ($entri['tglLahir'] ?? '') ?: ($entri['createdAt'] ?? '-') }}</td>
+                            <td class="px-3 py-2 text-muted dark:text-gray-400">{{ ($entri['jenisKelamin'] ?? '') ?: '-' }}</td>
+                            <td class="px-3 py-2 text-muted dark:text-gray-400">
+                                <x-modul-dokumen.status-ttd :nama="$entri['ttd'] ?? ''" gaya="polos" />
+                            </td>
+                            <td class="px-3 py-2 text-center">
+                                <x-modul-dokumen.status-entri :final="$this->entryIsFinal($entri)" />
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="4" class="px-3 py-6 text-center text-muted-soft">Belum ada data tersimpan</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </x-modul-dokumen.kartu>
+
+    {{-- ══ MODAL FORM ══ --}}
+    <x-modal name="pengkajian-awal-bayi-ugd" size="full" height="full" focusable>
+        <div class="flex flex-col min-h-full"
+             wire:key="{{ $this->renderKey('modal-pengkajian-awal-bayi-ugd', [$rjNo ?? 'new']) }}">
+            <x-modul-dokumen.header judul="Pengkajian Awal Bayi"
+                ikon="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                RM 14 e.3 — kebidanan (VK). Tiap entri = 1 bayi. Diisi Dokter.
+            </x-modul-dokumen.header>
+
+            {{-- DISPLAY PASIEN — paling atas, mengikuti pola EMR --}}
+            <div class="px-4 pt-2">
+                <livewire:pages::transaksi.ugd.display-pasien-ugd.display-pasien-ugd :rjNo="$rjNo"
+                    wire:key="pengkajian-bayi-display-pasien-{{ $rjNo }}" />
+            </div>
+
+            {{-- BODY --}}
+            <div class="flex-1 px-4 py-4 overflow-y-auto bg-surface-soft dark:bg-gray-950/20">
+                <div class="max-w-full mx-auto space-y-4">
+
+                    @php $formReadOnly = $isFormLocked || $viewOnly; @endphp
+
+                    @if ($isFormLocked)
+                        <div class="flex items-center gap-2 px-4 py-2.5 text-sm font-medium border rounded-lg text-amber-800 bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-300">
+                            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                            </svg>
+                            Mode tampilan saja (read-only) — pasien sudah pulang / form terkunci.
+                        </div>
+                    @endif
+
+                    @if ($viewOnly)
+                        <x-modul-dokumen.banner jenis="lihat" />
+                    @elseif ($editingKey && !$isFormLocked)
+                        <x-modul-dokumen.banner jenis="lanjut" />
+                    @endif
+
+                    {{-- ── FORM ENTRI ── --}}
+                    @if ($this->diForm())
+                    <fieldset @disabled($formReadOnly) class="space-y-4">
+
+                        {{-- 1. Identitas Bayi --}}
+                        <x-border-form title="1. Identitas Bayi">
+                            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                                <div class="sm:col-span-2">
+                                    <x-input-label value="Tgl / Jam Lahir" />
+                                    <div class="flex gap-1 mt-1">
+                                        <x-text-input wire:model="newForm.tglLahir" class="w-full" placeholder="dd/mm/yyyy HH:mm:ss" />
+                                        @if (!$formReadOnly)
+                                            <x-now-button wire:click="setNow('tglLahir')" />
+                                        @endif
+                                    </div>
+                                </div>
+                                <div><x-input-label value="Cara Persalinan" /><x-text-input wire:model="newForm.caraPersalinan" class="w-full mt-1" placeholder="Spontan/SC/…" /></div>
+                                <div><x-input-label value="Nama Ayah" /><x-text-input wire:model="newForm.namaAyah" class="w-full mt-1" /></div>
+                                <div><x-input-label value="Nama Ibu" /><x-text-input wire:model="newForm.namaIbu" class="w-full mt-1" /></div>
+                                <div><x-input-label value="Ruangan Ibu" /><x-text-input wire:model="newForm.ruanganIbu" class="w-full mt-1" /></div>
+                                <div><x-input-label value="No. RM Ibu" /><x-text-input wire:model="newForm.noRmIbu" class="w-full mt-1" /></div>
+                            </div>
+                        </x-border-form>
+
+                        {{-- 2. Nilai APGAR --}}
+                        <x-border-form title="2. Nilai APGAR (0–2 per komponen)">
+                            @php
+                                $apgarRows = [
+                                    ['Warna Kulit', 'warnaKulit'],
+                                    ['Reflek', 'reflek'],
+                                    ['Denyut Jantung', 'denyutJantung'],
+                                    ['Tonus', 'tonus'],
+                                    ['Usaha Bernafas', 'usahaNafas'],
+                                ];
+                                $apgarMenit = ['1' => "1'", '5' => "5'", '10' => "10'"];
+                                $sumMenit = fn($m) => collect($apgarRows)->sum(fn($r) => (int) ($newForm[$r[1] . $m] ?? 0));
+                            @endphp
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-sm border-collapse">
+                                    <thead>
+                                        <tr class="text-left border-b border-hairline dark:border-gray-700">
+                                            <th class="py-2 pr-3 font-medium text-muted">Komponen</th>
+                                            @foreach ($apgarMenit as $mk => $ml)
+                                                <th class="px-2 py-2 font-medium text-center text-muted">Menit {{ $ml }}</th>
+                                            @endforeach
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach ($apgarRows as $row)
+                                            <tr class="border-b border-hairline/60 dark:border-gray-800">
+                                                <td class="py-1.5 pr-3 text-ink dark:text-gray-200">{{ $row[0] }}</td>
+                                                @foreach ($apgarMenit as $mk => $ml)
+                                                    <td class="px-2 py-1.5 text-center">
+                                                        <x-text-input type="number" min="0" max="2" wire:model="newForm.{{ $row[1] . $mk }}" class="w-16 mx-auto text-center" />
+                                                    </td>
+                                                @endforeach
+                                            </tr>
+                                        @endforeach
+                                        <tr class="font-semibold border-t-2 border-hairline dark:border-gray-600">
+                                            <td class="py-2 pr-3 text-ink dark:text-gray-100">Jumlah</td>
+                                            @foreach ($apgarMenit as $mk => $ml)
+                                                <td class="px-2 py-2 text-center text-brand-green dark:text-brand-lime">{{ $sumMenit($mk) }}</td>
+                                            @endforeach
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </x-border-form>
+
+                        {{-- 3. Pemeriksaan Fisik --}}
+                        <x-border-form title="3. Pemeriksaan Fisik">
+                            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                                <div><x-input-label value="Keadaan Tali Pusat" /><x-text-input wire:model="newForm.keadaanTaliPusat" class="w-full mt-1" /></div>
+                                <div><x-input-label value="Jantung" /><x-text-input wire:model="newForm.jantung" class="w-full mt-1" /></div>
+                                <div><x-input-label value="Paru" /><x-text-input wire:model="newForm.paru" class="w-full mt-1" /></div>
+                                <div><x-input-label value="Abdomen / Hati" /><x-text-input wire:model="newForm.abdomenHati" class="w-full mt-1" /></div>
+                                <div><x-input-label value="Limpa" /><x-text-input wire:model="newForm.limpa" class="w-full mt-1" /></div>
+                                <div><x-input-label value="Anus" /><x-text-input wire:model="newForm.anus" class="w-full mt-1" /></div>
+                                <div><x-input-label value="Ekstremitas" /><x-text-input wire:model="newForm.ekstremitas" class="w-full mt-1" /></div>
+                                <div><x-input-label value="Imunisasi" /><x-text-input wire:model="newForm.imunisasi" class="w-full mt-1" /></div>
+                            </div>
+                        </x-border-form>
+
+                        {{-- 4. Antropometri --}}
+                        <x-border-form title="4. Antropometri">
+                            <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+                                <div><x-input-label value="Lingkar Kepala (cm)" /><x-text-input type="number" wire:model="newForm.lingkarKepala" class="w-full mt-1" /></div>
+                                <div><x-input-label value="Berat Badan (gr)" /><x-text-input type="number" wire:model="newForm.beratBadan" class="w-full mt-1" /></div>
+                                <div><x-input-label value="Tinggi Badan (cm)" /><x-text-input type="number" wire:model="newForm.tinggiBadan" class="w-full mt-1" /></div>
+                                <div><x-input-label value="Lingkar Dada (cm)" /><x-text-input type="number" wire:model="newForm.lingkarDada" class="w-full mt-1" /></div>
+                                <div>
+                                    <x-input-label value="Jenis Kelamin" />
+                                    <x-select-input wire:model="newForm.jenisKelamin" class="w-full mt-1">
+                                        <option value="">—</option>
+                                        <option value="Laki-laki">Laki-laki</option>
+                                        <option value="Perempuan">Perempuan</option>
+                                    </x-select-input>
+                                </div>
+                            </div>
+                        </x-border-form>
+
+                        {{-- 5. Keadaan Bayi Waktu Lahir --}}
+                        <x-border-form title="5. Keadaan Bayi Waktu Lahir">
+                            <div class="space-y-3">
+                                <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                                    <div>
+                                        <x-input-label value="Sianosis" />
+                                        <x-select-input wire:model="newForm.sianosis" class="w-full mt-1">
+                                            <option value="">—</option>
+                                            <option value="Ada">Ada</option>
+                                            <option value="Tidak Ada">Tidak Ada</option>
+                                        </x-select-input>
+                                    </div>
+                                    <div class="sm:col-span-2"><x-input-label value="Keterangan Sianosis" /><x-text-input wire:model="newForm.sianosisKet" class="w-full mt-1" /></div>
+                                    <div>
+                                        <x-input-label value="Asphyxia" />
+                                        <x-select-input wire:model="newForm.asphyxia" class="w-full mt-1">
+                                            <option value="">—</option>
+                                            <option value="Ada">Ada</option>
+                                            <option value="Tidak Ada">Tidak Ada</option>
+                                        </x-select-input>
+                                    </div>
+                                    <div class="sm:col-span-2"><x-input-label value="Keterangan Asphyxia" /><x-text-input wire:model="newForm.asphyxiaKet" class="w-full mt-1" /></div>
+                                    <div>
+                                        <x-input-label value="Trauma Lahir" />
+                                        <x-select-input wire:model="newForm.traumaLahir" class="w-full mt-1">
+                                            <option value="">—</option>
+                                            <option value="Ada">Ada</option>
+                                            <option value="Tidak Ada">Tidak Ada</option>
+                                        </x-select-input>
+                                    </div>
+                                    <div class="sm:col-span-2"><x-input-label value="Keterangan Trauma Lahir" /><x-text-input wire:model="newForm.traumaLahirKet" class="w-full mt-1" /></div>
+                                </div>
+                            </div>
+                        </x-border-form>
+
+                        {{-- 6. Diagnosa --}}
+                        <x-border-form title="6. Diagnosa">
+                            <div>
+                                <x-input-label value="Diagnosa Utama" />
+                                <x-textarea wire:model="newForm.diagnosaUtama" rows="2" class="w-full mt-1" />
+                            </div>
+                        </x-border-form>
+
+                        {{-- 7. Rencana --}}
+                        <x-border-form title="7. Rencana">
+                            <div class="space-y-4">
+                                <div><x-input-label value="Rencana Diagnosa" /><x-textarea wire:model="newForm.rencanaDiagnosa" rows="2" class="w-full mt-1" /></div>
+                                <div><x-input-label value="Terapi" /><x-textarea wire:model="newForm.terapi" rows="2" class="w-full mt-1" /></div>
+                                <div><x-input-label value="Diet" /><x-textarea wire:model="newForm.diet" rows="2" class="w-full mt-1" /></div>
+                                <div><x-input-label value="Edukasi" /><x-textarea wire:model="newForm.edukasi" rows="2" class="w-full mt-1" /></div>
+                                <div><x-input-label value="Monitoring" /><x-textarea wire:model="newForm.monitoring" rows="2" class="w-full mt-1" /></div>
+                                <div><x-input-label value="Discharge Planning" /><x-textarea wire:model="newForm.dischargePlanning" rows="2" class="w-full mt-1" placeholder="Rencana pemulangan / kebutuhan pasca-rawat" /></div>
+                            </div>
+                        </x-border-form>
+
+                        {{-- ══ TTD PETUGAS & KUNCI ══ --}}
+                        <x-signature.ttd-petugas :ttd="$newForm['ttd']" :code="$newForm['ttdCode'] ?? ''"
+                            :date="$newForm['ttdDate'] ?? ''" :locked="$formReadOnly" sign="ttdSaya" clear="hapusTtd"
+                            title="Tanda Tangan Petugas"
+                            nameLabel="Dokter Pengkaji" dateLabel="Waktu TTD"
+                            signLabel="TTD Petugas & Kunci" clearLabel="Batal TTD" />
+                        @if (!$formReadOnly)
+                            <p class="-mt-2 text-xs text-center text-muted">Menandatangani = mengunci pengkajian ini.</p>
+                        @endif
+                    </fieldset>
+
+                    {{-- ── DAFTAR ENTRI TERSIMPAN (expandable) ── --}}
+                    @endif
+                    @unless ($this->diForm())
+                    <x-modul-dokumen.tabel-daftar :kolom="['', 'Tgl / Jam Lahir', 'Jenis Kelamin', 'Petugas (TTD)', 'Status' => 'text-center', 'Aksi' => 'text-center']">
+                                    @forelse (collect($entriList)->sortByDesc(fn($entri) => strtotime(strtr(($entri['tanggal'] ?? '') ?: ($entri['createdAt'] ?? ''), '/', '-')))->values()->all() as $entry)
+                                        @php
+                                            $isFinal = $this->entryIsFinal($entry);
+                                            $rowKey = $entry['createdAt'] ?? '';
+                                        @endphp
+                                        {{-- Semua baris mulai TERTUTUP: daftar dipakai untuk MEMILIH entri, bukan
+                                             membacanya. Baris teratas yang terbuka sendiri bikin grid langsung panjang. --}}
+                                        <tbody x-data="{ open: false }" class="border-b border-hairline dark:border-gray-700">
+                                            <tr @click="open = !open"
+                                                class="cursor-pointer hover:bg-surface-soft dark:hover:bg-gray-800 {{ $editingKey && $editingKey === $rowKey ? 'bg-brand-lime/10 dark:bg-brand-lime/5' : '' }}">
+                                                <td class="px-2 py-3 text-center align-middle">
+                                                    <svg class="w-4 h-4 mx-auto transition-transform text-muted" :class="{ 'rotate-90': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                                                    </svg>
+                                                </td>
+                                                <td class="px-4 py-3 font-semibold align-middle text-ink dark:text-gray-100">
+                                                    {{ ($entry['tglLahir'] ?? '') ?: ($rowKey ?: '-') }}
+                                                </td>
+                                                <td class="px-4 py-3 align-middle text-muted dark:text-gray-300">
+                                                    {{ ($entry['jenisKelamin'] ?? '') ?: '-' }}
+                                                </td>
+                                                <td class="px-4 py-3 align-middle text-muted dark:text-gray-300">
+                                                    <x-modul-dokumen.status-ttd :nama="$entry['ttd'] ?? ''" />
+                                                </td>
+                                                <td class="px-4 py-3 text-center align-middle">
+                                                    <x-modul-dokumen.status-entri :final="$isFinal" />
+                                                </td>
+                                                <td class="px-4 py-3 text-center align-middle whitespace-nowrap" @click.stop>
+                                                    <x-modul-dokumen.aksi-entri kunci="{{ $rowKey }}" :final="$isFinal" :terkunci="$isFormLocked"
+                                                        judulLihat="Lihat detail (read-only) di form atas"
+                                                        judulBukaKunci="Buka Kunci Pengkajian Awal Bayi"
+                                                        pesanBukaKunci="TTD petugas akan dicabut & entri kembali menjadi Draft — proses TTD diulang dari awal. Lanjutkan?"
+                                                        konfirmasiHapus="Yakin hapus entri pengkajian ini?" />
+                                                </td>
+                                            </tr>
+
+                                            {{-- DETAIL (expand) --}}
+                                            <tr x-show="open" x-cloak>
+                                                <td colspan="6" class="px-4 py-4 bg-surface-soft/60 dark:bg-gray-950/30">
+                                                    <dl class="grid grid-cols-1 gap-x-8 gap-y-3 md:grid-cols-2">
+                                                        <div>
+                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Tgl / Jam Lahir</dt>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['tglLahir'] ?? '') ?: '-' }}</dd>
+                                                        </div>
+                                                        <div>
+                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Cara Persalinan</dt>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['caraPersalinan'] ?? '') ?: '-' }}</dd>
+                                                        </div>
+                                                        <div>
+                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Nama Ayah</dt>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['namaAyah'] ?? '') ?: '-' }}</dd>
+                                                        </div>
+                                                        <div>
+                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Nama Ibu</dt>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['namaIbu'] ?? '') ?: '-' }}</dd>
+                                                        </div>
+                                                        <div>
+                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Ruangan Ibu</dt>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['ruanganIbu'] ?? '') ?: '-' }}</dd>
+                                                        </div>
+                                                        <div>
+                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">No. RM Ibu</dt>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['noRmIbu'] ?? '') ?: '-' }}</dd>
+                                                        </div>
+
+                                                        {{-- APGAR (semua komponen) --}}
+                                                        <div class="md:col-span-2">
+                                                            <dt class="mb-1 text-xs font-semibold tracking-wide uppercase text-muted-soft">Nilai APGAR</dt>
+                                                            <dd class="overflow-x-auto">
+                                                                @php
+                                                                    $apgarD = [
+                                                                        ['Warna Kulit', 'warnaKulit'],
+                                                                        ['Reflek', 'reflek'],
+                                                                        ['Denyut Jantung', 'denyutJantung'],
+                                                                        ['Tonus', 'tonus'],
+                                                                        ['Usaha Bernafas', 'usahaNafas'],
+                                                                    ];
+                                                                    $menitD = ['1' => "1'", '5' => "5'", '10' => "10'"];
+                                                                @endphp
+                                                                <table class="min-w-full text-sm border-collapse">
+                                                                    <thead>
+                                                                        <tr class="text-left border-b border-hairline dark:border-gray-700">
+                                                                            <th class="whitespace-nowrap py-1 pr-3 font-medium text-muted-soft">Komponen</th>
+                                                                            @foreach ($menitD as $mk => $ml)
+                                                                                <th class="whitespace-nowrap px-2 py-1 font-medium text-center text-muted-soft">Menit {{ $ml }}</th>
+                                                                            @endforeach
+                                                                        </tr>
+                                                                    </thead>
+                                                                    <tbody>
+                                                                        @foreach ($apgarD as $r)
+                                                                            <tr class="border-b border-hairline/60 dark:border-gray-800">
+                                                                                <td class="py-1 pr-3 text-ink dark:text-gray-200">{{ $r[0] }}</td>
+                                                                                @foreach ($menitD as $mk => $ml)
+                                                                                    <td class="px-2 py-1 text-center text-ink dark:text-gray-200">{{ ($entry[$r[1] . $mk] ?? '') === '' ? '-' : $entry[$r[1] . $mk] }}</td>
+                                                                                @endforeach
+                                                                            </tr>
+                                                                        @endforeach
+                                                                        <tr class="font-semibold border-t border-hairline dark:border-gray-600">
+                                                                            <td class="py-1 pr-3 text-ink dark:text-gray-100">Jumlah</td>
+                                                                            @foreach ($menitD as $mk => $ml)
+                                                                                <td class="px-2 py-1 text-center text-brand-green dark:text-brand-lime">{{ collect($apgarD)->sum(fn($r) => (int) ($entry[$r[1] . $mk] ?? 0)) }}</td>
+                                                                            @endforeach
+                                                                        </tr>
+                                                                    </tbody>
+                                                                </table>
+                                                            </dd>
+                                                        </div>
+
+                                                        <div>
+                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Keadaan Tali Pusat</dt>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['keadaanTaliPusat'] ?? '') ?: '-' }}</dd>
+                                                        </div>
+                                                        <div>
+                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Jantung</dt>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['jantung'] ?? '') ?: '-' }}</dd>
+                                                        </div>
+                                                        <div>
+                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Paru</dt>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['paru'] ?? '') ?: '-' }}</dd>
+                                                        </div>
+                                                        <div>
+                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Abdomen / Hati</dt>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['abdomenHati'] ?? '') ?: '-' }}</dd>
+                                                        </div>
+                                                        <div>
+                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Limpa</dt>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['limpa'] ?? '') ?: '-' }}</dd>
+                                                        </div>
+                                                        <div>
+                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Anus</dt>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['anus'] ?? '') ?: '-' }}</dd>
+                                                        </div>
+                                                        <div>
+                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Ekstremitas</dt>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['ekstremitas'] ?? '') ?: '-' }}</dd>
+                                                        </div>
+                                                        <div>
+                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Imunisasi</dt>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['imunisasi'] ?? '') ?: '-' }}</dd>
+                                                        </div>
+
+                                                        <div>
+                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Lingkar Kepala (cm)</dt>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['lingkarKepala'] ?? '') ?: '-' }}</dd>
+                                                        </div>
+                                                        <div>
+                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Berat Badan (gr)</dt>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['beratBadan'] ?? '') ?: '-' }}</dd>
+                                                        </div>
+                                                        <div>
+                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Tinggi Badan (cm)</dt>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['tinggiBadan'] ?? '') ?: '-' }}</dd>
+                                                        </div>
+                                                        <div>
+                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Lingkar Dada (cm)</dt>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['lingkarDada'] ?? '') ?: '-' }}</dd>
+                                                        </div>
+                                                        <div>
+                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Jenis Kelamin</dt>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['jenisKelamin'] ?? '') ?: '-' }}</dd>
+                                                        </div>
+
+                                                        <div>
+                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Sianosis</dt>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['sianosis'] ?? '') ?: '-' }}@if (!empty($entry['sianosisKet'])) <span class="text-sm text-muted-soft">— {{ $entry['sianosisKet'] }}</span>@endif</dd>
+                                                        </div>
+                                                        <div>
+                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Asphyxia</dt>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['asphyxia'] ?? '') ?: '-' }}@if (!empty($entry['asphyxiaKet'])) <span class="text-sm text-muted-soft">— {{ $entry['asphyxiaKet'] }}</span>@endif</dd>
+                                                        </div>
+                                                        <div>
+                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Trauma Lahir</dt>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['traumaLahir'] ?? '') ?: '-' }}@if (!empty($entry['traumaLahirKet'])) <span class="text-sm text-muted-soft">— {{ $entry['traumaLahirKet'] }}</span>@endif</dd>
+                                                        </div>
+
+                                                        <div class="md:col-span-2">
+                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Diagnosa Utama</dt>
+                                                            <dd class="mt-0.5 whitespace-pre-line text-ink dark:text-gray-200">{{ ($entry['diagnosaUtama'] ?? '') ?: '-' }}</dd>
+                                                        </div>
+                                                        <div class="md:col-span-2">
+                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Rencana Diagnosa</dt>
+                                                            <dd class="mt-0.5 whitespace-pre-line text-ink dark:text-gray-200">{{ ($entry['rencanaDiagnosa'] ?? '') ?: '-' }}</dd>
+                                                        </div>
+                                                        <div class="md:col-span-2">
+                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Terapi</dt>
+                                                            <dd class="mt-0.5 whitespace-pre-line text-ink dark:text-gray-200">{{ ($entry['terapi'] ?? '') ?: '-' }}</dd>
+                                                        </div>
+                                                        <div class="md:col-span-2">
+                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Diet</dt>
+                                                            <dd class="mt-0.5 whitespace-pre-line text-ink dark:text-gray-200">{{ ($entry['diet'] ?? '') ?: '-' }}</dd>
+                                                        </div>
+                                                        <div class="md:col-span-2">
+                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Edukasi</dt>
+                                                            <dd class="mt-0.5 whitespace-pre-line text-ink dark:text-gray-200">{{ ($entry['edukasi'] ?? '') ?: '-' }}</dd>
+                                                        </div>
+                                                        <div class="md:col-span-2">
+                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Monitoring</dt>
+                                                            <dd class="mt-0.5 whitespace-pre-line text-ink dark:text-gray-200">{{ ($entry['monitoring'] ?? '') ?: '-' }}</dd>
+                                                        </div>
+                                                        <div class="md:col-span-2">
+                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Discharge Planning</dt>
+                                                            <dd class="mt-0.5 whitespace-pre-line text-ink dark:text-gray-200">{{ ($entry['dischargePlanning'] ?? '') ?: '-' }}</dd>
+                                                        </div>
+                                                        <div>
+                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Petugas (TTD)</dt>
+                                                            <dd class="mt-0.5">
+                                                                <x-modul-dokumen.status-ttd :nama="$entry['ttd'] ?? ''" :waktu="$entry['ttdDate'] ?? '-'" gaya="biasa" />
+                                                            </dd>
+                                                        </div>
+                                                    </dl>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    @empty
+                                        <x-modul-dokumen.baris-kosong :kolom="6" />
+                                    @endforelse
+                    </x-modul-dokumen.tabel-daftar>
+                    @endunless
+
+                </div>
+            </div>
+
+            {{-- FOOTER --}}
+            <x-modul-dokumen.footer :formulir="$this->diForm()" :terkunci="$isFormLocked"
+                :lihat="$viewOnly"
+                :mengedit="$editingKey">
+                Simpan draft dulu, lalu <strong>kunci</strong> lewat tombol <strong>TTD Petugas &amp; Kunci</strong>.
+            </x-modul-dokumen.footer>
+
+        </div>
+    </x-modal>
+</div>
