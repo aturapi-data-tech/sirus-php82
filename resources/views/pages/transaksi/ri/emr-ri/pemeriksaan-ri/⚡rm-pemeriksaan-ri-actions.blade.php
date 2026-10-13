@@ -198,7 +198,9 @@ new class extends Component {
             return;
         }
 
-        $this->viewFilePDF = 'data:application/pdf;base64,' . base64_encode(file_get_contents($fullPath));
+        // Mime dari isi file — upload menerima PDF & JPG; dipaksa application/pdf membuat JPG tampil kosong.
+        $mime = mime_content_type($fullPath) ?: 'application/pdf';
+        $this->viewFilePDF = 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($fullPath));
         $this->dispatch('open-modal', name: 'view-penunjang-pdf-ri');
     }
 
