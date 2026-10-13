@@ -1,0 +1,699 @@
+<?php
+// resources/views/pages/transaksi/ugd/emr-ugd/modul-dokumen/identifikasi-bayi-ugd/rm-identifikasi-bayi-ugd-actions.blade.php
+// Port dari RI (identifikasi-bayi-ri) — blade cetak DIPAKAI BERSAMA RI (satu formulir satu kode RM).
+// Ubah logika di RI = ubah juga salinan UGD ini.
+// Dokumen VK/Kebidanan — Identifikasi Bayi (diisi Perawat/Bidan).
+// Pola sama dgn Pengkajian Awal Obstetri (modul dokumen RI): multi-entri, simpan ke datadaftarugd_json.
+// CATATAN: cap sidik jari ibu & telapak kaki bayi dilakukan MANUAL di berkas fisik; di EMR cukup penanda "Sudah dilakukan".
+
+use Livewire\Component;
+use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
+use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
+use App\Http\Traits\Concerns\WithRenderVersioningTrait;
+use App\Http\Traits\Concerns\WithValidationToastTrait;
+use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
+use Barryvdh\DomPDF\Facade\Pdf;
+use App\Support\TtdUser;
+
+new class extends Component {
+    use EmrUGDTrait, MasterPasienTrait, WithRenderVersioningTrait, WithValidationToastTrait;
+
+    public bool $isFormLocked = false;
+    public ?string $rjNo = null;
+    public ?string $regNo = null;
+    public bool $disabled = false;
+
+    public array $renderVersions = [];
+    protected array $renderAreas = ['modal-identifikasi-bayi-ugd'];
+
+    /** Key penyimpanan di datadaftarugd_json */
+    private string $jsonKey = 'identifikasiBayiUGD';
+
+    public array $newForm = [
+        // 1. Identitas
+        'namaIbu'            => '',
+        'namaAyah'           => '',
+        'noRegisterIbu'      => '',
+        'namaBayi'           => '',
+        'jenisKelamin'       => '',   // Laki-laki | Perempuan
+        'warnaGelang'        => '',   // Biru | Merah Muda
+        'noRegisterBayi'     => '',
+        'tglLahir'           => '',   // tgl+jam lahir, 'd/m/Y H:i:s' (jam ikut di sini)
+        'bb'                 => '',    // gram
+        'pb'                 => '',    // cm
+        'apgar'              => '',    // mis 7-8-9
+        // 2. Serah Terima
+        'penolongPersalinan' => '',
+        'pemasangGelang'     => '',
+        'yangMenyerahkan'    => '',    // ke ruang neonatus
+        'yangMenerima'       => '',    // di ruang neonatus
+        // 3. Cap identifikasi (manual di berkas fisik)
+        'capDilakukan'       => '',    // Sudah | Belum
+        // 4. Pernyataan Pulang
+        'serahTerimaPulang'  => '',
+        'saksiPerawat'       => '',
+        'orangTuaBayi'       => '',
+        // 5. Pengisi
+        'ttd'                => '',   // nama penanda-tangan (myuser_name)
+        'ttdDate'            => '',   // tgl/jam TTD (d/m/Y H:i:s)
+        'ttdCode'            => '',   // myuser_code penanda-tangan
+    ];
+
+    public array $entriList = [];
+
+    // Layar aktif di modal: 'daftar' (riwayat entri) atau 'form' (isian baru).
+    // Formulir sengaja tidak nongkrong bersama daftarnya — lihat pola baku
+    // docs/modul-dokumen-ri-pattern.md §2b.
+    public string $layar = 'daftar';
+
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan di bawah ini yang disimpan. */
+    private function muatDariDokumen(array $data): void
+    {
+        $this->regNo = $data['regNo'] ?? null;
+        $this->entriList = is_array($data[$this->jsonKey] ?? null) ? $data[$this->jsonKey] : [];
+    }
+
+    protected function rules(): array
+    {
+        return [
+            'newForm.namaBayi' => 'required|string',
+            'newForm.saksiPerawat' => 'required|string|max:200',
+        ];
+    }
+
+    protected function messages(): array
+    {
+        return [
+            'newForm.namaBayi.required' => 'Nama bayi harus diisi.',
+            'newForm.saksiPerawat.required' => 'Nama saksi (perawat/bidan) harus diisi.',
+        ];
+    }
+
+    public function mount(?string $rjNo = null, bool $disabled = false): void
+    {
+        $this->rjNo = $rjNo ?: null;
+        $this->disabled = $disabled;
+        $this->registerAreas(['modal-identifikasi-bayi-ugd']);
+
+        if ($this->rjNo) {
+            $data = $this->findDataUGD($this->rjNo);
+            if ($data) {
+                $this->muatDariDokumen($data);
+                $this->isFormLocked = $this->checkEmrUGDStatus($this->rjNo) || $disabled;
+            }
+        }
+    }
+
+    public function openModal(): void
+    {
+        if (!$this->rjNo || $this->disabled) {
+            return;
+        }
+
+        $this->resetNewForm();
+        $this->resetValidation();
+        $this->layar = 'daftar';
+
+        $data = $this->findDataUGD($this->rjNo);
+        if (!$data) {
+            $this->dispatch('toast', type: 'error', message: 'Data UGD tidak ditemukan.');
+            return;
+        }
+
+        $this->muatDariDokumen($data);
+        $this->isFormLocked = $this->checkEmrUGDStatus($this->rjNo) || $this->disabled;
+
+        $this->incrementVersion('modal-identifikasi-bayi-ugd');
+        $this->dispatch('open-modal', name: 'identifikasi-bayi-ugd');
+    }
+
+    public function closeModal(): void
+    {
+        $this->dispatch('close-modal', name: 'identifikasi-bayi-ugd');
+    }
+
+    /** TTD: stamp nama user login + tgl/jam ke entri saat ini. */
+    public function ttdSaya(): void
+    {
+        if ($this->isFormLocked) {
+            return;
+        }
+        if (!empty($this->newForm['ttd'])) {
+            $this->dispatch('toast', type: 'warning', message: 'Tanda tangan sudah ada.');
+            return;
+        }
+        $this->newForm['ttd']     = auth()->user()->myuser_name ?? '';
+        $this->newForm['ttdCode'] = auth()->user()->myuser_code ?? '';
+        $this->newForm['ttdDate'] = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
+    }
+
+    /** Batalkan TTD (untuk tanda tangan ulang). */
+    public function hapusTtd(): void
+    {
+        if ($this->isFormLocked) {
+            return;
+        }
+        $this->newForm['ttd']     = '';
+        $this->newForm['ttdCode'] = '';
+        $this->newForm['ttdDate'] = '';
+    }
+
+    /**
+     * TTD menyusul pada entri TERSIMPAN yang belum/batal ditandatangani.
+     * Form ini tak punya siklus draft-edit, jadi tanpa method ini entri hasil
+     * Buka Kunci tak akan pernah bisa ditandatangani lagi.
+     */
+    public function ttdEntry(string $createdAt): void
+    {
+        if ($this->isFormLocked) {
+            $this->dispatch('toast', type: 'error', message: 'Form read-only.');
+            return;
+        }
+
+        try {
+            DB::transaction(function () use ($createdAt) {
+                $this->lockUGDRow($this->rjNo);
+
+                $fresh = $this->findDataUGD($this->rjNo) ?: [];
+                $list = is_array($fresh[$this->jsonKey] ?? null) ? $fresh[$this->jsonKey] : [];
+                $index = collect($list)->search(fn($item) => ($item['createdAt'] ?? '') === $createdAt);
+                if ($index === false) {
+                    throw new \RuntimeException('Entri tidak ditemukan.');
+                }
+                if (!empty($list[$index]['ttd'])) {
+                    throw new \RuntimeException('Entri sudah ditandatangani.');
+                }
+
+                $penandaTangan = auth()->user()->myuser_name ?? '';
+                $list[$index]['ttd'] = $penandaTangan;
+                $list[$index]['ttdCode'] = auth()->user()->myuser_code ?? '';
+                $list[$index]['ttdDate'] = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
+                $fresh[$this->jsonKey] = array_values($list);
+
+                $this->updateJsonUGD((int) $this->rjNo, $fresh);
+                $this->muatDariDokumen($fresh);
+
+                $this->appendAdminLogUGD((int) $this->rjNo, 'TTD Identifikasi Bayi (' . $createdAt . ') oleh ' . $penandaTangan, 'MR');
+            });
+
+            $this->incrementVersion('modal-identifikasi-bayi-ugd');
+            $this->dispatch('toast', type: 'success', message: 'Entri ditandatangani.');
+        } catch (\RuntimeException $exception) {
+            $this->dispatch('toast', type: 'error', message: $exception->getMessage());
+        } catch (\Throwable $exception) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal menandatangani: ' . $exception->getMessage());
+        }
+    }
+
+    /* ===============================
+     | BUKA KUNCI (Gate dokumen.bukaKunci) — cabut TTD petugas pada entri tersimpan.
+     =============================== */
+    public function bukaKunci(string $createdAt): void
+    {
+        if (!auth()->user()?->can('dokumen.bukaKunci')) {
+            $this->dispatch('toast', type: 'error', message: 'Anda tidak berwenang membuka kunci.');
+            return;
+        }
+        if ($this->isFormLocked) {
+            $this->dispatch('toast', type: 'error', message: 'Form read-only.');
+            return;
+        }
+
+        try {
+            DB::transaction(function () use ($createdAt) {
+                $this->lockUGDRow($this->rjNo);
+
+                $fresh = $this->findDataUGD($this->rjNo) ?: [];
+                $list = is_array($fresh[$this->jsonKey] ?? null) ? $fresh[$this->jsonKey] : [];
+                $index = collect($list)->search(fn($item) => ($item['createdAt'] ?? '') === $createdAt);
+                if ($index === false) {
+                    throw new \RuntimeException('Entri tidak ditemukan.');
+                }
+
+                $list[$index]['finalized'] = false;
+                $list[$index]['ttd'] = '';
+                $list[$index]['ttdCode'] = '';
+                $list[$index]['ttdDate'] = '';
+                $fresh[$this->jsonKey] = array_values($list);
+
+                $this->updateJsonUGD((int) $this->rjNo, $fresh);
+                $this->muatDariDokumen($fresh);
+
+                $pembukaKunci = auth()->user()->myuser_name ?? '-';
+                $this->appendAdminLogUGD((int) $this->rjNo, 'Buka kunci Identifikasi Bayi (' . $createdAt . ') oleh ' . $pembukaKunci . ' — TTD petugas dicabut', 'MR');
+            });
+
+            $this->incrementVersion('modal-identifikasi-bayi-ugd');
+            $this->dispatch('toast', type: 'success', message: 'Kunci dibuka — TTD petugas dicabut.');
+        } catch (\RuntimeException $exception) {
+            $this->dispatch('toast', type: 'error', message: $exception->getMessage());
+        } catch (\Throwable $exception) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal membuka kunci: ' . $exception->getMessage());
+        }
+    }
+
+    public function setNow(string $field): void
+    {
+        if ($this->isFormLocked) {
+            return;
+        }
+        $this->newForm[$field] = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
+    }
+
+    private function resetNewForm(): void
+    {
+        foreach ($this->newForm as $k => $v) {
+            $this->newForm[$k] = is_array($v) ? [] : '';
+        }
+        $this->layar = 'daftar';   // mengosongkan formulir = kembali ke daftar
+    }
+
+    /** Layar formulir sedang tampil? Saat terkunci, formulir tak pernah dirender. */
+    public function diForm(): bool
+    {
+        return !$this->isFormLocked && $this->layar === 'form';
+    }
+
+    /** Buka formulir kosong untuk entri baru. */
+    public function tambahEntri(): void
+    {
+        if ($this->isFormLocked || $this->disabled) {
+            $this->dispatch('toast', type: 'error', message: 'Form read-only, tidak dapat menambah entri.');
+            return;
+        }
+        $this->resetNewForm();
+        $this->resetValidation();
+        $this->layar = 'form';
+    }
+
+    /** Tutup formulir, kembali ke daftar entri. Formulir selalu ditinggalkan kosong. */
+    public function kembaliKeDaftar(): void
+    {
+        $this->resetNewForm();
+        $this->resetValidation();
+    }
+
+    public function addEntry(): void
+    {
+        if ($this->isFormLocked) {
+            $this->dispatch('toast', type: 'error', message: 'Form read-only, tidak dapat menyimpan.');
+            return;
+        }
+
+        $this->validateWithToast();
+
+        $entry = $this->newForm;
+        $entry['createdAt'] = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
+
+        try {
+            DB::transaction(function () use ($entry) {
+                $this->lockUGDRow($this->rjNo);
+
+                $fresh = $this->findDataUGD($this->rjNo) ?: [];
+                if (!isset($fresh[$this->jsonKey]) || !is_array($fresh[$this->jsonKey])) {
+                    $fresh[$this->jsonKey] = [];
+                }
+                $fresh[$this->jsonKey][] = $entry;
+
+                $this->updateJsonUGD((int) $this->rjNo, $fresh);
+                $this->muatDariDokumen($fresh);
+
+                $this->appendAdminLogUGD((int) $this->rjNo, 'Tambah Identifikasi Bayi — ' . ($entry['namaBayi'] ?? '-') . ' — ' . ($entry['ttd'] ?? '-') . ' — ' . $entry['createdAt'], 'MR');
+            });
+
+            $this->incrementVersion('modal-identifikasi-bayi-ugd');
+            $this->dispatch('toast', type: 'success', message: 'Identifikasi bayi berhasil disimpan.');
+            $this->resetNewForm();
+        } catch (\RuntimeException $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal menyimpan: ' . $e->getMessage());
+        }
+    }
+
+    public function hapus(string $createdAt): void
+    {
+        if (!auth()->user()?->can('dokumen.hapus')) {
+            $this->dispatch('toast', type: 'error', message: 'Anda tidak berwenang menghapus entri.');
+            return;
+        }
+        if ($this->isFormLocked) {
+            $this->dispatch('toast', type: 'error', message: 'Form read-only, tidak dapat menghapus.');
+            return;
+        }
+
+        try {
+            DB::transaction(function () use ($createdAt) {
+                $this->lockUGDRow($this->rjNo);
+
+                $fresh = $this->findDataUGD($this->rjNo) ?: [];
+                $fresh[$this->jsonKey] = collect($fresh[$this->jsonKey] ?? [])
+                    ->reject(fn($entri) => ($entri['createdAt'] ?? null) === $createdAt)
+                    ->values()
+                    ->all();
+
+                $this->updateJsonUGD((int) $this->rjNo, $fresh);
+                $this->muatDariDokumen($fresh);
+
+                $this->appendAdminLogUGD((int) $this->rjNo, 'Hapus Identifikasi Bayi — ' . $createdAt, 'MR');
+            });
+
+            $this->incrementVersion('modal-identifikasi-bayi-ugd');
+            $this->dispatch('toast', type: 'success', message: 'Entri dihapus.');
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal menghapus: ' . $e->getMessage());
+        }
+    }
+
+    public function cetak(string $createdAt)
+    {
+        $entry = collect($this->entriList)->firstWhere('createdAt', $createdAt);
+        if (!$entry) {
+            $this->dispatch('toast', type: 'error', message: 'Data identifikasi bayi tidak ditemukan.');
+            return;
+        }
+
+        try {
+            $identitasRs = DB::table('rsmst_identitases')
+                ->select('int_name', 'int_phone1', 'int_phone2', 'int_fax', 'int_address', 'int_city')->first();
+            $pasienData = $this->findDataMasterPasien($this->regNo ?? '');
+            $pasien = $pasienData['pasien'] ?? [];
+
+            if (!empty($pasien['tglLahir'])) {
+                try {
+                    $pasien['thn'] = Carbon::createFromFormat('d/m/Y', $pasien['tglLahir'])
+                        ->diff(Carbon::now(config('app.timezone')))->format('%y Thn, %m Bln %d Hr');
+                } catch (\Throwable) {
+                    $pasien['thn'] = '-';
+                }
+            }
+
+            // TTD (myuser_code -> myuser_ttd_image) untuk stempel di cetakan
+            $ttdPath = null;
+            $ttdCode = $entry['ttdCode'] ?? null;
+            if ($ttdCode) {
+                $ttdImg = DB::table('users')->where('myuser_code', $ttdCode)->value('myuser_ttd_image');
+                if (!empty($ttdImg) && file_exists(TtdUser::pathBerkas($ttdImg))) {
+                    $ttdPath = TtdUser::pathBerkas($ttdImg);
+                }
+            }
+
+            $data = array_merge($pasien, [
+                'ttdPath'      => $ttdPath,
+                'dataRi'       => $this->findDataUGD($this->rjNo) ?: [],
+                'form'         => $entry,
+                'identitasRs'  => $identitasRs,
+                'tglCetak'     => Carbon::now(config('app.timezone'))->translatedFormat('d F Y'),
+            ]);
+
+            set_time_limit(300);
+            $pdf = Pdf::loadView('pages.components.modul-dokumen.ri.identifikasi-bayi-ri.cetak-identifikasi-bayi-ri-print', ['data' => $data])->setPaper('A4');
+
+            return response()->streamDownload(fn() => print $pdf->output(), 'identifikasi-bayi-ugd-' . ($pasien['regNo'] ?? $this->rjNo) . '.pdf');
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal cetak: ' . $e->getMessage());
+        }
+    }
+};
+?>
+
+<div>
+    {{-- ══ SUMMARY CARD (inline di tab) ══ --}}
+    @php $ibCount = count($entriList ?? []); @endphp
+    <x-modul-dokumen.kartu judul="Identifikasi Bayi"
+        :jumlah="$ibCount"
+        satuan="entri"
+        :nonaktif="$disabled || !$rjNo">
+        <x-slot:deskripsi>Identifikasi bayi baru lahir (VK) — identitas ibu/ayah & bayi, gelang identitas, serah terima ke ruang neonatus, cap identifikasi (manual di berkas fisik), serta pernyataan serah terima saat pulang. Diisi Perawat / Bidan.</x-slot:deskripsi>
+    </x-modul-dokumen.kartu>
+
+    {{-- ══ MODAL FORM ══ --}}
+    <x-modal name="identifikasi-bayi-ugd" size="full" height="full" focusable>
+        <div class="flex flex-col min-h-full"
+             wire:key="{{ $this->renderKey('modal-identifikasi-bayi-ugd', [$rjNo ?? 'new']) }}">
+            <x-modul-dokumen.header judul="Identifikasi Bayi"
+                ikon="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                Kebidanan (VK). Diisi Perawat / Bidan.
+            </x-modul-dokumen.header>
+
+            {{-- DISPLAY PASIEN — paling atas, mengikuti pola EMR --}}
+            <div class="px-4 pt-2">
+                <livewire:pages::transaksi.ugd.display-pasien-ugd.display-pasien-ugd :rjNo="$rjNo"
+                    wire:key="identifikasi-bayi-display-pasien-{{ $rjNo }}" />
+            </div>
+
+            {{-- BODY --}}
+            <div class="flex-1 px-4 py-4 overflow-y-auto bg-surface-soft dark:bg-gray-950/20">
+                <div class="max-w-full mx-auto space-y-4">
+
+                    @if ($isFormLocked)
+                        <div class="px-4 py-2 text-sm border rounded-lg text-amber-800 bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-300">
+                            Mode tampilan saja (read-only) — pasien sudah pulang / form terkunci.
+                        </div>
+                    @endif
+
+                    {{-- ── FORM ENTRI ── --}}
+                    @if ($this->diForm())
+                    <fieldset @disabled($isFormLocked) class="space-y-4">
+
+                        {{-- 1. Identitas --}}
+                        <x-border-form title="1. Identitas Bayi & Orang Tua">
+                            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                                <div><x-input-label value="Nama Ibu" /><x-text-input wire:model="newForm.namaIbu" class="w-full mt-1" /></div>
+                                <div><x-input-label value="Nama Ayah" /><x-text-input wire:model="newForm.namaAyah" class="w-full mt-1" /></div>
+                                <div><x-input-label value="No. Register Ibu" /><x-text-input wire:model="newForm.noRegisterIbu" class="w-full mt-1" /></div>
+                                <div>
+                                    <x-input-label value="Nama Bayi" />
+                                    <x-text-input wire:model="newForm.namaBayi" class="w-full mt-1" :error="$errors->has('newForm.namaBayi')" placeholder="Bayi Ny. ..." />
+                                    <x-input-error :messages="$errors->get('newForm.namaBayi')" class="mt-1" />
+                                </div>
+                                <div>
+                                    <x-input-label value="Jenis Kelamin" />
+                                    <x-select-input wire:model="newForm.jenisKelamin" class="w-full mt-1">
+                                        <option value="">—</option>
+                                        <option value="Laki-laki">Laki-laki</option>
+                                        <option value="Perempuan">Perempuan</option>
+                                    </x-select-input>
+                                </div>
+                                <div>
+                                    <x-input-label value="Warna Gelang" />
+                                    <x-select-input wire:model="newForm.warnaGelang" class="w-full mt-1">
+                                        <option value="">—</option>
+                                        <option value="Biru">Biru</option>
+                                        <option value="Merah Muda">Merah Muda</option>
+                                    </x-select-input>
+                                </div>
+                                <div><x-input-label value="No. Register Bayi" /><x-text-input wire:model="newForm.noRegisterBayi" class="w-full mt-1" /></div>
+                                <div class="sm:col-span-2">
+                                    <x-input-label value="Tgl / Jam Lahir" />
+                                    <div class="flex gap-1 mt-1">
+                                        <x-text-input wire:model="newForm.tglLahir" class="w-full" placeholder="dd/mm/yyyy HH:mm:ss" />
+                                        <x-now-button wire:click="setNow('tglLahir')" />
+                                    </div>
+                                </div>
+                                <div><x-input-label value="Berat Badan (gr)" /><x-text-input type="number" wire:model="newForm.bb" class="w-full mt-1" /></div>
+                                <div><x-input-label value="Panjang Badan (cm)" /><x-text-input type="number" wire:model="newForm.pb" class="w-full mt-1" /></div>
+                                <div><x-input-label value="APGAR Score" /><x-text-input wire:model="newForm.apgar" class="w-full mt-1" placeholder="mis. 7-8-9" /></div>
+                            </div>
+                        </x-border-form>
+
+                        {{-- 2. Serah Terima --}}
+                        <x-border-form title="2. Serah Terima ke Ruang Neonatus">
+                            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                <div><x-input-label value="Penolong Persalinan" /><x-text-input wire:model="newForm.penolongPersalinan" class="w-full mt-1" placeholder="Nama" /></div>
+                                <div><x-input-label value="Pemasang Gelang" /><x-text-input wire:model="newForm.pemasangGelang" class="w-full mt-1" placeholder="Nama" /></div>
+                                <div><x-input-label value="Yang Menyerahkan" /><x-text-input wire:model="newForm.yangMenyerahkan" class="w-full mt-1" placeholder="Nama (dari VK)" /></div>
+                                <div><x-input-label value="Yang Menerima" /><x-text-input wire:model="newForm.yangMenerima" class="w-full mt-1" placeholder="Nama (di ruang neonatus)" /></div>
+                            </div>
+                        </x-border-form>
+
+                        {{-- 3. Cap Identifikasi --}}
+                        <x-border-form title="3. Cap Identifikasi (Manual di Berkas Fisik)">
+                            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                <div>
+                                    <x-input-label value="Cap sidik jari ibu & telapak kaki bayi" />
+                                    <x-select-input wire:model="newForm.capDilakukan" class="w-full mt-1">
+                                        <option value="">—</option>
+                                        <option value="Sudah">Sudah dilakukan</option>
+                                        <option value="Belum">Belum dilakukan</option>
+                                    </x-select-input>
+                                </div>
+                            </div>
+                            <p class="mt-2 text-xs text-muted dark:text-gray-400">
+                                Cap sidik jari ibu dan cap telapak kaki bayi dilakukan secara manual pada berkas rekam medis fisik.
+                                Di EMR cukup ditandai "Sudah dilakukan".
+                            </p>
+                        </x-border-form>
+
+                        {{-- 4. Pernyataan Pulang --}}
+                        <x-border-form title="4. Pernyataan Serah Terima Bayi Saat Pulang">
+                            <div class="space-y-4">
+                                <div>
+                                    <x-input-label value="Pernyataan Serah Terima" />
+                                    <x-textarea wire:model="newForm.serahTerimaPulang" rows="3" class="w-full mt-1"
+                                        placeholder="Pernyataan serah terima bayi kepada orang tua saat pulang" />
+                                </div>
+                                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                    <div>
+                                        <x-input-label value="Saksi (Perawat/Bidan)" />
+                                        <x-text-input wire:model="newForm.saksiPerawat" :error="$errors->has('newForm.saksiPerawat')" class="w-full mt-1" placeholder="Nama" />
+                                        <x-input-error :messages="$errors->get('newForm.saksiPerawat')" class="mt-1" />
+                                    </div>
+                                    <div><x-input-label value="Orang Tua Bayi" /><x-text-input wire:model="newForm.orangTuaBayi" class="w-full mt-1" placeholder="Nama" /></div>
+                                </div>
+                            </div>
+                        </x-border-form>
+
+                        <x-signature.ttd-petugas :ttd="$newForm['ttd']" :date="$newForm['ttdDate'] ?? ''" :code="$newForm['ttdCode'] ?? ''" :locked="$isFormLocked" />
+
+                        <div class="flex justify-end">
+                            <x-primary-button type="button" wire:click="addEntry" wire:loading.attr="disabled" wire:target="addEntry">
+                                <span wire:loading.remove wire:target="addEntry">Simpan Identifikasi Bayi</span>
+                                <span wire:loading wire:target="addEntry">Menyimpan…</span>
+                            </x-primary-button>
+                        </div>
+                    </fieldset>
+                    @endif
+
+                    {{-- ── DAFTAR ENTRI TERSIMPAN ── --}}
+                    @unless ($this->diForm())
+                    <x-modul-dokumen.tabel-daftar :kolom="['', 'Tgl / Jam Lahir', 'Nama Bayi', 'Kelamin · Gelang', 'Petugas (TTD)', 'Status' => 'text-center', 'Aksi' => 'text-center w-64']">
+                                @forelse (collect($entriList)->sortByDesc(fn($entri) => strtotime(strtr(($entri['tglLahir'] ?? '') ?: ($entri['createdAt'] ?? ''), '/', '-')))->values()->all() as $entri)
+                                    @php
+                                        $rowKey = $entri['createdAt'] ?? '';
+                                        $rowFinal = filled($entri['ttd'] ?? null);
+                                    @endphp
+
+                                    <tbody wire:key="bayi-entri-{{ $rowKey ?: $loop->index }}" x-data="{ open: false }"
+                                        class="border-b border-hairline dark:border-gray-700">
+                                        <tr @click="open = !open"
+                                            class="cursor-pointer align-top hover:bg-surface-soft dark:hover:bg-gray-800/60">
+                                            <td class="px-2 py-3 text-center align-middle">
+                                                <svg class="w-4 h-4 mx-auto text-muted transition-transform" :class="{ 'rotate-90': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                                                </svg>
+                                            </td>
+                                            <td class="px-4 py-3 font-mono text-muted whitespace-nowrap align-middle dark:text-gray-300">
+                                                {{ $entri['tglLahir'] ?: $rowKey }}
+                                            </td>
+                                            <td class="px-4 py-3 font-medium text-ink align-middle dark:text-white">
+                                                {{ $entri['namaBayi'] ?? '-' }}
+                                            </td>
+                                            <td class="px-4 py-3 align-middle text-muted dark:text-gray-300">
+                                                {{ $entri['jenisKelamin'] ?: '-' }}
+                                                <span class="text-muted-soft">·</span> Gelang {{ $entri['warnaGelang'] ?: '-' }}
+                                                <div class="text-xs text-muted-soft mt-0.5">BB {{ $entri['bb'] ?: '-' }} g <span class="text-muted-soft">·</span> PB {{ $entri['pb'] ?: '-' }} cm</div>
+                                            </td>
+                                            <td class="px-4 py-3 align-middle text-muted dark:text-gray-300">
+                                                <x-modul-dokumen.status-ttd :nama="$entri['ttd'] ?? ''" />
+                                            </td>
+                                            <td class="px-4 py-3 text-center align-middle">
+                                                <x-modul-dokumen.status-entri :final="$rowFinal" labelDraft="Belum TTD" />
+                                            </td>
+                                            <td class="px-4 py-3 text-center align-middle whitespace-nowrap" @click.stop>
+                                                <x-modul-dokumen.aksi-entri kunci="{{ $rowKey }}" :final="$rowFinal" :terkunci="$isFormLocked"
+                                                    lanjut=""
+                                                    lihat=""
+                                                    judulBukaKunci="Buka Kunci Identifikasi Bayi"
+                                                    pesanBukaKunci="TTD petugas akan dicabut dari entri ini — proses TTD diulang dari awal. Lanjutkan?"
+                                                    konfirmasiHapus="Hapus entri identifikasi bayi ini?">
+                                                    @if (!$rowFinal && !$isFormLocked)
+                                                    <x-primary-button type="button" wire:click="ttdEntry('{{ $rowKey }}')" wire:loading.attr="disabled"
+                                                    wire:target="ttdEntry('{{ $rowKey }}')" class="gap-1.5 whitespace-nowrap" title="Tanda tangani entri ini">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                                                    TTD Saya
+                                                    </x-primary-button>
+                                                    @endif
+                                                </x-modul-dokumen.aksi-entri>
+                                            </td>
+                                        </tr>
+
+                                        {{-- DETAIL (expand) --}}
+                                        <tr x-show="open" x-cloak>
+                                            <td colspan="7" class="px-4 py-4 bg-surface-soft/60 dark:bg-gray-950/30">
+                                                <dl class="grid grid-cols-1 gap-x-8 gap-y-3 md:grid-cols-2">
+                                                    <div>
+                                                        <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Nama Ibu / Ayah</dt>
+                                                        <dd class="mt-0.5 text-ink dark:text-gray-200">
+                                                            {{ $entri['namaIbu'] ?: '-' }} <span class="text-muted-soft">/</span> {{ $entri['namaAyah'] ?: '-' }}
+                                                        </dd>
+                                                    </div>
+                                                    <div>
+                                                        <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">No. Register Ibu / Bayi</dt>
+                                                        <dd class="mt-0.5 text-ink dark:text-gray-200">
+                                                            {{ $entri['noRegisterIbu'] ?: '-' }} <span class="text-muted-soft">/</span> {{ $entri['noRegisterBayi'] ?: '-' }}
+                                                        </dd>
+                                                    </div>
+                                                    <div>
+                                                        <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">APGAR</dt>
+                                                        <dd class="mt-0.5 text-ink dark:text-gray-200">
+                                                            {{ $entri['apgar'] ?: '-' }}
+                                                        </dd>
+                                                    </div>
+                                                    <div>
+                                                        <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Penolong Persalinan</dt>
+                                                        <dd class="mt-0.5 text-ink dark:text-gray-200">
+                                                            {{ $entri['penolongPersalinan'] ?: '-' }}
+                                                        </dd>
+                                                    </div>
+                                                    <div>
+                                                        <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Pemasang Gelang</dt>
+                                                        <dd class="mt-0.5 text-ink dark:text-gray-200">
+                                                            {{ $entri['pemasangGelang'] ?: '-' }}
+                                                        </dd>
+                                                    </div>
+                                                    <div>
+                                                        <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Cap Identifikasi</dt>
+                                                        <dd class="mt-0.5 text-ink dark:text-gray-200">
+                                                            {{ $entri['capDilakukan'] ?: '-' }}
+                                                        </dd>
+                                                    </div>
+                                                    <div>
+                                                        <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Yang Menyerahkan / Menerima</dt>
+                                                        <dd class="mt-0.5 text-ink dark:text-gray-200">
+                                                            {{ $entri['yangMenyerahkan'] ?: '-' }} <span class="text-muted-soft">/</span> {{ $entri['yangMenerima'] ?: '-' }}
+                                                        </dd>
+                                                    </div>
+                                                    <div>
+                                                        <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Serah Terima Pulang</dt>
+                                                        <dd class="mt-0.5 text-ink dark:text-gray-200">
+                                                            {{ $entri['serahTerimaPulang'] ?: '-' }}
+                                                        </dd>
+                                                    </div>
+                                                    <div>
+                                                        <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Saksi Perawat / Orang Tua</dt>
+                                                        <dd class="mt-0.5 text-ink dark:text-gray-200">
+                                                            {{ $entri['saksiPerawat'] ?: '-' }} <span class="text-muted-soft">/</span> {{ $entri['orangTuaBayi'] ?: '-' }}
+                                                        </dd>
+                                                    </div>
+                                                    <div>
+                                                        <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Petugas (TTD)</dt>
+                                                        <dd class="mt-0.5 text-ink dark:text-gray-200">
+                                                            {{ $entri['ttd'] ?: '-' }}
+                                                            @if (filled($entri['ttdDate']))
+                                                                <span class="text-muted">({{ $entri['ttdDate'] }})</span>
+                                                            @endif
+                                                        </dd>
+                                                    </div>
+                                                </dl>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                @empty
+                                    <x-modul-dokumen.baris-kosong :kolom="7" pesan="Belum ada identifikasi bayi tersimpan." />
+                                @endforelse
+                    </x-modul-dokumen.tabel-daftar>
+                    @endunless
+
+                </div>
+            </div>
+
+            {{-- FOOTER --}}
+            <x-modul-dokumen.footer :formulir="$this->diForm()" :terkunci="$isFormLocked"
+                simpan=""
+                selesaiLihat="" />
+
+        </div>
+    </x-modal>
+</div>

@@ -1,0 +1,1320 @@
+<?php
+// resources/views/pages/transaksi/ugd/emr-ugd/modul-dokumen/pengkajian-neonatal-perawat-ugd/rm-pengkajian-neonatal-perawat-ugd-actions.blade.php
+// Port dari RI (pengkajian-neonatal-perawat-ri) — blade cetak DIPAKAI BERSAMA RI (satu formulir satu kode RM).
+// Ubah logika di RI = ubah juga salinan UGD ini.
+// Dokumen VK/Kebidanan — Pengkajian Keperawatan Neonatal (RM 14 c.1/c.2), diisi Perawat/Bidan.
+// Pola: multi-entri (Draft + Lanjutkan Pengisian + TTD-Kunci + Lihat read-only + tabel expandable),
+// disimpan ke datadaftarugd_json. Kunci entri stabil = createdAt.
+// TTD = stempel nama user login (ttdSaya = FINALIZE/kunci), tanpa TTD gambar.
+
+use Livewire\Component;
+use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
+use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
+use App\Http\Traits\Concerns\WithRenderVersioningTrait;
+use App\Http\Traits\Concerns\WithValidationToastTrait;
+use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
+use Barryvdh\DomPDF\Facade\Pdf;
+use App\Support\TtdUser;
+
+new class extends Component {
+    use EmrUGDTrait, MasterPasienTrait, WithRenderVersioningTrait, WithValidationToastTrait;
+
+    public bool $isFormLocked = false;
+    public ?string $rjNo = null;
+    public ?string $regNo = null;
+    public bool $disabled = false;
+
+    public array $renderVersions = [];
+    protected array $renderAreas = ['modal-pengkajian-neonatal-perawat-ugd'];
+
+    /** Key penyimpanan di datadaftarugd_json */
+    private string $jsonKey = 'pengkajianNeonatalPerawatUGD';
+
+    public array $newForm = [
+        // Riwayat Penyakit
+        'keluhanUtama'        => '',
+        // Antenatal
+        'anc'                 => '',
+        'ancTempat'           => '',
+        'tt'                  => '',
+        'ttKali'              => '',
+        'penyulitKehamilan'   => [],  // checkbox
+        'penyakitMenyertai'   => [],  // checkbox
+        // Intranatal
+        'umurKehamilan'       => '',
+        'kondisiKelahiran'    => '',
+        'jenisPersalinan'     => '',
+        'penolong'            => '',
+        'penyulitPersalinan'  => [],  // checkbox
+        'komplikasi'          => [],  // checkbox
+        'kpdLamaJam'          => '',
+        // Postnatal Antropometri
+        'bbl'                 => '',
+        'pb'                  => '',
+        'lk'                  => '',
+        'ld'                  => '',
+        'lila'                => '',
+        'lingkarPerut'        => '',
+        'traumaLahir'         => '',
+        'traumaKet'           => '',
+        'apgar1'              => '',
+        'apgar5'              => '',
+        'usahaNafas'          => '',
+        'imunisasi'           => '',
+        'imunisasiKet'        => '',
+        // Pemeriksaan Fisik
+        'kepalaBentuk'        => '',
+        'mataKonjungtiva'     => '',
+        'mataSklera'          => '',
+        'telinga'             => '',
+        'hidung'              => '',
+        'mulutReflekIsap'     => '',
+        'mulutBentuk'         => '',
+        'dada'                => '',
+        'perutBentuk'         => '',
+        'taliPusat'           => '',
+        'anus'                => '',
+        'ekstremitas'         => '',
+        // Review Sistem — B1 Pernafasan
+        'b1Pernafasan'        => '',
+        'b1FrekuensiNafas'    => '',
+        'b1SuaraNafas'        => [],  // checkbox
+        // B2 Kardiovaskuler
+        'b2Bunyi'             => '',
+        'b2CRT'               => '',
+        'b2Akral'             => '',
+        'b2Nadi'              => '',
+        'b2Suhu'              => '',
+        // B3 Persyarafan
+        'b3Kesadaran'         => '',
+        'b3Reflek'            => [],  // checkbox
+        // B4 Perkemihan
+        'b4Bak'               => '',
+        'b4Warna'             => '',
+        // B5 Pencernaan
+        'b5Bab'               => [],  // checkbox
+        'b5Minum'             => [],  // checkbox
+        'b5JenisSusu'         => '',
+        // B6 Muskuloskeletal & Integumen
+        'b6Pergerakan'        => '',
+        'b6Kulit'             => [],  // checkbox
+        'b6Turgor'            => '',
+        // Skala Nyeri NIPS
+        'nipsTotal'           => '',
+        'nipsInterpretasi'    => '',
+        // Diagnosa Keperawatan
+        'diagnosaKeperawatan' => [],  // checkbox
+        // Penunjang
+        'labPenunjang'        => '',
+        'lainPenunjang'       => '',
+        // Pengisi
+        'ttd'                 => '',   // nama penanda-tangan (myuser_name)
+        'ttdDate'             => '',   // tgl/jam TTD (d/m/Y H:i:s)
+        'ttdCode'             => '',   // myuser_code penanda-tangan
+    ];
+
+    public array $entriList = [];
+
+    // Kunci entri yang sedang diedit (createdAt = kunci stabil, di-set saat entri pertama dibuat).
+    // null = sedang membuat entri baru.
+    public ?string $editingKey = null;
+
+    // Layar aktif di modal: 'daftar' (grid entri) atau 'form' (tambah/edit/lihat).
+    // Formulir sengaja tidak nongkrong bersama daftarnya: dulu ia ikut tampil terus lalu
+    // dikosongkan diam-diam sesudah tersimpan, dan petugas yang mengira itu masih formulir
+    // yang tadi diisi mengetik ulang — tersimpan sebagai draft baru.
+    public string $layar = 'daftar';
+
+    // true = entri terkunci sedang ditampilkan di form dalam mode read-only (lihat saja, tak bisa edit).
+    public bool $viewOnly = false;
+
+    public array $penyulitKehamilanOptions = ['Hiperemesis Gravidarum', 'Pendarahan', 'Lain'];
+    public array $penyakitMenyertaiOptions = ['Hipertensi', 'TORCH', 'HIV', 'DM', 'Lain'];
+    public array $penyulitPersalinanOptions = ['Letak Lintang', 'Letsu', 'Gemelly', 'Lain'];
+    public array $komplikasiOptions = ['KPD', 'Eklamsia / Pre eklamsia', 'Lain'];
+    public array $b1SuaraNafasOptions = ['Vesikuler', 'Stridor', 'Wheezing', 'Ronchi'];
+    public array $b3ReflekOptions = ['Moro', 'Palmer Graps', 'Menggenggam'];
+    public array $b5BabKonsistensiOptions = ['Cair', 'Lunak'];
+    public array $b5BabWarnaOptions = ['Kuning', 'Hijau', 'Merah', 'Hitam'];
+    public array $b5MinumOptions = ['Oral', 'Netek', 'NGT'];
+
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan di bawah ini yang disimpan. */
+    private function muatDariDokumen(array $data): void
+    {
+        $this->regNo = $data['regNo'] ?? null;
+        $this->entriList = is_array($data[$this->jsonKey] ?? null) ? $data[$this->jsonKey] : [];
+    }
+    public array $b6KulitOptions = ['Ikterik', 'Cyanosis', 'Pucat', 'Kemerahan'];
+    public array $diagnosaKeperawatanOptions = [
+        'Bersihan jalan nafas tidak efektif',
+        'Pola nafas tidak efektif',
+        'Hipotermi',
+        'Hipertermi',
+        'Ketidakseimbangan glukosa darah',
+        'Nutrisi kurang',
+        'Ikterik neonatus',
+        'Risiko aspirasi',
+        'Kekurangan volume cairan',
+        'Diare',
+        'Konstipasi',
+        'Risiko infeksi',
+        'Risiko kerusakan integritas kulit',
+        'Gangguan pertukaran gas',
+        'Risiko perfusi jaringan otak',
+        'Defisiensi pengetahuan',
+        'Ketidakcukupan ASI',
+        'Keterlambatan tumbuh kembang',
+    ];
+
+    protected function rules(): array
+    {
+        return [];
+    }
+
+    protected function messages(): array
+    {
+        return [];
+    }
+
+    public function mount(?string $rjNo = null, bool $disabled = false): void
+    {
+        $this->rjNo = $rjNo ?: null;
+        $this->disabled = $disabled;
+        $this->registerAreas(['modal-pengkajian-neonatal-perawat-ugd']);
+
+        if ($this->rjNo) {
+            $data = $this->findDataUGD($this->rjNo);
+            if ($data) {
+                $this->muatDariDokumen($data);
+                $this->isFormLocked = $this->checkEmrUGDStatus($this->rjNo) || $disabled;
+            }
+        }
+    }
+
+    public function openModal(): void
+    {
+        if (!$this->rjNo || $this->disabled) {
+            return;
+        }
+
+        $this->resetNewForm();
+        $this->editingKey = null;
+        $this->viewOnly = false;
+        $this->resetValidation();
+
+        $data = $this->findDataUGD($this->rjNo);
+        if (!$data) {
+            $this->dispatch('toast', type: 'error', message: 'Data UGD tidak ditemukan.');
+            return;
+        }
+
+        $this->muatDariDokumen($data);
+        $this->isFormLocked = $this->checkEmrUGDStatus($this->rjNo) || $this->disabled;
+
+        $this->incrementVersion('modal-pengkajian-neonatal-perawat-ugd');
+        $this->layar = 'daftar';
+        $this->dispatch('open-modal', name: 'pengkajian-neonatal-perawat-ugd');
+    }
+
+    public function closeModal(): void
+    {
+        $this->dispatch('close-modal', name: 'pengkajian-neonatal-perawat-ugd');
+    }
+
+    /* ===============================
+     | HELPER — status & bentuk entri
+     =============================== */
+    // Entri dianggap FINAL/terkunci bila flag finalized true; entri lama (tanpa flag) yang sudah
+    // ada TTD (nama penanda) dianggap final (kompatibilitas data lama).
+    public function entryIsFinal(array $entri): bool
+    {
+        return array_key_exists('finalized', $entri) ? (bool) $entri['finalized'] : !empty($entri['ttd']);
+    }
+
+    // Susun array entri dari state form. $key = createdAt (kunci stabil); $finalized = status kunci.
+    // Ambil seluruh field newForm apa adanya (banyak & nested/checkbox) lalu tempel meta.
+    private function buildEntry(string $key, bool $finalized): array
+    {
+        $entry = $this->newForm;
+        $entry['createdAt'] = $key;
+        $entry['finalized'] = $finalized;
+        return $entry;
+    }
+
+    // Cek: minimal salah satu data inti terisi.
+    private function adaDataInti(): bool
+    {
+        return collect(['keluhanUtama', 'bbl', 'pb', 'apgar1', 'jenisPersalinan'])
+            ->contains(fn($k) => filled($this->newForm[$k] ?? null));
+    }
+
+    // Simpan entri (add/update by createdAt) dengan status $finalized. Dipakai draft & kunci.
+    private function persistEntry(string $key, bool $finalized, string $logVerb): void
+    {
+        $entry = $this->buildEntry($key, $finalized);
+
+        DB::transaction(function () use ($entry, $key, $logVerb) {
+            $this->lockUGDRow($this->rjNo);
+
+            $fresh = $this->findDataUGD($this->rjNo) ?: [];
+            if (empty($fresh)) {
+                throw new \RuntimeException('Data UGD tidak ditemukan, simpan dibatalkan.');
+            }
+            if (!isset($fresh[$this->jsonKey]) || !is_array($fresh[$this->jsonKey])) {
+                $fresh[$this->jsonKey] = [];
+            }
+
+            $list = $fresh[$this->jsonKey];
+            $idx = collect($list)->search(fn($it) => ($it['createdAt'] ?? '') === $key);
+            if ($idx === false) {
+                $list[] = $entry;
+            } else {
+                if ($this->entryIsFinal($list[$idx])) {
+                    throw new \RuntimeException('Entri sudah terkunci, tidak dapat diubah.');
+                }
+                $list[$idx] = $entry;
+            }
+            $fresh[$this->jsonKey] = array_values($list);
+
+            $this->updateJsonUGD((int) $this->rjNo, $fresh);
+            $this->muatDariDokumen($fresh);
+
+            $this->appendAdminLogUGD((int) $this->rjNo, $logVerb . ' Pengkajian Keperawatan Neonatal — ' . (($entry['ttd'] ?? '') ?: '-') . ' (' . $key . ')', 'MR');
+        });
+    }
+
+    /* ===============================
+     | SIMPAN DRAFT (nyicil, tanpa wajib TTD)
+     =============================== */
+    public function saveDraft(): void
+    {
+        if ($this->isFormLocked || $this->viewOnly) {
+            $this->dispatch('toast', type: 'error', message: 'Form read-only, tidak dapat menyimpan.');
+            return;
+        }
+        if (!$this->adaDataInti()) {
+            $this->dispatch('toast', type: 'error', message: 'Isi minimal salah satu: Keluhan Utama, BBL, PB, APGAR, atau Jenis Persalinan.');
+            return;
+        }
+
+        $key = $this->editingKey ?: Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
+
+        try {
+            $this->persistEntry($key, false, 'Simpan draft');
+            $this->editingKey = $key; // lanjut edit entri yang sama, tidak buat duplikat
+            $this->incrementVersion('modal-pengkajian-neonatal-perawat-ugd');
+            $this->dispatch('toast', type: 'success', message: 'Draft tersimpan.');
+        } catch (\RuntimeException $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal menyimpan draft: ' . $e->getMessage());
+        }
+    }
+
+    /* ===============================
+     | TTD PETUGAS = FINALIZE (kunci entri)
+     | Stempel nama user login + tgl/jam → kunci entri.
+     =============================== */
+    public function ttdSaya(): void
+    {
+        if ($this->isFormLocked || $this->viewOnly) {
+            $this->dispatch('toast', type: 'error', message: 'Form read-only.');
+            return;
+        }
+        if (!$this->adaDataInti()) {
+            $this->dispatch('toast', type: 'error', message: 'Isi minimal salah satu: Keluhan Utama, BBL, PB, APGAR, atau Jenis Persalinan sebelum TTD.');
+            return;
+        }
+
+        // Stempel TTD petugas = user login.
+        $this->newForm['ttd']     = auth()->user()->myuser_name ?? '';
+        $this->newForm['ttdCode'] = auth()->user()->myuser_code ?? '';
+        $this->newForm['ttdDate'] = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
+
+        $key = $this->editingKey ?: Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
+
+        try {
+            $this->persistEntry($key, true, 'Kunci (TTD)');
+            $this->resetNewForm();
+            $this->editingKey = null;
+            $this->viewOnly = false;
+            $this->incrementVersion('modal-pengkajian-neonatal-perawat-ugd');
+            $this->dispatch('toast', type: 'success', message: 'Pengkajian ditandatangani & terkunci.');
+        } catch (\RuntimeException $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal mengunci: ' . $e->getMessage());
+        }
+    }
+
+    /** Batalkan TTD pada form (saat draft/edit, sebelum finalize benar-benar tersimpan). */
+    public function hapusTtd(): void
+    {
+        if ($this->isFormLocked || $this->viewOnly) {
+            return;
+        }
+        $this->newForm['ttd']     = '';
+        $this->newForm['ttdCode'] = '';
+        $this->newForm['ttdDate'] = '';
+    }
+
+    /* ===============================
+     | BUKA KUNCI (Gate dokumen.bukaKunci) — cabut TTD petugas, entri kembali Draft.
+     =============================== */
+    public function bukaKunci(string $createdAt): void
+    {
+        if (!auth()->user()?->can('dokumen.bukaKunci')) {
+            $this->dispatch('toast', type: 'error', message: 'Anda tidak berwenang membuka kunci.');
+            return;
+        }
+        if ($this->isFormLocked) {
+            $this->dispatch('toast', type: 'error', message: 'Form read-only.');
+            return;
+        }
+
+        try {
+            DB::transaction(function () use ($createdAt) {
+                $this->lockUGDRow($this->rjNo);
+
+                $fresh = $this->findDataUGD($this->rjNo) ?: [];
+                $list = is_array($fresh[$this->jsonKey] ?? null) ? $fresh[$this->jsonKey] : [];
+                $index = collect($list)->search(fn($item) => ($item['createdAt'] ?? '') === $createdAt);
+                if ($index === false) {
+                    throw new \RuntimeException('Entri tidak ditemukan.');
+                }
+
+                $list[$index]['finalized'] = false;
+                $list[$index]['ttd'] = '';
+                $list[$index]['ttdCode'] = '';
+                $list[$index]['ttdDate'] = '';
+                $fresh[$this->jsonKey] = array_values($list);
+
+                $this->updateJsonUGD((int) $this->rjNo, $fresh);
+                $this->muatDariDokumen($fresh);
+
+                $pembukaKunci = auth()->user()->myuser_name ?? '-';
+                $this->appendAdminLogUGD((int) $this->rjNo, 'Buka kunci Pengkajian Keperawatan Neonatal (' . $createdAt . ') oleh ' . $pembukaKunci . ' — TTD petugas dicabut', 'MR');
+            });
+
+            if ($this->editingKey === $createdAt) {
+                $this->cancelEdit();
+            }
+            $this->incrementVersion('modal-pengkajian-neonatal-perawat-ugd');
+            $this->dispatch('toast', type: 'success', message: 'Kunci dibuka — TTD petugas dicabut, entri kembali Draft.');
+        } catch (\RuntimeException $exception) {
+            $this->dispatch('toast', type: 'error', message: $exception->getMessage());
+        } catch (\Throwable $exception) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal membuka kunci: ' . $exception->getMessage());
+        }
+    }
+
+    /** Toggle keanggotaan $opt pada array multi-pilih newForm[$field]. */
+    public function toggleArr(string $field, string $opt): void
+    {
+        if ($this->isFormLocked || $this->viewOnly) {
+            return;
+        }
+        $list = $this->newForm[$field] ?? [];
+        if (($k = array_search($opt, $list, true)) !== false) {
+            unset($list[$k]);
+        } else {
+            $list[] = $opt;
+        }
+        $this->newForm[$field] = array_values($list);
+    }
+
+    private function resetNewForm(): void
+    {
+        foreach ($this->newForm as $k => $v) {
+            $this->newForm[$k] = is_array($v) ? [] : '';
+        }
+        $this->layar = 'daftar';   // mengosongkan formulir = kembali ke daftar
+    }
+
+    protected function resetForm(): void
+    {
+        $this->resetVersion();
+        $this->isFormLocked = false;
+        $this->entriList = [];
+        $this->resetNewForm();
+        $this->editingKey = null;
+        $this->viewOnly = false;
+    }
+
+    /* ===============================
+     | EDIT / LIHAT / BATAL entri
+     =============================== */
+    // Muat 1 entri ke form atas (dipakai edit draft & lihat entri terkunci). TANPA TTD gambar.
+    private function hydrateFormFromEntry(array $entry, string $key): void
+    {
+        foreach ($this->newForm as $k => $v) {
+            $this->newForm[$k] = $entry[$k] ?? (is_array($v) ? [] : '');
+        }
+        $this->editingKey = $key;
+        $this->resetValidation();
+        $this->incrementVersion('modal-pengkajian-neonatal-perawat-ugd');
+    }
+
+    public function editEntry(string $key): void
+    {
+        if ($this->isFormLocked) {
+            $this->dispatch('toast', type: 'error', message: 'Form read-only.');
+            return;
+        }
+        $entry = collect($this->entriList)->firstWhere('createdAt', $key);
+        if (!$entry) {
+            $this->dispatch('toast', type: 'error', message: 'Entri tidak ditemukan.');
+            return;
+        }
+        if ($this->entryIsFinal($entry)) {
+            $this->dispatch('toast', type: 'warning', message: 'Entri sudah terkunci, tidak dapat diedit.');
+            return;
+        }
+
+        $this->viewOnly = false;
+        $this->hydrateFormFromEntry($entry, $key);
+        $this->dispatch('toast', type: 'info', message: 'Draft dimuat untuk dilanjutkan.');
+    }
+
+    // Lihat entri terkunci: muat ke form atas dalam mode read-only.
+    public function viewEntry(string $key): void
+    {
+        $entry = collect($this->entriList)->firstWhere('createdAt', $key);
+        if (!$entry) {
+            $this->dispatch('toast', type: 'error', message: 'Entri tidak ditemukan.');
+            return;
+        }
+
+        $this->viewOnly = true;
+        $this->hydrateFormFromEntry($entry, $key);
+        $this->dispatch('toast', type: 'info', message: 'Menampilkan entri terkunci (hanya lihat).');
+    }
+
+    public function cancelEdit(): void
+    {
+        $this->resetNewForm();
+        $this->editingKey = null;
+        $this->viewOnly = false;
+        $this->resetValidation();
+        $this->incrementVersion('modal-pengkajian-neonatal-perawat-ugd');
+    }
+
+    /** Layar formulir sedang tampil? Saat terkunci, formulir tak pernah dirender. */
+    public function diForm(): bool
+    {
+        return !$this->isFormLocked && ($this->viewOnly || $this->editingKey !== null || $this->layar === 'form');
+    }
+
+    /** Buka formulir kosong untuk entri baru. */
+    public function tambahEntri(): void
+    {
+        if ($this->isFormLocked || $this->disabled) {
+            $this->dispatch('toast', type: 'error', message: 'Form read-only, tidak dapat menambah entri.');
+            return;
+        }
+        $this->cancelEdit();     // kosongkan formulir (sekaligus balik ke daftar)…
+        $this->layar = 'form';   // …lalu naikkan formulirnya
+    }
+
+    /** Tutup formulir, kembali ke daftar entri. Formulir selalu ditinggalkan kosong. */
+    public function kembaliKeDaftar(): void
+    {
+        $this->cancelEdit();
+    }
+
+    public function hapus(string $createdAt): void
+    {
+        if (!auth()->user()?->can('dokumen.hapus')) {
+            $this->dispatch('toast', type: 'error', message: 'Anda tidak berwenang menghapus entri.');
+            return;
+        }
+        if ($this->isFormLocked) {
+            $this->dispatch('toast', type: 'error', message: 'Form read-only, tidak dapat menghapus.');
+            return;
+        }
+
+        try {
+            DB::transaction(function () use ($createdAt) {
+                $this->lockUGDRow($this->rjNo);
+
+                $fresh = $this->findDataUGD($this->rjNo) ?: [];
+                $fresh[$this->jsonKey] = collect($fresh[$this->jsonKey] ?? [])
+                    ->reject(fn($entri) => ($entri['createdAt'] ?? null) === $createdAt)
+                    ->values()
+                    ->all();
+
+                $this->updateJsonUGD((int) $this->rjNo, $fresh);
+                $this->muatDariDokumen($fresh);
+
+                $this->appendAdminLogUGD((int) $this->rjNo, 'Hapus Pengkajian Keperawatan Neonatal — ' . $createdAt, 'MR');
+            });
+
+            // Jika entri yang dihapus sedang di form, kosongkan form.
+            if ($this->editingKey === $createdAt) {
+                $this->cancelEdit();
+            }
+
+            $this->incrementVersion('modal-pengkajian-neonatal-perawat-ugd');
+            $this->dispatch('toast', type: 'success', message: 'Entri dihapus.');
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal menghapus: ' . $e->getMessage());
+        }
+    }
+
+    public function cetak(string $createdAt)
+    {
+        $entry = collect($this->entriList)->firstWhere('createdAt', $createdAt);
+        if (!$entry) {
+            $this->dispatch('toast', type: 'error', message: 'Data pengkajian tidak ditemukan.');
+            return;
+        }
+
+        try {
+            $identitasRs = DB::table('rsmst_identitases')
+                ->select('int_name', 'int_phone1', 'int_phone2', 'int_fax', 'int_address', 'int_city')->first();
+            $pasienData = $this->findDataMasterPasien($this->regNo ?? '');
+            $pasien = $pasienData['pasien'] ?? [];
+
+            if (!empty($pasien['tglLahir'])) {
+                try {
+                    $pasien['thn'] = Carbon::createFromFormat('d/m/Y', $pasien['tglLahir'])
+                        ->diff(Carbon::now(config('app.timezone')))->format('%y Thn, %m Bln %d Hr');
+                } catch (\Throwable) {
+                    $pasien['thn'] = '-';
+                }
+            }
+
+            // TTD (myuser_code -> myuser_ttd_image) untuk stempel di cetakan
+            $ttdPath = null;
+            $ttdCode = $entry['ttdCode'] ?? null;
+            if ($ttdCode) {
+                $ttdImg = DB::table('users')->where('myuser_code', $ttdCode)->value('myuser_ttd_image');
+                if (!empty($ttdImg) && file_exists(TtdUser::pathBerkas($ttdImg))) {
+                    $ttdPath = TtdUser::pathBerkas($ttdImg);
+                }
+            }
+
+            $data = array_merge($pasien, [
+                'ttdPath'      => $ttdPath,
+                'dataRi'       => $this->findDataUGD($this->rjNo) ?: [],
+                'form'         => $entry,
+                'identitasRs'  => $identitasRs,
+                'tglCetak'     => Carbon::now(config('app.timezone'))->translatedFormat('d F Y'),
+            ]);
+
+            set_time_limit(300);
+            $pdf = Pdf::loadView('pages.components.modul-dokumen.ri.pengkajian-neonatal-perawat-ri.cetak-pengkajian-neonatal-perawat-ri-print', ['data' => $data])->setPaper('A4');
+
+            return response()->streamDownload(fn() => print $pdf->output(), 'pengkajian-neonatal-perawat-ugd-' . ($pasien['regNo'] ?? $this->rjNo) . '.pdf');
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal cetak: ' . $e->getMessage());
+        }
+    }
+};
+?>
+
+<div>
+    {{-- ══ SUMMARY CARD (inline di tab) ══ --}}
+    @php $pnCount = count($entriList ?? []); @endphp
+    <x-modul-dokumen.kartu judul="Pengkajian Keperawatan Neonatal"
+        :jumlah="$pnCount"
+        satuan="entri"
+        :nonaktif="$disabled || !$rjNo">
+        <x-slot:deskripsi>Pengkajian keperawatan bayi baru lahir (RM 14 c.1/c.2) — antenatal, intranatal, postnatal (antropometri), pemeriksaan fisik, review sistem (B1–B6), skala nyeri NIPS, diagnosa keperawatan. Diisi Perawat/Bidan.</x-slot:deskripsi>
+        <div class="overflow-x-auto rounded-2xl border border-hairline dark:border-gray-700">
+            <table class="min-w-full text-sm">
+                <thead class="bg-surface-card dark:bg-gray-800">
+                    <tr class="text-xs font-semibold tracking-wide text-left text-muted uppercase dark:text-gray-300">
+                        <th class="px-3 py-2 border-b">Waktu Entri</th>
+                        <th class="px-3 py-2 border-b">BBL</th>
+                        <th class="px-3 py-2 border-b">Petugas (TTD)</th>
+                        <th class="px-3 py-2 text-center border-b">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse (collect($entriList)->sortByDesc(fn($entri) => strtotime(strtr(($entri['tanggal'] ?? '') ?: ($entri['createdAt'] ?? ''), '/', '-')))->values()->all() as $entri)
+                        <tr class="border-b border-hairline dark:border-gray-700">
+                            <td class="px-3 py-2 font-medium text-ink dark:text-gray-200">{{ $entri['createdAt'] ?? '-' }}</td>
+                            <td class="px-3 py-2 text-muted dark:text-gray-400">{{ ($entri['bbl'] ?? '') !== '' ? $entri['bbl'] . ' gr' : '-' }}</td>
+                            <td class="px-3 py-2 text-muted dark:text-gray-400">
+                                <x-modul-dokumen.status-ttd :nama="$entri['ttd'] ?? ''" gaya="polos" />
+                            </td>
+                            <td class="px-3 py-2 text-center">
+                                <x-modul-dokumen.status-entri :final="$this->entryIsFinal($entri)" />
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="4" class="px-3 py-6 text-center text-muted-soft">Belum ada data tersimpan</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </x-modul-dokumen.kartu>
+
+    {{-- ══ MODAL FORM ══ --}}
+    <x-modal name="pengkajian-neonatal-perawat-ugd" size="full" height="full" focusable>
+        <div class="flex flex-col min-h-full"
+             wire:key="{{ $this->renderKey('modal-pengkajian-neonatal-perawat-ugd', [$rjNo ?? 'new']) }}">
+            <x-modul-dokumen.header judul="Pengkajian Keperawatan Neonatal"
+                ikon="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                :jumlah="count($entriList)" :readOnly="$isFormLocked">
+                RM 14 c.1/c.2 — bayi baru lahir. Diisi Perawat / Bidan.
+            </x-modul-dokumen.header>
+
+            {{-- DISPLAY PASIEN — paling atas, mengikuti pola EMR --}}
+            <div class="px-4 pt-2">
+                <livewire:pages::transaksi.ugd.display-pasien-ugd.display-pasien-ugd :rjNo="$rjNo"
+                    wire:key="pengkajian-neonatal-display-pasien-{{ $rjNo }}" />
+            </div>
+
+            {{-- BODY --}}
+            <div class="flex-1 px-4 py-4 overflow-y-auto bg-surface-soft dark:bg-gray-950/20">
+                <div class="max-w-full mx-auto space-y-4">
+
+                    @php $formReadOnly = $isFormLocked || $viewOnly; @endphp
+
+                    @if ($isFormLocked)
+                        <div class="flex items-center gap-2 px-4 py-2.5 text-sm font-medium border rounded-lg text-amber-800 bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-300">
+                            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                            </svg>
+                            Mode tampilan saja (read-only) — pasien sudah pulang / form terkunci.
+                        </div>
+                    @endif
+
+                    @if ($viewOnly)
+                        <x-modul-dokumen.banner jenis="lihat" />
+                    @elseif ($editingKey && !$isFormLocked)
+                        <x-modul-dokumen.banner jenis="lanjut" />
+                    @endif
+
+                    {{-- ── FORM ENTRI ── --}}
+                    @if ($this->diForm())
+                    <fieldset @disabled($formReadOnly) class="space-y-4">
+
+                        {{-- 1. Riwayat Penyakit --}}
+                        <x-border-form title="1. Riwayat Penyakit">
+                            <div>
+                                <x-input-label value="Keluhan Utama" />
+                                <x-textarea wire:model="newForm.keluhanUtama" rows="2" class="w-full mt-1" />
+                            </div>
+                        </x-border-form>
+
+                        {{-- 2. Antenatal --}}
+                        <x-border-form title="2. Antenatal">
+                            <div class="space-y-4">
+                                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                                    <div>
+                                        <x-input-label value="ANC" />
+                                        <x-select-input wire:model="newForm.anc" class="w-full mt-1">
+                                            <option value="">—</option>
+                                            <option value="Tidak Pernah">Tidak Pernah</option>
+                                            <option value="Pernah">Pernah</option>
+                                        </x-select-input>
+                                    </div>
+                                    <div><x-input-label value="ANC di" /><x-text-input wire:model="newForm.ancTempat" class="w-full mt-1" placeholder="Bidan / Dokter / Puskesmas" /></div>
+                                    <div>
+                                        <x-input-label value="TT" />
+                                        <x-select-input wire:model="newForm.tt" class="w-full mt-1">
+                                            <option value="">—</option>
+                                            <option value="Tidak Pernah">Tidak Pernah</option>
+                                            <option value="Pernah">Pernah</option>
+                                        </x-select-input>
+                                    </div>
+                                    <div><x-input-label value="TT (kali)" /><x-text-input type="number" wire:model="newForm.ttKali" class="w-full mt-1" /></div>
+                                </div>
+                                <div>
+                                    <x-input-label value="Penyulit Kehamilan" />
+                                    <div class="grid grid-cols-2 gap-2 mt-1 sm:grid-cols-3">
+                                        @foreach ($penyulitKehamilanOptions as $opt)
+                                            <x-toggle :current="in_array($opt, $newForm['penyulitKehamilan'] ?? [], true) ? 1 : 0"
+                                                trueValue="1" falseValue="0"
+                                                wireClick="toggleArr('penyulitKehamilan','{{ $opt }}')"
+                                                :disabled="$formReadOnly">{{ $opt }}</x-toggle>
+                                        @endforeach
+                                    </div>
+                                </div>
+                                <div>
+                                    <x-input-label value="Penyakit yang Menyertai" />
+                                    <div class="grid grid-cols-2 gap-2 mt-1 sm:grid-cols-3 lg:grid-cols-5">
+                                        @foreach ($penyakitMenyertaiOptions as $opt)
+                                            <x-toggle :current="in_array($opt, $newForm['penyakitMenyertai'] ?? [], true) ? 1 : 0"
+                                                trueValue="1" falseValue="0"
+                                                wireClick="toggleArr('penyakitMenyertai','{{ $opt }}')"
+                                                :disabled="$formReadOnly">{{ $opt }}</x-toggle>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            </div>
+                        </x-border-form>
+
+                        {{-- 3. Intranatal --}}
+                        <x-border-form title="3. Intranatal">
+                            <div class="space-y-4">
+                                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                                    <div><x-input-label value="Umur Kehamilan (minggu)" /><x-text-input type="number" wire:model="newForm.umurKehamilan" class="w-full mt-1" /></div>
+                                    <div>
+                                        <x-input-label value="Kondisi Kelahiran" />
+                                        <x-select-input wire:model="newForm.kondisiKelahiran" class="w-full mt-1">
+                                            <option value="">—</option>
+                                            <option value="Kurang Bulan">Kurang Bulan</option>
+                                            <option value="Cukup Bulan">Cukup Bulan</option>
+                                            <option value="Serotinus">Serotinus</option>
+                                        </x-select-input>
+                                    </div>
+                                    <div>
+                                        <x-input-label value="Jenis Persalinan" />
+                                        <x-select-input wire:model="newForm.jenisPersalinan" class="w-full mt-1">
+                                            <option value="">—</option>
+                                            <option value="Spontan">Spontan</option>
+                                            <option value="VE">VE</option>
+                                            <option value="SC">SC</option>
+                                            <option value="Forceps">Forceps</option>
+                                        </x-select-input>
+                                    </div>
+                                    <div><x-input-label value="Penolong" /><x-text-input wire:model="newForm.penolong" class="w-full mt-1" placeholder="Bidan / Dokter" /></div>
+                                    <div><x-input-label value="KPD — Lama (jam)" /><x-text-input type="number" wire:model="newForm.kpdLamaJam" class="w-full mt-1" /></div>
+                                </div>
+                                <div>
+                                    <x-input-label value="Penyulit Persalinan" />
+                                    <div class="grid grid-cols-2 gap-2 mt-1 sm:grid-cols-4">
+                                        @foreach ($penyulitPersalinanOptions as $opt)
+                                            <x-toggle :current="in_array($opt, $newForm['penyulitPersalinan'] ?? [], true) ? 1 : 0"
+                                                trueValue="1" falseValue="0"
+                                                wireClick="toggleArr('penyulitPersalinan','{{ $opt }}')"
+                                                :disabled="$formReadOnly">{{ $opt }}</x-toggle>
+                                        @endforeach
+                                    </div>
+                                </div>
+                                <div>
+                                    <x-input-label value="Komplikasi" />
+                                    <div class="grid grid-cols-2 gap-2 mt-1 sm:grid-cols-3">
+                                        @foreach ($komplikasiOptions as $opt)
+                                            <x-toggle :current="in_array($opt, $newForm['komplikasi'] ?? [], true) ? 1 : 0"
+                                                trueValue="1" falseValue="0"
+                                                wireClick="toggleArr('komplikasi','{{ $opt }}')"
+                                                :disabled="$formReadOnly">{{ $opt }}</x-toggle>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            </div>
+                        </x-border-form>
+
+                        {{-- 4. Postnatal — Antropometri --}}
+                        <x-border-form title="4. Postnatal — Antropometri">
+                            <div class="space-y-4">
+                                <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+                                    <div><x-input-label value="BBL (gr)" /><x-text-input type="number" wire:model="newForm.bbl" class="w-full mt-1" /></div>
+                                    <div><x-input-label value="PB (cm)" /><x-text-input type="number" wire:model="newForm.pb" class="w-full mt-1" /></div>
+                                    <div><x-input-label value="LK (cm)" /><x-text-input type="number" wire:model="newForm.lk" class="w-full mt-1" /></div>
+                                    <div><x-input-label value="LD (cm)" /><x-text-input type="number" wire:model="newForm.ld" class="w-full mt-1" /></div>
+                                    <div><x-input-label value="LILA (cm)" /><x-text-input type="number" wire:model="newForm.lila" class="w-full mt-1" /></div>
+                                    <div><x-input-label value="Lingkar Perut (cm)" /><x-text-input type="number" wire:model="newForm.lingkarPerut" class="w-full mt-1" /></div>
+                                    <div><x-input-label value="APGAR menit 1" /><x-text-input type="number" wire:model="newForm.apgar1" class="w-full mt-1" /></div>
+                                    <div><x-input-label value="APGAR menit 5" /><x-text-input type="number" wire:model="newForm.apgar5" class="w-full mt-1" /></div>
+                                </div>
+                                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                                    <div>
+                                        <x-input-label value="Trauma Lahir" />
+                                        <x-select-input wire:model="newForm.traumaLahir" class="w-full mt-1">
+                                            <option value="">—</option>
+                                            <option value="Tidak ada">Tidak ada</option>
+                                            <option value="Ada">Ada</option>
+                                        </x-select-input>
+                                    </div>
+                                    <div><x-input-label value="Trauma — Keterangan" /><x-text-input wire:model="newForm.traumaKet" class="w-full mt-1" /></div>
+                                    <div>
+                                        <x-input-label value="Usaha Nafas" />
+                                        <x-select-input wire:model="newForm.usahaNafas" class="w-full mt-1">
+                                            <option value="">—</option>
+                                            <option value="Spontan">Spontan</option>
+                                            <option value="Dengan Bantuan">Dengan Bantuan</option>
+                                        </x-select-input>
+                                    </div>
+                                    <div>
+                                        <x-input-label value="Imunisasi" />
+                                        <x-select-input wire:model="newForm.imunisasi" class="w-full mt-1">
+                                            <option value="">—</option>
+                                            <option value="Belum">Belum</option>
+                                            <option value="Sudah">Sudah</option>
+                                        </x-select-input>
+                                    </div>
+                                    <div><x-input-label value="Imunisasi — Keterangan" /><x-text-input wire:model="newForm.imunisasiKet" class="w-full mt-1" placeholder="mis. HB0, Vit K" /></div>
+                                </div>
+                            </div>
+                        </x-border-form>
+
+                        {{-- 5. Pemeriksaan Fisik --}}
+                        <x-border-form title="5. Pemeriksaan Fisik">
+                            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                                <div>
+                                    <x-input-label value="Kepala — Bentuk" />
+                                    <x-select-input wire:model="newForm.kepalaBentuk" class="w-full mt-1">
+                                        <option value="">—</option>
+                                        <option value="Normal">Normal</option>
+                                        <option value="Kelainan">Kelainan</option>
+                                    </x-select-input>
+                                </div>
+                                <div>
+                                    <x-input-label value="Mata — Konjungtiva" />
+                                    <x-select-input wire:model="newForm.mataKonjungtiva" class="w-full mt-1">
+                                        <option value="">—</option>
+                                        <option value="Anemis">Anemis</option>
+                                        <option value="Tidak Anemis">Tidak Anemis</option>
+                                        <option value="Sekret">Sekret</option>
+                                    </x-select-input>
+                                </div>
+                                <div>
+                                    <x-input-label value="Mata — Sklera" />
+                                    <x-select-input wire:model="newForm.mataSklera" class="w-full mt-1">
+                                        <option value="">—</option>
+                                        <option value="Ikterus">Ikterus</option>
+                                        <option value="Tidak Ikterus">Tidak Ikterus</option>
+                                    </x-select-input>
+                                </div>
+                                <div>
+                                    <x-input-label value="Telinga" />
+                                    <x-select-input wire:model="newForm.telinga" class="w-full mt-1">
+                                        <option value="">—</option>
+                                        <option value="Normal">Normal</option>
+                                        <option value="Tidak Normal">Tidak Normal</option>
+                                    </x-select-input>
+                                </div>
+                                <div>
+                                    <x-input-label value="Hidung" />
+                                    <x-select-input wire:model="newForm.hidung" class="w-full mt-1">
+                                        <option value="">—</option>
+                                        <option value="Normal">Normal</option>
+                                        <option value="Tidak Normal">Tidak Normal</option>
+                                        <option value="Cuping Hidung">Cuping Hidung</option>
+                                    </x-select-input>
+                                </div>
+                                <div>
+                                    <x-input-label value="Mulut — Reflek Isap" />
+                                    <x-select-input wire:model="newForm.mulutReflekIsap" class="w-full mt-1">
+                                        <option value="">—</option>
+                                        <option value="Lemah">Lemah</option>
+                                        <option value="Kuat">Kuat</option>
+                                    </x-select-input>
+                                </div>
+                                <div>
+                                    <x-input-label value="Mulut — Bentuk" />
+                                    <x-select-input wire:model="newForm.mulutBentuk" class="w-full mt-1">
+                                        <option value="">—</option>
+                                        <option value="Normal">Normal</option>
+                                        <option value="Labioskizis">Labioskizis</option>
+                                        <option value="Palatoskizis">Palatoskizis</option>
+                                        <option value="Labiopalatoskizis">Labiopalatoskizis</option>
+                                    </x-select-input>
+                                </div>
+                                <div>
+                                    <x-input-label value="Dada" />
+                                    <x-select-input wire:model="newForm.dada" class="w-full mt-1">
+                                        <option value="">—</option>
+                                        <option value="Simetris">Simetris</option>
+                                        <option value="Asimetris">Asimetris</option>
+                                    </x-select-input>
+                                </div>
+                                <div>
+                                    <x-input-label value="Perut — Bentuk" />
+                                    <x-select-input wire:model="newForm.perutBentuk" class="w-full mt-1">
+                                        <option value="">—</option>
+                                        <option value="Normal">Normal</option>
+                                        <option value="Distensi">Distensi</option>
+                                        <option value="Kelainan">Kelainan</option>
+                                    </x-select-input>
+                                </div>
+                                <div>
+                                    <x-input-label value="Tali Pusat" />
+                                    <x-select-input wire:model="newForm.taliPusat" class="w-full mt-1">
+                                        <option value="">—</option>
+                                        <option value="Segar">Segar</option>
+                                        <option value="Layu">Layu</option>
+                                        <option value="Kemerahan">Kemerahan</option>
+                                        <option value="Bau">Bau</option>
+                                    </x-select-input>
+                                </div>
+                                <div>
+                                    <x-input-label value="Anus" />
+                                    <x-select-input wire:model="newForm.anus" class="w-full mt-1">
+                                        <option value="">—</option>
+                                        <option value="Paten">Paten</option>
+                                        <option value="Kelainan">Kelainan</option>
+                                    </x-select-input>
+                                </div>
+                                <div>
+                                    <x-input-label value="Ekstremitas" />
+                                    <x-select-input wire:model="newForm.ekstremitas" class="w-full mt-1">
+                                        <option value="">—</option>
+                                        <option value="Normal">Normal</option>
+                                        <option value="Kelainan">Kelainan</option>
+                                    </x-select-input>
+                                </div>
+                            </div>
+                        </x-border-form>
+
+                        {{-- 6. Review Sistem --}}
+                        <x-border-form title="6. Review Sistem (B1–B6)">
+                            <div class="space-y-4">
+                                {{-- B1 --}}
+                                <div class="p-3 border rounded-lg border-hairline dark:border-gray-700">
+                                    <p class="mb-2 text-sm font-semibold text-ink dark:text-gray-200">B1 — Pernafasan</p>
+                                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                                        <div>
+                                            <x-input-label value="Pernafasan" />
+                                            <x-select-input wire:model="newForm.b1Pernafasan" class="w-full mt-1">
+                                                <option value="">—</option>
+                                                <option value="Spontan">Spontan</option>
+                                                <option value="Dengan Bantuan">Dengan Bantuan</option>
+                                            </x-select-input>
+                                        </div>
+                                        <div><x-input-label value="Frekuensi Nafas (x/mnt)" /><x-text-input type="number" wire:model="newForm.b1FrekuensiNafas" class="w-full mt-1" /></div>
+                                        <div>
+                                            <x-input-label value="Suara Nafas" />
+                                            <div class="grid grid-cols-2 gap-2 mt-1">
+                                                @foreach ($b1SuaraNafasOptions as $opt)
+                                                    <x-toggle :current="in_array($opt, $newForm['b1SuaraNafas'] ?? [], true) ? 1 : 0"
+                                                        trueValue="1" falseValue="0"
+                                                        wireClick="toggleArr('b1SuaraNafas','{{ $opt }}')"
+                                                        :disabled="$formReadOnly">{{ $opt }}</x-toggle>
+                                                @endforeach
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {{-- B2 --}}
+                                <div class="p-3 border rounded-lg border-hairline dark:border-gray-700">
+                                    <p class="mb-2 text-sm font-semibold text-ink dark:text-gray-200">B2 — Kardiovaskuler</p>
+                                    <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+                                        <div>
+                                            <x-input-label value="Bunyi Jantung" />
+                                            <x-select-input wire:model="newForm.b2Bunyi" class="w-full mt-1">
+                                                <option value="">—</option>
+                                                <option value="Normal">Normal</option>
+                                                <option value="Murmur">Murmur</option>
+                                            </x-select-input>
+                                        </div>
+                                        <div>
+                                            <x-input-label value="CRT" />
+                                            <x-select-input wire:model="newForm.b2CRT" class="w-full mt-1">
+                                                <option value="">—</option>
+                                                <option value="&lt;3 detik">&lt;3 detik</option>
+                                                <option value="&gt;3 detik">&gt;3 detik</option>
+                                            </x-select-input>
+                                        </div>
+                                        <div>
+                                            <x-input-label value="Akral" />
+                                            <x-select-input wire:model="newForm.b2Akral" class="w-full mt-1">
+                                                <option value="">—</option>
+                                                <option value="Hangat">Hangat</option>
+                                                <option value="Dingin">Dingin</option>
+                                            </x-select-input>
+                                        </div>
+                                        <div><x-input-label value="Nadi (x/mnt)" /><x-text-input type="number" wire:model="newForm.b2Nadi" class="w-full mt-1" /></div>
+                                        <div><x-input-label value="Suhu (°C)" /><x-text-input type="number" step="0.1" wire:model="newForm.b2Suhu" class="w-full mt-1" /></div>
+                                    </div>
+                                </div>
+                                {{-- B3 --}}
+                                <div class="p-3 border rounded-lg border-hairline dark:border-gray-700">
+                                    <p class="mb-2 text-sm font-semibold text-ink dark:text-gray-200">B3 — Persyarafan</p>
+                                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                        <div>
+                                            <x-input-label value="Kesadaran" />
+                                            <x-select-input wire:model="newForm.b3Kesadaran" class="w-full mt-1">
+                                                <option value="">—</option>
+                                                <option value="Compos Mentis">Compos Mentis</option>
+                                                <option value="Somnolen">Somnolen</option>
+                                                <option value="Coma">Coma</option>
+                                                <option value="Apatis">Apatis</option>
+                                            </x-select-input>
+                                        </div>
+                                        <div>
+                                            <x-input-label value="Reflek" />
+                                            <div class="grid grid-cols-2 gap-2 mt-1 sm:grid-cols-3">
+                                                @foreach ($b3ReflekOptions as $opt)
+                                                    <x-toggle :current="in_array($opt, $newForm['b3Reflek'] ?? [], true) ? 1 : 0"
+                                                        trueValue="1" falseValue="0"
+                                                        wireClick="toggleArr('b3Reflek','{{ $opt }}')"
+                                                        :disabled="$formReadOnly">{{ $opt }}</x-toggle>
+                                                @endforeach
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {{-- B4 --}}
+                                <div class="p-3 border rounded-lg border-hairline dark:border-gray-700">
+                                    <p class="mb-2 text-sm font-semibold text-ink dark:text-gray-200">B4 — Perkemihan</p>
+                                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                        <div>
+                                            <x-input-label value="BAK" />
+                                            <x-select-input wire:model="newForm.b4Bak" class="w-full mt-1">
+                                                <option value="">—</option>
+                                                <option value="Lancar">Lancar</option>
+                                                <option value="Retensi">Retensi</option>
+                                                <option value="Inkontinensia">Inkontinensia</option>
+                                                <option value="Dower Chateter">Dower Chateter</option>
+                                            </x-select-input>
+                                        </div>
+                                        <div>
+                                            <x-input-label value="Warna" />
+                                            <x-select-input wire:model="newForm.b4Warna" class="w-full mt-1">
+                                                <option value="">—</option>
+                                                <option value="Jernih">Jernih</option>
+                                                <option value="Keruh">Keruh</option>
+                                                <option value="Merah">Merah</option>
+                                            </x-select-input>
+                                        </div>
+                                    </div>
+                                </div>
+                                {{-- B5 --}}
+                                <div class="p-3 border rounded-lg border-hairline dark:border-gray-700">
+                                    <p class="mb-2 text-sm font-semibold text-ink dark:text-gray-200">B5 — Pencernaan</p>
+                                    <div class="space-y-3">
+                                        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                            <div>
+                                                <x-input-label value="BAB — Konsistensi" />
+                                                <div class="flex flex-wrap gap-3 mt-1">
+                                                    @foreach ($b5BabKonsistensiOptions as $opt)
+                                                        <x-toggle :current="in_array($opt, $newForm['b5Bab'] ?? [], true) ? 1 : 0"
+                                                            trueValue="1" falseValue="0"
+                                                            wireClick="toggleArr('b5Bab','{{ $opt }}')"
+                                                            :disabled="$formReadOnly">{{ $opt }}</x-toggle>
+                                                    @endforeach
+                                                    @foreach ($b5BabWarnaOptions as $opt)
+                                                        <x-toggle :current="in_array($opt, $newForm['b5Bab'] ?? [], true) ? 1 : 0"
+                                                            trueValue="1" falseValue="0"
+                                                            wireClick="toggleArr('b5Bab','{{ $opt }}')"
+                                                            :disabled="$formReadOnly">{{ $opt }}</x-toggle>
+                                                    @endforeach
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <x-input-label value="Minum" />
+                                                <div class="flex flex-wrap gap-3 mt-1">
+                                                    @foreach ($b5MinumOptions as $opt)
+                                                        <x-toggle :current="in_array($opt, $newForm['b5Minum'] ?? [], true) ? 1 : 0"
+                                                            trueValue="1" falseValue="0"
+                                                            wireClick="toggleArr('b5Minum','{{ $opt }}')"
+                                                            :disabled="$formReadOnly">{{ $opt }}</x-toggle>
+                                                    @endforeach
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="sm:w-1/2">
+                                            <x-input-label value="Jenis Susu" />
+                                            <x-select-input wire:model="newForm.b5JenisSusu" class="w-full mt-1">
+                                                <option value="">—</option>
+                                                <option value="ASI">ASI</option>
+                                                <option value="PASI">PASI</option>
+                                            </x-select-input>
+                                        </div>
+                                    </div>
+                                </div>
+                                {{-- B6 --}}
+                                <div class="p-3 border rounded-lg border-hairline dark:border-gray-700">
+                                    <p class="mb-2 text-sm font-semibold text-ink dark:text-gray-200">B6 — Muskuloskeletal & Integumen</p>
+                                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                                        <div>
+                                            <x-input-label value="Pergerakan" />
+                                            <x-select-input wire:model="newForm.b6Pergerakan" class="w-full mt-1">
+                                                <option value="">—</option>
+                                                <option value="Bebas">Bebas</option>
+                                                <option value="Terbatas">Terbatas</option>
+                                            </x-select-input>
+                                        </div>
+                                        <div>
+                                            <x-input-label value="Kulit" />
+                                            <div class="grid grid-cols-2 gap-2 mt-1">
+                                                @foreach ($b6KulitOptions as $opt)
+                                                    <x-toggle :current="in_array($opt, $newForm['b6Kulit'] ?? [], true) ? 1 : 0"
+                                                        trueValue="1" falseValue="0"
+                                                        wireClick="toggleArr('b6Kulit','{{ $opt }}')"
+                                                        :disabled="$formReadOnly">{{ $opt }}</x-toggle>
+                                                @endforeach
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <x-input-label value="Turgor" />
+                                            <x-select-input wire:model="newForm.b6Turgor" class="w-full mt-1">
+                                                <option value="">—</option>
+                                                <option value="Baik">Baik</option>
+                                                <option value="Cukup">Cukup</option>
+                                                <option value="Jelek">Jelek</option>
+                                            </x-select-input>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </x-border-form>
+
+                        {{-- 7. Skala Nyeri NIPS --}}
+                        <x-border-form title="7. Skala Nyeri (NIPS)">
+                            <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                                <div><x-input-label value="Total Skor NIPS" /><x-text-input type="number" min="0" max="7" wire:model="newForm.nipsTotal" class="w-full mt-1" /></div>
+                                <div class="sm:col-span-2">
+                                    <x-input-label value="Interpretasi" />
+                                    <x-text-input wire:model="newForm.nipsInterpretasi" class="w-full mt-1" placeholder="1–3 ringan, 4–5 sedang, 6–7 berat" />
+                                </div>
+                            </div>
+                        </x-border-form>
+
+                        {{-- 8. Diagnosa Keperawatan --}}
+                        <x-border-form title="8. Diagnosa Keperawatan">
+                            <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                                @foreach ($diagnosaKeperawatanOptions as $opt)
+                                    <x-toggle :current="in_array($opt, $newForm['diagnosaKeperawatan'] ?? [], true) ? 1 : 0"
+                                        trueValue="1" falseValue="0"
+                                        wireClick="toggleArr('diagnosaKeperawatan','{{ $opt }}')"
+                                        :disabled="$formReadOnly" class="items-start">{{ $opt }}</x-toggle>
+                                @endforeach
+                            </div>
+                        </x-border-form>
+
+                        {{-- 9. Penunjang --}}
+                        <x-border-form title="9. Penunjang">
+                            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                <div><x-input-label value="Laboratorium" /><x-textarea wire:model="newForm.labPenunjang" rows="2" class="w-full mt-1" /></div>
+                                <div><x-input-label value="Lain-lain" /><x-textarea wire:model="newForm.lainPenunjang" rows="2" class="w-full mt-1" /></div>
+                            </div>
+                        </x-border-form>
+
+                        {{-- ══ TTD PETUGAS & KUNCI ══ --}}
+                        <x-signature.ttd-petugas :ttd="$newForm['ttd']" :code="$newForm['ttdCode'] ?? ''"
+                            :date="$newForm['ttdDate'] ?? ''" :locked="$formReadOnly" sign="ttdSaya" clear="hapusTtd"
+                            title="Tanda Tangan Petugas"
+                            nameLabel="Petugas (Bidan / Perawat)" dateLabel="Waktu TTD"
+                            signLabel="TTD Petugas & Kunci" clearLabel="Batal TTD" />
+                        @if (!$formReadOnly)
+                            <p class="-mt-2 text-xs text-center text-muted">Menandatangani = mengunci pengkajian ini.</p>
+                        @endif
+                    </fieldset>
+
+                    {{-- ── DAFTAR ENTRI TERSIMPAN (expandable) ── --}}
+                    @endif
+                    @unless ($this->diForm())
+                    <x-modul-dokumen.tabel-daftar :kolom="['', 'Waktu Entri', 'BBL', 'Petugas (TTD)', 'Status' => 'text-center', 'Aksi' => 'text-center']">
+                                    @forelse (collect($entriList)->sortByDesc(fn($entri) => strtotime(strtr(($entri['tanggal'] ?? '') ?: ($entri['createdAt'] ?? ''), '/', '-')))->values()->all() as $entry)
+                                        @php
+                                            $isFinal = $this->entryIsFinal($entry);
+                                            $rowKey = $entry['createdAt'] ?? '';
+                                            $diagRingkas = \Illuminate\Support\Str::limit(collect($entry['diagnosaKeperawatan'] ?? [])->filter()->implode(', '), 80);
+                                        @endphp
+                                        {{-- Semua baris mulai TERTUTUP: daftar dipakai untuk MEMILIH entri, bukan
+                                             membacanya. Baris teratas yang terbuka sendiri bikin grid langsung panjang. --}}
+                                        <tbody x-data="{ open: false }" class="border-b border-hairline dark:border-gray-700">
+                                            <tr @click="open = !open"
+                                                class="cursor-pointer hover:bg-surface-soft dark:hover:bg-gray-800 {{ $editingKey && $editingKey === $rowKey ? 'bg-brand-lime/10 dark:bg-brand-lime/5' : '' }}">
+                                                <td class="px-2 py-3 text-center align-middle">
+                                                    <svg class="w-4 h-4 mx-auto transition-transform text-muted" :class="{ 'rotate-90': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                                                    </svg>
+                                                </td>
+                                                <td class="px-4 py-3 align-middle text-ink dark:text-gray-100">
+                                                    <span class="font-semibold">{{ $rowKey ?: '-' }}</span>
+                                                    @if ($diagRingkas)
+                                                        <div class="text-xs font-normal text-muted dark:text-gray-400">{{ $diagRingkas }}</div>
+                                                    @endif
+                                                </td>
+                                                <td class="px-4 py-3 align-middle text-muted dark:text-gray-300">
+                                                    {{ ($entry['bbl'] ?? '') !== '' ? $entry['bbl'] . ' gr' : '-' }}
+                                                </td>
+                                                <td class="px-4 py-3 align-middle text-muted dark:text-gray-300">
+                                                    <x-modul-dokumen.status-ttd :nama="$entry['ttd'] ?? ''" />
+                                                </td>
+                                                <td class="px-4 py-3 text-center align-middle">
+                                                    <x-modul-dokumen.status-entri :final="$isFinal" />
+                                                </td>
+                                                <td class="px-4 py-3 text-center align-middle whitespace-nowrap" @click.stop>
+                                                    <x-modul-dokumen.aksi-entri kunci="{{ $rowKey }}" :final="$isFinal" :terkunci="$isFormLocked"
+                                                        judulLihat="Lihat detail (read-only) di form atas"
+                                                        judulBukaKunci="Buka Kunci Pengkajian Keperawatan Neonatal"
+                                                        pesanBukaKunci="TTD petugas akan dicabut & entri kembali menjadi Draft — proses TTD diulang dari awal. Lanjutkan?"
+                                                        konfirmasiHapus="Yakin hapus entri pengkajian ini?" />
+                                                </td>
+                                            </tr>
+
+                                            {{-- DETAIL (expand) --}}
+                                            <tr x-show="open" x-cloak>
+                                                <td colspan="6" class="px-4 py-4 bg-surface-soft/60 dark:bg-gray-950/30">
+                                                    <dl class="grid grid-cols-1 gap-x-8 gap-y-3 md:grid-cols-2">
+                                                        <div class="md:col-span-2">
+                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Keluhan Utama</dt>
+                                                            <dd class="mt-0.5 whitespace-pre-line text-ink dark:text-gray-200">{{ ($entry['keluhanUtama'] ?? '') ?: '-' }}</dd>
+                                                        </div>
+                                                        <div>
+                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Antenatal (ANC / TT)</dt>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ (($entry['anc'] ?? '') ?: '-') }} @if(!empty($entry['ancTempat']))di {{ $entry['ancTempat'] }} @endif · TT {{ ($entry['tt'] ?? '') ?: '-' }}{{ !empty($entry['ttKali']) ? ' ('.$entry['ttKali'].'x)' : '' }}</dd>
+                                                        </div>
+                                                        <div>
+                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Umur Kehamilan / Kondisi</dt>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['umurKehamilan'] ?? '') ?: '-' }} mgg · {{ ($entry['kondisiKelahiran'] ?? '') ?: '-' }}</dd>
+                                                        </div>
+                                                        <div>
+                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Jenis Persalinan / Penolong</dt>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['jenisPersalinan'] ?? '') ?: '-' }} · {{ ($entry['penolong'] ?? '') ?: '-' }}</dd>
+                                                        </div>
+                                                        <div>
+                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Antropometri</dt>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">BBL {{ ($entry['bbl'] ?? '') ?: '-' }} gr · PB {{ ($entry['pb'] ?? '') ?: '-' }} · LK {{ ($entry['lk'] ?? '') ?: '-' }} · LD {{ ($entry['ld'] ?? '') ?: '-' }}</dd>
+                                                        </div>
+                                                        <div>
+                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">APGAR (1 / 5)</dt>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['apgar1'] ?: '-' }} / {{ $entry['apgar5'] ?: '-' }}</dd>
+                                                        </div>
+                                                        <div>
+                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Usaha Nafas / Imunisasi</dt>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['usahaNafas'] ?? '') ?: '-' }} · {{ ($entry['imunisasi'] ?? '') ?: '-' }}{{ !empty($entry['imunisasiKet']) ? ' ('.$entry['imunisasiKet'].')' : '' }}</dd>
+                                                        </div>
+                                                        <div>
+                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Tanda Vital (B2)</dt>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">Nadi {{ $entry['b2Nadi'] ?: '-' }} · Suhu {{ $entry['b2Suhu'] ?: '-' }} · CRT {{ $entry['b2CRT'] ?: '-' }} · Akral {{ $entry['b2Akral'] ?: '-' }}</dd>
+                                                        </div>
+                                                        <div>
+                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Pernafasan (B1)</dt>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['b1Pernafasan'] ?: '-' }} · RR {{ $entry['b1FrekuensiNafas'] ?: '-' }} · {{ collect($entry['b1SuaraNafas'] ?? [])->filter()->implode(', ') ?: '-' }}</dd>
+                                                        </div>
+                                                        <div>
+                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Skala Nyeri NIPS</dt>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['nipsTotal'] !== '' && isset($entry['nipsTotal']) ? $entry['nipsTotal'] : '-' }} {{ !empty($entry['nipsInterpretasi']) ? '· '.$entry['nipsInterpretasi'] : '' }}</dd>
+                                                        </div>
+                                                        <div class="md:col-span-2">
+                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Diagnosa Keperawatan</dt>
+                                                            <dd class="mt-0.5 whitespace-pre-line text-ink dark:text-gray-200">{{ collect($entry['diagnosaKeperawatan'] ?? [])->filter()->implode(', ') ?: '-' }}</dd>
+                                                        </div>
+                                                        <div>
+                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Penunjang (Lab)</dt>
+                                                            <dd class="mt-0.5 whitespace-pre-line text-ink dark:text-gray-200">{{ ($entry['labPenunjang'] ?? '') ?: '-' }}</dd>
+                                                        </div>
+                                                        <div>
+                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Petugas (TTD)</dt>
+                                                            <dd class="mt-0.5">
+                                                                <x-modul-dokumen.status-ttd :nama="$entry['ttd'] ?? ''" :waktu="$entry['ttdDate'] ?? '-'" gaya="biasa" />
+                                                            </dd>
+                                                        </div>
+                                                    </dl>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    @empty
+                                        <x-modul-dokumen.baris-kosong :kolom="6" />
+                                    @endforelse
+                    </x-modul-dokumen.tabel-daftar>
+                    @endunless
+
+                </div>
+            </div>
+
+            {{-- FOOTER --}}
+            <x-modul-dokumen.footer :formulir="$this->diForm()" :terkunci="$isFormLocked"
+                :lihat="$viewOnly"
+                :mengedit="$editingKey">
+                Simpan draft dulu, lalu <strong>kunci</strong> lewat tombol <strong>TTD Petugas &amp; Kunci</strong>.
+            </x-modul-dokumen.footer>
+
+        </div>
+    </x-modal>
+</div>
