@@ -732,8 +732,9 @@ new class extends Component {
                     @endif
 
                     {{-- ── 1. PENGKAJIAN MEDIS SEBELUMNYA ── --}}
-                    {{-- 1 & 2 bersanding: keduanya soal pengkajian yang ditinjau. --}}
-                    <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    {{-- 1 & 2 bersanding: keduanya soal pengkajian yang ditinjau; Rekam Medis Pasien
+                         di sebelah 2 supaya resume kunjungan lama terbaca sambil mengisi. --}}
+                    <div class="grid items-start grid-cols-1 gap-4 md:grid-cols-3">
                         <x-border-form :title="__('1. Pengkajian Medis Sebelumnya')" :align="__('start')" :bgcolor="__('bg-surface-soft')">
                             <div class="px-4 py-3 space-y-3">
                                 @if ($adaSebelumnya)
@@ -858,6 +859,18 @@ new class extends Component {
                                 </div>
                             </div>
                         </x-border-form>
+
+                        {{-- REKAM MEDIS PASIEN — hanya di layar formulir. :pasangViewer="false": modal
+                             viewer-nya sudah dipasang di pelayanan-rj.blade.php. --}}
+                        @if (filled($regNo))
+                            <x-border-form :title="__('Rekam Medis Pasien')" :align="__('start')" :bgcolor="__('bg-surface-soft')">
+                                <div class="px-2 py-2">
+                                    <livewire:pages::components.rekam-medis.rekam-medis-display.rekam-medis-display
+                                        :regNo="$regNo" :rjNoRefCopyTo="$rjNo ?? 0" :pasangViewer="false"
+                                        wire:key="pengkajian-medis-rj-riwayat-form-{{ $regNo }}" />
+                                </div>
+                            </x-border-form>
+                        @endif
                     </div>
 
                     {{-- ── 3. KONDISI PASIEN SAAT INI ── --}}
@@ -1102,19 +1115,6 @@ new class extends Component {
                             Menampilkan {{ count($riwayatReview) }} terbaru dari {{ $riwayatReviewTotal }} review.
                         </p>
                     @endif
-                @endif
-
-                {{-- REKAM MEDIS PASIEN — riwayat kunjungan RJ/UGD/RI + Resume Medis, tampil di
-                     kedua layar supaya dokter bisa membaca pengkajian lama sambil mengisi review.
-                     :pasangViewer="false": modal viewer-nya sudah dipasang di pelayanan-rj.blade.php. --}}
-                @if ($siapDipakai && filled($regNo))
-                    <x-border-form :title="__('Rekam Medis Pasien')" :align="__('start')" :bgcolor="__('bg-surface-soft')">
-                        <div class="px-2 py-2">
-                            <livewire:pages::components.rekam-medis.rekam-medis-display.rekam-medis-display
-                                :regNo="$regNo" :rjNoRefCopyTo="$rjNo ?? 0" :pasangViewer="false"
-                                wire:key="pengkajian-medis-rj-riwayat-{{ $regNo }}" />
-                        </div>
-                    </x-border-form>
                 @endif
             </div>{{-- /konten flex-1 --}}
 
