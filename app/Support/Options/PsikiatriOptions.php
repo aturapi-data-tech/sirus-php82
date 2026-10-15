@@ -3,8 +3,8 @@
 namespace App\Support\Options;
 
 /**
- * Sumber tunggal opsi Status Psikiatri (O) EMR Rawat Jalan — mengikuti formulir kertas
- * "STATUS PSIKIATRI (O)". Dipakai form (psikiatri-tab), viewer Rekam Medis, dan cetak PDF.
+ * Sumber tunggal opsi Status Psikiatri EMR Rawat Jalan — mengikuti formulir kertas
+ * "Status Psikiatri". Dipakai form (psikiatri-tab), viewer Rekam Medis, dan cetak PDF.
  *
  * Nilai yang disimpan = teks label itu sendiri (bukan kode), supaya JSON tetap terbaca
  * tanpa peta. Disimpan di datadaftarpolirj_json → pemeriksaan.pemeriksaanPsikiatri.
@@ -27,27 +27,55 @@ class PsikiatriOptions
     public const KONTAK_VERBAL_KELANCARAN = ['Lancar', 'Kurang Lancar'];
 
     public const MOOD = [
-        'Euthymia', 'Murung', 'Sedih', 'Depresi', 'Cemas', 'Senang', 'Gembira',
-        'Euphoria', 'Elasi', 'Marah', 'Mudah Tersinggung',
+        'Euthymia',
+        'Murung',
+        'Sedih',
+        'Depresi',
+        'Cemas',
+        'Senang',
+        'Gembira',
+        'Euphoria',
+        'Elasi',
+        'Marah',
+        'Mudah Tersinggung',
     ];
 
     public const AFEK = ['Tumpul', 'Datar', 'Labil', 'Tidak Wajar'];
 
     public const BENTUK_PIKIR = [
-        'Sirkumstansial', 'Tangensial', 'Asosiasi Longgar', 'Word Salad',
-        'Inkoherensi', 'Neologisme', 'Asosiasi Bunyi',
+        'Sirkumstansial',
+        'Tangensial',
+        'Asosiasi Longgar',
+        'Word Salad',
+        'Inkoherensi',
+        'Neologisme',
+        'Asosiasi Bunyi',
     ];
 
     public const ISI_PIKIR = ['Waham', 'Obsesi', 'Kompulsi', 'Fobia', 'Bunuh Diri', 'Pikiran Tidak Memadai'];
 
     public const ARUS_PIKIR = [
-        'Mutisme', 'Kemiskinan Pembicaraan', 'Blocking', 'Perseverasi', 'Logorea',
-        'Verbigerasi', 'Pikiran Mendesak', 'Flight of Idea',
+        'Mutisme',
+        'Kemiskinan Pembicaraan',
+        'Blocking',
+        'Perseverasi',
+        'Logorea',
+        'Verbigerasi',
+        'Pikiran Mendesak',
+        'Flight of Idea',
     ];
 
     public const HALUSINASI = [
-        'Auditorik', 'Visual', 'Gustatorik', 'Taktil', 'Olfaktorik',
-        'Kinestetik', 'Viseral', 'Histerikal', 'Hipnagogik', 'Hipnopompik',
+        'Auditorik',
+        'Visual',
+        'Gustatorik',
+        'Taktil',
+        'Olfaktorik',
+        'Kinestetik',
+        'Viseral',
+        'Histerikal',
+        'Hipnagogik',
+        'Hipnopompik',
     ];
 
     public const KEMAUAN = ['Meningkat', 'Normal', 'Menurun'];
@@ -84,7 +112,7 @@ class PsikiatriOptions
      */
     public static function ringkasan(array $psikiatri): array
     {
-        $daftar = fn ($nilai) => is_array($nilai) ? implode(', ', array_filter($nilai, 'filled')) : (string) $nilai;
+        $daftar = fn($nilai) => is_array($nilai) ? implode(', ', array_filter($nilai, 'filled')) : (string) $nilai;
 
         $kesadaran = (string) ($psikiatri['kesadaranStatus'] ?? '');
         if ($kesadaran === 'GCS' && filled($psikiatri['kesadaranGcs'] ?? '')) {
@@ -120,7 +148,7 @@ class PsikiatriOptions
             'Psikomotor' => $psikiatri['psikomotorStatus'] ?? '',
         ];
 
-        return array_filter($baru + self::ringkasanLama($psikiatri), fn ($nilai) => trim((string) $nilai) !== '');
+        return array_filter($baru + self::ringkasanLama($psikiatri), fn($nilai) => trim((string) $nilai) !== '');
     }
 
     /**
@@ -133,7 +161,7 @@ class PsikiatriOptions
     {
         $prosesBerpikir = is_array($psikiatri['prosesBerpikir'] ?? null) ? $psikiatri['prosesBerpikir'] : [];
         $isiPikirLama = is_array($prosesBerpikir['isiPikir'] ?? null) ? $prosesBerpikir['isiPikir'] : [];
-        $yaKeterangan = fn ($jawab, $keterangan) => $jawab === 'Ya' && trim((string) $keterangan) !== ''
+        $yaKeterangan = fn($jawab, $keterangan) => $jawab === 'Ya' && trim((string) $keterangan) !== ''
             ? 'Ya (' . trim((string) $keterangan) . ')'
             : (string) $jawab;
 
@@ -151,6 +179,6 @@ class PsikiatriOptions
             'Psikomotor (lama)' => is_string($psikiatri['psikomotor'] ?? null) ? $psikiatri['psikomotor'] : '',
         ];
 
-        return array_filter($lama, fn ($nilai) => trim((string) $nilai) !== '');
+        return array_filter($lama, fn($nilai) => trim((string) $nilai) !== '');
     }
 }
