@@ -731,136 +731,254 @@ new class extends Component {
                         </x-modul-dokumen.banner>
                     @endif
 
-                    {{-- ── 1. PENGKAJIAN MEDIS SEBELUMNYA ── --}}
-                    {{-- 1 & 2 bersanding: keduanya soal pengkajian yang ditinjau; Rekam Medis Pasien
-                         di sebelah 2 supaya resume kunjungan lama terbaca sambil mengisi. --}}
+                    {{-- Dua kolom: kiri bagian 1–5 (+ panduan & dasar acuan), kanan Rekam Medis Pasien.
+                         Kolom kiri berdiri sendiri supaya resume yang panjang di kanan tidak membuat
+                         jeda antara baris 1–2 dan bagian 3 dst. --}}
                     <div class="grid items-start grid-cols-1 gap-4 md:grid-cols-3">
-                        <x-border-form :title="__('1. Pengkajian Medis Sebelumnya')" :align="__('start')" :bgcolor="__('bg-surface-soft')">
-                            <div class="px-4 py-3 space-y-3">
-                                @if ($adaSebelumnya)
-                                    <p class="text-sm text-muted dark:text-gray-400">
-                                        Sistem menemukan pengkajian medis sebelumnya untuk pasien ini &mdash;
-                                        tak perlu ditanyakan ulang.
-                                    </p>
-                                @else
-                                    <div class="px-3 py-2 text-sm border rounded-xl bg-surface-soft border-hairline dark:bg-gray-800 dark:border-gray-700">
-                                        <span class="font-semibold text-ink dark:text-gray-200">Tidak ada pengkajian sebelumnya di RS ini.</span>
-                                        <span class="text-muted dark:text-gray-400">
-                                            Pilih sumber <strong>Luar RS</strong> bila pasien dikaji di faskes lain,
-                                            atau buat pengkajian baru lewat EMR Rawat Jalan.
-                                        </span>
-                                    </div>
-                                @endif
+                        <div class="space-y-4 md:col-span-2">
+                            {{-- ── 1. PENGKAJIAN MEDIS SEBELUMNYA ── --}}
+                            {{-- 1 & 2 bersanding: keduanya soal pengkajian yang ditinjau. --}}
+                            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                <x-border-form :title="__('1. Pengkajian Medis Sebelumnya')" :align="__('start')" :bgcolor="__('bg-surface-soft')">
+                                    <div class="px-4 py-3 space-y-3">
+                                        @if ($adaSebelumnya)
+                                            <p class="text-sm text-muted dark:text-gray-400">
+                                                Sistem menemukan pengkajian medis sebelumnya untuk pasien ini &mdash;
+                                                tak perlu ditanyakan ulang.
+                                            </p>
+                                        @else
+                                            <div class="px-3 py-2 text-sm border rounded-xl bg-surface-soft border-hairline dark:bg-gray-800 dark:border-gray-700">
+                                                <span class="font-semibold text-ink dark:text-gray-200">Tidak ada pengkajian sebelumnya di RS ini.</span>
+                                                <span class="text-muted dark:text-gray-400">
+                                                    Pilih sumber <strong>Luar RS</strong> bila pasien dikaji di faskes lain,
+                                                    atau buat pengkajian baru lewat EMR Rawat Jalan.
+                                                </span>
+                                            </div>
+                                        @endif
 
-                                {{-- Tanpa grid: kartu ini cuma separuh kolom kiri, kalau isinya
-                                     dibagi tiga lagi labelnya patah-patah. Ditumpuk saja, tiap
-                                     kendali dapat lebar penuh. --}}
+                                        {{-- Tanpa grid: kartu ini cuma separuh kolom kiri, kalau isinya
+                                             dibagi tiga lagi labelnya patah-patah. Ditumpuk saja, tiap
+                                             kendali dapat lebar penuh. --}}
+                                        <div class="space-y-3">
+                                            <div>
+                                                <x-input-label value="Sumber Pengkajian *" class="mb-1" />
+                                                {{-- Radio, bukan dropdown: ketiga pilihannya harus kelihatan
+                                                     sekaligus supaya petugas tahu "Luar RS" itu ada tanpa
+                                                     membuka daftar dulu. Pola sama dengan bagian 3. --}}
+                                                <div class="flex flex-col gap-1">
+                                                    <x-radio-button wire:model.live="form.sumberJenis" value="RJ" :disabled="$terkunci"
+                                                        label="Rawat Jalan (RS ini)" />
+                                                    <x-radio-button wire:model.live="form.sumberJenis" value="RI" :disabled="$terkunci"
+                                                        label="Rawat Inap (RS ini)" />
+                                                    <x-radio-button wire:model.live="form.sumberJenis" value="LUAR" :disabled="$terkunci"
+                                                        label="Luar RS" />
+                                                </div>
+                                                <x-input-error :messages="$errors->get('form.sumberJenis')" class="mt-1" />
+                                            </div>
+
+                                            @if ($form['sumberJenis'] === 'LUAR')
+                                                <div>
+                                                    <x-input-label value="Nama Faskes *" class="mb-1" />
+                                                    <x-text-input wire:model.live="form.sumberDeskripsi" placeholder="cth: Poli Bedah RS X"
+                                                        :error="$errors->has('form.sumberDeskripsi')" :disabled="$terkunci" class="w-full" />
+                                                    <x-input-error :messages="$errors->get('form.sumberDeskripsi')" class="mt-1" />
+                                                </div>
+                                            @endif
+                                        </div>
+
+                                        @if ($form['sumberJenis'] === 'LUAR')
+                                            <div class="px-3 py-2 text-sm border rounded-xl bg-amber-50 border-amber-200 text-amber-900 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-200">
+                                                Pengkajian dari luar RS <strong>tidak bisa diverifikasi sistem</strong> &mdash;
+                                                usia harinya dihitung dari tanggal yang diisi petugas.
+                                            </div>
+                                        @elseif (!$adaSebelumnya)
+                                            <div class="px-3 py-2 text-sm border rounded-xl bg-amber-50 border-amber-200 text-amber-900 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-200">
+                                                Sistem tak menemukan pengkajian di RS ini &mdash; kemungkinan dokternya
+                                                belum menandatangani (TTD-E) sehingga kunjungannya tak tertandai.
+                                                Tanggal &amp; dokternya isi manual di bawah.
+                                            </div>
+                                        @endif
+                                    </div>
+                                </x-border-form>
+
+                            {{-- ── 2. USIA & KEPUTUSAN ── --}}
+                                <x-border-form :title="__('2. Usia Pengkajian (Otomatis) & Keputusan')" :align="__('start')" :bgcolor="__('bg-surface-soft')">
+                                    <div class="space-y-4 px-4 py-3">
+                                        <div class="space-y-2">
+                                            <div>
+                                                <x-input-label value="Tanggal hari ini *" class="mb-1" />
+                                                <x-text-input wire:model.live="form.tglHariIni" placeholder="dd/mm/yyyy"
+                                                    :error="$errors->has('form.tglHariIni')" :disabled="$terkunci" class="w-full" />
+                                                <x-input-error :messages="$errors->get('form.tglHariIni')" class="mt-1" />
+                                                @if (($form['tglHariIni'] ?? '') !== now()->format('d/m/Y'))
+                                                    <p class="mt-1 text-xs text-amber-700 dark:text-amber-400">
+                                                        Bukan tanggal hari ini ({{ now()->format('d/m/Y') }}) &mdash; seluruh
+                                                        usia dihitung terhadap tanggal ini.
+                                                    </p>
+                                                @endif
+                                            </div>
+                                            <div>
+                                                <x-input-label value="Tgl pengkajian sebelumnya *" class="mb-1" />
+                                                <x-text-input wire:model.live="form.tglPengkajian" placeholder="dd/mm/yyyy"
+                                                    :error="$errors->has('form.tglPengkajian')" :disabled="$terkunci" class="w-full" />
+                                                <x-input-error :messages="$errors->get('form.tglPengkajian')" class="mt-1" />
+                                                @if (filled($sebelumnya) && ($form['tglPengkajian'] ?? '') !== ($sebelumnya['tgl'] ?? ''))
+                                                    <p class="mt-1 text-xs text-amber-700 dark:text-amber-400">
+                                                        Berbeda dari data sistem ({{ $sebelumnya['tgl'] }}) &mdash; usia &amp;
+                                                        keputusan mengikuti tanggal yang kamu isi.
+                                                    </p>
+                                                @endif
+                                            </div>
+                                            <div
+                                                class="px-3 py-2 text-center border rounded-xl {{ $usia === null ? 'bg-surface-soft border-hairline dark:bg-gray-800 dark:border-gray-700' : ($keputusan === 'REVIEW' ? 'bg-emerald-50 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800' : 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800') }}">
+                                                <div class="text-2xl font-bold {{ $usia === null ? 'text-muted' : ($keputusan === 'REVIEW' ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-700 dark:text-red-300') }}">
+                                                    {{ $usia === null ? '—' : $usia . ' hari' }}
+                                                </div>
+                                                <div class="text-xs text-muted dark:text-gray-400">usia pengkajian</div>
+                                            </div>
+                                        </div>
+
+                                        <div class="md:col-span-2">
+                                            <x-input-label value="Keputusan (ditentukan sistem)" class="mb-1" />
+                                            <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                                <div class="px-3 py-2 text-sm border rounded-xl {{ $keputusan === 'REVIEW' && $usia !== null ? 'bg-emerald-50 border-emerald-300 dark:bg-emerald-900/20 dark:border-emerald-700' : 'border-hairline opacity-60 dark:border-gray-700' }}">
+                                                    <div class="font-semibold text-ink dark:text-gray-200">&le; 30 hari</div>
+                                                    <p class="text-muted dark:text-gray-400">
+                                                        Pengkajian sebelumnya ditinjau/diverifikasi dan diperbarui sesuai
+                                                        kondisi pasien saat ini.
+                                                    </p>
+                                                </div>
+                                                <div class="px-3 py-2 text-sm border rounded-xl {{ $keputusan === 'ULANG' && $usia !== null ? 'bg-red-50 border-red-300 dark:bg-red-900/20 dark:border-red-700' : 'border-hairline opacity-60 dark:border-gray-700' }}">
+                                                    <div class="font-semibold text-ink dark:text-gray-200">&gt; 30 hari</div>
+                                                    <p class="text-muted dark:text-gray-400">
+                                                        Wajib dilakukan pengkajian medis ulang sebelum tindakan/prosedur
+                                                        di layanan rawat jalan.
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <p class="mt-2 text-xs text-muted dark:text-gray-400">
+                                                Keputusan dihitung dari selisih tanggal &mdash; sengaja tidak bisa dipilih
+                                                petugas, supaya ambang 30 hari tak kehilangan artinya.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </x-border-form>
+                            </div>
+
+
+                            {{-- ── 3. KONDISI PASIEN SAAT INI ── --}}
+                            {{-- 3 & 4 bersanding: keduanya soal kondisi & tindakan hari ini. --}}
+                            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                <x-border-form :title="__('3. Kondisi Pasien Saat Ini')" :align="__('start')" :bgcolor="__('bg-surface-soft')">
+                                    <div class="space-y-4 px-4 py-3">
+                                        <div>
+                                            <x-input-label value="Ada perubahan kondisi klinis yang bermakna? *" class="mb-1" />
+                                            <div class="flex flex-col gap-1">
+                                                <x-radio-button wire:model.live="form.adaPerubahan" value="T" :disabled="$terkunci"
+                                                    label="Tidak ada perubahan bermakna" />
+                                                <x-radio-button wire:model.live="form.adaPerubahan" value="Y" :disabled="$terkunci"
+                                                    label="Ada perubahan bermakna" />
+                                            </div>
+                                            <x-input-error :messages="$errors->get('form.adaPerubahan')" class="mt-1" />
+                                        </div>
+                                        {{-- Hanya muncul saat memang ada perubahan — kotak nonaktif yang selalu
+                                             terlihat cuma jadi kebisingan di layar yang sudah padat. --}}
+                                        @if ($form['adaPerubahan'] === 'Y')
+                                            <div class="md:col-span-2">
+                                                <x-input-label value="Sebutkan perubahannya *" class="mb-1" />
+                                                <x-textarea wire:model.live="form.perubahanDesc" rows="4" :disabled="$terkunci"
+                                                    :error="$errors->has('form.perubahanDesc')"
+                                                    placeholder="cth: nyeri lebih sering saat berjalan jauh, sebelumnya tak ada nyeri..." class="w-full" />
+                                                <x-input-error :messages="$errors->get('form.perubahanDesc')" class="mt-1" />
+                                            </div>
+                                        @endif
+                                    </div>
+                                </x-border-form>
+
+                            {{-- ── 4. TINDAKAN YANG DILAKUKAN SAAT INI ── --}}
+                                <x-border-form :title="__('4. Tindakan yang Dilakukan Saat Ini')" :align="__('start')" :bgcolor="__('bg-surface-soft')">
+                                    <div class="flex flex-col gap-3 px-4 py-3">
+                                        <x-toggle wire:model.live="form.tindakanTinjau" :trueValue="true" :falseValue="false"
+                                            :disabled="$terkunci" label="Meninjau hasil pengkajian sebelumnya" />
+                                        <x-toggle wire:model.live="form.tindakanVerifikasi" :trueValue="true" :falseValue="false"
+                                            :disabled="$terkunci" label="Verifikasi & update sesuai kondisi terkini" />
+                                        <x-toggle wire:model.live="form.tindakanUlang" :trueValue="true" :falseValue="false"
+                                            :disabled="$terkunci" label="Pengkajian medis ulang (> 30 hari)" />
+                                    </div>
+                                </x-border-form>
+                            </div>
+
+                            {{-- ── 5. DOKUMENTASI REVIEW / VERIFIKASI ── --}}
+                            <x-border-form :title="__('5. Dokumentasi Review / Verifikasi')" :align="__('start')" :bgcolor="__('bg-surface-soft')">
                                 <div class="space-y-3">
                                     <div>
-                                        <x-input-label value="Sumber Pengkajian *" class="mb-1" />
-                                        {{-- Radio, bukan dropdown: ketiga pilihannya harus kelihatan
-                                             sekaligus supaya petugas tahu "Luar RS" itu ada tanpa
-                                             membuka daftar dulu. Pola sama dengan bagian 3. --}}
-                                        <div class="flex flex-col gap-1">
-                                            <x-radio-button wire:model.live="form.sumberJenis" value="RJ" :disabled="$terkunci"
-                                                label="Rawat Jalan (RS ini)" />
-                                            <x-radio-button wire:model.live="form.sumberJenis" value="RI" :disabled="$terkunci"
-                                                label="Rawat Inap (RS ini)" />
-                                            <x-radio-button wire:model.live="form.sumberJenis" value="LUAR" :disabled="$terkunci"
-                                                label="Luar RS" />
-                                        </div>
-                                        <x-input-error :messages="$errors->get('form.sumberJenis')" class="mt-1" />
+                                        <x-input-label value="Catatan Review / Update *" class="mb-1" />
+                                        <x-textarea wire:model.live="form.reviewCatatan" rows="3" :disabled="$terkunci"
+                                            :error="$errors->has('form.reviewCatatan')"
+                                            placeholder="cth: Pengkajian sebelumnya ditinjau dan diverifikasi. Pasien stabil, tanda vital dalam batas normal..." class="w-full" />
+                                        <x-input-error :messages="$errors->get('form.reviewCatatan')" class="mt-1" />
                                     </div>
 
-                                    @if ($form['sumberJenis'] === 'LUAR')
-                                        <div>
-                                            <x-input-label value="Nama Faskes *" class="mb-1" />
-                                            <x-text-input wire:model.live="form.sumberDeskripsi" placeholder="cth: Poli Bedah RS X"
-                                                :error="$errors->has('form.sumberDeskripsi')" :disabled="$terkunci" class="w-full" />
-                                            <x-input-error :messages="$errors->get('form.sumberDeskripsi')" class="mt-1" />
-                                        </div>
-                                    @endif
-                                </div>
-
-                                @if ($form['sumberJenis'] === 'LUAR')
-                                    <div class="px-3 py-2 text-sm border rounded-xl bg-amber-50 border-amber-200 text-amber-900 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-200">
-                                        Pengkajian dari luar RS <strong>tidak bisa diverifikasi sistem</strong> &mdash;
-                                        usia harinya dihitung dari tanggal yang diisi petugas.
-                                    </div>
-                                @elseif (!$adaSebelumnya)
-                                    <div class="px-3 py-2 text-sm border rounded-xl bg-amber-50 border-amber-200 text-amber-900 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-200">
-                                        Sistem tak menemukan pengkajian di RS ini &mdash; kemungkinan dokternya
-                                        belum menandatangani (TTD-E) sehingga kunjungannya tak tertandai.
-                                        Tanggal &amp; dokternya isi manual di bawah.
-                                    </div>
-                                @endif
-                            </div>
-                        </x-border-form>
-
-                    {{-- ── 2. USIA & KEPUTUSAN ── --}}
-                        <x-border-form :title="__('2. Usia Pengkajian (Otomatis) & Keputusan')" :align="__('start')" :bgcolor="__('bg-surface-soft')">
-                            <div class="space-y-4 px-4 py-3">
-                                <div class="space-y-2">
-                                    <div>
-                                        <x-input-label value="Tanggal hari ini *" class="mb-1" />
-                                        <x-text-input wire:model.live="form.tglHariIni" placeholder="dd/mm/yyyy"
-                                            :error="$errors->has('form.tglHariIni')" :disabled="$terkunci" class="w-full" />
-                                        <x-input-error :messages="$errors->get('form.tglHariIni')" class="mt-1" />
-                                        @if (($form['tglHariIni'] ?? '') !== now()->format('d/m/Y'))
-                                            <p class="mt-1 text-xs text-amber-700 dark:text-amber-400">
-                                                Bukan tanggal hari ini ({{ now()->format('d/m/Y') }}) &mdash; seluruh
-                                                usia dihitung terhadap tanggal ini.
-                                            </p>
-                                        @endif
-                                    </div>
-                                    <div>
-                                        <x-input-label value="Tgl pengkajian sebelumnya *" class="mb-1" />
-                                        <x-text-input wire:model.live="form.tglPengkajian" placeholder="dd/mm/yyyy"
-                                            :error="$errors->has('form.tglPengkajian')" :disabled="$terkunci" class="w-full" />
-                                        <x-input-error :messages="$errors->get('form.tglPengkajian')" class="mt-1" />
-                                        @if (filled($sebelumnya) && ($form['tglPengkajian'] ?? '') !== ($sebelumnya['tgl'] ?? ''))
-                                            <p class="mt-1 text-xs text-amber-700 dark:text-amber-400">
-                                                Berbeda dari data sistem ({{ $sebelumnya['tgl'] }}) &mdash; usia &amp;
-                                                keputusan mengikuti tanggal yang kamu isi.
-                                            </p>
-                                        @endif
-                                    </div>
-                                    <div
-                                        class="px-3 py-2 text-center border rounded-xl {{ $usia === null ? 'bg-surface-soft border-hairline dark:bg-gray-800 dark:border-gray-700' : ($keputusan === 'REVIEW' ? 'bg-emerald-50 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800' : 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800') }}">
-                                        <div class="text-2xl font-bold {{ $usia === null ? 'text-muted' : ($keputusan === 'REVIEW' ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-700 dark:text-red-300') }}">
-                                            {{ $usia === null ? '—' : $usia . ' hari' }}
-                                        </div>
-                                        <div class="text-xs text-muted dark:text-gray-400">usia pengkajian</div>
+                                    {{-- TTD paling bawah — urutan baku modul dokumen: isi dulu, tanda tangan
+                                         terakhir sekaligus mengunci. allowClear=false: pencabutannya lewat
+                                         Buka Kunci di tabel daftar yang ber-Gate & tercatat di audit log. --}}
+                                    <div class="pt-2 border-t border-hairline dark:border-gray-700">
+                                        <x-signature.ttd-petugas :framed="false" :allowClear="false"
+                                            :ttd="$form['ttdPengkajianReview']" :code="$form['ttdPengkajianReviewCode']"
+                                            :date="$form['ttdPengkajianReviewDate']"
+                                            :locked="$terkunci" sign="ttdDokter"
+                                            nameLabel="Dokter Penanggung Jawab" dateLabel="Tanggal / Jam TTD"
+                                            signLabel="TTD & Kunci"
+                                            emptyText="Belum ditandatangani — terisi dari pengguna yang sedang login." />
                                     </div>
                                 </div>
+                            </x-border-form>
 
-                                <div class="md:col-span-2">
-                                    <x-input-label value="Keputusan (ditentukan sistem)" class="mb-1" />
-                                    <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                                        <div class="px-3 py-2 text-sm border rounded-xl {{ $keputusan === 'REVIEW' && $usia !== null ? 'bg-emerald-50 border-emerald-300 dark:bg-emerald-900/20 dark:border-emerald-700' : 'border-hairline opacity-60 dark:border-gray-700' }}">
-                                            <div class="font-semibold text-ink dark:text-gray-200">&le; 30 hari</div>
-                                            <p class="text-muted dark:text-gray-400">
-                                                Pengkajian sebelumnya ditinjau/diverifikasi dan diperbarui sesuai
-                                                kondisi pasien saat ini.
-                                            </p>
-                                        </div>
-                                        <div class="px-3 py-2 text-sm border rounded-xl {{ $keputusan === 'ULANG' && $usia !== null ? 'bg-red-50 border-red-300 dark:bg-red-900/20 dark:border-red-700' : 'border-hairline opacity-60 dark:border-gray-700' }}">
-                                            <div class="font-semibold text-ink dark:text-gray-200">&gt; 30 hari</div>
-                                            <p class="text-muted dark:text-gray-400">
-                                                Wajib dilakukan pengkajian medis ulang sebelum tindakan/prosedur
-                                                di layanan rawat jalan.
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <p class="mt-2 text-xs text-muted dark:text-gray-400">
-                                        Keputusan dihitung dari selisih tanggal &mdash; sengaja tidak bisa dipilih
-                                        petugas, supaya ambang 30 hari tak kehilangan artinya.
+                            {{-- PANDUAN PERHITUNGAN — gaya biru-info standar, default TERTUTUP.
+                                 Lihat memory project_panduan_panel_blue_info_standard; acuan gaji-dokter. --}}
+                            <div x-data="{ buka: false }"
+                                class="overflow-hidden border rounded-2xl bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-700">
+                                <button type="button" x-on:click="buka = !buka"
+                                    class="flex items-center justify-between w-full px-4 py-2.5 text-sm font-semibold text-blue-900 transition-colors hover:bg-blue-100 dark:text-blue-200 dark:hover:bg-blue-900/30">
+                                    <span class="flex items-center min-w-0 gap-2">
+                                        <svg class="w-4 h-4 text-blue-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        <span class="truncate">Panduan: cara usia &amp; keputusan dihitung</span>
+                                    </span>
+                                    <svg class="w-4 h-4 ml-2 text-blue-600 transition-transform shrink-0" x-bind:class="buka && 'rotate-180'"
+                                        fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </button>
+
+                                <div x-show="buka" x-cloak class="px-4 pb-4 space-y-2 text-sm text-blue-900 dark:text-blue-100">
+                                    <p>
+                                        Usia pengkajian = selisih <strong>Tanggal hari ini</strong> dan
+                                        <strong>Tgl pengkajian sebelumnya</strong>. Keduanya bisa diedit, jadi
+                                        usianya mengikuti tanggal yang tertulis di bagian 2 &mdash; bukan selalu
+                                        tanggal hari ini.
+                                    </p>
+                                    <p>
+                                        Dari usia itu sistem menetapkan keputusan: &le; 30 hari &rarr;
+                                        review/verifikasi, &gt; 30 hari &rarr; wajib pengkajian ulang.
+                                        Keputusannya tak bisa dipilih petugas.
                                     </p>
                                 </div>
                             </div>
-                        </x-border-form>
 
-                        {{-- REKAM MEDIS PASIEN — hanya di layar formulir. :pasangViewer="false": modal
+                            {{-- ── DASAR ACUAN ── --}}
+                            <div class="px-4 py-3 text-xs border rounded-2xl bg-surface-soft border-hairline text-muted dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400">
+                                <span class="font-semibold text-ink dark:text-gray-300">Dasar Acuan:</span>
+                                Standar Akreditasi Kemenkes (Elemen Penilaian PP 1.2 poin e) &mdash; pengkajian medis
+                                yang dilakukan sebelum masuk rawat inap atau sebelum menjalani prosedur di layanan
+                                rawat jalan dalam waktu kurang atau sama dengan 30 (tiga puluh) hari sebelumnya.
+                                Jika lebih dari 30 hari, maka harus dilakukan pengkajian ulang.
+                            </div>
+                        </div>
+
+                        {{-- REKAM MEDIS PASIEN — kolom kanan layar formulir. :pasangViewer="false": modal
                              viewer-nya sudah dipasang di pelayanan-rj.blade.php. --}}
                         @if (filled($regNo))
                             <x-border-form :title="__('Rekam Medis Pasien')" :align="__('start')" :bgcolor="__('bg-surface-soft')">
@@ -871,117 +989,6 @@ new class extends Component {
                                 </div>
                             </x-border-form>
                         @endif
-                    </div>
-
-                    {{-- ── 3. KONDISI PASIEN SAAT INI ── --}}
-                    {{-- 3 & 4 bersanding: keduanya soal kondisi & tindakan hari ini. --}}
-                    <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-                        <x-border-form :title="__('3. Kondisi Pasien Saat Ini')" :align="__('start')" :bgcolor="__('bg-surface-soft')">
-                            <div class="space-y-4 px-4 py-3">
-                                <div>
-                                    <x-input-label value="Ada perubahan kondisi klinis yang bermakna? *" class="mb-1" />
-                                    <div class="flex flex-col gap-1">
-                                        <x-radio-button wire:model.live="form.adaPerubahan" value="T" :disabled="$terkunci"
-                                            label="Tidak ada perubahan bermakna" />
-                                        <x-radio-button wire:model.live="form.adaPerubahan" value="Y" :disabled="$terkunci"
-                                            label="Ada perubahan bermakna" />
-                                    </div>
-                                    <x-input-error :messages="$errors->get('form.adaPerubahan')" class="mt-1" />
-                                </div>
-                                {{-- Hanya muncul saat memang ada perubahan — kotak nonaktif yang selalu
-                                     terlihat cuma jadi kebisingan di layar yang sudah padat. --}}
-                                @if ($form['adaPerubahan'] === 'Y')
-                                    <div class="md:col-span-2">
-                                        <x-input-label value="Sebutkan perubahannya *" class="mb-1" />
-                                        <x-textarea wire:model.live="form.perubahanDesc" rows="4" :disabled="$terkunci"
-                                            :error="$errors->has('form.perubahanDesc')"
-                                            placeholder="cth: nyeri lebih sering saat berjalan jauh, sebelumnya tak ada nyeri..." class="w-full" />
-                                        <x-input-error :messages="$errors->get('form.perubahanDesc')" class="mt-1" />
-                                    </div>
-                                @endif
-                            </div>
-                        </x-border-form>
-
-                    {{-- ── 4. TINDAKAN YANG DILAKUKAN SAAT INI ── --}}
-                        <x-border-form :title="__('4. Tindakan yang Dilakukan Saat Ini')" :align="__('start')" :bgcolor="__('bg-surface-soft')">
-                            <div class="flex flex-col gap-3 px-4 py-3">
-                                <x-toggle wire:model.live="form.tindakanTinjau" :trueValue="true" :falseValue="false"
-                                    :disabled="$terkunci" label="Meninjau hasil pengkajian sebelumnya" />
-                                <x-toggle wire:model.live="form.tindakanVerifikasi" :trueValue="true" :falseValue="false"
-                                    :disabled="$terkunci" label="Verifikasi & update sesuai kondisi terkini" />
-                                <x-toggle wire:model.live="form.tindakanUlang" :trueValue="true" :falseValue="false"
-                                    :disabled="$terkunci" label="Pengkajian medis ulang (> 30 hari)" />
-                            </div>
-                        </x-border-form>
-                    </div>
-
-                    {{-- ── 5. DOKUMENTASI REVIEW / VERIFIKASI ── --}}
-                    <x-border-form :title="__('5. Dokumentasi Review / Verifikasi')" :align="__('start')" :bgcolor="__('bg-surface-soft')">
-                        <div class="space-y-3">
-                            <div>
-                                <x-input-label value="Catatan Review / Update *" class="mb-1" />
-                                <x-textarea wire:model.live="form.reviewCatatan" rows="3" :disabled="$terkunci"
-                                    :error="$errors->has('form.reviewCatatan')"
-                                    placeholder="cth: Pengkajian sebelumnya ditinjau dan diverifikasi. Pasien stabil, tanda vital dalam batas normal..." class="w-full" />
-                                <x-input-error :messages="$errors->get('form.reviewCatatan')" class="mt-1" />
-                            </div>
-
-                            {{-- TTD paling bawah — urutan baku modul dokumen: isi dulu, tanda tangan
-                                 terakhir sekaligus mengunci. allowClear=false: pencabutannya lewat
-                                 Buka Kunci di tabel daftar yang ber-Gate & tercatat di audit log. --}}
-                            <div class="pt-2 border-t border-hairline dark:border-gray-700">
-                                <x-signature.ttd-petugas :framed="false" :allowClear="false"
-                                    :ttd="$form['ttdPengkajianReview']" :code="$form['ttdPengkajianReviewCode']"
-                                    :date="$form['ttdPengkajianReviewDate']"
-                                    :locked="$terkunci" sign="ttdDokter"
-                                    nameLabel="Dokter Penanggung Jawab" dateLabel="Tanggal / Jam TTD"
-                                    signLabel="TTD & Kunci"
-                                    emptyText="Belum ditandatangani — terisi dari pengguna yang sedang login." />
-                            </div>
-                        </div>
-                    </x-border-form>
-
-                    {{-- PANDUAN PERHITUNGAN — gaya biru-info standar, default TERTUTUP.
-                         Lihat memory project_panduan_panel_blue_info_standard; acuan gaji-dokter. --}}
-                    <div x-data="{ buka: false }"
-                        class="overflow-hidden border rounded-2xl bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-700">
-                        <button type="button" x-on:click="buka = !buka"
-                            class="flex items-center justify-between w-full px-4 py-2.5 text-sm font-semibold text-blue-900 transition-colors hover:bg-blue-100 dark:text-blue-200 dark:hover:bg-blue-900/30">
-                            <span class="flex items-center min-w-0 gap-2">
-                                <svg class="w-4 h-4 text-blue-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                                <span class="truncate">Panduan: cara usia &amp; keputusan dihitung</span>
-                            </span>
-                            <svg class="w-4 h-4 ml-2 text-blue-600 transition-transform shrink-0" x-bind:class="buka && 'rotate-180'"
-                                fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                            </svg>
-                        </button>
-
-                        <div x-show="buka" x-cloak class="px-4 pb-4 space-y-2 text-sm text-blue-900 dark:text-blue-100">
-                            <p>
-                                Usia pengkajian = selisih <strong>Tanggal hari ini</strong> dan
-                                <strong>Tgl pengkajian sebelumnya</strong>. Keduanya bisa diedit, jadi
-                                usianya mengikuti tanggal yang tertulis di bagian 2 &mdash; bukan selalu
-                                tanggal hari ini.
-                            </p>
-                            <p>
-                                Dari usia itu sistem menetapkan keputusan: &le; 30 hari &rarr;
-                                review/verifikasi, &gt; 30 hari &rarr; wajib pengkajian ulang.
-                                Keputusannya tak bisa dipilih petugas.
-                            </p>
-                        </div>
-                    </div>
-
-                    {{-- ── DASAR ACUAN ── --}}
-                    <div class="px-4 py-3 text-xs border rounded-2xl bg-surface-soft border-hairline text-muted dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400">
-                        <span class="font-semibold text-ink dark:text-gray-300">Dasar Acuan:</span>
-                        Standar Akreditasi Kemenkes (Elemen Penilaian PP 1.2 poin e) &mdash; pengkajian medis
-                        yang dilakukan sebelum masuk rawat inap atau sebelum menjalani prosedur di layanan
-                        rawat jalan dalam waktu kurang atau sama dengan 30 (tiga puluh) hari sebelumnya.
-                        Jika lebih dari 30 hari, maka harus dilakukan pengkajian ulang.
                     </div>
                 @else
                     {{-- ═══════════════ LAYAR DAFTAR — riwayat review pasien ═══════════════
