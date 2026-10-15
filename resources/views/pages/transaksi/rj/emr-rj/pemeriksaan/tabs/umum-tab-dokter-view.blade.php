@@ -1,4 +1,4 @@
-<div>
+<div class="space-y-4">
 
     {{-- TANDA VITAL --}}
     <x-border-form :title="__('Tanda Vital')" :align="__('start')" :bgcolor="__('bg-surface-soft')">

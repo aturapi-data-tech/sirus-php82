@@ -1,4 +1,4 @@
-<div class="pt-0">
+<div class="space-y-4">
     @role('Dokter')
         @include('pages.transaksi.rj.emr-rj.pemeriksaan.tabs.umum-tab-dokter-view')
     @endrole
@@ -11,8 +11,8 @@
         @include('pages.transaksi.rj.emr-rj.pemeriksaan.tabs.umum-tab-dokter-view')
     @endif
 
-    @include('pages.transaksi.rj.emr-rj.pemeriksaan.tabs.fisik-tab')
     @include('pages.transaksi.rj.emr-rj.pemeriksaan.tabs.psikiatri-tab')
+    @include('pages.transaksi.rj.emr-rj.pemeriksaan.tabs.fisik-tab')
     @include('pages.transaksi.rj.emr-rj.pemeriksaan.tabs.suspek-akibat-kercelakaan-kerja-tab')
 
     {{-- Uji Fungsi + Pemeriksaan Penunjang sebelahan --}}

@@ -3,9 +3,6 @@
     $opsiPsikiatri = \App\Support\Options\PsikiatriOptions::class;
     $psikiatri = $pemeriksaan['pemeriksaanPsikiatri'] ?? [];
     $isianLama = \App\Support\Options\PsikiatriOptions::ringkasanLama($psikiatri);
-    // Panel buka-tutup: terbuka otomatis di Poli Psikiatri, atau bila kunjungan ini sudah berisi
-    // Status Psikiatri (mis. pasien jiwa diperiksa di poli lain); selain itu tertutup.
-    $psikiatriTerbuka = ($poliId ?? '') == $opsiPsikiatri::POLI_ID;
     $jalur = 'pemeriksaan.pemeriksaanPsikiatri';
 
     // Satu baris formulir: label kiri, pilihan kanan — meniru lembar kertas "Status Psikiatri".
@@ -23,7 +20,7 @@
     ];
 @endphp
 
-<x-border-form :title="__('Status Psikiatri')" :align="__('start')" :bgcolor="__('bg-surface-soft')" :collapsible="true" :open="$psikiatriTerbuka">
+<x-border-form :title="__('Status Psikiatri')" :align="__('start')" :bgcolor="__('bg-surface-soft')" :collapsible="true" :open="$psikiatriTerbuka ?? false">
     <div class="divide-y divide-hairline dark:divide-gray-700">
 
         {{-- Semua baris seragam: label di atas, pilihan mulai dari kiri selebar panel
