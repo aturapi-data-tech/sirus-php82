@@ -83,6 +83,13 @@ new class extends Component {
      */
     public bool $contextRI = false;
 
+    /**
+     * false = modal viewer (cetak-rekam-medis RJ/UGD/RI, v1, fisio, surat kematian) TIDAK
+     * dipasang di sini karena halaman induk sudah memasangnya — mencegah dua pendengar
+     * untuk event yang sama (modal ganda). Dipakai modal Pengkajian Medis di Pelayanan RJ.
+     */
+    public bool $pasangViewer = true;
+
     /* =======================
  | Copy Resep
  * ======================= */
@@ -1133,25 +1140,27 @@ new class extends Component {
     </div>
 
 
-    <livewire:pages::components.rekam-medis.rj.cetak-rekam-medis.cetak-rekam-medis-open
-        wire:key="r-j.rekam-medis.cetak-rekam-medis-open" />
+    @if ($pasangViewer)
+        <livewire:pages::components.rekam-medis.rj.cetak-rekam-medis.cetak-rekam-medis-open
+            wire:key="r-j.rekam-medis.cetak-rekam-medis-open" />
 
-    <livewire:pages::components.rekam-medis.rj.cetak-rekam-medis.cetak-rekam-medis-rj-v1
-        wire:key="r-j.rekam-medis.cetak-rekam-medis-rj-v1" />
+        <livewire:pages::components.rekam-medis.rj.cetak-rekam-medis.cetak-rekam-medis-rj-v1
+            wire:key="r-j.rekam-medis.cetak-rekam-medis-rj-v1" />
 
-    <livewire:pages::components.rekam-medis.rj.cetak-rekam-medis.cetak-rekam-medis-rj-fisio
-        wire:key="r-j.rekam-medis.cetak-rekam-medis-rj-fisio" />
+        <livewire:pages::components.rekam-medis.rj.cetak-rekam-medis.cetak-rekam-medis-rj-fisio
+            wire:key="r-j.rekam-medis.cetak-rekam-medis-rj-fisio" />
 
-    <livewire:pages::components.rekam-medis.ugd.cetak-rekam-medis.cetak-rekam-medis-open
-        wire:key="u-g-d.rekam-medis.cetak-rekam-medis-open" />
+        <livewire:pages::components.rekam-medis.ugd.cetak-rekam-medis.cetak-rekam-medis-open
+            wire:key="u-g-d.rekam-medis.cetak-rekam-medis-open" />
 
-    <livewire:pages::components.rekam-medis.ri.cetak-rekam-medis.cetak-rekam-medis-open
-        wire:key="r-i.rekam-medis.cetak-rekam-medis-open" />
+        <livewire:pages::components.rekam-medis.ri.cetak-rekam-medis.cetak-rekam-medis-open
+            wire:key="r-i.rekam-medis.cetak-rekam-medis-open" />
 
-    {{-- Surat Kematian — viewer pintasan dari baris riwayat (Lihat + Cetak) --}}
-    <livewire:pages::components.rekam-medis.ugd.dokumen-view.surat-kematian-riwayat-ugd
-        wire:key="u-g-d.rekam-medis.surat-kematian-riwayat" />
+        {{-- Surat Kematian — viewer pintasan dari baris riwayat (Lihat + Cetak) --}}
+        <livewire:pages::components.rekam-medis.ugd.dokumen-view.surat-kematian-riwayat-ugd
+            wire:key="u-g-d.rekam-medis.surat-kematian-riwayat" />
 
-    <livewire:pages::components.rekam-medis.ri.dokumen-view.surat-kematian-riwayat-ri
-        wire:key="r-i.rekam-medis.surat-kematian-riwayat" />
+        <livewire:pages::components.rekam-medis.ri.dokumen-view.surat-kematian-riwayat-ri
+            wire:key="r-i.rekam-medis.surat-kematian-riwayat" />
+    @endif
 </div>

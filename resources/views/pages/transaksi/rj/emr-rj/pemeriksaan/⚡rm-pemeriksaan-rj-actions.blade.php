@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\On;
 use Livewire\WithFileUploads;
 use Illuminate\Support\Facades\Storage;
+use App\Support\Options\PsikiatriOptions;
 
 new class extends Component {
     use EmrRJTrait, WithRenderVersioningTrait, WithValidationToastTrait, WithFileUploads;
@@ -100,7 +101,6 @@ new class extends Component {
             return;
         }
 
-
         // Initialize pemeriksaan data jika belum ada
         $this->muatDariDokumen($data);
         $this->dokumenTermuat = true;
@@ -160,27 +160,8 @@ new class extends Component {
 
             'fisik' => '',
 
-            'pemeriksaanPsikiatri' => [
-                'kesadaran' => '',
-                'kontak' => [
-                    'mata' => '',
-                    'verbal' => '',
-                ],
-                'moodAfek' => '',
-                'prosesBerpikir' => [
-                    'bentukPikir' => '', // Realistik / Non Realistik
-                    'arusPikir' => '', // Lancar / Tidak Lancar
-                    'isiPikir' => [
-                        'pikiranTidakMasukAkal' => '', // Ya / Tidak
-                        'keteranganPikiranTidakMasukAkal' => '',
-                        'waham' => '', // Ya / Tidak
-                        'keteranganWaham' => '',
-                    ],
-                ],
-                'persepsi' => '',
-                'kemauan' => '',
-                'psikomotor' => '',
-            ],
+            // Status Psikiatri — bentuk & opsi di App\Support\Options\PsikiatriOptions.
+            'pemeriksaanPsikiatri' => PsikiatriOptions::defaultForm(),
 
             'anatomi' => collect(['kepala', 'mata', 'telinga', 'hidung', 'rambut', 'bibir', 'gigiGeligi', 'lidah', 'langitLangit', 'leher', 'tenggorokan', 'tonsil', 'dada', 'payudarah', 'punggung', 'perut', 'genital', 'anus', 'lenganAtas', 'lenganBawah', 'jariTangan', 'kukuTangan', 'persendianTangan', 'tungkaiAtas', 'tungkaiBawah', 'jariKaki', 'kukuKaki', 'persendianKaki', 'faring'])
                 ->mapWithKeys(
@@ -686,6 +667,34 @@ new class extends Component {
     /* ===============================
      | UPDATED HOOK
      =============================== */
+    /**
+     * Status Psikiatri: nyalakan/matikan satu opsi pilihan-ganda lewat x-toggle (Mode 2).
+     * Dikirim INDEKS opsi, bukan teksnya — argumen string lewat wireClick ter-escape dua kali.
+     */
+    public function togglePilihanPsikiatri(string $field, int $indeks): void
+    {
+        if ($this->isFormLocked) {
+            return;
+        }
+
+        $daftarOpsi =
+            [
+                'mood' => PsikiatriOptions::MOOD,
+                'bentukPikir' => PsikiatriOptions::BENTUK_PIKIR,
+                'isiPikir' => PsikiatriOptions::ISI_PIKIR,
+                'arusPikir' => PsikiatriOptions::ARUS_PIKIR,
+                'halusinasiJenis' => PsikiatriOptions::HALUSINASI,
+            ][$field] ?? [];
+        $opsi = $daftarOpsi[$indeks] ?? null;
+
+        if ($opsi === null) {
+            return;
+        }
+
+        $terpilih = (array) ($this->pemeriksaan['pemeriksaanPsikiatri'][$field] ?? []);
+        $this->pemeriksaan['pemeriksaanPsikiatri'][$field] = in_array($opsi, $terpilih, true) ? array_values(array_diff($terpilih, [$opsi])) : [...$terpilih, $opsi];
+    }
+
     public function updated($propertyName, $value): void
     {
         // Auto-hitung IMT saat BB atau TB berubah
@@ -693,11 +702,12 @@ new class extends Component {
             $this->hitungIMT();
         }
 
-        // Psikiatri: keterangan hanya berlaku bila jawabannya Ya
-        foreach (['pikiranTidakMasukAkal', 'waham'] as $field) {
-            if ($propertyName === "pemeriksaan.pemeriksaanPsikiatri.prosesBerpikir.isiPikir.{$field}" && $value !== 'Ya') {
-                $this->pemeriksaan['pemeriksaanPsikiatri']['prosesBerpikir']['isiPikir']['keterangan' . ucfirst($field)] = '';
-            }
+        // Psikiatri: isian turunan dikosongkan bila induknya tak lagi berlaku.
+        if ($propertyName === 'pemeriksaan.pemeriksaanPsikiatri.kesadaranStatus' && $value !== 'GCS') {
+            $this->pemeriksaan['pemeriksaanPsikiatri']['kesadaranGcs'] = '';
+        }
+        if ($propertyName === 'pemeriksaan.pemeriksaanPsikiatri.halusinasi' && !$value) {
+            $this->pemeriksaan['pemeriksaanPsikiatri']['halusinasiJenis'] = [];
         }
 
         // Sync radio button suspekAkibatKerja ke irisan pemeriksaan
@@ -726,9 +736,7 @@ new class extends Component {
         $tb = (float) ($this->pemeriksaan['nutrisi']['tb'] ?? 0);
         $tbM = $tb / 100;
 
-        $this->pemeriksaan['nutrisi']['imt'] = $tbM > 0
-            ? round($bb / ($tbM * $tbM), 2)
-            : 0;
+        $this->pemeriksaan['nutrisi']['imt'] = $tbM > 0 ? round($bb / ($tbM * $tbM), 2) : 0;
     }
 
     private function afterSave(string $message, bool $silent = false): void
@@ -737,7 +745,7 @@ new class extends Component {
         $this->dispatch('refresh-after-rj.saved');
 
         // Silent saat dipanggil oleh save-all (mis. Simpan SKDP) → cegah toast bertumpuk.
-        if (! $silent) {
+        if (!$silent) {
             $this->dispatch('toast', type: 'success', message: $message);
         }
     }
@@ -796,7 +804,8 @@ new class extends Component {
 
                                             {{-- UPLOAD PENUNJANG — hidden untuk role Dokter --}}
                                             @unlessrole('Dokter')
-                                                <x-tab variant="underline" active-expr="activeTab === 'UploadPenunjangHasil'"
+                                                <x-tab variant="underline"
+                                                    active-expr="activeTab === 'UploadPenunjangHasil'"
                                                     x-on:click="activeTab = 'UploadPenunjangHasil'">
                                                     Upload Penunjang
                                                 </x-tab>
@@ -804,7 +813,8 @@ new class extends Component {
 
                                             {{-- HASIL PENUNJANG (semua kunjungan) --}}
                                             <x-tab variant="underline" active-expr="activeTab === 'HasilPenunjang'"
-                                                x-on:click="activeTab = 'HasilPenunjang'" class="inline-flex items-center gap-2">
+                                                x-on:click="activeTab = 'HasilPenunjang'"
+                                                class="inline-flex items-center gap-2">
                                                 <svg class="w-4 h-4" fill="none" stroke="currentColor"
                                                     viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round"

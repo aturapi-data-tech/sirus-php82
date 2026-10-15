@@ -70,7 +70,8 @@
     @endif
     class="flex items-center space-x-2 {{ $disabled ? 'cursor-not-allowed opacity-90' : 'cursor-pointer' }}"
     {{ $attrs }}>
-    <div class="h-6 transition rounded-full w-11
+    {{-- shrink-0: track tak boleh gepeng saat label panjang membungkus (sel grid sempit). --}}
+    <div class="h-6 transition rounded-full shrink-0 w-11
         {{ $isOn ? $onColor : 'bg-gray-300' }}">
         <div class="w-4 h-4 mt-1 transition transform bg-white rounded-full shadow
             {{ $isOn ? 'translate-x-6 ml-1' : 'translate-x-1' }}">

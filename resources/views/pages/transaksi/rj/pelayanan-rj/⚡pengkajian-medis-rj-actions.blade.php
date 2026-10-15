@@ -9,6 +9,7 @@
 // diperbarui sesuai kondisi terkini. Lebih dari 30 hari, WAJIB pengkajian ulang.
 //
 // Siklus: Draft -> TTD dokter (mengunci) -> Buka Kunci (Gate dokumen.bukaKunci).
+// Tampilan baku modul dokumen dua layar: daftar (tabel riwayat review) -> formulir.
 // Satu kunjungan = SATU baris review; dijaga indeks IDX_PKJ_REVIEW_PEMAKAI.
 // Rancangan kolom & bentuk REVIEW_JSON: docs/ddl-pengkajian-medis-pp12.sql.
 //
@@ -87,6 +88,13 @@ new class extends Component {
     /** true = sudah di-TTD, formulir jadi baca-saja. */
     public bool $isFormLocked = false;
 
+    /**
+     * Dua layar baku modul dokumen: 'daftar' (tabel riwayat review pasien) dan
+     * 'form' (review kunjungan ini). muatReview() selalu mengembalikan ke daftar,
+     * jadi simpan draft, TTD, buka kunci, dan hapus otomatis berakhir di daftar.
+     */
+    public string $layar = 'daftar';
+
     #[On('pelayanan-rj.pengkajian-medis.open')]
     public function open(int $rjNo): void
     {
@@ -110,6 +118,56 @@ new class extends Component {
         $this->hitungRiwayat($rjNo);
 
         $this->dispatch('open-modal', name: 'pengkajian-medis-rj');
+    }
+
+    /* ===============================
+     | DUA LAYAR (pola modul dokumen)
+     =============================== */
+
+    public function diForm(): bool
+    {
+        return $this->layar === 'form';
+    }
+
+    /**
+     * Satu kunjungan = satu review, jadi "Isi Formulir Baru" hanya ditawarkan selama
+     * kunjungan ini belum punya review — selebihnya lewat Lanjutkan Pengisian / Lihat.
+     */
+    public function tambahEntri(): void
+    {
+        if (! $this->siapDipakai || filled($this->reviewTersimpan)) {
+            return;
+        }
+
+        $this->layar = 'form';
+    }
+
+    /** Hanya review milik kunjungan ini yang bisa dibuka di formulir. */
+    public function lanjutkanPengisian(int $reviewNo): void
+    {
+        if ((int) ($this->reviewTersimpan['reviewNo'] ?? 0) !== $reviewNo) {
+            return;
+        }
+
+        $this->layar = 'form';
+    }
+
+    public function lihatReview(int $reviewNo): void
+    {
+        $this->lanjutkanPengisian($reviewNo);
+    }
+
+    /** Isian yang belum disimpan dibuang — formulir dimuat ulang dari basis data. */
+    public function kembaliKeDaftar(): void
+    {
+        $this->resetValidation();
+        $this->muatReview((int) $this->rjNo);
+        $this->hitungRiwayat((int) $this->rjNo);
+    }
+
+    public function closeModal(): void
+    {
+        $this->dispatch('close-modal', name: 'pengkajian-medis-rj');
     }
 
     /* ===============================
@@ -377,6 +435,7 @@ new class extends Component {
     {
         $this->reset(['form', 'reviewTersimpan']);
         $this->isFormLocked = false;
+        $this->layar = 'daftar';
 
         // Panel Riwayat Pengkajian ikut disegarkan di sini supaya baris yang baru
         // disimpan/dibuka kuncinya langsung tampak, tanpa menutup modal dulu.
@@ -618,82 +677,29 @@ new class extends Component {
             ? 'Review pengkajian ditandatangani dan terkunci.'
             : 'Draft review pengkajian tersimpan.');
     }
-
-    public function bukaKunci(): void
-    {
-        if (!auth()->user()?->can('dokumen.bukaKunci')) {
-            $this->dispatch('toast', type: 'error', message: 'Anda tidak berhak membuka kunci.');
-
-            return;
-        }
-        if (blank($this->reviewTersimpan)) {
-            return;
-        }
-
-        DB::transaction(function () {
-            // Mencabut TTD saja — barisnya DIPERTAHANKAN supaya jejak bahwa pemeriksaan
-            // 30 hari pernah dilakukan tidak hilang.
-            $this->lockPengkajianReviewRow((int) $this->reviewTersimpan['reviewNo']);
-
-            $baris = DB::table('rstxn_pengkajian_reviews')
-                ->where('review_no', $this->reviewTersimpan['reviewNo'])->first();
-            $isi = $this->readJsonPengkajianReview($baris);
-            $isi['review']['terkunci'] = false;
-            $isi['form']['ttdPengkajianReview'] = '';
-            $isi['form']['ttdPengkajianReviewCode'] = '';
-            $isi['form']['ttdPengkajianReviewDate'] = '';
-
-            DB::table('rstxn_pengkajian_reviews')
-                ->where('review_no', $this->reviewTersimpan['reviewNo'])
-                ->update(['review_json' => json_encode($isi, self::JSON_FLAGS_PENGKAJIAN)]);
-
-            $this->appendAdminLogRJ(
-                (int) $this->rjNo,
-                'Buka kunci Review Pengkajian Medis — oleh ' . (auth()->user()->myuser_name ?? auth()->user()->name ?? '-'),
-                'MR'
-            );
-        });
-
-        $this->muatReview((int) $this->rjNo);
-        $this->dispatch('toast', type: 'info', message: 'Kunci review dibuka.');
-    }
 };
 ?>
-
 <div>
     <x-modal name="pengkajian-medis-rj" size="full" height="full" focusable>
-        <div class="flex flex-col h-full">
+        <div class="flex flex-col min-h-full">
+            <x-modul-dokumen.header judul="Pengkajian Medis Rawat Jalan"
+                ikon="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
+                jalur="RJ" :jumlah="$riwayatReviewTotal" :readOnly="$this->diForm() && $isFormLocked">
+                Meninjau pengkajian medis sebelumnya untuk dipakai ulang (Akreditasi PP 1.2 poin e).
+            </x-modul-dokumen.header>
 
-            {{-- ══ HEADER ══ --}}
-            <div class="px-6 py-4 border-b border-hairline dark:border-gray-700">
-                @if (!empty($rjNo))
-                    <div class="flex items-start gap-3">
-                        <div class="flex-1 min-w-0">
-                            <livewire:pages::transaksi.rj.display-pasien-rj.display-pasien-rj :rjNo="$rjNo"
-                                wire:key="pengkajian-medis-rj-display-pasien-{{ $rjNo }}" />
-                        </div>
-                        <x-icon-button color="gray" type="button"
-                            x-on:click="$dispatch('close-modal', { name: 'pengkajian-medis-rj' })" class="shrink-0">
-                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd"
-                                    d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                                    clip-rule="evenodd" />
-                            </svg>
-                        </x-icon-button>
-                    </div>
-                @endif
-                <h2 class="mt-2 text-base font-semibold text-ink dark:text-gray-100">
-                    Pengkajian Medis Rawat Jalan
-                </h2>
-                <p class="text-sm text-muted dark:text-gray-400">
-                    Meninjau pengkajian medis sebelumnya untuk dipakai ulang
-                </p>
-            </div>
+            {{-- DISPLAY PASIEN — tampil di kedua layar --}}
+            @if (!empty($rjNo))
+                <div class="px-4 pt-2">
+                    <livewire:pages::transaksi.rj.display-pasien-rj.display-pasien-rj :rjNo="$rjNo"
+                        wire:key="pengkajian-medis-rj-display-pasien-{{ $rjNo }}" />
+                </div>
+            @endif
 
-            <div class="flex-1 px-6 py-4 overflow-y-auto">
+            <div class="flex-1 p-4 space-y-4 sm:p-6">
 
                 @if (!$siapDipakai)
-                    {{-- Kolom stempelnya belum ada di database environment ini. --}}
+                    {{-- Tabel penyimpanannya belum ada di database environment ini. --}}
                     <div
                         class="px-4 py-3 text-sm border rounded-2xl bg-amber-50 border-amber-200 text-amber-900 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-200">
                         <p class="font-semibold">Belum bisa dipakai &mdash; DDL belum dijalankan.</p>
@@ -704,7 +710,7 @@ new class extends Component {
                             lebih dulu.
                         </p>
                     </div>
-                @else
+                @elseif ($this->diForm())
                     @php
                         $terkunci = $isFormLocked;
                         $adaSebelumnya = filled($sebelumnya);
@@ -713,11 +719,23 @@ new class extends Component {
                         $keputusan = $this->keputusan();
                     @endphp
 
-                    <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+                    @if ($terkunci)
+                        <x-modul-dokumen.banner jenis="lihat">
+                            Review ini sudah ditandatangani &amp; terkunci (hanya lihat) &mdash; koreksi lewat
+                            <strong>Buka Kunci</strong> di daftar.
+                        </x-modul-dokumen.banner>
+                    @elseif (filled($reviewTersimpan))
+                        <x-modul-dokumen.banner jenis="lanjut">
+                            Melanjutkan draft review kunjungan ini &mdash; <strong>Simpan Draft</strong> menyimpan
+                            perubahan, <strong>TTD &amp; Kunci</strong> menandatangani sekaligus mengunci.
+                        </x-modul-dokumen.banner>
+                    @endif
 
-                        {{-- ═══════════ KOLOM KIRI: LIMA BAGIAN ═══════════ --}}
+                    {{-- Dua kolom: kiri bagian 1–5 (+ panduan & dasar acuan), kanan Rekam Medis Pasien.
+                         Kolom kiri berdiri sendiri supaya resume yang panjang di kanan tidak membuat
+                         jeda antara baris 1–2 dan bagian 3 dst. --}}
+                    <div class="grid items-start grid-cols-1 gap-4 md:grid-cols-3">
                         <div class="space-y-4 md:col-span-2">
-
                             {{-- ── 1. PENGKAJIAN MEDIS SEBELUMNYA ── --}}
                             {{-- 1 & 2 bersanding: keduanya soal pengkajian yang ditinjau. --}}
                             <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -847,6 +865,7 @@ new class extends Component {
                                 </x-border-form>
                             </div>
 
+
                             {{-- ── 3. KONDISI PASIEN SAAT INI ── --}}
                             {{-- 3 & 4 bersanding: keduanya soal kondisi & tindakan hari ini. --}}
                             <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -892,11 +911,6 @@ new class extends Component {
                             {{-- ── 5. DOKUMENTASI REVIEW / VERIFIKASI ── --}}
                             <x-border-form :title="__('5. Dokumentasi Review / Verifikasi')" :align="__('start')" :bgcolor="__('bg-surface-soft')">
                                 <div class="space-y-3">
-                                    @if ($terkunci)
-                                        <div><x-badge variant="success">Terkunci</x-badge></div>
-                                    @elseif (filled($reviewTersimpan))
-                                        <div><x-badge variant="warning">Draft</x-badge></div>
-                                    @endif
                                     <div>
                                         <x-input-label value="Catatan Review / Update *" class="mb-1" />
                                         <x-textarea wire:model.live="form.reviewCatatan" rows="3" :disabled="$terkunci"
@@ -906,9 +920,8 @@ new class extends Component {
                                     </div>
 
                                     {{-- TTD paling bawah — urutan baku modul dokumen: isi dulu, tanda tangan
-                                         terakhir. Komponen baku repo (dipakai 62 berkas). allowClear=false:
-                                         sekali ditandatangani tak bisa diganti dari sini — pencabutannya lewat
-                                         Buka Kunci yang ber-Gate & tercatat di audit log. --}}
+                                         terakhir sekaligus mengunci. allowClear=false: pencabutannya lewat
+                                         Buka Kunci di tabel daftar yang ber-Gate & tercatat di audit log. --}}
                                     <div class="pt-2 border-t border-hairline dark:border-gray-700">
                                         <x-signature.ttd-petugas :framed="false" :allowClear="false"
                                             :ttd="$form['ttdPengkajianReview']" :code="$form['ttdPengkajianReviewCode']"
@@ -918,232 +931,8 @@ new class extends Component {
                                             signLabel="TTD & Kunci"
                                             emptyText="Belum ditandatangani — terisi dari pengguna yang sedang login." />
                                     </div>
-
-                                    <div class="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-hairline dark:border-gray-700">
-                                        @if ($terkunci)
-                                            @can('dokumen.bukaKunci')
-                                                <x-confirm-button action="bukaKunci()" color="amber"
-                                                    title="Buka Kunci Review"
-                                                    message="Buka kunci review pengkajian ini? Tanda tangan akan dicabut.">Buka Kunci</x-confirm-button>
-                                            @endcan
-                                        @else
-                                            <x-secondary-button type="button" wire:click="simpanDraft">Simpan Draft</x-secondary-button>
-                                        @endif
-                                    </div>
                                 </div>
                             </x-border-form>
-
-                            {{-- ── DASAR ACUAN ── --}}
-                            <div class="px-4 py-3 text-xs border rounded-2xl bg-surface-soft border-hairline text-muted dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400">
-                                <span class="font-semibold text-ink dark:text-gray-300">Dasar Acuan:</span>
-                                Standar Akreditasi Kemenkes (Elemen Penilaian PP 1.2 poin e) &mdash; pengkajian medis
-                                yang dilakukan sebelum masuk rawat inap atau sebelum menjalani prosedur di layanan
-                                rawat jalan dalam waktu kurang atau sama dengan 30 (tiga puluh) hari sebelumnya.
-                                Jika lebih dari 30 hari, maka harus dilakukan pengkajian ulang.
-                            </div>
-                        </div>
-
-                        {{-- ═══════════ KOLOM KANAN ═══════════ --}}
-                        <div class="space-y-4">
-
-                            {{-- RIWAYAT PENGKAJIAN — review yang SUDAH pernah dibuat.
-                                 Sumbernya RSTXN_PENGKAJIAN_REVIEWS lewat REG_NO. Beda dari
-                                 panel di bawahnya: yang ini "siapa pernah meninjau apa",
-                                 yang di bawah "kunjungan apa saja yang pernah ada". --}}
-                            <x-border-form :title="__('Riwayat Pengkajian')" :align="__('start')" :bgcolor="__('bg-surface-soft')">
-                                <div class="px-3 py-3 space-y-2 overflow-y-auto max-h-96">
-                                    @forelse ($riwayatReview as $review)
-                                        @php
-                                            $ulang = $review['keputusan'] === 'ULANG';
-                                            $garis = $ulang
-                                                ? 'border-l-red-400 dark:border-l-red-500'
-                                                : 'border-l-emerald-400 dark:border-l-emerald-500';
-                                        @endphp
-
-                                        <div class="py-3 pl-3 pr-3 border border-l-4 border-hairline {{ $garis }} rounded-xl text-ink dark:border-gray-700">
-                                            <div class="flex flex-wrap items-center justify-between gap-2">
-                                                {{-- reviewDate = kapan peninjauannya dilakukan; beda dari
-                                                     tglPengkajian di bawah (kapan pengkajiannya dibuat). --}}
-                                                <div class="flex items-baseline gap-2">
-                                                    <span class="text-xs text-muted dark:text-gray-400">Tgl Review</span>
-                                                    <span class="font-mono text-sm font-semibold text-ink dark:text-gray-200">{{ $review['tglReview'] ?: '-' }}</span>
-                                                </div>
-                                                <div class="flex flex-wrap items-center gap-1">
-                                                    <x-badge :variant="$ulang ? 'danger' : 'success'">
-                                                        {{ $ulang ? 'Pengkajian Ulang' : 'Review / Verifikasi' }}
-                                                    </x-badge>
-                                                    @if ($review['terkunci'])
-                                                        <x-badge variant="success">Terkunci</x-badge>
-                                                    @else
-                                                        <x-badge variant="warning">Draft</x-badge>
-                                                    @endif
-                                                    @if ($review['iniKunjunganIni'])
-                                                        <x-badge variant="info">Kunjungan ini</x-badge>
-                                                    @endif
-                                                </div>
-                                            </div>
-
-                                            <dl class="mt-2 space-y-0.5 text-sm">
-                                                <div class="flex gap-2">
-                                                    <dt class="shrink-0 w-28 text-muted dark:text-gray-400">Pengkajian</dt>
-                                                    <dd class="text-ink dark:text-gray-200">
-                                                        {{ $review['tglPengkajian'] ?: '-' }}
-                                                        @if (!is_null($review['usiaHari']))
-                                                            <span class="text-muted dark:text-gray-400">&middot; usia {{ $review['usiaHari'] }} hari</span>
-                                                        @endif
-                                                    </dd>
-                                                </div>
-                                                <div class="flex gap-2">
-                                                    <dt class="shrink-0 w-28 text-muted dark:text-gray-400">Sumber</dt>
-                                                    <dd class="text-ink dark:text-gray-200">
-                                                        @if ($review['sumberJenis'] === 'LUAR')
-                                                            Luar RS{{ filled($review['sumberDeskripsi']) ? ' — ' . $review['sumberDeskripsi'] : '' }}
-                                                        @elseif (filled($review['sumberNo']))
-                                                            <span class="font-mono">{{ $review['sumberJenis'] }} {{ $review['sumberNo'] }}</span>
-                                                        @else
-                                                            {{ $review['sumberJenis'] ?: '-' }}
-                                                        @endif
-                                                    </dd>
-                                                </div>
-                                                <div class="flex gap-2">
-                                                    <dt class="shrink-0 w-28 text-muted dark:text-gray-400">Dipakai di</dt>
-                                                    <dd class="font-mono text-ink dark:text-gray-200">{{ $review['pemakaiJenis'] }} {{ $review['pemakaiNo'] }}</dd>
-                                                </div>
-                                                @if ($review['tindakan'] !== [])
-                                                    <div class="flex gap-2">
-                                                        <dt class="shrink-0 w-28 text-muted dark:text-gray-400">Tindakan</dt>
-                                                        <dd class="text-ink dark:text-gray-200">
-                                                            <ul class="list-disc list-inside">
-                                                                @foreach ($review['tindakan'] as $tindakan)
-                                                                    <li>{{ $tindakan }}</li>
-                                                                @endforeach
-                                                            </ul>
-                                                        </dd>
-                                                    </div>
-                                                @endif
-                                                @if ($review['adaPerubahan'] === 'Y')
-                                                    <div class="flex gap-2">
-                                                        <dt class="shrink-0 w-28 text-muted dark:text-gray-400">Perubahan</dt>
-                                                        <dd class="text-ink dark:text-gray-200">{{ $review['perubahanDesc'] ?: 'Ada perubahan bermakna' }}</dd>
-                                                    </div>
-                                                @endif
-                                                @if (filled($review['catatan']))
-                                                    <div class="flex gap-2">
-                                                        <dt class="shrink-0 w-28 text-muted dark:text-gray-400">Catatan</dt>
-                                                        <dd class="text-ink dark:text-gray-200">{{ $review['catatan'] }}</dd>
-                                                    </div>
-                                                @endif
-                                                {{-- Penanda tangan paling bawah — urutan baku modul dokumen:
-                                                     isinya dulu, tanda tangannya menutup. --}}
-                                                <div class="flex gap-2 pt-2 mt-2 border-t border-hairline dark:border-gray-700">
-                                                    <dt class="shrink-0 w-28 text-muted dark:text-gray-400">Ditinjau oleh</dt>
-                                                    <dd class="text-ink dark:text-gray-200">{{ $review['ttdNama'] ?: 'Belum ditandatangani' }}</dd>
-                                                </div>
-                                            </dl>
-
-                                            {{-- BARIS AKSI — mengikuti pola CPPT (rm-cppt-ri-actions):
-                                                 satu baris x-outline-button ikon, warna menandai makna aksi,
-                                                 judul hover sebagai penjelas, wire:confirm untuk yang berisiko.
-                                                   biru    = buka rekam medis        indigo = buka pengkajian sumber
-                                                   amber   = cetak                   abu    = batalkan/buka kunci
-                                                   merah   = hapus                                                  --}}
-                                            <div class="flex flex-wrap items-center w-full gap-1.5 mt-3">
-                                                @if ($review['pemakaiJenis'] === 'RJ' && $review['pemakaiNo'] > 0)
-                                                    <x-outline-button type="button"
-                                                        wire:click="lihatRekamMedisPemakai({{ (int) $review['pemakaiNo'] }})"
-                                                        wire:loading.attr="disabled"
-                                                        class="!text-blue-600 !bg-blue-50 !border-blue-200 hover:!bg-blue-100 hover:!text-blue-700 hover:!border-blue-300 dark:!text-blue-400 dark:!bg-blue-900/20 dark:!border-blue-800/30 dark:hover:!bg-blue-900/30 dark:hover:!text-blue-300"
-                                                        title="Rekam medis kunjungan yang memakai review ini">
-                                                        <span class="inline-flex items-center gap-1">
-                                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                                            </svg>
-                                                            <span class="text-sm font-semibold">Rekam Medis</span>
-                                                        </span>
-                                                    </x-outline-button>
-                                                @endif
-
-                                                {{-- Kunjungan SUMBER — isi pengkajian yang ditinjau. Hanya muncul
-                                                     kalau nomornya terekam; review lama bisa tersimpan tanpa nomor. --}}
-                                                @if ($review['sumberJenis'] === 'RJ' && filled($review['sumberNo']))
-                                                    <x-outline-button type="button"
-                                                        wire:click="lihatPengkajianSumber({{ (int) $review['sumberNo'] }})"
-                                                        wire:loading.attr="disabled"
-                                                        class="!text-indigo-600 !bg-indigo-50 !border-indigo-200 hover:!bg-indigo-100 hover:!text-indigo-700 hover:!border-indigo-300 dark:!text-indigo-400 dark:!bg-indigo-900/20 dark:!border-indigo-800/30 dark:hover:!bg-indigo-900/30 dark:hover:!text-indigo-300"
-                                                        title="Isi pengkajian yang ditinjau">
-                                                        <span class="inline-flex items-center gap-1">
-                                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                                            </svg>
-                                                            <span class="text-sm font-semibold">Isi Pengkajian</span>
-                                                        </span>
-                                                    </x-outline-button>
-                                                @endif
-
-                                                <x-cetak-button wire:click="cetak({{ (int) $review['reviewNo'] }})" title="Cetak review pengkajian" />
-
-                                                @if ($review['terkunci'])
-                                                    @can('dokumen.bukaKunci')
-                                                        <x-outline-button type="button"
-                                                            wire:click="bukaKunciReview({{ (int) $review['reviewNo'] }})"
-                                                            wire:confirm="Buka kunci review ini? TTD dokter akan dicabut & review kembali menjadi draft. Barisnya tetap tersimpan."
-                                                            wire:loading.attr="disabled"
-                                                            class="!text-muted !bg-surface-soft !border-hairline hover:!bg-surface-soft hover:!text-body hover:!border-gray-300 dark:!text-muted-soft dark:!bg-gray-800/40 dark:!border-gray-700 dark:hover:!bg-gray-800/60"
-                                                            title="Buka kunci review">
-                                                            <span class="inline-flex items-center gap-1">
-                                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                                        d="M8 11V7a4 4 0 118 0m-8 4h10a2 2 0 012 2v5a2 2 0 01-2 2H8a2 2 0 01-2-2v-5a2 2 0 012-2z" />
-                                                                </svg>
-                                                                <span class="text-sm font-semibold">Buka Kunci</span>
-                                                            </span>
-                                                        </x-outline-button>
-                                                    @endcan
-                                                @else
-                                                    @can('dokumen.hapus')
-                                                        <x-hapus-button wire:click="hapusReview({{ (int) $review['reviewNo'] }})" class="ml-auto" confirm="Yakin hapus review pengkajian ini?" title="Hapus review" />
-                                                    @endcan
-                                                @endif
-                                            </div>
-                                        </div>
-                                    @empty
-                                        <p class="py-2 text-sm text-muted dark:text-gray-400">Belum pernah ada review pengkajian untuk pasien ini.</p>
-                                    @endforelse
-
-                                    @if ($riwayatReviewTotal > count($riwayatReview))
-                                        <p class="py-1 text-xs text-muted dark:text-gray-400">
-                                            Menampilkan {{ count($riwayatReview) }} terbaru dari {{ $riwayatReviewTotal }} review.
-                                        </p>
-                                    @endif
-                                </div>
-                            </x-border-form>
-
-                            {{-- REKAM MEDIS PASIEN — DINONAKTIFKAN SEMENTARA atas permintaan user.
-
-                                 Isinya komponen bersama `rekam-medis-display` (daftar kunjungan pasien
-                                 + pencarian + filter + paginasi). Dimatikan dulu karena panel Riwayat
-                                 Pengkajian di atas sudah punya tombol "Rekam Medis" per baris.
-
-                                 KALAU DIHIDUPKAN LAGI: buang mount `cetak-rekam-medis-open` di
-                                 pelayanan-rj.blade.php, sebab komponen ini memasangnya sendiri dan
-                                 dua pendengar `cetak-rekam-medis.open` akan sama-sama membuka modal
-                                 bernama `preview-rekam-medis`.
-
-                                 Komentar di bawah sengaja TANPA {{ }} bersarang — komentar Blade tak
-                                 bisa bersarang, penutup pertama akan mengakhiri seluruh blok.
-
-                            <x-border-form :title="__('Rekam Medis Pasien')" :align="__('start')" :bgcolor="__('bg-surface-soft')">
-                                <div class="px-2 py-2">
-                                    <livewire:pages::components.rekam-medis.rekam-medis-display.rekam-medis-display
-                                        :regNo="$regNo ?? ''" :rjNoRefCopyTo="$rjNo ?? 0"
-                                        wire:key="pengkajian-medis-rj-riwayat-{{ $regNo ?? 'new' }}" />
-                                </div>
-                            </x-border-form>
-                            --}}
 
                             {{-- PANDUAN PERHITUNGAN — gaya biru-info standar, default TERTUTUP.
                                  Lihat memory project_panduan_panel_blue_info_standard; acuan gaji-dokter. --}}
@@ -1178,17 +967,171 @@ new class extends Component {
                                     </p>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-                @endif
-            </div>
 
-            {{-- ══ FOOTER ══ --}}
-            <div
-                class="sticky bottom-0 z-10 flex items-center justify-end gap-2 px-6 py-3 border-t border-hairline bg-canvas dark:bg-gray-900 dark:border-gray-700">
-                <x-secondary-button type="button"
-                    x-on:click="$dispatch('close-modal', { name: 'pengkajian-medis-rj' })">Tutup</x-secondary-button>
-            </div>
+                            {{-- ── DASAR ACUAN ── --}}
+                            <div class="px-4 py-3 text-xs border rounded-2xl bg-surface-soft border-hairline text-muted dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400">
+                                <span class="font-semibold text-ink dark:text-gray-300">Dasar Acuan:</span>
+                                Standar Akreditasi Kemenkes (Elemen Penilaian PP 1.2 poin e) &mdash; pengkajian medis
+                                yang dilakukan sebelum masuk rawat inap atau sebelum menjalani prosedur di layanan
+                                rawat jalan dalam waktu kurang atau sama dengan 30 (tiga puluh) hari sebelumnya.
+                                Jika lebih dari 30 hari, maka harus dilakukan pengkajian ulang.
+                            </div>
+                        </div>
+
+                        {{-- REKAM MEDIS PASIEN — kolom kanan layar formulir. :pasangViewer="false": modal
+                             viewer-nya sudah dipasang di pelayanan-rj.blade.php. --}}
+                        @if (filled($regNo))
+                            <x-border-form :title="__('Rekam Medis Pasien')" :align="__('start')" :bgcolor="__('bg-surface-soft')">
+                                <div class="px-2 py-2">
+                                    <livewire:pages::components.rekam-medis.rekam-medis-display.rekam-medis-display
+                                        :regNo="$regNo" :rjNoRefCopyTo="$rjNo ?? 0" :pasangViewer="false"
+                                        wire:key="pengkajian-medis-rj-riwayat-form-{{ $regNo }}" />
+                                </div>
+                            </x-border-form>
+                        @endif
+                    </div>
+                @else
+                    {{-- ═══════════════ LAYAR DAFTAR — riwayat review pasien ═══════════════
+                         Sumbernya RSTXN_PENGKAJIAN_REVIEWS lewat REG_NO, sudah terurut terbaru
+                         di atas oleh findRiwayatReviewPengkajian(). Hanya review milik kunjungan
+                         ini yang bisa dilanjutkan/dilihat di formulir; review kunjungan lain
+                         cukup dicetak atau dibuka rekam medisnya. --}}
+                    <x-modul-dokumen.tabel-daftar :kolom="['', 'Tgl Review', 'Pengkajian Ditinjau', 'Keputusan', 'Dipakai di', 'Dokter (TTD)', 'Status' => 'text-center', 'Aksi' => 'text-center w-64']">
+                        @forelse ($riwayatReview as $review)
+                            @php
+                                $ulang = $review['keputusan'] === 'ULANG';
+                                $milikKunjunganIni = (bool) $review['iniKunjunganIni'];
+                            @endphp
+                            <tbody wire:key="pengkajian-review-{{ $review['reviewNo'] }}" x-data="{ open: false }"
+                                class="border-b border-hairline dark:border-gray-700">
+                                <tr @click="open = !open"
+                                    class="cursor-pointer align-top hover:bg-surface-soft dark:hover:bg-gray-800/60 {{ $milikKunjunganIni ? 'bg-brand-lime/10 dark:bg-brand-lime/5' : '' }}">
+                                    <td class="px-2 py-3 text-center align-middle">
+                                        <svg class="w-4 h-4 mx-auto transition-transform text-muted" :class="{ 'rotate-90': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                                        </svg>
+                                    </td>
+                                    <td class="px-4 py-3 font-mono align-middle text-muted whitespace-nowrap dark:text-gray-300">{{ $review['tglReview'] ?: '-' }}</td>
+                                    <td class="px-4 py-3 align-middle text-ink dark:text-gray-200">
+                                        <span class="font-mono">{{ $review['tglPengkajian'] ?: '-' }}</span>
+                                        @if (!is_null($review['usiaHari']))
+                                            <span class="text-muted dark:text-gray-400">&middot; {{ $review['usiaHari'] }} hari</span>
+                                        @endif
+                                    </td>
+                                    <td class="px-4 py-3 align-middle">
+                                        <x-badge :variant="$ulang ? 'danger' : 'success'" class="whitespace-nowrap">
+                                            {{ $ulang ? 'Pengkajian Ulang' : 'Review / Verifikasi' }}
+                                        </x-badge>
+                                    </td>
+                                    <td class="px-4 py-3 align-middle whitespace-nowrap">
+                                        <span class="font-mono text-ink dark:text-gray-200">{{ $review['pemakaiJenis'] }} {{ $review['pemakaiNo'] }}</span>
+                                        @if ($milikKunjunganIni)
+                                            <x-badge variant="info" class="ml-1">Kunjungan ini</x-badge>
+                                        @endif
+                                    </td>
+                                    <td class="px-4 py-3 align-middle text-muted dark:text-gray-300">
+                                        {{-- Nama hanya sah bila terkunci — draft bisa membawa nama penyimpan. --}}
+                                        <x-modul-dokumen.status-ttd :nama="$review['terkunci'] ? $review['ttdNama'] : ''" />
+                                    </td>
+                                    <td class="px-4 py-3 text-center align-middle">
+                                        <x-modul-dokumen.status-entri :final="$review['terkunci']" />
+                                    </td>
+                                    <td class="px-4 py-3 text-center align-middle whitespace-nowrap" @click.stop>
+                                        <x-modul-dokumen.aksi-entri kunci="{{ $review['reviewNo'] }}" :final="$review['terkunci']"
+                                            lanjut="{{ $milikKunjunganIni ? 'lanjutkanPengisian' : '' }}"
+                                            lihat="{{ $milikKunjunganIni ? 'lihatReview' : '' }}"
+                                            bukaKunci="bukaKunciReview" hapus="hapusReview" :hapusHanyaDraft="true"
+                                            judulLanjut="Lanjutkan mengisi review kunjungan ini"
+                                            judulBukaKunci="Buka Kunci Review Pengkajian"
+                                            pesanBukaKunci="TTD dokter akan dicabut & review kembali menjadi draft. Barisnya tetap tersimpan. Lanjutkan?"
+                                            konfirmasiHapus="Yakin hapus review pengkajian ini?">
+                                            {{-- Tombol khusus modul: rekam medis kunjungan pemakai & sumber. --}}
+                                            @if ($review['pemakaiJenis'] === 'RJ' && $review['pemakaiNo'] > 0 && !$milikKunjunganIni)
+                                                <x-icon-button color="gray" type="button" class="!p-2.5 shrink-0"
+                                                    wire:click="lihatRekamMedisPemakai({{ (int) $review['pemakaiNo'] }})"
+                                                    wire:loading.attr="disabled"
+                                                    title="Rekam medis kunjungan yang memakai review ini">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                                                    </svg>
+                                                </x-icon-button>
+                                            @endif
+                                            @if ($review['sumberJenis'] === 'RJ' && filled($review['sumberNo']))
+                                                <x-icon-button color="gray" type="button" class="!p-2.5 shrink-0"
+                                                    wire:click="lihatPengkajianSumber({{ (int) $review['sumberNo'] }})"
+                                                    wire:loading.attr="disabled"
+                                                    title="Isi pengkajian yang ditinjau (rekam medis kunjungan sumber)">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                    </svg>
+                                                </x-icon-button>
+                                            @endif
+                                        </x-modul-dokumen.aksi-entri>
+                                    </td>
+                                </tr>
+
+                                {{-- RINCIAN (expand) --}}
+                                <tr x-show="open" x-cloak>
+                                    <td colspan="8" class="px-4 py-4 bg-surface-soft/60 dark:bg-gray-950/30">
+                                        <dl class="grid grid-cols-1 gap-x-8 gap-y-3 md:grid-cols-2">
+                                            <div>
+                                                <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Sumber Pengkajian</dt>
+                                                <dd class="mt-0.5 text-ink dark:text-gray-200">
+                                                    @if ($review['sumberJenis'] === 'LUAR')
+                                                        Luar RS{{ filled($review['sumberDeskripsi']) ? ' — ' . $review['sumberDeskripsi'] : '' }}
+                                                    @elseif (filled($review['sumberNo']))
+                                                        <span class="font-mono">{{ $review['sumberJenis'] }} {{ $review['sumberNo'] }}</span>
+                                                    @else
+                                                        {{ $review['sumberJenis'] ?: '-' }}
+                                                    @endif
+                                                </dd>
+                                            </div>
+                                            <div>
+                                                <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Tindakan</dt>
+                                                <dd class="mt-0.5 text-ink dark:text-gray-200">
+                                                    {{ $review['tindakan'] !== [] ? implode('; ', $review['tindakan']) : '-' }}
+                                                </dd>
+                                            </div>
+                                            <div>
+                                                <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Perubahan Kondisi</dt>
+                                                <dd class="mt-0.5 text-ink dark:text-gray-200">
+                                                    @if ($review['adaPerubahan'] === 'Y')
+                                                        {{ $review['perubahanDesc'] ?: 'Ada perubahan bermakna' }}
+                                                    @else
+                                                        Tidak ada perubahan bermakna
+                                                    @endif
+                                                </dd>
+                                            </div>
+                                            <div>
+                                                <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Catatan Review</dt>
+                                                <dd class="mt-0.5 whitespace-pre-line text-ink dark:text-gray-200">{{ $review['catatan'] ?: '-' }}</dd>
+                                            </div>
+                                        </dl>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        @empty
+                            <x-modul-dokumen.baris-kosong :kolom="8" pesan="Belum ada review pengkajian untuk pasien ini." />
+                        @endforelse
+                    </x-modul-dokumen.tabel-daftar>
+
+                    @if ($riwayatReviewTotal > count($riwayatReview))
+                        <p class="text-xs text-muted dark:text-gray-400">
+                            Menampilkan {{ count($riwayatReview) }} terbaru dari {{ $riwayatReviewTotal }} review.
+                        </p>
+                    @endif
+                @endif
+            </div>{{-- /konten flex-1 --}}
+
+            {{-- ══ FOOTER STICKY ══ --}}
+            <x-modul-dokumen.footer :formulir="$this->diForm()" :terkunci="!$siapDipakai"
+                :lihat="$this->diForm() && $isFormLocked" :mengedit="filled($reviewTersimpan)"
+                simpan="simpanDraft" selesaiLihat=""
+                tambah="{{ filled($reviewTersimpan) ? '' : 'tambahEntri' }}">
+                Simpan draft dulu; setelah ditinjau, <strong>kunci</strong> lewat tombol <strong>TTD &amp; Kunci</strong>.
+            </x-modul-dokumen.footer>
         </div>
     </x-modal>
 </div>

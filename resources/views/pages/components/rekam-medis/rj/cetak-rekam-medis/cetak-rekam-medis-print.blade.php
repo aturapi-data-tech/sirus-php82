@@ -14,14 +14,8 @@
                     (!empty($identitas['kecamatanName']) ? ', ' . $identitas['kecamatanName'] : ''),
             );
         @endphp
-        <x-pdf.identitas-pasien
-            :rm="$data['regNo'] ?? null"
-            :nama="$data['regName'] ?? null"
-            :jenisKelamin="$data['jenisKelamin']['jenisKelaminDesc'] ?? null"
-            :tempatLahir="$data['tempatLahir'] ?? null"
-            :tglLahir="$data['tglLahir'] ?? null"
-            :umur="$data['thn'] ?? null"
-            :alamat="$alamatFull">
+        <x-pdf.identitas-pasien :rm="$data['regNo'] ?? null" :nama="$data['regName'] ?? null" :jenisKelamin="$data['jenisKelamin']['jenisKelaminDesc'] ?? null" :tempatLahir="$data['tempatLahir'] ?? null"
+            :tglLahir="$data['tglLahir'] ?? null" :umur="$data['thn'] ?? null" :alamat="$alamatFull">
             <tr>
                 <td class="py-0.5 text-[11px] text-gray-500 whitespace-nowrap">Tgl. Masuk</td>
                 <td class="py-0.5 text-[11px] px-1">:</td>
@@ -42,9 +36,15 @@
         // impor di atas tag komponen bikin tag pembuka gagal terkompilasi.
         $nyeriTerakhir = \App\Support\Options\NyeriOptions::entriTerakhir($dataDaftarTxn['penilaian']['nyeri'] ?? null);
         $ringkasNyeri = \App\Support\Options\NyeriOptions::ringkasEntri($nyeriTerakhir);
-        $resikoJatuhTerakhir = !empty($dataDaftarTxn['penilaian']['resikoJatuh']) ? end($dataDaftarTxn['penilaian']['resikoJatuh']) : null;
-        $resikoBunuhDiriTerakhir = !empty($dataDaftarTxn['penilaian']['resikoBunuhDiri']) ? end($dataDaftarTxn['penilaian']['resikoBunuhDiri']) : null;
-        $dekubitusTerakhir = !empty($dataDaftarTxn['penilaian']['dekubitus']) ? end($dataDaftarTxn['penilaian']['dekubitus']) : null;
+        $resikoJatuhTerakhir = !empty($dataDaftarTxn['penilaian']['resikoJatuh'])
+            ? end($dataDaftarTxn['penilaian']['resikoJatuh'])
+            : null;
+        $resikoBunuhDiriTerakhir = !empty($dataDaftarTxn['penilaian']['resikoBunuhDiri'])
+            ? end($dataDaftarTxn['penilaian']['resikoBunuhDiri'])
+            : null;
+        $dekubitusTerakhir = !empty($dataDaftarTxn['penilaian']['dekubitus'])
+            ? end($dataDaftarTxn['penilaian']['dekubitus'])
+            : null;
         $giziTerakhir = !empty($dataDaftarTxn['penilaian']['gizi']) ? end($dataDaftarTxn['penilaian']['gizi']) : null;
     @endphp
 
@@ -97,7 +97,9 @@
                 <span class="font-bold">Skala Nyeri :</span>
                 Metode : {{ $ringkasNyeri['metode'] }} /
                 Skor : {{ $ringkasNyeri['skor'] }} /
-                {{ $ringkasNyeri['label'] }}@if ($ringkasNyeri['catatan']) ({{ $ringkasNyeri['catatan'] }})@endif /
+                {{ $ringkasNyeri['label'] }}@if ($ringkasNyeri['catatan'])
+                    ({{ $ringkasNyeri['catatan'] }})
+                @endif /
                 Pencetus : {{ $nyeriTerakhir['nyeri']['pencetus'] ?? '-' }} /
                 Durasi : {{ $nyeriTerakhir['nyeri']['durasi'] ?? '-' }} /
                 Lokasi : {{ $nyeriTerakhir['nyeri']['lokasi'] ?? '-' }}
@@ -106,7 +108,8 @@
                 {{-- ── RESIKO JATUH ── --}}
                 <span class="font-bold">Resiko Jatuh :</span>
                 Metode : {{ $resikoJatuhTerakhir['resikoJatuh']['resikoJatuhMetode']['resikoJatuhMetode'] ?? '-' }} /
-                Skor : {{ $resikoJatuhTerakhir['resikoJatuh']['resikoJatuhMetode']['resikoJatuhMetodeScore'] ?? '-' }} /
+                Skor : {{ $resikoJatuhTerakhir['resikoJatuh']['resikoJatuhMetode']['resikoJatuhMetodeScore'] ?? '-' }}
+                /
                 {{ $resikoJatuhTerakhir['resikoJatuh']['kategoriResiko'] ?? '-' }}
                 <br>
 
@@ -230,7 +233,8 @@
                     </tr>
                     <tr>
                         <td>Pernafasan</td>
-                        <td>:&nbsp;{{ $dataDaftarTxn['pemeriksaan']['tandaVital']['frekuensiNafas'] ?? '-' }} x/mnt</td>
+                        <td>:&nbsp;{{ $dataDaftarTxn['pemeriksaan']['tandaVital']['frekuensiNafas'] ?? '-' }} x/mnt
+                        </td>
                     </tr>
                     <tr>
                         <td>SPO2</td>
@@ -287,9 +291,11 @@
                 FUNGSIONAL
             </td>
             <td class="border border-black px-1.5 py-0.5 align-middle" colspan="2">
-                <span class="font-bold">Alat Bantu :</span> {{ $dataDaftarTxn['pemeriksaan']['fungsional']['alatBantu'] ?? '-' }}
+                <span class="font-bold">Alat Bantu :</span>
+                {{ $dataDaftarTxn['pemeriksaan']['fungsional']['alatBantu'] ?? '-' }}
                 &nbsp;/&nbsp;
-                <span class="font-bold">Prothesa :</span> {{ $dataDaftarTxn['pemeriksaan']['fungsional']['prothesa'] ?? '-' }}
+                <span class="font-bold">Prothesa :</span>
+                {{ $dataDaftarTxn['pemeriksaan']['fungsional']['prothesa'] ?? '-' }}
                 &nbsp;/&nbsp;
                 <span class="font-bold">Cacat Tubuh :</span>
                 {{ $dataDaftarTxn['pemeriksaan']['fungsional']['cacatTubuh'] ?? '-' }}
@@ -297,9 +303,13 @@
                 <span class="font-bold">Suspek Akibat Kecelakaan Kerja :</span>
                 @php
                     $suspekAK = $dataDaftarTxn['pemeriksaan']['suspekAkibatKerja']['suspekAkibatKerja'] ?? '-';
-                    $ketAK = trim($dataDaftarTxn['pemeriksaan']['suspekAkibatKerja']['keteranganSuspekAkibatKerja'] ?? '');
+                    $ketAK = trim(
+                        $dataDaftarTxn['pemeriksaan']['suspekAkibatKerja']['keteranganSuspekAkibatKerja'] ?? '',
+                    );
                 @endphp
-                {{ $suspekAK }}@if ($suspekAK === 'Ya' && $ketAK !== '') &nbsp;({{ $ketAK }})@endif
+                {{ $suspekAK }}@if ($suspekAK === 'Ya' && $ketAK !== '')
+                    &nbsp;({{ $ketAK }})
+                @endif
             </td>
         </tr>
 
@@ -313,26 +323,13 @@
                 {!! nl2br(e($dataDaftarTxn['pemeriksaan']['fisik'] ?? '-')) !!}
                 {!! nl2br(e($dataDaftarTxn['pemeriksaan']['FisikujiFungsi']['FisikujiFungsi'] ?? '')) !!}
                 @php
-                    $psk = $dataDaftarTxn['pemeriksaan']['pemeriksaanPsikiatri'] ?? [];
-                    $pskPb = $psk['prosesBerpikir'] ?? [];
-                    $pskIsi = $pskPb['isiPikir'] ?? [];
-                    $pskYaKet = fn($jawab, $ket) => $jawab === 'Ya' && trim((string) $ket) !== '' ? 'Ya (' . trim($ket) . ')' : $jawab;
-                    $pskBaris = array_filter([
-                        'Kesadaran' => $psk['kesadaran'] ?? '',
-                        'Kontak Mata' => $psk['kontak']['mata'] ?? '',
-                        'Kontak Verbal' => $psk['kontak']['verbal'] ?? '',
-                        'Mood / Afek' => $psk['moodAfek'] ?? '',
-                        'Bentuk Pikir' => $pskPb['bentukPikir'] ?? '',
-                        'Arus Pikir' => $pskPb['arusPikir'] ?? '',
-                        'Isi Pikir: Pikiran Tidak Masuk Akal' => $pskYaKet($pskIsi['pikiranTidakMasukAkal'] ?? '', $pskIsi['keteranganPikiranTidakMasukAkal'] ?? ''),
-                        'Isi Pikir: Waham' => $pskYaKet($pskIsi['waham'] ?? '', $pskIsi['keteranganWaham'] ?? ''),
-                        'Persepsi' => $psk['persepsi'] ?? '',
-                        'Kemauan' => $psk['kemauan'] ?? '',
-                        'Psikomotor' => $psk['psikomotor'] ?? '',
-                    ], fn($v) => trim((string) $v) !== '');
+                    // Status Psikiatri: format baru + isian format lama berakhiran "(lama)" — satu sumber.
+                    $pskBaris = \App\Support\Options\PsikiatriOptions::ringkasan(
+                        $dataDaftarTxn['pemeriksaan']['pemeriksaanPsikiatri'] ?? [],
+                    );
                 @endphp
                 @if ($pskBaris)
-                    <br><span class="font-bold">Pemeriksaan Psikiatri:</span><br>
+                    <br><span class="font-bold">Status Psikiatri:</span><br>
                     @foreach ($pskBaris as $label => $nilai)
                         {{ $label }} : {{ $nilai }}<br>
                     @endforeach
@@ -413,8 +410,12 @@
         @php
             $daftarAskep = (array) ($dataDaftarTxn['asuhanKeperawatan'] ?? []);
             $askepText = collect($daftarAskep)
-                ->map(fn ($askep) => trim(($askep['diagKepId'] ?? '') . ' ' . ($askep['diagKepDesc'] ?? ''))
-                    . (count($askep['implementasi'] ?? []) ? ' (implementasi ' . count($askep['implementasi']) . 'x)' : ''))
+                ->map(
+                    fn($askep) => trim(($askep['diagKepId'] ?? '') . ' ' . ($askep['diagKepDesc'] ?? '')) .
+                        (count($askep['implementasi'] ?? [])
+                            ? ' (implementasi ' . count($askep['implementasi']) . 'x)'
+                            : ''),
+                )
                 ->filter()
                 ->implode("\n");
         @endphp

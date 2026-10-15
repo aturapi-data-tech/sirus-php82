@@ -337,8 +337,9 @@ new class extends Component {
                                     <span class="text-base font-semibold text-body dark:text-gray-300">Rekam
                                         Medis</span>
                                 </div>
+                                {{-- Viewer-nya dipasang di pelayanan-rj.blade.php (satu-satunya host EMR RJ). --}}
                                 <livewire:pages::components.rekam-medis.rekam-medis-display.rekam-medis-display
-                                    :regNo="$regNoPasien" :rjNoRefCopyTo="$rjNo ?? 0"
+                                    :regNo="$regNoPasien" :rjNoRefCopyTo="$rjNo ?? 0" :pasangViewer="false"
                                     wire:key="emr-rj.eresep-rj-rekam-medis-display-rj-{{ $regNoPasien ?: 'new' }}" />
                             </div>
                         </div>
