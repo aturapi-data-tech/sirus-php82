@@ -1,5 +1,5 @@
 {{-- pages/transaksi/ugd/emr-ugd/pemeriksaan/tabs/umum-tab.blade.php --}}
-<div class="pt-0">
+<div class="space-y-4">
     @role('Dokter')
         @include('pages.transaksi.ugd.emr-ugd.pemeriksaan.tabs.umum-tab-dokter-view')
     @endrole

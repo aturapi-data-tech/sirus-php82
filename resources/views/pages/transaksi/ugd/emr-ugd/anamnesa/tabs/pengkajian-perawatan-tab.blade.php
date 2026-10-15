@@ -1,5 +1,5 @@
 {{-- pages/transaksi/ugd/emr-ugd/anamnesa/tabs/pengkajian-perawatan-tab.blade.php --}}
-<div class="w-full mb-1">
+<div class="w-full mb-1 space-y-4">
     @role('Dokter')
         @include('pages.transaksi.ugd.emr-ugd.anamnesa.tabs.pengkajian-perawatan-tab-dokter-view')
     @endrole
