@@ -82,6 +82,9 @@ class PsikiatriOptions
 
     public const PSIKOMOTOR = ['Meningkat', 'Normal', 'Menurun'];
 
+    /** rsmst_polis.poli_id "POLI PSIKIATRI" — panel Status Psikiatri RJ terbuka otomatis di poli ini. */
+    public const POLI_ID = '14';
+
     /** Bentuk kosong node pemeriksaanPsikiatri (format baru). */
     public static function defaultForm(): array
     {
