@@ -33,6 +33,9 @@ new class extends Component {
     /** Skalar yang dipakai partial tab (mis. komponen display laborat/radiologi). */
     public string $regNoPasien = '';
 
+    /** Poli kunjungan — panel Status Psikiatri terbuka otomatis di Poli Psikiatri. */
+    public string $poliId = '';
+
     /** Penanda kunjungan sudah dimuat lewat open(). */
     public bool $dokumenTermuat = false;
 
@@ -104,6 +107,7 @@ new class extends Component {
         // Initialize pemeriksaan data jika belum ada
         $this->muatDariDokumen($data);
         $this->dokumenTermuat = true;
+        $this->poliId = (string) ($data['poliId'] ?? '');
 
         // Sync suspekAkibatKerja ke property terpisah — default 'Tidak' jika belum diisi
         $this->suspekAkibatKerja = $this->pemeriksaan['suspekAkibatKerja']['suspekAkibatKerja'] ?? '' ?: 'Tidak';
@@ -754,6 +758,7 @@ new class extends Component {
     {
         $this->resetVersion();
         $this->isFormLocked = false;
+        $this->poliId = '';
         $this->filePDF = null;
         $this->descPDF = '';
         $this->viewFilePDF = '';

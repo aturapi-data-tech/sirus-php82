@@ -3,6 +3,9 @@
     $opsiPsikiatri = \App\Support\Options\PsikiatriOptions::class;
     $psikiatri = $pemeriksaan['pemeriksaanPsikiatri'] ?? [];
     $isianLama = \App\Support\Options\PsikiatriOptions::ringkasanLama($psikiatri);
+    // Panel buka-tutup: terbuka otomatis di Poli Psikiatri, atau bila kunjungan ini sudah berisi
+    // Status Psikiatri (mis. pasien jiwa diperiksa di poli lain); selain itu tertutup.
+    $psikiatriTerbuka = ($poliId ?? '') == $opsiPsikiatri::POLI_ID;
     $jalur = 'pemeriksaan.pemeriksaanPsikiatri';
 
     // Satu baris formulir: label kiri, pilihan kanan — meniru lembar kertas "Status Psikiatri".
@@ -20,7 +23,7 @@
     ];
 @endphp
 
-<x-border-form :title="__('Status Psikiatri')" :align="__('start')" :bgcolor="__('bg-surface-soft')">
+<x-border-form :title="__('Status Psikiatri')" :align="__('start')" :bgcolor="__('bg-surface-soft')" :collapsible="true" :open="$psikiatriTerbuka">
     <div class="divide-y divide-hairline dark:divide-gray-700">
 
         {{-- Semua baris seragam: label di atas, pilihan mulai dari kiri selebar panel
@@ -61,16 +64,14 @@
                  Kelancaran berbagi sisa lebar — pilihan di dalamnya boleh turun baris, kelompoknya tidak.
                  Layar sempit: bertumpuk tanpa garis. --}}
             <div class="flex flex-col gap-3 mt-2 sm:flex-row">
-                @foreach ([
-                    ['label' => 'Mata', 'field' => 'kontakMata', 'opsi' => $opsiPsikiatri::KONTAK_MATA],
-                    ['label' => 'Verbal', 'field' => 'kontakVerbalRelevansi', 'opsi' => $opsiPsikiatri::KONTAK_VERBAL_RELEVANSI],
-                    ['label' => 'Kelancaran Verbal', 'field' => 'kontakVerbalKelancaran', 'opsi' => $opsiPsikiatri::KONTAK_VERBAL_KELANCARAN],
-                ] as $kelompok)
-                    <div class="{{ $loop->first ? 'shrink-0' : 'flex-1 min-w-0 sm:border-l sm:pl-4 border-hairline dark:border-gray-700' }}">
+                @foreach ([['label' => 'Mata', 'field' => 'kontakMata', 'opsi' => $opsiPsikiatri::KONTAK_MATA], ['label' => 'Verbal', 'field' => 'kontakVerbalRelevansi', 'opsi' => $opsiPsikiatri::KONTAK_VERBAL_RELEVANSI], ['label' => 'Kelancaran Verbal', 'field' => 'kontakVerbalKelancaran', 'opsi' => $opsiPsikiatri::KONTAK_VERBAL_KELANCARAN]] as $kelompok)
+                    <div
+                        class="{{ $loop->first ? 'shrink-0' : 'flex-1 min-w-0 sm:border-l sm:pl-4 border-hairline dark:border-gray-700' }}">
                         <span class="block mb-2 text-sm text-muted dark:text-gray-400">{{ $kelompok['label'] }}</span>
                         <div class="flex flex-wrap gap-2">
                             @foreach ($kelompok['opsi'] as $opsi)
-                                <x-radio-button :label="$opsi" :value="$opsi" name="psikiatri-{{ $kelompok['field'] }}"
+                                <x-radio-button :label="$opsi" :value="$opsi"
+                                    name="psikiatri-{{ $kelompok['field'] }}"
                                     wire:model.live="{{ $jalur }}.{{ $kelompok['field'] }}" :disabled="$isFormLocked" />
                             @endforeach
                         </div>
