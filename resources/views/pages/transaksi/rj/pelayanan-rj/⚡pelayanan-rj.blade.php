@@ -1169,14 +1169,26 @@ new class extends Component {
             <livewire:pages::transaksi.rj.pelayanan-rj.pengkajian-medis-rj-actions wire:key="pengkajian-medis-rj-actions" />
             <livewire:pages::transaksi.rj.pelayanan-rj.prmrj-rj-actions wire:key="prmrj-rj-actions" />
 
-            {{-- Viewer rekam medis, dipanggil tombol "Rekam Medis" di panel Riwayat
-                 Pengkajian. Dipasang DI SINI karena panel rekam-medis-display yang
-                 dulu memasangnya sedang dikomentari; kalau panel itu dihidupkan lagi,
-                 mount ini WAJIB dibuang supaya tak ada dua pendengar untuk event yang
-                 sama. Ditaruh sesudah komponen di atas: kedua modal ber-z-50, yang
-                 lebih belakang di DOM yang tampil di depan. --}}
+            {{-- Viewer rekam medis — dipasang SEKALI di halaman ini untuk semua pemanggil:
+                 tabel review & panel rekam-medis-display di modal Pengkajian Medis
+                 (dipasang dengan :pasangViewer="false", jadi tak memasang viewer sendiri)
+                 serta PRMRJ. Jangan pasang lagi di komponen anak — dua pendengar untuk
+                 event yang sama = modal ganda. Ditaruh sesudah komponen di atas: modalnya
+                 ber-z-50, yang lebih belakang di DOM tampil di depan. --}}
             <livewire:pages::components.rekam-medis.rj.cetak-rekam-medis.cetak-rekam-medis-open
                 wire:key="pengkajian-medis-rj-lihat-rekam-medis" />
+            <livewire:pages::components.rekam-medis.rj.cetak-rekam-medis.cetak-rekam-medis-rj-v1
+                wire:key="pelayanan-rj.rekam-medis.cetak-rekam-medis-rj-v1" />
+            <livewire:pages::components.rekam-medis.rj.cetak-rekam-medis.cetak-rekam-medis-rj-fisio
+                wire:key="pelayanan-rj.rekam-medis.cetak-rekam-medis-rj-fisio" />
+            <livewire:pages::components.rekam-medis.ugd.cetak-rekam-medis.cetak-rekam-medis-open
+                wire:key="pelayanan-rj.rekam-medis.cetak-rekam-medis-ugd-open" />
+            <livewire:pages::components.rekam-medis.ri.cetak-rekam-medis.cetak-rekam-medis-open
+                wire:key="pelayanan-rj.rekam-medis.cetak-rekam-medis-ri-open" />
+            <livewire:pages::components.rekam-medis.ugd.dokumen-view.surat-kematian-riwayat-ugd
+                wire:key="pelayanan-rj.rekam-medis.surat-kematian-riwayat-ugd" />
+            <livewire:pages::components.rekam-medis.ri.dokumen-view.surat-kematian-riwayat-ri
+                wire:key="pelayanan-rj.rekam-medis.surat-kematian-riwayat-ri" />
 
             {{-- Host aksi Task ID poli (berisi fungsi) — mount 1×. Tombol tiap baris
                  dispatch 'task-id-poli-proses' ke sini via wire:click. --}}
