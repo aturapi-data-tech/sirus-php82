@@ -496,45 +496,11 @@ new class extends Component {
                 class="w-full p-4 space-y-6 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
 
                 @if ($dokumenTermuat)
-                    <div class="w-full">
-                        <div x-data="{ activeTab: '{{ $perencanaan['pengkajianMedisTab'] ?? 'Petugas Medis' }}' }" class="w-full">
+                    {{-- Petugas Medis & Tindak Lanjut ditampilkan atas-bawah (tanpa tab), sama dengan EMR RJ --}}
+                    <div class="w-full space-y-6">
+                        @include('pages.transaksi.ugd.emr-ugd.perencanaan.tabs.petugas-medis-tab')
 
-                            {{-- TAB NAVIGATION --}}
-                            <x-scrollable-tabs class="w-full px-2 mb-2 border-b border-hairline dark:border-gray-700">
-                                <div class="flex flex-nowrap w-full gap-2 -mb-px">
-
-                                    <x-tab variant="underline"
-                                        active-expr="activeTab === '{{ $perencanaan['pengkajianMedisTab'] ?? 'Petugas Medis' }}'"
-                                        x-on:click="activeTab = '{{ $perencanaan['pengkajianMedisTab'] ?? 'Petugas Medis' }}'">
-                                        {{ $perencanaan['pengkajianMedisTab'] ?? 'Petugas Medis' }}
-                                    </x-tab>
-
-                                    <x-tab variant="underline"
-                                        active-expr="activeTab === '{{ $perencanaan['tindakLanjutTab'] ?? 'Tindak Lanjut' }}'"
-                                        x-on:click="activeTab = '{{ $perencanaan['tindakLanjutTab'] ?? 'Tindak Lanjut' }}'">
-                                        {{ $perencanaan['tindakLanjutTab'] ?? 'Tindak Lanjut' }}
-                                    </x-tab>
-
-                                </div>
-                            </x-scrollable-tabs>
-
-                            {{-- TAB CONTENTS --}}
-                            <div class="w-full p-4">
-
-                                {{-- PETUGAS MEDIS --}}
-                                <div class="w-full"
-                                    x-show.transition.in.opacity.duration.600="activeTab === '{{ $perencanaan['pengkajianMedisTab'] ?? 'Petugas Medis' }}'">
-                                    @include('pages.transaksi.ugd.emr-ugd.perencanaan.tabs.petugas-medis-tab')
-                                </div>
-
-                                {{-- TINDAK LANJUT --}}
-                                <div class="w-full"
-                                    x-show.transition.in.opacity.duration.600="activeTab === '{{ $perencanaan['tindakLanjutTab'] ?? 'Tindak Lanjut' }}'">
-                                    @include('pages.transaksi.ugd.emr-ugd.perencanaan.tabs.tindak-lanjut-tab')
-                                </div>
-
-                            </div>
-                        </div>
+                        @include('pages.transaksi.ugd.emr-ugd.perencanaan.tabs.tindak-lanjut-tab')
                     </div>
                 @endif
 
