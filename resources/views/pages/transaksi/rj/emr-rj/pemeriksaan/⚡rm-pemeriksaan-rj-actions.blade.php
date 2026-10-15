@@ -8,6 +8,8 @@ use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\On;
 use Livewire\WithFileUploads;
 use Illuminate\Support\Facades\Storage;
+use App\Support\Options\PsikiatriOptions;
+
 
 new class extends Component {
     use EmrRJTrait, WithRenderVersioningTrait, WithValidationToastTrait, WithFileUploads;
@@ -160,27 +162,8 @@ new class extends Component {
 
             'fisik' => '',
 
-            'pemeriksaanPsikiatri' => [
-                'kesadaran' => '',
-                'kontak' => [
-                    'mata' => '',
-                    'verbal' => '',
-                ],
-                'moodAfek' => '',
-                'prosesBerpikir' => [
-                    'bentukPikir' => '', // Realistik / Non Realistik
-                    'arusPikir' => '', // Lancar / Tidak Lancar
-                    'isiPikir' => [
-                        'pikiranTidakMasukAkal' => '', // Ya / Tidak
-                        'keteranganPikiranTidakMasukAkal' => '',
-                        'waham' => '', // Ya / Tidak
-                        'keteranganWaham' => '',
-                    ],
-                ],
-                'persepsi' => '',
-                'kemauan' => '',
-                'psikomotor' => '',
-            ],
+            // Status Psikiatri (O) — bentuk & opsi di App\Support\Options\PsikiatriOptions.
+            'pemeriksaanPsikiatri' => PsikiatriOptions::defaultForm(),
 
             'anatomi' => collect(['kepala', 'mata', 'telinga', 'hidung', 'rambut', 'bibir', 'gigiGeligi', 'lidah', 'langitLangit', 'leher', 'tenggorokan', 'tonsil', 'dada', 'payudarah', 'punggung', 'perut', 'genital', 'anus', 'lenganAtas', 'lenganBawah', 'jariTangan', 'kukuTangan', 'persendianTangan', 'tungkaiAtas', 'tungkaiBawah', 'jariKaki', 'kukuKaki', 'persendianKaki', 'faring'])
                 ->mapWithKeys(
@@ -693,11 +676,12 @@ new class extends Component {
             $this->hitungIMT();
         }
 
-        // Psikiatri: keterangan hanya berlaku bila jawabannya Ya
-        foreach (['pikiranTidakMasukAkal', 'waham'] as $field) {
-            if ($propertyName === "pemeriksaan.pemeriksaanPsikiatri.prosesBerpikir.isiPikir.{$field}" && $value !== 'Ya') {
-                $this->pemeriksaan['pemeriksaanPsikiatri']['prosesBerpikir']['isiPikir']['keterangan' . ucfirst($field)] = '';
-            }
+        // Psikiatri: isian turunan dikosongkan bila induknya tak lagi berlaku.
+        if ($propertyName === 'pemeriksaan.pemeriksaanPsikiatri.kesadaranStatus' && $value !== 'GCS') {
+            $this->pemeriksaan['pemeriksaanPsikiatri']['kesadaranGcs'] = '';
+        }
+        if ($propertyName === 'pemeriksaan.pemeriksaanPsikiatri.halusinasi' && ! $value) {
+            $this->pemeriksaan['pemeriksaanPsikiatri']['halusinasiJenis'] = [];
         }
 
         // Sync radio button suspekAkibatKerja ke irisan pemeriksaan

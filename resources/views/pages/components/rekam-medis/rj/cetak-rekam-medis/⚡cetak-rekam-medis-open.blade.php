@@ -543,26 +543,11 @@ new class extends Component {
                         </p>
                     </x-border-form>
                     @php
-                        $psk = $dataDaftarTxn['pemeriksaan']['pemeriksaanPsikiatri'] ?? [];
-                        $pskPb = $psk['prosesBerpikir'] ?? [];
-                        $pskIsi = $pskPb['isiPikir'] ?? [];
-                        $pskYaKet = fn($jawab, $ket) => $jawab === 'Ya' && trim((string) $ket) !== '' ? 'Ya (' . trim($ket) . ')' : $jawab;
-                        $pskBaris = array_filter([
-                            'Kesadaran' => $psk['kesadaran'] ?? '',
-                            'Kontak Mata' => $psk['kontak']['mata'] ?? '',
-                            'Kontak Verbal' => $psk['kontak']['verbal'] ?? '',
-                            'Mood / Afek' => $psk['moodAfek'] ?? '',
-                            'Bentuk Pikir' => $pskPb['bentukPikir'] ?? '',
-                            'Arus Pikir' => $pskPb['arusPikir'] ?? '',
-                            'Isi Pikir: Pikiran Tidak Masuk Akal' => $pskYaKet($pskIsi['pikiranTidakMasukAkal'] ?? '', $pskIsi['keteranganPikiranTidakMasukAkal'] ?? ''),
-                            'Isi Pikir: Waham' => $pskYaKet($pskIsi['waham'] ?? '', $pskIsi['keteranganWaham'] ?? ''),
-                            'Persepsi' => $psk['persepsi'] ?? '',
-                            'Kemauan' => $psk['kemauan'] ?? '',
-                            'Psikomotor' => $psk['psikomotor'] ?? '',
-                        ], fn($v) => trim((string) $v) !== '');
+                        // Status Psikiatri (O): format baru + isian format lama berakhiran "(lama)" — satu sumber.
+                        $pskBaris = \App\Support\Options\PsikiatriOptions::ringkasan($dataDaftarTxn['pemeriksaan']['pemeriksaanPsikiatri'] ?? []);
                     @endphp
                     @if ($pskBaris)
-                        <x-border-form title="Pemeriksaan Psikiatri">
+                        <x-border-form title="Status Psikiatri">
                             @foreach ($pskBaris as $label => $nilai)
                                 <p class="flex gap-3 text-base leading-relaxed pb-1.5 border-b border-hairline-soft dark:border-gray-800 last:border-0"><span class="w-56 shrink-0 text-right text-muted">{{ $label }} :</span>
                                     <span class="text-body dark:text-gray-300">{{ $nilai }}</span>
