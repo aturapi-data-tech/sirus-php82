@@ -543,102 +543,11 @@ new class extends Component {
 
                 {{-- jika perencanaan ada --}}
                 @if (!empty($perencanaan))
-                    <div class="w-full">
-                        <div id="TransaksiRawatJalan" x-data="{ activeTab: '{{ $perencanaan['pengkajianMedisTab'] ?? 'Petugas Medis' }}' }" class="w-full">
+                    {{-- Petugas Medis & Tindak Lanjut ditampilkan atas-bawah (tanpa tab) --}}
+                    <div class="w-full space-y-6">
+                        @include('pages.transaksi.rj.emr-rj.perencanaan.tabs.petugas-medis-tab')
 
-                            {{-- TAB NAVIGATION --}}
-                            <x-scrollable-tabs class="w-full px-2 mb-2 border-b border-hairline dark:border-gray-700">
-                                <div class="flex flex-nowrap w-full gap-2 -mb-px">
-
-                                    {{-- PETUGAS MEDIS TAB --}}
-                                    <x-tab variant="underline"
-                                        active-expr="activeTab === '{{ $perencanaan['pengkajianMedisTab'] ?? 'Petugas Medis' }}'"
-                                        x-on:click="activeTab = '{{ $perencanaan['pengkajianMedisTab'] ?? 'Petugas Medis' }}'">
-                                        {{ $perencanaan['pengkajianMedisTab'] ?? 'Petugas Medis' }}
-                                    </x-tab>
-
-                                    {{-- TINDAK LANJUT TAB --}}
-                                    <x-tab variant="underline"
-                                        active-expr="activeTab === '{{ $perencanaan['tindakLanjutTab'] ?? 'Tindak Lanjut' }}'"
-                                        x-on:click="activeTab = '{{ $perencanaan['tindakLanjutTab'] ?? 'Tindak Lanjut' }}'">
-                                        {{ $perencanaan['tindakLanjutTab'] ?? 'Tindak Lanjut' }}
-                                    </x-tab>
-
-                                    {{-- TERAPI TAB --}}
-                                    {{-- <li class="mr-2">
-                                        <label
-                                            class="inline-block p-4 border-b-2 border-transparent rounded-t-lg cursor-pointer hover:text-muted hover:border-gray-300"
-                                            :class="activeTab === '{{ $perencanaan['terapiTab'] ?? 'Terapi' }}'
-                                                ? 'text-brand border-brand dark:text-emerald-300 dark:border-emerald-400 bg-surface-soft' : ''"
-                                            @click="activeTab = '{{ $perencanaan['terapiTab'] ?? 'Terapi' }}'">
-                                            {{ $perencanaan['terapiTab'] ?? 'Terapi' }}
-                                        </label>
-                                    </li> --}}
-
-                                    {{-- RAWAT INAP TAB --}}
-                                    {{-- <li class="mr-2">
-                                        <label
-                                            class="inline-block p-4 border-b-2 border-transparent rounded-t-lg cursor-pointer hover:text-muted hover:border-gray-300"
-                                            :class="activeTab === '{{ $perencanaan['rawatInapTab'] ?? 'Rawat Inap' }}'
-                                                ? 'text-brand border-brand dark:text-emerald-300 dark:border-emerald-400 bg-surface-soft' : ''"
-                                            @click="activeTab = '{{ $perencanaan['rawatInapTab'] ?? 'Rawat Inap' }}'">
-                                            {{ $perencanaan['rawatInapTab'] ?? 'Rawat Inap' }}
-                                        </label>
-                                    </li> --}}
-
-                                    {{-- DISCHARGE PLANNING TAB --}}
-                                    {{-- <li class="mr-2">
-                                        <label
-                                            class="inline-block p-4 border-b-2 border-transparent rounded-t-lg cursor-pointer hover:text-muted hover:border-gray-300"
-                                            :class="activeTab === '{{ $perencanaan['dischargePlanningTab'] ?? 'Discharge Planning' }}'
-                                                ? 'text-brand border-brand dark:text-emerald-300 dark:border-emerald-400 bg-surface-soft' : ''"
-                                            @click="activeTab = '{{ $perencanaan['dischargePlanningTab'] ?? 'Discharge Planning' }}'">
-                                            {{ $perencanaan['dischargePlanningTab'] ?? 'Discharge Planning' }}
-                                        </label>
-                                    </li> --}}
-
-                                </div>
-                            </x-scrollable-tabs>
-
-                            {{-- TAB CONTENTS --}}
-                            <div class="w-full p-4">
-
-                                {{-- PETUGAS MEDIS TAB --}}
-                                <div class="w-full"
-                                    x-show.transition.in.opacity.duration.600="activeTab === '{{ $perencanaan['pengkajianMedisTab'] ?? 'Petugas Medis' }}'">
-                                    @include('pages.transaksi.rj.emr-rj.perencanaan.tabs.petugas-medis-tab')
-                                </div>
-
-                                {{-- TINDAK LANJUT TAB --}}
-                                <div class="w-full"
-                                    x-show.transition.in.opacity.duration.600="activeTab === '{{ $perencanaan['tindakLanjutTab'] ?? 'Tindak Lanjut' }}'">
-                                    @include('pages.transaksi.rj.emr-rj.perencanaan.tabs.tindak-lanjut-tab')
-                                </div>
-
-                                {{-- TERAPI TAB --}}
-                                {{-- <div class="w-full"
-                                    x-show.transition.in.opacity.duration.600="activeTab === '{{ $perencanaan['terapiTab'] ?? 'Terapi' }}'">
-                                    @include('pages.transaksi.rj.emr-rj.perencanaan.tabs.terapi-tab')
-                                </div> --}}
-
-                                {{-- RAWAT INAP TAB --}}
-                                {{-- @if (isset($perencanaan['rawatInapTab']))
-                                    <div class="w-full"
-                                        x-show.transition.in.opacity.duration.600="activeTab === '{{ $perencanaan['rawatInapTab'] ?? 'Rawat Inap' }}'">
-                                        @include('pages.transaksi.rj.emr-rj.perencanaan.tabs.rawat-inap-tab')
-                                    </div>
-                                @endif --}}
-
-                                {{-- DISCHARGE PLANNING TAB --}}
-                                {{-- @if (isset($perencanaan['dischargePlanningTab']))
-                                    <div class="w-full"
-                                        x-show.transition.in.opacity.duration.600="activeTab === '{{ $perencanaan['dischargePlanningTab'] ?? 'Discharge Planning' }}'">
-                                        @include('pages.transaksi.rj.emr-rj.perencanaan.tabs.discharge-planning-tab')
-                                    </div>
-                                @endif --}}
-
-                            </div>
-                        </div>
+                        @include('pages.transaksi.rj.emr-rj.perencanaan.tabs.tindak-lanjut-tab')
                     </div>
                 @endif
             </div>
