@@ -72,34 +72,10 @@ new class extends Component {
         <div class="flex flex-col min-h-[calc(100vh-4rem)]">
 
             {{-- HEADER --}}
-            <div class="px-6 py-5 border-b border-hairline dark:border-gray-700">
-                <div class="flex items-start justify-between gap-4">
-                    <div class="flex items-center gap-3">
-                        <div class="flex items-center justify-center w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-900/30">
-                            <svg class="w-5 h-5 text-indigo-700 dark:text-indigo-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                        </div>
-                        <div>
-                            <h2 class="font-semibold text-2xl text-ink dark:text-gray-100">
-                                Kelengkapan EMR Rawat Inap — No. RI {{ $riHdrNo ?? '-' }}
-                            </h2>
-                            <p class="mt-0.5 text-sm text-muted dark:text-gray-400">
-                                Status pasien saat ini & panduan kriteria 100%.
-                            </p>
-                        </div>
-                    </div>
-                    <x-icon-button color="gray" type="button"
-                        x-on:click="$dispatch('close-modal', { name: 'info-kelengkapan-emr-ri' })">
-                        <span class="sr-only">Tutup</span>
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd"
-                                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                                clip-rule="evenodd" />
-                        </svg>
-                    </x-icon-button>
-                </div>
-            </div>
+            <x-modul-dokumen.header :judul="'Kelengkapan EMR — No. RI ' . ($riHdrNo ?? '-')" ikon="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                jalur="RI" namaModal="info-kelengkapan-emr-ri">
+                Status pasien saat ini & panduan kriteria 100%.
+            </x-modul-dokumen.header>
 
             {{-- BODY --}}
             <div class="flex-1 px-6 py-5 space-y-5 overflow-y-auto">

@@ -139,33 +139,9 @@ new class extends Component {
     <x-modal name="lab-luar-order-ugd-{{ $rjNo }}" size="2xl" focusable>
         <div wire:key="{{ $this->renderKey('lab-luar-order-modal', [$rjNo ?: 'empty']) }}">
 
-            <div class="px-6 py-4 border-b border-hairline dark:border-gray-700">
-                <div class="flex items-center justify-between gap-4">
-                    <div class="flex items-center gap-3">
-                        <div class="flex items-center justify-center w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-500/15">
-                            <svg class="w-5 h-5 text-amber-700 dark:text-amber-400" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M9 17v-2a4 4 0 014-4h4M5 7h14M5 11h6m-6 4h6m-6 4h6" />
-                            </svg>
-                        </div>
-                        <div>
-                            <h2 class="text-lg font-semibold text-ink dark:text-gray-100">
-                                Order Pemeriksaan Laboratorium Luar
-                            </h2>
-                            <p class="text-sm text-muted">No. UGD: <span
-                                    class="font-mono font-medium">{{ $rjNo }}</span></p>
-                        </div>
-                    </div>
-                    <x-icon-button color="gray" type="button" wire:click="closeModal">
-                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd"
-                                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                                clip-rule="evenodd" />
-                        </svg>
-                    </x-icon-button>
-                </div>
-            </div>
+            <x-modul-dokumen.header judul="Order Pemeriksaan Laboratorium Luar" ikon="M9 17v-2a4 4 0 014-4h4M5 7h14M5 11h6m-6 4h6m-6 4h6">
+                No. UGD: <span class="font-mono font-medium">{{ $rjNo }}</span>
+            </x-modul-dokumen.header>
 
             <div class="px-6 py-5 space-y-4">
                 <div>

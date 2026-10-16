@@ -512,45 +512,30 @@ new class extends Component {
             wire:key="{{ $this->renderKey('modal', [$formMode, $trfNo ?? 'new']) }}">
 
             {{-- HEADER --}}
-            <div class="relative px-6 py-5 border-b border-hairline dark:border-gray-700">
-                <div class="relative flex items-start justify-between gap-4">
-                    <div>
-                        <h2 class="font-semibold text-2xl text-ink dark:text-gray-100">
-                            @if ($formMode === 'create')
-                                Buat Transfer Non-Medis Baru
-                            @elseif($formMode === 'edit')
-                                Edit Transfer Non-Medis #{{ $trfNo }}
-                            @else
-                                Detail Transfer Non-Medis #{{ $trfNo }}
-                            @endif
-                        </h2>
-                        <p class="mt-0.5 text-sm text-muted dark:text-gray-400">
-                            Pindahkan barang non-medis dari {{ $slNameFrom ?? 'Gudang' }} ke lokasi tujuan.
-                        </p>
-                        <div class="flex flex-wrap items-center gap-2 mt-3">
-                            <x-badge
-                                :variant="$formMode === 'create' ? 'success' : ($formMode === 'edit' ? 'warning' : 'gray')">
-                                {{ match ($formMode) {
-                                    'create' => 'Transfer Baru',
-                                    'edit' => 'Sedang Diedit',
-                                    default => 'Hanya Lihat',
-                                } }}
-                            </x-badge>
-                            @if ($trfNo)
-                                <x-badge :variant="$this->statusLabel[1]">{{ $this->statusLabel[0] }}</x-badge>
-                            @endif
-                            <span class="text-xs text-muted dark:text-gray-400">{{ $trfDateDisplay }}</span>
-                        </div>
-                    </div>
-                    <x-icon-button color="gray" type="button" wire:click="closeModal">
-                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd"
-                                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                                clip-rule="evenodd" />
-                        </svg>
-                    </x-icon-button>
-                </div>
-            </div>
+            @php
+                $judulModal = match ($formMode) {
+                    'create' => 'Buat Transfer Non-Medis Baru',
+                    'edit' => 'Edit Transfer Non-Medis #' . $trfNo,
+                    default => 'Detail Transfer Non-Medis #' . $trfNo,
+                };
+            @endphp
+            <x-modul-dokumen.header :judul="$judulModal" ikon="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4">
+                Pindahkan barang non-medis dari {{ $slNameFrom ?? 'Gudang' }} ke lokasi tujuan.
+                <x-slot:badge>
+                    <x-badge
+                        :variant="$formMode === 'create' ? 'success' : ($formMode === 'edit' ? 'warning' : 'gray')">
+                        {{ match ($formMode) {
+                            'create' => 'Transfer Baru',
+                            'edit' => 'Sedang Diedit',
+                            default => 'Hanya Lihat',
+                        } }}
+                    </x-badge>
+                    @if ($trfNo)
+                        <x-badge :variant="$this->statusLabel[1]">{{ $this->statusLabel[0] }}</x-badge>
+                    @endif
+                    <span class="text-xs text-muted dark:text-gray-400">{{ $trfDateDisplay }}</span>
+                </x-slot:badge>
+            </x-modul-dokumen.header>
 
             {{-- BODY --}}
             <div class="flex-1 px-4 py-4 space-y-4 bg-surface-soft/70 dark:bg-gray-950/20" x-data

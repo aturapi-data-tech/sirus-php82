@@ -289,28 +289,14 @@ new class extends Component {
         <div class="flex flex-col h-full">
 
             {{-- Header --}}
-            <div class="flex items-start justify-between gap-3 px-6 py-4 border-b border-hairline dark:border-gray-700 shrink-0">
-                <div>
-                    <h2 class="text-xl font-bold tracking-tight text-ink dark:text-gray-100">
-                        Tulis Hasil Bacaan Radiologi
-                    </h2>
-                    <p class="mt-0.5 text-xs text-muted">
-                        Isi narasi hasil bacaan, pilih dokter radiolog yang menandatangani, lalu klik <strong>Generate &amp; Simpan</strong> — PDF otomatis tersusun dan tersimpan ke kolom Hasil Bacaan.
-                    </p>
-                    @if (!empty($selectedSource) && !empty($selectedRefNo))
-                        <p class="mt-1 text-xs font-mono text-muted-soft">
-                            Sumber: <span class="font-semibold">{{ $selectedSource }}</span>
-                            · Ref: <span class="font-semibold">{{ $selectedRefNo }}</span>
-                            · Dtl: <span class="font-semibold">{{ $selectedDtl }}</span>
-                        </p>
-                    @endif
-                </div>
-                <x-icon-button color="gray" type="button" wire:click="closeGenerateModal" class="shrink-0">
-                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
-                    </svg>
-                </x-icon-button>
-            </div>
+            <x-modul-dokumen.header judul="Tulis Hasil Bacaan Radiologi" ikon="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" tutup="closeGenerateModal">
+                Isi narasi hasil bacaan, pilih dokter radiolog yang menandatangani, lalu klik <strong>Generate &amp; Simpan</strong> — PDF otomatis tersusun dan tersimpan ke kolom Hasil Bacaan.
+                @if (!empty($selectedSource) && !empty($selectedRefNo))
+                    · <span class="font-mono">Sumber: <span class="font-semibold">{{ $selectedSource }}</span>
+                    · Ref: <span class="font-semibold">{{ $selectedRefNo }}</span>
+                    · Dtl: <span class="font-semibold">{{ $selectedDtl }}</span></span>
+                @endif
+            </x-modul-dokumen.header>
 
             {{-- Body — scrollable --}}
             <div class="flex-1 px-6 py-5 space-y-4 overflow-y-auto">
@@ -362,17 +348,14 @@ new class extends Component {
     {{-- ============================================ --}}
     <x-modal name="rad-upload-pdf" size="lg" focusable>
         <div>
-            <div class="px-6 py-4 border-b border-hairline dark:border-gray-700">
-                <h2 class="text-lg font-semibold">Upload Hasil Bacaan Radiologi</h2>
-                <p class="text-xs text-muted">Format PDF atau JPG, maks 5 MB.</p>
+            <x-modul-dokumen.header judul="Upload Hasil Bacaan Radiologi" ikon="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" tutup="closeUploadPdfModal">
+                Format PDF atau JPG, maks 5 MB.
                 @if (!empty($selectedSource) && !empty($selectedRefNo))
-                    <p class="mt-1 text-xs font-mono text-muted-soft">
-                        Sumber: <span class="font-semibold">{{ $selectedSource }}</span>
-                        · Ref: <span class="font-semibold">{{ $selectedRefNo }}</span>
-                        · Dtl: <span class="font-semibold">{{ $selectedDtl }}</span>
-                    </p>
+                    · <span class="font-mono">Sumber: <span class="font-semibold">{{ $selectedSource }}</span>
+                    · Ref: <span class="font-semibold">{{ $selectedRefNo }}</span>
+                    · Dtl: <span class="font-semibold">{{ $selectedDtl }}</span></span>
                 @endif
-            </div>
+            </x-modul-dokumen.header>
             <div class="px-6 py-5 space-y-4">
                 <x-file-upload
                     name="pdfFile"

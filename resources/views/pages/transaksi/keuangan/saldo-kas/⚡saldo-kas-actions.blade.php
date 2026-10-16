@@ -136,19 +136,14 @@ new class extends Component {
 
 <div>
     <x-modal name="saldo-kas-actions" focusable>
-        <div class="p-6 space-y-5"
-             wire:key="{{ $this->renderKey('modal', [$accId, $tanggal]) }}">
+        <div wire:key="{{ $this->renderKey('modal', [$accId, $tanggal]) }}">
+            <x-modul-dokumen.header judul="Edit Saldo Awal Tahun" ikon="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
+                Sistem akan back-calc saldo awal tahun {{ $tahun }} agar saldo per
+                {{ $tanggal ? \Carbon\Carbon::parse($tanggal)->format('d/m/Y') : '' }}{{ $shift !== '' ? ' shift ' . $shift : '' }}
+                sama dengan target yang Anda tentukan.
+            </x-modul-dokumen.header>
 
-            <div>
-                <h2 class="text-lg font-semibold text-ink dark:text-gray-100">
-                    Edit Saldo Awal Tahun
-                </h2>
-                <p class="mt-1 text-sm text-muted dark:text-gray-400">
-                    Sistem akan back-calc saldo awal tahun {{ $tahun }} agar saldo per
-                    {{ $tanggal ? \Carbon\Carbon::parse($tanggal)->format('d/m/Y') : '' }}{{ $shift !== '' ? ' shift ' . $shift : '' }}
-                    sama dengan target yang Anda tentukan.
-                </p>
-            </div>
+        <div class="p-6 space-y-5">
 
             <x-border-form title="Konteks">
                 <dl class="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
@@ -193,6 +188,7 @@ new class extends Component {
                     <span wire:loading>Saving...</span>
                 </x-primary-button>
             </div>
+        </div>
         </div>
     </x-modal>
 </div>
