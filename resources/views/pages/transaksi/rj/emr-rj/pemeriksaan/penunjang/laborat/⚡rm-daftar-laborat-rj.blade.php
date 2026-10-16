@@ -62,27 +62,20 @@ new class extends Component {
 ?>
 
 <div>
-    <table class="w-full text-base text-left text-muted table-auto">
-        <thead class="text-sm text-body uppercase bg-surface-soft">
-            <tr>
-                <th class="px-4 py-3 text-sm font-medium text-muted uppercase dark:text-gray-400">Tgl Lab</th>
-                <th class="px-4 py-3 text-sm font-medium text-muted uppercase dark:text-gray-400">Pemeriksaan Lab</th>
-                <th class="w-24 px-4 py-3 text-sm font-medium text-center text-muted uppercase dark:text-gray-400">Status</th>
-            </tr>
-        </thead>
-        <tbody class="bg-canvas">
+    <x-modul-dokumen.tabel-daftar :kolom="['Tgl Lab', 'Pemeriksaan Lab', 'Status' => 'w-24 text-center']">
             @forelse ($this->rows as $orderLab)
-                <tr class="border-b group">
-                    <td class="px-2 py-2 text-sm font-mono text-muted group-hover:bg-surface-soft whitespace-nowrap">
+                <tbody class="border-b border-hairline dark:border-gray-700">
+                <tr class="hover:bg-surface-soft dark:hover:bg-gray-800/60">
+                    <td class="px-4 py-3 font-mono text-muted dark:text-gray-300 whitespace-nowrap">
                         {{ $orderLab->checkup_date ? \Carbon\Carbon::parse($orderLab->checkup_date)->format('d/m/Y H:i') : '-' }}
                     </td>
-                    <td class="px-2 py-2 text-body group-hover:bg-surface-soft">
+                    <td class="px-4 py-3 text-body">
                         @if ($orderLab->cito_status === '1')
                             <x-badge variant="danger" class="mr-1 font-bold">CITO</x-badge>
                         @endif
                         {{ $orderLab->items }}
                     </td>
-                    <td class="px-2 py-2 text-center group-hover:bg-surface-soft">
+                    <td class="px-4 py-3 text-center">
                         @if ($orderLab->checkup_status === 'H')
                             <x-badge variant="success">Selesai</x-badge>
                         @elseif ($orderLab->checkup_status === 'C')
@@ -92,13 +85,9 @@ new class extends Component {
                         @endif
                     </td>
                 </tr>
+                </tbody>
             @empty
-                <tr>
-                    <td colspan="3" class="px-4 py-6 text-base text-center text-muted-soft">
-                        Belum ada data laboratorium
-                    </td>
-                </tr>
+                <x-modul-dokumen.baris-kosong :kolom="3" pesan="Belum ada data laboratorium" />
             @endforelse
-        </tbody>
-    </table>
+        </x-modul-dokumen.tabel-daftar>
 </div>
