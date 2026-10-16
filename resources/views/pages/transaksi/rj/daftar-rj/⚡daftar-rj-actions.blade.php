@@ -459,9 +459,6 @@ new class extends Component {
             'poli_id' => $this->formDaftar['poliId'],
             'dr_id' => $this->formDaftar['drId'],
             'shift' => $this->formDaftar['shift'],
-            'txn_status' => $this->formDaftar['txnStatus'] ?? 'A',
-            'rj_status' => $this->formDaftar['rjStatus'] ?? 'A',
-            'erm_status' => $this->formDaftar['ermStatus'] ?? 'A',
             'pass_status' => $this->formDaftar['passStatus'] ?? 'O',
             'cek_lab' => $this->formDaftar['cekLab'] ?? '0',
             'sl_codefrom' => $this->formDaftar['slCodeFrom'] ?? '02',
@@ -469,6 +466,16 @@ new class extends Component {
             'waktu_masuk_pelayanan' => DB::raw("to_date('" . $this->formDaftar['rjDate'] . "','dd/mm/yyyy hh24:mi:ss')"),
             'vno_sep' => $this->formDaftar['sep']['noSep'] ?? '',
         ];
+
+        // Kolom status hanya ditulis saat CREATE. Sesudahnya milik modul lain — erm_status
+        // (TTD-E dokter), rj_status & txn_status (kasir) — sedangkan isian form adalah potret
+        // saat form DIBUKA: ubah pendaftaran dari form yang lama terbuka dulu menimpa
+        // erm_status 'L' kembali ke 'A', jadi kunjungan yang sudah di-TTD tak lagi Selesai.
+        if ($this->formMode === 'create') {
+            $payload['txn_status'] = $this->formDaftar['txnStatus'] ?? 'A';
+            $payload['rj_status']  = $this->formDaftar['rjStatus'] ?? 'A';
+            $payload['erm_status'] = $this->formDaftar['ermStatus'] ?? 'A';
+        }
 
         // Mode CREATE: include admin prices dari JSON (sudah di-set oleh
         // recomputeAdminPrices() saat user pilih dokter / ubah klaim).
@@ -688,6 +695,13 @@ new class extends Component {
     {
         $allowedFields = ['regNo', 'drId', 'drDesc', 'poliId', 'poliDesc', 'kddrbpjs', 'kdpolibpjs', 'klaimId', 'kunjunganId', 'rjDate', 'shift', 'noAntrian', 'noBooking', 'slCodeFrom', 'passStatus', 'rjStatus', 'txnStatus', 'ermStatus', 'cekLab', 'kunjunganInternalStatus', 'noReferensi', 'postInap', 'internal12', 'internal12Desc', 'kontrol12', 'kontrol12Desc', 'taskIdPelayanan', 'sep', 'klaimStatus'];
 
+        // Saat UPDATE, kunci yang dikelola modul lain TIDAK diambil dari potret form (lihat
+        // buildPayload): status ikut kolom header terbaru lewat findDataRJ, dan dari
+        // taskIdPelayanan hanya task 1–3 milik pendaftaran yang ditulis — task 4–7/99
+        // (poli, apotek, batal) dicatat modul lain sesudah form dibuka.
+        $kunciMilikLain = ['rjStatus', 'txnStatus', 'ermStatus', 'taskIdPelayanan'];
+        $kunciTaskPendaftaran = ['tambahPendaftaran', 'taskId1', 'taskId1Status', 'taskId2', 'taskId2Status', 'taskId3', 'taskId3Status'];
+
         if ($this->formMode === 'create') {
             $this->updateJsonRJ($rjNo, $this->formDaftar);
 
@@ -728,11 +742,14 @@ new class extends Component {
         // Potret sebelum digabung — dasar pembanding untuk log perubahan.
         $sebelum = $existingData;
 
-        foreach ($allowedFields as $field) {
+        foreach (array_diff($allowedFields, $kunciMilikLain) as $field) {
             if (array_key_exists($field, $this->formDaftar)) {
                 $existingData[$field] = $this->formDaftar[$field];
             }
         }
+
+        $taskForm = array_intersect_key($this->formDaftar['taskIdPelayanan'] ?? [], array_flip($kunciTaskPendaftaran));
+        $existingData['taskIdPelayanan'] = array_replace($existingData['taskIdPelayanan'] ?? [], $taskForm);
 
         $this->updateJsonRJ($rjNo, $existingData);
 
