@@ -154,52 +154,21 @@ new class extends Component {
         <div class="flex flex-col min-h-[calc(100vh-8rem)]">
 
             {{-- ── HEADER ── --}}
-            <div class="relative px-6 py-5 border-b border-hairline dark:border-gray-700">
-                <div class="absolute inset-0 opacity-[0.06] dark:opacity-[0.10]"
-                    style="background-image: radial-gradient(currentColor 1px, transparent 1px); background-size: 14px 14px;">
-                </div>
-                <div class="relative flex items-start justify-between gap-4">
-                    <div>
-                        <div class="flex items-center gap-3">
-                            <div
-                                class="flex items-center justify-center w-10 h-10 rounded-xl bg-brand-green/10 dark:bg-brand-lime/15">
-                                <svg class="w-5 h-5 text-brand-green dark:text-brand-lime" fill="none"
-                                    stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                                </svg>
-                            </div>
-                            <div>
-                                <h2 class="text-xl font-semibold text-ink dark:text-gray-100">
-                                    Kelola Akun Kas
-                                </h2>
-                                <p class="mt-0.5 text-sm text-muted dark:text-gray-400">
-                                    {{ $userName }}
-                                    @if ($userEmail)
-                                        <span class="text-muted-soft">· {{ $userEmail }}</span>
-                                    @endif
-                                </p>
-                            </div>
-                        </div>
-                        <div class="flex flex-wrap gap-2 mt-3">
-                            <x-badge variant="brand">{{ count($userKasIds) }} kas aktif</x-badge>
-                            @if ($empId)
-                                <x-badge variant="success">EMP: {{ $empId }}</x-badge>
-                            @else
-                                <x-badge variant="danger">EMP ID belum diset</x-badge>
-                            @endif
-                        </div>
-                    </div>
-
-                    {{-- ✅ Tutup header: x-secondary-button --}}
-                    <x-secondary-button type="button" wire:click="closeModal" class="!p-2">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                    </x-secondary-button>
-                </div>
-            </div>
+            <x-modul-dokumen.header judul="Kelola Akun Kas"
+                ikon="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z">
+                {{ $userName }}
+                @if ($userEmail)
+                    <span class="text-muted-soft">· {{ $userEmail }}</span>
+                @endif
+                <x-slot:badge>
+                    <x-badge variant="brand">{{ count($userKasIds) }} kas aktif</x-badge>
+                    @if ($empId)
+                        <x-badge variant="success">EMP: {{ $empId }}</x-badge>
+                    @else
+                        <x-badge variant="danger">EMP ID belum diset</x-badge>
+                    @endif
+                </x-slot:badge>
+            </x-modul-dokumen.header>
 
             {{-- ── BODY ── --}}
             <div class="flex-1 px-6 py-4 overflow-y-auto bg-surface-soft/70 dark:bg-gray-950/20">

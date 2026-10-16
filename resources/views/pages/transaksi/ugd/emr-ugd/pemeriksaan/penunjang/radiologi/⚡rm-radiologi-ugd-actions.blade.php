@@ -229,36 +229,10 @@ new class extends Component {
             wire:key="{{ $this->renderKey('radiologi-order-modal-ugd', [$rjNo ?: 'empty']) }}">
 
             {{-- Header --}}
-            <div class="relative px-6 py-4 border-b border-hairline dark:border-gray-700">
-                <div class="absolute inset-0 opacity-[0.05]"
-                    style="background-image: radial-gradient(currentColor 1px, transparent 1px); background-size: 14px 14px;">
-                </div>
-                <div class="relative flex items-center justify-between gap-4">
-                    <div class="flex items-center gap-3">
-                        <div
-                            class="flex items-center justify-center w-10 h-10 rounded-xl bg-brand-blue/10 dark:bg-brand-blue/15">
-                            <svg class="w-5 h-5 text-brand-blue" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
-                            </svg>
-                        </div>
-                        <div>
-                            <h2 class="text-lg font-semibold text-ink dark:text-gray-100">Order Pemeriksaan
-                                Radiologi</h2>
-                            <p class="text-sm text-muted">No. UGD: <span
-                                    class="font-mono font-medium">{{ $rjNo }}</span></p>
-                        </div>
-                    </div>
-                    <x-icon-button color="gray" type="button" wire:click="closeModal">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd"
-                                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                                clip-rule="evenodd" />
-                        </svg>
-                    </x-icon-button>
-                </div>
-            </div>
+            <x-modul-dokumen.header judul="Order Pemeriksaan Radiologi"
+                ikon="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z">
+                No. UGD: <span class="font-mono font-medium">{{ $rjNo }}</span>
+            </x-modul-dokumen.header>
 
             {{-- Display Pasien UGD --}}
             <div class="border-b border-hairline dark:border-gray-700">

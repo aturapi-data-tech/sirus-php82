@@ -427,44 +427,10 @@ new class extends Component {
         <div class="flex flex-col h-[calc(100vh-4rem)]" wire:key="view-upload-penunjang-{{ $viewFilePDF }}">
 
             {{-- HEADER --}}
-            <div class="relative px-6 py-5 border-b border-hairline dark:border-gray-700 shrink-0">
-                <div class="absolute inset-0 opacity-[0.06] dark:opacity-[0.10]"
-                    style="background-image:radial-gradient(currentColor 1px,transparent 1px);
-                           background-size:14px 14px">
-                </div>
-                <div class="relative flex items-start justify-between gap-4">
-                    <div class="flex items-center gap-3">
-                        <div
-                            class="flex items-center justify-center w-10 h-10 rounded-xl
-                                   bg-yellow-400/10 dark:bg-yellow-400/15">
-                            <svg class="w-5 h-5 text-yellow-500" xmlns="http://www.w3.org/2000/svg"
-                                fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm-1
-                                         1.5L18.5 9H13V3.5zM8 13h8v1.5H8V13zm0 3h8v1.5H8V16zm0-6h3v1.5H8V10z" />
-                            </svg>
-                        </div>
-                        <div>
-                            <h2 class="text-xl font-semibold text-ink dark:text-gray-100">
-                                Hasil Penunjang
-                            </h2>
-                            <p class="mt-0.5 text-sm text-muted dark:text-gray-400">
-                                Preview file hasil penunjang pasien (PDF/JPG)
-                            </p>
-                        </div>
-                    </div>
-
-                    <x-secondary-button type="button" wire:click="closeViewPDF" class="!p-2">
-                        <span class="sr-only">Tutup</span>
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20"
-                            fill="currentColor">
-                            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0
-                                   111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414
-                                   1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586
-                                   10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
-                        </svg>
-                    </x-secondary-button>
-                </div>
-            </div>
+            <x-modul-dokumen.header judul="Hasil Penunjang" tutup="closeViewPDF"
+                ikon="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm-1 1.5L18.5 9H13V3.5zM8 13h8v1.5H8V13zm0 3h8v1.5H8V16zm0-6h3v1.5H8V10z">
+                Preview file hasil penunjang pasien (PDF/JPG)
+            </x-modul-dokumen.header>
 
             {{-- BODY — iframe via base64 data URI, tidak perlu route --}}
             <div class="flex-1 min-h-0 bg-surface-soft dark:bg-gray-950">

@@ -307,46 +307,15 @@ new class extends Component {
             wire:key="{{ $this->renderKey('modal', [$formMode, $userId ?? 'new']) }}">
 
             {{-- ── HEADER ── --}}
-            <div class="relative px-6 py-5 border-b border-hairline dark:border-gray-700">
-                <div class="absolute inset-0 opacity-[0.06] dark:opacity-[0.10]"
-                    style="background-image: radial-gradient(currentColor 1px, transparent 1px); background-size: 14px 14px;">
-                </div>
-                <div class="relative flex items-start justify-between gap-4">
-                    <div>
-                        <div class="flex items-center gap-3">
-                            <div
-                                class="flex items-center justify-center w-10 h-10 rounded-xl bg-brand-green/10 dark:bg-brand-lime/15">
-                                <img src="{{ asset('images/Logogram black solid.png') }}"
-                                    class="block w-6 h-6 dark:hidden" alt="RSI Madinah" />
-                                <img src="{{ asset('images/Logogram white solid.png') }}"
-                                    class="hidden w-6 h-6 dark:block" alt="RSI Madinah" />
-                            </div>
-                            <div>
-                                <h2 class="text-xl font-semibold text-ink dark:text-gray-100">
-                                    {{ $formMode === 'edit' ? 'Ubah User' : 'Tambah User Baru' }}
-                                </h2>
-                                <p class="mt-0.5 text-sm text-muted dark:text-gray-400">
-                                    Kelola data pengguna dan hak akses sistem.
-                                </p>
-                            </div>
-                        </div>
-                        <div class="flex gap-2 mt-3">
-                            <x-badge :variant="$formMode === 'edit' ? 'warning' : 'success'">
-                                {{ $formMode === 'edit' ? 'Mode: Edit' : 'Mode: Tambah' }}
-                            </x-badge>
-                            @if ($isFormLocked)
-                                <x-badge variant="danger">Read Only</x-badge>
-                            @endif
-                        </div>
-                    </div>
-                    <x-secondary-button type="button" wire:click="closeModal" class="!p-2">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                    </x-secondary-button>
-                </div>
-            </div>
+            <x-modul-dokumen.header :judul="$formMode === 'edit' ? 'Ubah User' : 'Tambah User Baru'"
+                :readOnly="$isFormLocked" ikon="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                Kelola data pengguna dan hak akses sistem.
+            <x-slot:badge>
+                <x-badge :variant="$formMode === 'edit' ? 'warning' : 'success'">
+                    {{ $formMode === 'edit' ? 'Mode: Edit' : 'Mode: Tambah' }}
+                </x-badge>
+            </x-slot:badge>
+            </x-modul-dokumen.header>
 
             {{-- ── BODY ── --}}
             <div class="flex-1 px-4 py-4 overflow-y-auto bg-surface-soft/70 dark:bg-gray-950/20" x-data

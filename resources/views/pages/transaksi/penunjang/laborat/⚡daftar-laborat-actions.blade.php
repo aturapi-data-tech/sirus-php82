@@ -683,91 +683,61 @@ new class extends Component {
         <div class="flex flex-col h-full" wire:key="{{ $this->renderKey('lab-actions-modal', [$checkupNo ?: 'empty']) }}">
 
             {{-- MODAL HEADER --}}
-            <div class="relative px-6 py-4 border-b border-hairline dark:border-gray-700">
-                <div class="absolute inset-0 opacity-[0.05]"
-                    style="background-image: radial-gradient(currentColor 1px, transparent 1px); background-size: 14px 14px;">
-                </div>
-                <div class="relative flex items-center justify-between gap-4">
+            <x-modul-dokumen.header judul="Transaksi Laboratorium" tutup="closeActions"
+                ikon="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2">
+                No. Checkup: <span class="font-mono font-medium">{{ $checkupNo }}</span>
+                <x-slot:badge>
+                    @if (!empty($headerData))
+                        @php
+                            $st = $headerData['checkup_status'] ?? '';
+                            $stText = match ($st) {
+                                'H' => 'Selesai',
+                                'C' => 'Proses',
+                                'P' => 'Terdaftar',
+                                default => '-',
+                            };
+                            $stVariant = match ($st) {
+                                'H' => 'success',
+                                'C' => 'warning',
+                                default => 'gray',
+                            };
+                        @endphp
+                        <x-badge :variant="$stVariant">{{ $stText }}</x-badge>
+                    @endif
+                </x-slot:badge>
+            </x-modul-dokumen.header>
+
+            {{-- Ringkasan biaya (dulu di tengah header lama) --}}
+            <div class="flex flex-wrap items-center gap-2 px-6 py-2 border-b border-hairline dark:border-gray-700">
+                <div
+                    class="w-full p-2 border border-hairline rounded-2xl dark:border-gray-700 bg-surface-soft dark:bg-gray-800/40">
                     <div class="flex items-center gap-3">
-                        <div
-                            class="flex items-center justify-center w-10 h-10 rounded-xl bg-brand-green/10 dark:bg-brand-green/15">
-                            <svg class="w-5 h-5 text-brand-green dark:text-brand-lime" fill="none"
-                                stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                            </svg>
+
+                        {{-- Grid biaya --}}
+                        <div class="grid flex-1 grid-cols-3 gap-1.5">
+                            @foreach ([['label' => 'Pemeriksaan', 'value' => $sumPemeriksaan], ['label' => 'Pemeriksaan Luar', 'value' => $sumPemeriksaanLuar], ['label' => 'Obat dan Bahan', 'value' => $sumObat]] as $item)
+                                <div
+                                    class="px-2.5 py-1.5 bg-canvas border border-hairline rounded-xl dark:bg-gray-900 dark:border-gray-700">
+                                    <p class="text-xs text-muted dark:text-gray-400 mb-0.5 truncate">
+                                        {{ $item['label'] }}</p>
+                                    <p class="text-sm font-semibold text-ink dark:text-gray-200 tabular-nums">
+                                        Rp {{ number_format($item['value']) }}
+                                    </p>
+                                </div>
+                            @endforeach
                         </div>
-                        <div>
-                            <h2 class="text-lg font-semibold text-ink dark:text-gray-100">
-                                Transaksi Laboratorium
-                            </h2>
-                            <p class="text-xs text-muted">No. Checkup:
-                                <span class="font-mono font-medium">{{ $checkupNo }}</span>
+
+                        {{-- Total Tagihan --}}
+                        <div
+                            class="flex-shrink-0 px-5 py-3 text-right border rounded-2xl bg-brand-green/10 dark:bg-brand-lime/10 border-brand-green/20 dark:border-brand-lime/20">
+                            <p
+                                class="mb-1 text-xs font-medium tracking-wide uppercase text-brand-green dark:text-brand-lime whitespace-nowrap">
+                                Total Tagihan
+                            </p>
+                            <p class="text-2xl font-bold text-ink dark:text-white tabular-nums whitespace-nowrap">
+                                Rp {{ number_format($sumTotal) }}
                             </p>
                         </div>
-                    </div>
-
-                    {{-- TENGAH: Ringkasan Biaya --}}
-                    <div
-                        class="flex-1 p-2 border border-hairline rounded-2xl dark:border-gray-700 bg-surface-soft dark:bg-gray-800/40">
-                        <div class="flex items-center gap-3">
-
-                            {{-- Grid biaya --}}
-                            <div class="grid flex-1 grid-cols-3 gap-1.5">
-                                @foreach ([['label' => 'Pemeriksaan', 'value' => $sumPemeriksaan], ['label' => 'Pemeriksaan Luar', 'value' => $sumPemeriksaanLuar], ['label' => 'Obat dan Bahan', 'value' => $sumObat]] as $item)
-                                    <div
-                                        class="px-2.5 py-1.5 bg-canvas border border-hairline rounded-xl dark:bg-gray-900 dark:border-gray-700">
-                                        <p class="text-xs text-muted dark:text-gray-400 mb-0.5 truncate">
-                                            {{ $item['label'] }}</p>
-                                        <p class="text-sm font-semibold text-ink dark:text-gray-200 tabular-nums">
-                                            Rp {{ number_format($item['value']) }}
-                                        </p>
-                                    </div>
-                                @endforeach
-                            </div>
-
-                            {{-- Total Tagihan --}}
-                            <div
-                                class="flex-shrink-0 px-5 py-3 text-right border rounded-2xl bg-brand-green/10 dark:bg-brand-lime/10 border-brand-green/20 dark:border-brand-lime/20">
-                                <p
-                                    class="mb-1 text-xs font-medium tracking-wide uppercase text-brand-green dark:text-brand-lime whitespace-nowrap">
-                                    Total Tagihan
-                                </p>
-                                <p class="text-2xl font-bold text-ink dark:text-white tabular-nums whitespace-nowrap">
-                                    Rp {{ number_format($sumTotal) }}
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- STATUS BADGE + CLOSE --}}
-                    <div class="flex items-center gap-3 flex-shrink-0">
-                        @if (!empty($headerData))
-                            @php
-                                $st = $headerData['checkup_status'] ?? '';
-                                $stText = match ($st) {
-                                    'H' => 'Selesai',
-                                    'C' => 'Proses',
-                                    'P' => 'Terdaftar',
-                                    default => '-',
-                                };
-                                $stVariant = match ($st) {
-                                    'H' => 'success',
-                                    'C' => 'warning',
-                                    default => 'gray',
-                                };
-                            @endphp
-                            <x-badge :variant="$stVariant">{{ $stText }}</x-badge>
-                        @endif
-
-                        <x-icon-button color="gray" type="button" wire:click="closeActions">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20"
-                                fill="currentColor">
-                                <path fill-rule="evenodd"
-                                    d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                                    clip-rule="evenodd" />
-                            </svg>
-                        </x-icon-button>
                     </div>
                 </div>
             </div>
