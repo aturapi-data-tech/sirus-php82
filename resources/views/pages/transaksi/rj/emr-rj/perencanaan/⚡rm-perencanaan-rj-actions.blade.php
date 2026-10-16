@@ -159,6 +159,8 @@ new class extends Component {
                 'waktuPemeriksaan' => '',
                 'selesaiPemeriksaan' => '',
                 'drPemeriksa' => '',
+                // Terisi {nama, kode, role} bila TTD-E dilakukan perwakilan (setDrPemeriksaPerwakilan).
+                'diwakilkanOleh' => [],
             ],
 
             'tindakLanjutTab' => 'Tindak Lanjut',
@@ -355,21 +357,74 @@ new class extends Component {
             return;
         }
 
+        $this->stempelDrPemeriksa(null);
+    }
+
+    /**
+     * Perwakilan (manager ke atas, Gate dokumen.ttdPerwakilan): boleh TTD-E atas nama
+     * dokter kunjungan bila dirinya BUKAN dokter kunjungan itu. Pola sama dengan
+     * Resume Medis RI — stempel tetap atas nama dokter, penekan tombol tercatat.
+     */
+    public function bolehTtdPerwakilan(): bool
+    {
+        $kodeSaya = trim((string) (auth()->user()->myuser_code ?? ''));
+
+        return $this->drId !== '' && $kodeSaya !== $this->drId && auth()->user()->can('dokumen.ttdPerwakilan');
+    }
+
+    public function setDrPemeriksaPerwakilan(): void
+    {
+        if ($this->isFormLocked) {
+            return;
+        }
+
+        // Guard SERVER — wire:click memanggil method publik, guard blade saja bisa ditembus.
+        if (!$this->bolehTtdPerwakilan()) {
+            $this->dispatch('toast', type: 'error', message: 'Anda tidak berhak TTD-E atas nama dokter pemeriksa.');
+            return;
+        }
+
         try {
-            DB::transaction(function () {
+            $this->validateBeforeDrPemeriksa();
+        } catch (ValidationException $e) {
+            return;
+        }
+
+        $user = auth()->user();
+        $this->stempelDrPemeriksa([
+            'nama' => (string) ($user->myuser_name ?? $user->name ?? ''),
+            'kode' => (string) ($user->myuser_code ?? ''),
+            'role' => $user->getRoleNames()->implode(', '),
+        ]);
+    }
+
+    /**
+     * Tulis stempel TTD-E Dokter Pemeriksa + kunci EMR. Stempel SELALU atas nama dokter
+     * kunjungan (drDesc/drId); bila $diwakilkanOleh terisi, penekan tombol dicatat di
+     * `pengkajianMedis.diwakilkanOleh` dan di log.
+     */
+    private function stempelDrPemeriksa(?array $diwakilkanOleh): void
+    {
+        try {
+            DB::transaction(function () use ($diwakilkanOleh) {
                 // 1. Lock row dulu — update erm_status + JSON harus atomik dalam satu transaksi
                 $this->lockRJRow($this->rjNo);
 
                 $drDesc = $this->drDesc ?: 'Dokter Pemeriksa';
+                $sekarang = Carbon::now()->format('d/m/Y H:i:s');
 
                 // 2. Set data perencanaan
                 $this->perencanaan['pengkajianMedis']['drPemeriksa'] = $drDesc;
+                $this->perencanaan['pengkajianMedis']['diwakilkanOleh'] = $diwakilkanOleh ?? [];
 
-                // Auto-isi waktu pemeriksaan jika belum diisi
-                $this->perencanaan['pengkajianMedis']['waktuPemeriksaan'] ??= Carbon::now()->format('d/m/Y H:i:s');
-
-                // Auto-isi selesai pemeriksaan jika belum diisi
-                $this->perencanaan['pengkajianMedis']['selesaiPemeriksaan'] ??= Carbon::now()->format('d/m/Y H:i:s');
+                // Auto-isi waktu jika belum diisi. Bawaannya '' (bukan null), jadi pakai
+                // blank() — `??=` tidak pernah mengisi string kosong.
+                if (blank($this->perencanaan['pengkajianMedis']['waktuPemeriksaan'] ?? '')) {
+                    $this->perencanaan['pengkajianMedis']['waktuPemeriksaan'] = $sekarang;
+                }
+                if (blank($this->perencanaan['pengkajianMedis']['selesaiPemeriksaan'] ?? '')) {
+                    $this->perencanaan['pengkajianMedis']['selesaiPemeriksaan'] = $sekarang;
+                }
 
                 // 3. Update erm_status di header — dalam satu transaksi dengan JSON update
                 $this->ermStatus = 'L';
@@ -381,10 +436,14 @@ new class extends Component {
                 $this->syncPerencanaanJson();
 
                 // 5. Audit log
-                $this->appendAdminLogRJ((int) $this->rjNo, 'TTD-E Dokter Pemeriksa (kunci EMR) — ' . $drDesc . ' @ ' . ($this->perencanaan['pengkajianMedis']['waktuPemeriksaan'] ?? '-'), 'MR');
+                $this->appendAdminLogRJ((int) $this->rjNo, 'TTD-E Dokter Pemeriksa (kunci EMR) — ' . $drDesc
+                    . ($diwakilkanOleh ? ' (DIWAKILKAN oleh ' . $diwakilkanOleh['nama'] . ' [' . $diwakilkanOleh['role'] . '])' : '')
+                    . ' @ ' . ($this->perencanaan['pengkajianMedis']['waktuPemeriksaan'] ?? '-'), 'MR');
             });
 
-            $this->afterSave('TTD-E berhasil.');
+            $this->afterSave($diwakilkanOleh
+                ? 'TTD-E atas nama ' . ($this->drDesc ?: 'dokter pemeriksa') . ' berhasil (perwakilan tercatat di log).'
+                : 'TTD-E berhasil.');
         } catch (\RuntimeException $e) {
             $this->dispatch('toast', type: 'error', message: $e->getMessage());
         } catch (\Exception $e) {
@@ -435,6 +494,7 @@ new class extends Component {
 
                 $this->perencanaan['pengkajianMedis']['drPemeriksa'] = '';
                 $this->perencanaan['pengkajianMedis']['selesaiPemeriksaan'] = '';
+                $this->perencanaan['pengkajianMedis']['diwakilkanOleh'] = [];
 
                 $this->ermStatus = 'A';
                 DB::table('rstxn_rjhdrs')

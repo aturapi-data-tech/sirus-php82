@@ -262,10 +262,59 @@ new class extends Component {
             return;
         }
 
+        $this->stempelDrPemeriksa(null);
+    }
+
+    /**
+     * Perwakilan (manager ke atas, Gate dokumen.ttdPerwakilan): boleh TTD-E atas nama
+     * dokter kunjungan bila dirinya BUKAN dokter kunjungan itu. Pola sama dengan
+     * Resume Medis RI — stempel tetap atas nama dokter, penekan tombol tercatat.
+     */
+    public function bolehTtdPerwakilan(): bool
+    {
+        $kodeSaya = trim((string) (auth()->user()->myuser_code ?? ''));
+
+        return $this->drId !== '' && $kodeSaya !== $this->drId && auth()->user()->can('dokumen.ttdPerwakilan');
+    }
+
+    public function setDrPemeriksaPerwakilan(): void
+    {
+        if ($this->isFormLocked) {
+            return;
+        }
+
+        // Guard SERVER — wire:click memanggil method publik, guard blade saja bisa ditembus.
+        if (!$this->bolehTtdPerwakilan()) {
+            $this->dispatch('toast', type: 'error', message: 'Anda tidak berhak TTD-E atas nama dokter pemeriksa.');
+            return;
+        }
+
+        try {
+            $this->validateBeforeDrPemeriksa();
+        } catch (ValidationException) {
+            return;
+        }
+
+        $user = auth()->user();
+        $this->stempelDrPemeriksa([
+            'nama' => (string) ($user->myuser_name ?? $user->name ?? ''),
+            'kode' => (string) ($user->myuser_code ?? ''),
+            'role' => $user->getRoleNames()->implode(', '),
+        ]);
+    }
+
+    /**
+     * Tulis stempel TTD-E Dokter Pemeriksa + kunci EMR. Stempel SELALU atas nama dokter
+     * kunjungan (drDesc/drId); bila $diwakilkanOleh terisi, penekan tombol dicatat di
+     * `pengkajianMedis.diwakilkanOleh` dan di log.
+     */
+    private function stempelDrPemeriksa(?array $diwakilkanOleh): void
+    {
         $drDesc = $this->drDesc ?: 'Dokter Pemeriksa';
 
         // Set property lokal
         $this->perencanaan['pengkajianMedis']['drPemeriksa'] = $drDesc;
+        $this->perencanaan['pengkajianMedis']['diwakilkanOleh'] = $diwakilkanOleh ?? [];
 
         if (empty($this->perencanaan['pengkajianMedis']['waktuPemeriksaan'])) {
             $this->perencanaan['pengkajianMedis']['waktuPemeriksaan'] = Carbon::now()->format('d/m/Y H:i:s');
@@ -276,7 +325,7 @@ new class extends Component {
         }
 
         try {
-            DB::transaction(function () use ($drDesc) {
+            DB::transaction(function () use ($drDesc, $diwakilkanOleh) {
                 // 1. Lock row dulu — erm_status + JSON harus atomik
                 $this->lockUGDRow($this->rjNo);
 
@@ -300,10 +349,14 @@ new class extends Component {
                 $this->muatDariDokumen($data);
 
                 // 5. Audit log
-                $this->appendAdminLogUGD((int) $this->rjNo, 'TTD-E Dokter Pemeriksa UGD — ' . $drDesc . ' (' . ($data['perencanaan']['pengkajianMedis']['waktuPemeriksaan'] ?? '-') . ')', 'MR');
+                $this->appendAdminLogUGD((int) $this->rjNo, 'TTD-E Dokter Pemeriksa UGD — ' . $drDesc
+                    . ($diwakilkanOleh ? ' (DIWAKILKAN oleh ' . $diwakilkanOleh['nama'] . ' [' . $diwakilkanOleh['role'] . '])' : '')
+                    . ' (' . ($data['perencanaan']['pengkajianMedis']['waktuPemeriksaan'] ?? '-') . ')', 'MR');
             });
 
-            $this->afterSave('TTD-E berhasil.');
+            $this->afterSave($diwakilkanOleh
+                ? 'TTD-E atas nama ' . $drDesc . ' berhasil (perwakilan tercatat di log).'
+                : 'TTD-E berhasil.');
         } catch (\RuntimeException $e) {
             $this->dispatch('toast', type: 'error', message: $e->getMessage());
         } catch (\Exception $e) {
@@ -362,6 +415,7 @@ new class extends Component {
 
                 $this->perencanaan['pengkajianMedis']['drPemeriksa'] = '';
                 $this->perencanaan['pengkajianMedis']['selesaiPemeriksaan'] = '';
+                $this->perencanaan['pengkajianMedis']['diwakilkanOleh'] = [];
 
                 DB::table('rstxn_ugdhdrs')
                     ->where('rj_no', $this->rjNo)
@@ -447,6 +501,8 @@ new class extends Component {
                 'waktuPemeriksaan' => '',
                 'selesaiPemeriksaan' => '',
                 'drPemeriksa' => '',
+                // Terisi {nama, kode, role} bila TTD-E dilakukan perwakilan (setDrPemeriksaPerwakilan).
+                'diwakilkanOleh' => [],
             ],
 
             'tindakLanjutTab' => 'Tindak Lanjut',
