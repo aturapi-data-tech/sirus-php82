@@ -387,78 +387,62 @@ new class extends Component {
                                     </div>
                                 @endunless
 
-                                <div class="overflow-x-auto border bg-canvas rounded-2xl border-hairline dark:border-gray-700">
-                                    <table class="ds-table">
-                                        <thead>
-                                            <tr>
-                                                <th class="ds-c w-10">No</th>
-                                                <th>Obat (Dosis &middot; Rute)</th>
-                                                <th>Keterangan</th>
-                                                <th class="w-44">Petugas</th>
-                                                <th class="ds-c w-14">Aksi</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
+                                <x-modul-dokumen.tabel-daftar :kolom="['Obat (Dosis · Rute)', 'Keterangan', 'Petugas' => 'w-44', 'Aksi' => 'text-center w-14']">
                                             @forelse ($daftarRekonsiliasiObat as $index => $obat)
-                                                <tr wire:key="rekonsiliasi-obat-ri-{{ $riHdrNo ?? 'new' }}-{{ $index }}">
-                                                    @php
-                                                        $dosisRute = collect([$obat['dosis'] ?? null, $obat['rute'] ?? null])
-                                                            ->filter(fn($isi) => filled($isi))
-                                                            ->implode(' · ');
-                                                    @endphp
-                                                    <td class="ds-c ds-td-meta">{{ $index + 1 }}</td>
-                                                    <td>
-                                                        <div class="ds-td-strong">{{ $obat['namaObat'] ?? '-' }}</div>
-                                                        @if ($dosisRute)
-                                                            <div class="text-muted dark:text-gray-400">{{ $dosisRute }}</div>
-                                                        @endif
-                                                    </td>
-
-                                                    <td>
-                                                        <div class="space-y-1.5">
-                                                            @foreach ([['dibawaRanap', 'Dibawa saat ranap'], ['digunakanRanap', 'Digunakan saat ranap'], ['lanjutPulang', 'Lanjut saat pulang']] as [$kolom, $judul])
-                                                                @php $nilai = ($obat[$kolom] ?? 'Tidak') === 'Ya' ? 'Ya' : 'Tidak'; @endphp
-                                                                <div class="flex items-center justify-between gap-2">
-                                                                    <span class="text-muted dark:text-gray-400">{{ $judul }}</span>
-                                                                    <span
-                                                                        class="font-medium {{ $nilai === 'Ya' ? 'text-success-deep dark:text-success' : 'text-muted-soft' }}">
-                                                                        {{ $nilai }}
-                                                                    </span>
-                                                                </div>
-                                                            @endforeach
-                                                        </div>
-                                                    </td>
-
-                                                    {{-- Pencatat entri. Baris lama (sebelum field ini ada) tampil '-'. --}}
-                                                    <td>
-                                                        @if (filled($obat['petugasRekonsiliasi'] ?? null))
-                                                            <div class="ds-td-strong">{{ $obat['petugasRekonsiliasi'] }}</div>
-                                                            @if (filled($obat['tglRekonsiliasi'] ?? null))
-                                                                <div class="text-muted dark:text-gray-400">{{ $obat['tglRekonsiliasi'] }}</div>
+                                                <tbody wire:key="rekonsiliasi-obat-ri-{{ $riHdrNo ?? 'new' }}-{{ $index }}" class="border-b border-hairline dark:border-gray-700">
+                                                    <tr class="align-top hover:bg-surface-soft dark:hover:bg-gray-800/60">
+                                                        @php
+                                                            $dosisRute = collect([$obat['dosis'] ?? null, $obat['rute'] ?? null])
+                                                                ->filter(fn($isi) => filled($isi))
+                                                                ->implode(' · ');
+                                                        @endphp
+                                                        <td class="px-4 py-3">
+                                                            <div class="ds-td-strong">{{ $obat['namaObat'] ?? '-' }}</div>
+                                                            @if ($dosisRute)
+                                                                <div class="text-muted dark:text-gray-400">{{ $dosisRute }}</div>
                                                             @endif
-                                                        @else
-                                                            <span class="text-muted-soft">-</span>
-                                                        @endif
-                                                    </td>
-
-                                                    <td class="ds-c">
-                                                        @unless ($isFormLocked)
-                                                            <x-hapus-button :action="'removeRekonsiliasiObat(' . $index . ')'" title="Hapus Obat" :message="'Yakin hapus ' . ($obat['namaObat'] ?? 'obat ini') . ' dari daftar?'" />
-                                                        @else
-                                                            <span class="text-muted-soft">&mdash;</span>
-                                                        @endunless
-                                                    </td>
-                                                </tr>
+                                                        </td>
+    
+                                                        <td class="px-4 py-3">
+                                                            <div class="space-y-1.5">
+                                                                @foreach ([['dibawaRanap', 'Dibawa saat ranap'], ['digunakanRanap', 'Digunakan saat ranap'], ['lanjutPulang', 'Lanjut saat pulang']] as [$kolom, $judul])
+                                                                    @php $nilai = ($obat[$kolom] ?? 'Tidak') === 'Ya' ? 'Ya' : 'Tidak'; @endphp
+                                                                    <div class="flex items-center justify-between gap-2">
+                                                                        <span class="text-muted dark:text-gray-400">{{ $judul }}</span>
+                                                                        <span
+                                                                            class="font-medium {{ $nilai === 'Ya' ? 'text-success-deep dark:text-success' : 'text-muted-soft' }}">
+                                                                            {{ $nilai }}
+                                                                        </span>
+                                                                    </div>
+                                                                @endforeach
+                                                            </div>
+                                                        </td>
+    
+                                                        {{-- Pencatat entri. Baris lama (sebelum field ini ada) tampil '-'. --}}
+                                                        <td class="px-4 py-3">
+                                                            @if (filled($obat['petugasRekonsiliasi'] ?? null))
+                                                                <div class="ds-td-strong">{{ $obat['petugasRekonsiliasi'] }}</div>
+                                                                @if (filled($obat['tglRekonsiliasi'] ?? null))
+                                                                    <div class="text-muted dark:text-gray-400">{{ $obat['tglRekonsiliasi'] }}</div>
+                                                                @endif
+                                                            @else
+                                                                <span class="text-muted-soft">-</span>
+                                                            @endif
+                                                        </td>
+    
+                                                        <td class="px-4 py-3 text-center">
+                                                            @unless ($isFormLocked)
+                                                                <x-hapus-button :action="'removeRekonsiliasiObat(' . $index . ')'" title="Hapus Obat" :message="'Yakin hapus ' . ($obat['namaObat'] ?? 'obat ini') . ' dari daftar?'" />
+                                                            @else
+                                                                <span class="text-muted-soft">&mdash;</span>
+                                                            @endunless
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
                                             @empty
-                                                <tr>
-                                                    <td colspan="5" class="ds-c italic text-muted-soft">
-                                                        {{ RekonsiliasiObat::teksDaftarKosong($statusRekonsiliasi) }}
-                                                    </td>
-                                                </tr>
+                                                <x-modul-dokumen.baris-kosong :kolom="4" :pesan="RekonsiliasiObat::teksDaftarKosong($statusRekonsiliasi)" />
                                             @endforelse
-                                        </tbody>
-                                    </table>
-                                </div>
+                                </x-modul-dokumen.tabel-daftar>
 
                             </div>
                         </div>
