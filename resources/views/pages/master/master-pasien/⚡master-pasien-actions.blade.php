@@ -808,71 +808,36 @@ new class extends Component {
             :wireKey="$this->renderKey('modal', [$formMode, $regNo])">
 
             {{-- HEADER --}}
-            <div class="relative px-6 py-5 bg-surface-soft">
-
-                <div class="relative flex items-start justify-between gap-4">
-                    <div class="flex items-start min-w-0 gap-3">
-                        <div
-                            class="flex items-center justify-center w-10 h-10 rounded-xl bg-brand-green/10 dark:bg-brand-lime/15 shrink-0">
-                            <img src="{{ asset('images/Logogram black solid.png') }}" alt="RSI Madinah"
-                                class="block w-6 h-6 dark:hidden" />
-                            <img src="{{ asset('images/Logogram white solid.png') }}" alt="RSI Madinah"
-                                class="hidden w-6 h-6 dark:block" />
-                        </div>
-
-                        <div class="min-w-0">
-                            {{-- Eyebrow: aksi (brand, bold) + mode --}}
-                            <div class="flex flex-wrap items-center gap-2">
-                                <span class="text-xs font-bold tracking-[0.12em] uppercase text-brand-green dark:text-brand-lime">{{ $formMode === 'edit' ? 'Ubah Data Pasien' : 'Tambah Data Pasien' }}</span>
-                                <x-badge :variant="$formMode === 'edit' ? 'warning' : 'success'">
-                                    {{ $formMode === 'edit' ? 'Mode: Edit' : 'Mode: Tambah' }}
-                                </x-badge>
-                            </div>
-
-                            @if (!empty($dataPasien['pasien']['regName']))
-                                {{-- Hero: nama pasien --}}
-                                {{-- No RM (mono, gelap, agak tebal) --}}
-                                <div class="mt-1.5 font-mono text-sm font-semibold tracking-wide text-ink dark:text-gray-100">
-                                    No. RM {{ $dataPasien['pasien']['regNo'] ?? '-' }}
-                                </div>
-                                {{-- Nama /(JK) — hero serif --}}
-                                <h2 class="mt-1 font-semibold text-3xl leading-tight text-ink dark:text-white">
-                                    {{ strtoupper($dataPasien['pasien']['regName']) }}
-                                    @if (!empty($dataPasien['pasien']['jenisKelamin']['jenisKelaminDesc']))
-                                        <span class="font-sans text-lg font-normal text-muted dark:text-gray-400">/ ({{ $dataPasien['pasien']['jenisKelamin']['jenisKelaminDesc'] }})</span>
-                                    @endif
-                                </h2>
-                                {{-- Tgl Lahir (umur) — agak tebal, umur aksen brand --}}
-                                <div class="mt-1.5 text-sm font-medium leading-relaxed text-body dark:text-gray-300">
-                                    <span class="font-normal text-muted">Tgl Lahir:</span> {{ $dataPasien['pasien']['tglLahir'] ?? '-' }}
-                                    @if (isset($dataPasien['pasien']['thn']))
-                                        <span class="font-semibold text-brand-green dark:text-brand-lime">({{ $dataPasien['pasien']['thn'] ?? 0 }} th {{ $dataPasien['pasien']['bln'] ?? 0 }} bln {{ $dataPasien['pasien']['hari'] ?? 0 }} hr)</span>
-                                    @endif
-                                </div>
-                                {{-- Alamat — agak tebal biar mudah dibaca --}}
-                                @if (!empty($dataPasien['pasien']['identitas']['alamat']))
-                                    <div class="text-sm font-medium leading-relaxed text-body dark:text-gray-300">
-                                        {{ $dataPasien['pasien']['identitas']['alamat'] }}
-                                    </div>
-                                @endif
-                            @else
-                                <h2 class="mt-1 font-semibold text-3xl leading-tight text-ink dark:text-white">Pasien Baru</h2>
-                                <p class="mt-0.5 text-sm text-muted dark:text-gray-400">
-                                    Lengkapi informasi pasien untuk kebutuhan aplikasi.
-                                </p>
-                            @endif
-                        </div>
-                    </div>
-
-                    <x-icon-button color="gray" type="button" x-on:click="tryClose()" class="shrink-0">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd"
-                                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                                clip-rule="evenodd" />
-                        </svg>
-                    </x-icon-button>
-                </div>
-            </div>
+            @php
+                $judulModal = !empty($dataPasien['pasien']['regName'])
+                    ? strtoupper($dataPasien['pasien']['regName'])
+                        . (!empty($dataPasien['pasien']['jenisKelamin']['jenisKelaminDesc'])
+                            ? ' / (' . $dataPasien['pasien']['jenisKelamin']['jenisKelaminDesc'] . ')'
+                            : '')
+                    : 'Pasien Baru';
+            @endphp
+            <x-modul-dokumen.header
+                :judul="$judulModal"
+                ikon="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                tutupAlpine="tryClose()">
+                @if (!empty($dataPasien['pasien']['regName']))
+                    No. RM {{ $dataPasien['pasien']['regNo'] ?? '-' }}
+                    · Tgl Lahir: {{ $dataPasien['pasien']['tglLahir'] ?? '-' }}
+                    @if (isset($dataPasien['pasien']['thn']))
+                        ({{ $dataPasien['pasien']['thn'] ?? 0 }} th {{ $dataPasien['pasien']['bln'] ?? 0 }} bln {{ $dataPasien['pasien']['hari'] ?? 0 }} hr)
+                    @endif
+                    @if (!empty($dataPasien['pasien']['identitas']['alamat']))
+                        · {{ $dataPasien['pasien']['identitas']['alamat'] }}
+                    @endif
+                @else
+                    Lengkapi informasi pasien untuk kebutuhan aplikasi.
+                @endif
+                <x-slot:badge>
+                    <x-badge :variant="$formMode === 'edit' ? 'warning' : 'success'">
+                        {{ $formMode === 'edit' ? 'Mode: Edit' : 'Mode: Tambah' }}
+                    </x-badge>
+                </x-slot:badge>
+            </x-modul-dokumen.header>
 
 
             {{-- BODY — bertab (pola EMR: Alpine, instan tanpa reload) --}}

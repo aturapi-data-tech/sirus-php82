@@ -91,22 +91,13 @@ new class extends Component {
             wire:key="{{ $this->renderKey('modal-log-aktivitas-ugd', [$rjNo ?? 'new']) }}">
 
             {{-- HEADER --}}
-            <div class="relative px-6 py-5 border-b border-hairline dark:border-gray-700">
-                <div class="relative flex items-start justify-between gap-4">
-                    <div class="flex-1 min-w-0">
-                        <livewire:pages::transaksi.ugd.display-pasien-ugd.display-pasien-ugd :rjNo="$rjNo"
-                            wire:key="log-aktivitas-display-pasien-ugd-header-{{ $rjNo }}" />
-                        <h3 class="mt-2 text-sm font-semibold text-body dark:text-gray-300">Log Aktivitas</h3>
-                    </div>
-                    <x-icon-button color="gray" type="button" wire:click="closeModal" class="shrink-0">
-                        <span class="sr-only">Close</span>
-                        <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd"
-                                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                                clip-rule="evenodd" />
-                        </svg>
-                    </x-icon-button>
-                </div>
+            <x-modul-dokumen.header judul="Log Aktivitas" ikon="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" jalur="UGD">
+            </x-modul-dokumen.header>
+
+            {{-- DISPLAY PASIEN --}}
+            <div class="px-6 pt-3">
+                <livewire:pages::transaksi.ugd.display-pasien-ugd.display-pasien-ugd :rjNo="$rjNo"
+                    wire:key="log-aktivitas-display-pasien-ugd-header-{{ $rjNo }}" />
             </div>
 
             {{-- BODY --}}

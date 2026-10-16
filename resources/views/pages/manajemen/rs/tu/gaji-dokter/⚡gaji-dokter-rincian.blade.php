@@ -501,31 +501,9 @@ new class extends Component {
         <div class="flex flex-col min-h-[calc(100vh-8rem)]">
 
             {{-- HEADER --}}
-            {{-- py-3, bukan py-5: judulnya sekarang label kecil, tidak butuh ruang
-                 setinggi itu. Ini yang paling terasa melebarkan jarak ke kartu. --}}
-            <div class="px-6 py-3 bg-surface-soft">
-                <div class="flex items-start justify-between gap-4">
-                    {{-- Nama dokter TIDAK diulang di sini — sudah jadi judul kartu
-                         identitas tepat di bawahnya. Dua kali di satu layar cuma
-                         memakan tinggi tanpa menambah informasi. --}}
-                    <div class="min-w-0">
-                        {{-- Sengaja kecil: yang berhak jadi judul besar adalah nama dokter
-                             di kartu identitas bawah. Ini cuma penanda modal apa yang
-                             sedang dibuka. Tetap <h2> supaya urutan heading tidak putus. --}}
-                        <h2 class="text-sm font-semibold tracking-wider uppercase text-muted dark:text-gray-400">
-                            Rincian Slip Gaji
-                        </h2>
-                    </div>
-
-                    <x-icon-button color="gray" type="button" wire:click="closeModal">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd"
-                                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                                clip-rule="evenodd" />
-                        </svg>
-                    </x-icon-button>
-                </div>
-            </div>
+            {{-- Nama dokter tidak diulang di header: sudah jadi judul kartu identitas di bawah. --}}
+            <x-modul-dokumen.header judul="Rincian Slip Gaji" ikon="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
+            </x-modul-dokumen.header>
 
             {{-- BODY --}}
             <div class="flex-1 px-4 pt-2 pb-4 bg-surface-soft dark:bg-gray-950/20">

@@ -419,31 +419,18 @@ new class extends Component {
         <div class="flex flex-col h-full" wire:key="{{ $this->renderKey('modal', [$formMode, $downtimeNo]) }}">
 
             {{-- ══ HEADER ══ --}}
-            <div class="px-6 py-4 border-b border-hairline dark:border-gray-700">
-                <div class="flex items-start justify-between gap-3">
-                    <div class="min-w-0">
-                        <div class="flex flex-wrap items-center gap-2">
-                            <h2 class="text-base font-semibold text-ink dark:text-gray-100">
-                                DT-01 &middot; Log Kejadian &amp; Penanganan Down Time SIMRS
-                            </h2>
-                            <x-badge :variant="$formMode === 'edit' ? 'warning' : 'success'">
-                                {{ $formMode === 'edit' ? 'Mode: Edit' : 'Mode: Tambah' }}
-                            </x-badge>
-                            @if ($downtimeNo > 0)
-                                <x-badge variant="gray">No. {{ $downtimeNo }}</x-badge>
-                            @endif
-                        </div>
-                        <p class="mt-0.5 text-sm text-muted dark:text-gray-400">
-                            MRMIK 13.1 — Penanganan Down Time &middot; diisi Unit IT / Penyelenggara SIMRS
-                        </p>
-                    </div>
-                    <x-icon-button color="gray" type="button" wire:click="closeModal" class="shrink-0">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                    </x-icon-button>
-                </div>
-            </div>
+            <x-modul-dokumen.header judul="DT-01 · Log Kejadian & Penanganan Down Time SIMRS"
+                ikon="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                MRMIK 13.1 — Penanganan Down Time · diisi Unit IT / Penyelenggara SIMRS
+                <x-slot:badge>
+                    <x-badge :variant="$formMode === 'edit' ? 'warning' : 'success'">
+                        {{ $formMode === 'edit' ? 'Mode: Edit' : 'Mode: Tambah' }}
+                    </x-badge>
+                    @if ($downtimeNo > 0)
+                        <x-badge variant="gray">No. {{ $downtimeNo }}</x-badge>
+                    @endif
+                </x-slot:badge>
+            </x-modul-dokumen.header>
 
             {{-- ══ ISI ══ --}}
             <div class="flex-1 min-h-0 px-6 py-4 space-y-4 overflow-y-auto bg-surface-soft dark:bg-gray-950/20">

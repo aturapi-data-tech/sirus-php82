@@ -600,33 +600,16 @@ new class extends Component {
         <div class="flex flex-col h-full" x-enter-chain>
 
             {{-- HEADER --}}
-            <div class="relative px-6 py-5 bg-surface-soft shrink-0">
-                {{-- Dot pattern background --}}
+            <x-modul-dokumen.header
+                judul="Jadwal Dokter BPJS"
+                ikon="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                namaModal="modal-jadwal-poli">
+                Cari poli BPJS, muat jadwal, lalu terapkan ke data jadwal RS.
+            </x-modul-dokumen.header>
 
-                <div class="relative flex items-start justify-between gap-4 mb-4">
-                    {{-- Icon + judul --}}
-                    <div class="flex items-center gap-3">
-                        <div class="flex items-center justify-center w-10 h-10 rounded-xl bg-brand-green/10 dark:bg-brand-lime/15">
-                            <img src="{{ asset('images/Logogram black solid.png') }}" alt="Logo" class="block w-6 h-6 dark:hidden" />
-                            <img src="{{ asset('images/Logogram white solid.png') }}" alt="Logo" class="hidden w-6 h-6 dark:block" />
-                        </div>
-                        <div>
-                            <h2 class="ds-display-sm dark:text-gray-100">Jadwal Dokter BPJS</h2>
-                            <p class="mt-0.5 text-sm text-muted dark:text-gray-400">Cari poli BPJS, muat jadwal, lalu terapkan ke data jadwal RS.</p>
-                        </div>
-                    </div>
-                    {{-- Close --}}
-                    <x-secondary-button type="button"
-                        x-on:click="$dispatch('close-modal', { name: 'modal-jadwal-poli' })"
-                        class="!p-2 shrink-0">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
-                        </svg>
-                    </x-secondary-button>
-                </div>
-
-                {{-- Search poli + datepicker + tombol muat --}}
-                <div class="relative flex flex-col gap-2 sm:flex-row sm:items-center">
+            {{-- Search poli + datepicker + tombol muat --}}
+            <div class="flex flex-wrap items-center gap-2 px-6 py-2 border-b border-hairline dark:border-gray-700">
+                <div class="relative flex flex-col w-full gap-2 sm:flex-row sm:items-center">
                     <div class="relative flex-1">
                         <x-text-input type="text" wire:model.live.debounce.400ms="searchPoli"
                             placeholder="Cari poli BPJS (min. 3 karakter)" class="block w-full" />
@@ -666,7 +649,7 @@ new class extends Component {
                 </div>
 
                 @if($selectedPoliName)
-                <p class="relative mt-2 text-xs text-gray-500 dark:text-gray-400">
+                <p class="w-full text-xs text-gray-500 dark:text-gray-400">
                     Poli:
                     <span class="font-semibold text-brand-green dark:text-brand-lime">{{ $selectedPoliName }}</span>
                     <span class="text-gray-400">({{ $selectedPoliId }})</span>

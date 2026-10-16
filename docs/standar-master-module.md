@@ -171,12 +171,26 @@ Markup modal (3 bagian — header/body/footer):
 <x-modal name="master-<x>-actions" size="full" height="full" focusable>
     <x-dirty-modal-content name="master-<x>-actions" event="master.<x>.saved" label="X"
         :wireKey="$this->renderKey('modal', [$formMode, $originalId])">
-        {{-- HEADER: logo + judul Tambah/Ubah + <x-badge> Mode + close X (x-icon-button tryClose()) --}}
+        <x-modul-dokumen.header :judul="$formMode === 'edit' ? 'Ubah Data X' : 'Tambah Data X'"
+            ikon="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+            tutupAlpine="tryClose()">
+            Lengkapi informasi X.
+            <x-slot:badge>
+                <x-badge :variant="$formMode === 'edit' ? 'warning' : 'success'">
+                    {{ $formMode === 'edit' ? 'Mode: Edit' : 'Mode: Tambah' }}
+                </x-badge>
+            </x-slot:badge>
+        </x-modul-dokumen.header>
         {{-- BODY  : bg-surface-soft + x-enter-chain + <x-border-form title="...">fields</x-border-form> --}}
         {{-- FOOTER: sticky bottom — hint kbd Enter · Batal (tryClose()) · Simpan (wire:loading) --}}
     </x-dirty-modal-content>
 </x-modal>
 ```
+
+- **Header = `<x-modul-dokumen.header>`** (baku seluruh repo sejak 2026-10-16, sama dengan modal
+  modul dokumen/EMR). Jangan tulis header manual (logo + `ds-display-sm` + badge baris kedua) lagi.
+  Tombol tutup lewat `tutupAlpine="tryClose()"` agar cek perubahan `x-dirty-modal-content` tetap jalan;
+  header harus berada DI DALAM `x-dirty-modal-content` (sumber `tryClose`).
 
 - Field wajib pakai `:error="$errors->has(...)"` + `<x-input-error>` di bawahnya.
 - Navigasi keyboard: `x-enter-chain` di body + `x-on:keydown.enter.prevent` per field
@@ -295,7 +309,7 @@ Modul yang sudah 100% sesuai: `master-agama`, `master-stocklocations`, `master-a
 - [ ] Kontrak penamaan §2 (state, event `master.<folder>.*`, verb standar)
 - [ ] LIST: page-title → frame flex-fill → toolbar sticky → `ds-table` → `x-action-edit/delete` → empty state → pagination sticky
 - [ ] LIST tanpa validasi/DB-write; semua mutasi di `-actions`
-- [ ] FORM: `WithRenderVersioningTrait` + `x-modal` + `x-dirty-modal-content` + header/body/footer standar
+- [ ] FORM: `WithRenderVersioningTrait` + `x-modal` + `x-dirty-modal-content` + header `x-modul-dokumen.header` (tutupAlpine="tryClose()") + body/footer standar
 - [ ] `validate()` sebelum logika lain; pesan Indonesia + attributes
 - [ ] Delete: `x-action-delete` + catch ORA-02292
 - [ ] `x-enter-chain` + Enter di field terakhir = simpan; fokus otomatis saat modal buka
