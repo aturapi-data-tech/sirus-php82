@@ -512,97 +512,80 @@ new class extends Component {
         <div class="flex flex-col min-h-[calc(100vh-8rem)]" wire:key="{{ $this->renderKey('modal', [$rjNo ?? 'new']) }}">
 
             {{-- ═══════════ HEADER ═══════════ --}}
-            <div class="relative px-6 py-5 border-b border-hairline dark:border-gray-700">
-                <div class="absolute inset-0 opacity-[0.06] dark:opacity-[0.10]"
-                    style="background-image: radial-gradient(currentColor 1px, transparent 1px); background-size: 14px 14px;">
+            <x-modul-dokumen.header judul="Administrasi Rawat Jalan"
+                ikon="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                jalur="RJ" :readOnly="$isFormLocked" />
+
+            {{-- Display Pasien --}}
+            <div class="px-6 pt-3">
+                <livewire:pages::transaksi.rj.display-pasien-rj.display-pasien-rj :rjNo="$rjNo"
+                    wire:key="administrasi-rj-display-pasien-rj-header-{{ $rjNo ?? 'new' }}" />
+            </div>
+
+            {{-- Total Tagihan (klik → rincian biaya) --}}
+            <div class="px-6 py-2 space-y-3 border-b border-hairline dark:border-gray-700" x-data="{ expanded: false }">
+                <div class="flex flex-wrap items-center gap-2">
+                    {{-- Total Tagihan — clickable card untuk toggle rincian breakdown di ROW 2 --}}
+                    <button type="button" x-on:click="expanded = !expanded"
+                        :title="expanded ? 'Sembunyikan rincian biaya' : 'Tampilkan rincian biaya'"
+                        class="group self-end flex-shrink-0 px-8 pt-3 pb-2 min-w-[220px] text-right transition border rounded-2xl cursor-pointer bg-brand-green/10 dark:bg-brand-lime/10 border-brand-green/20 dark:border-brand-lime/20 hover:bg-brand-green/20 hover:border-brand-green/40 hover:shadow-md dark:hover:bg-brand-lime/20 dark:hover:border-brand-lime/40 focus:outline-none focus:ring-2 focus:ring-brand-green/40 dark:focus:ring-brand-lime/40">
+                        <p
+                            class="mb-1 text-xs font-medium tracking-wide uppercase text-brand-green dark:text-brand-lime whitespace-nowrap">
+                            Total Tagihan
+                        </p>
+                        <p class="text-2xl font-bold text-ink dark:text-white tabular-nums whitespace-nowrap">
+                            Rp {{ number_format($sumTotalRJ) }}
+                        </p>
+                        {{-- Footer: chevron + label "Lihat Rincian" (static), gray kontras + sedikit tebal --}}
+                        <div
+                            class="flex items-center justify-end gap-1 pt-1.5 mt-1.5 text-xs font-semibold border-t border-brand-green/20 dark:border-brand-lime/20 text-muted dark:text-gray-300 whitespace-nowrap">
+                            <span>Lihat Rincian</span>
+                            <svg class="w-3.5 h-3.5 transition-transform" :class="expanded ? 'rotate-180' : ''"
+                                fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </div>
+                    </button>
                 </div>
 
-                <div class="relative space-y-3" x-data="{ expanded: false }">
-
-                    {{-- ROW 1: Display Pasien (kayak EMR RJ) | Total Tagihan (clickable toggle) | Close --}}
-                    <div class="flex items-start justify-between gap-4">
-                        {{-- Display Pasien — sama dgn EMR RJ --}}
-                        <div class="flex-1 min-w-0">
-                            <livewire:pages::transaksi.rj.display-pasien-rj.display-pasien-rj :rjNo="$rjNo"
-                                wire:key="administrasi-rj-display-pasien-rj-header-{{ $rjNo ?? 'new' }}" />
-                        </div>
-
-                        {{-- Total Tagihan — clickable card untuk toggle rincian breakdown di ROW 2 --}}
-                        <button type="button" x-on:click="expanded = !expanded"
-                            :title="expanded ? 'Sembunyikan rincian biaya' : 'Tampilkan rincian biaya'"
-                            class="group self-end flex-shrink-0 px-8 pt-3 pb-2 min-w-[220px] text-right transition border rounded-2xl cursor-pointer bg-brand-green/10 dark:bg-brand-lime/10 border-brand-green/20 dark:border-brand-lime/20 hover:bg-brand-green/20 hover:border-brand-green/40 hover:shadow-md dark:hover:bg-brand-lime/20 dark:hover:border-brand-lime/40 focus:outline-none focus:ring-2 focus:ring-brand-green/40 dark:focus:ring-brand-lime/40">
-                            <p
-                                class="mb-1 text-xs font-medium tracking-wide uppercase text-brand-green dark:text-brand-lime whitespace-nowrap">
-                                Total Tagihan
-                            </p>
-                            <p class="text-2xl font-bold text-ink dark:text-white tabular-nums whitespace-nowrap">
-                                Rp {{ number_format($sumTotalRJ) }}
-                            </p>
-                            {{-- Footer: chevron + label "Lihat Rincian" (static), gray kontras + sedikit tebal --}}
+                {{-- ROW 2: Breakdown 10 item biaya — collapsible --}}
+                <div x-show="expanded" x-collapse
+                    class="p-2 border border-hairline rounded-2xl dark:border-gray-700 bg-surface-soft dark:bg-gray-800/40">
+                    <div class="flex items-center gap-2">
+                        <div class="grid grid-cols-10 gap-1.5 flex-1 min-w-0">
+                        {{-- 3 Item Editable --}}
+                        @foreach ([['label' => 'RS Admin', 'model' => 'editRsAdmin', 'value' => $editRsAdmin], ['label' => 'Admin OB', 'model' => 'editRjAdmin', 'value' => $editRjAdmin], ['label' => 'Uang Periksa', 'model' => 'editPoliPrice', 'value' => $editPoliPrice]] as $item)
                             <div
-                                class="flex items-center justify-end gap-1 pt-1.5 mt-1.5 text-xs font-semibold border-t border-brand-green/20 dark:border-brand-lime/20 text-muted dark:text-gray-300 whitespace-nowrap">
-                                <span>Lihat Rincian</span>
-                                <svg class="w-3.5 h-3.5 transition-transform" :class="expanded ? 'rotate-180' : ''"
-                                    fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
-                                </svg>
+                                class="px-2.5 py-1.5 bg-canvas border border-brand-green/40 rounded-xl dark:bg-gray-900 dark:border-brand-lime/30">
+                                <p class="text-xs text-muted dark:text-gray-400 mb-0.5 truncate">
+                                    {{ $item['label'] }}</p>
+                                <x-text-input type="text" x-data x-ref="input_{{ $loop->index }}"
+                                    x-on:focus="$el.value = $el.value.replace('Rp ', '').replace(/\./g, '')"
+                                    x-on:input="$el.value = $el.value.replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.')"
+                                    x-on:keydown.enter="$el.blur()"
+                                    x-on:blur="
+                                        let raw = parseInt($el.value.replace(/\./g, '')) || 0;
+                                        $wire.set('{{ $item['model'] }}', raw).then(() => {
+                                            $wire.saveAdminPrices();
+                                            $el.value = 'Rp ' + new Intl.NumberFormat('id-ID').format(raw);
+                                        })
+                                    "
+                                    value="Rp {{ number_format($item['value'], 0, ',', '.') }}" :disabled="$isFormLocked"
+                                    class="w-full text-xs font-semibold tabular-nums" />
                             </div>
-                        </button>
+                        @endforeach
 
-                        {{-- Close --}}
-                        <x-icon-button color="gray" type="button" wire:click="closeModal" class="flex-shrink-0">
-                            <span class="sr-only">Close</span>
-                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20"
-                                fill="currentColor">
-                                <path fill-rule="evenodd"
-                                    d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                                    clip-rule="evenodd" />
-                            </svg>
-                        </x-icon-button>
-                    </div>
-
-                    {{-- ROW 2: Breakdown 10 item biaya (+ Read Only badge di kiri kalau locked) — collapsible --}}
-                    <div x-show="expanded" x-collapse
-                        class="p-2 border border-hairline rounded-2xl dark:border-gray-700 bg-surface-soft dark:bg-gray-800/40">
-                        <div class="flex items-center gap-2">
-                            @if ($isFormLocked)
-                                <x-badge variant="danger" class="text-xs whitespace-nowrap shrink-0">Read Only</x-badge>
-                            @endif
-                            <div class="grid grid-cols-10 gap-1.5 flex-1 min-w-0">
-                            {{-- 3 Item Editable --}}
-                            @foreach ([['label' => 'RS Admin', 'model' => 'editRsAdmin', 'value' => $editRsAdmin], ['label' => 'Admin OB', 'model' => 'editRjAdmin', 'value' => $editRjAdmin], ['label' => 'Uang Periksa', 'model' => 'editPoliPrice', 'value' => $editPoliPrice]] as $item)
-                                <div
-                                    class="px-2.5 py-1.5 bg-canvas border border-brand-green/40 rounded-xl dark:bg-gray-900 dark:border-brand-lime/30">
-                                    <p class="text-xs text-muted dark:text-gray-400 mb-0.5 truncate">
-                                        {{ $item['label'] }}</p>
-                                    <x-text-input type="text" x-data x-ref="input_{{ $loop->index }}"
-                                        x-on:focus="$el.value = $el.value.replace('Rp ', '').replace(/\./g, '')"
-                                        x-on:input="$el.value = $el.value.replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.')"
-                                        x-on:keydown.enter="$el.blur()"
-                                        x-on:blur="
-                                            let raw = parseInt($el.value.replace(/\./g, '')) || 0;
-                                            $wire.set('{{ $item['model'] }}', raw).then(() => {
-                                                $wire.saveAdminPrices();
-                                                $el.value = 'Rp ' + new Intl.NumberFormat('id-ID').format(raw);
-                                            })
-                                        "
-                                        value="Rp {{ number_format($item['value'], 0, ',', '.') }}" :disabled="$isFormLocked"
-                                        class="w-full text-xs font-semibold tabular-nums" />
-                                </div>
-                            @endforeach
-
-                            {{-- 7 Item Read Only --}}
-                            @foreach ([['label' => 'Jasa Karyawan', 'value' => $sumJasaKaryawan], ['label' => 'Jasa Dokter', 'value' => $sumJasaDokter], ['label' => 'Jasa Medis', 'value' => $sumJasaMedis], ['label' => 'Obat', 'value' => $sumObat], ['label' => 'Laboratorium', 'value' => $sumLaboratorium], ['label' => 'Radiologi', 'value' => $sumRadiologi], ['label' => 'Kamar Operasi', 'value' => $sumKamarOperasi], ['label' => 'Lain-Lain', 'value' => $sumLainLain]] as $item)
-                                <div
-                                    class="px-2.5 py-1.5 bg-canvas border border-hairline rounded-xl dark:bg-gray-900 dark:border-gray-700">
-                                    <p class="text-xs text-muted dark:text-gray-400 mb-0.5 truncate">
-                                        {{ $item['label'] }}</p>
-                                    <p class="text-xs font-semibold text-ink dark:text-gray-200 tabular-nums">
-                                        Rp {{ number_format($item['value']) }}
-                                    </p>
-                                </div>
-                            @endforeach
+                        {{-- 7 Item Read Only --}}
+                        @foreach ([['label' => 'Jasa Karyawan', 'value' => $sumJasaKaryawan], ['label' => 'Jasa Dokter', 'value' => $sumJasaDokter], ['label' => 'Jasa Medis', 'value' => $sumJasaMedis], ['label' => 'Obat', 'value' => $sumObat], ['label' => 'Laboratorium', 'value' => $sumLaboratorium], ['label' => 'Radiologi', 'value' => $sumRadiologi], ['label' => 'Kamar Operasi', 'value' => $sumKamarOperasi], ['label' => 'Lain-Lain', 'value' => $sumLainLain]] as $item)
+                            <div
+                                class="px-2.5 py-1.5 bg-canvas border border-hairline rounded-xl dark:bg-gray-900 dark:border-gray-700">
+                                <p class="text-xs text-muted dark:text-gray-400 mb-0.5 truncate">
+                                    {{ $item['label'] }}</p>
+                                <p class="text-xs font-semibold text-ink dark:text-gray-200 tabular-nums">
+                                    Rp {{ number_format($item['value']) }}
+                                </p>
                             </div>
+                        @endforeach
                         </div>
                     </div>
                 </div>

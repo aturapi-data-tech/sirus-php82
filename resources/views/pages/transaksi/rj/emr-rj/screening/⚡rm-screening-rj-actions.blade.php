@@ -418,35 +418,22 @@ new class extends Component {
             wire:key="{{ $this->renderKey('modal-screening-rj', [$rjNo ?? 'new']) }}">
 
             {{-- HEADER --}}
-            <div class="relative px-6 py-5 border-b border-hairline dark:border-gray-700">
-                <div class="absolute inset-0 opacity-[0.06]"
-                    style="background-image:radial-gradient(currentColor 1px,transparent 1px);background-size:14px 14px;">
-                </div>
-                <div class="relative flex items-start justify-between gap-4">
-                    {{-- Identitas pasien menggantikan judul --}}
-                    <div class="flex-1 min-w-0">
-                        {{-- Key WAJIB ikut versi render pembungkus di atas. Kalau tidak: versi naik
-                             (open/simpan/buka kunci) → key pembungkus berubah → morph membuang subtree
-                             ini, sedangkan server menganggap anak dengan key sama "sudah dirender" lalu
-                             cuma mengirim stub <div wire:id> tanpa wire:snapshot → JS lempar
-                             "Snapshot missing on Livewire component with id: ...". --}}
-                        <livewire:pages::transaksi.rj.display-pasien-rj.display-pasien-rj :rjNo="$rjNo"
-                            wire:key="{{ $this->renderKey('modal-screening-rj', ['display-pasien', $rjNo ?? 'new']) }}" />
+            <x-modul-dokumen.header judul="Screening Rawat Jalan"
+                ikon="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
+                jalur="RJ"
+                :readOnly="$isFormLocked">
+                Skrining awal pasien Rawat Jalan
+            </x-modul-dokumen.header>
 
-                        @if ($isFormLocked)
-                            <div class="mt-2">
-                                <x-badge variant="danger">Read Only</x-badge>
-                            </div>
-                        @endif
-                    </div>
-                    <x-icon-button color="gray" type="button" wire:click="closeModal" class="shrink-0">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd"
-                                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                                clip-rule="evenodd" />
-                        </svg>
-                    </x-icon-button>
-                </div>
+            {{-- DISPLAY PASIEN --}}
+            <div class="px-6 pt-3">
+                {{-- Key WAJIB ikut versi render pembungkus di atas. Kalau tidak: versi naik
+                     (open/simpan/buka kunci) → key pembungkus berubah → morph membuang subtree
+                     ini, sedangkan server menganggap anak dengan key sama "sudah dirender" lalu
+                     cuma mengirim stub tanpa wire:snapshot → JS lempar
+                     "Snapshot missing on Livewire component with id: ...". --}}
+                <livewire:pages::transaksi.rj.display-pasien-rj.display-pasien-rj :rjNo="$rjNo"
+                    wire:key="{{ $this->renderKey('modal-screening-rj', ['display-pasien', $rjNo ?? 'new']) }}" />
             </div>
 
             {{-- BODY --}}

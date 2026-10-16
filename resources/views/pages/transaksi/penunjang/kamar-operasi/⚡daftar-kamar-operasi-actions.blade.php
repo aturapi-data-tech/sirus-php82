@@ -443,56 +443,42 @@ new class extends Component {
     <x-modal name="kamar-operasi-actions" size="full" height="full" focusable>
         <div class="flex flex-col h-full" wire:key="{{ $this->renderKey('kamar-operasi-actions-modal', [$okReg ?: 'empty']) }}">
 
-            {{-- ═══════════ HEADER — display pasien + kartu total ═══════════ --}}
-            <div class="relative px-6 py-4 border-b border-hairline dark:border-gray-700">
-                <div class="absolute inset-0 opacity-[0.06] dark:opacity-[0.10]"
-                    style="background-image: radial-gradient(currentColor 1px, transparent 1px); background-size: 14px 14px;">
-                </div>
+            {{-- ═══════════ HEADER ═══════════ --}}
+            @php
+                // Hanya KODE statusnya yang dipakai di sini (untuk gating tombol &
+                // kalimat terkunci). Teks + warna badge-nya urusan display-pasien.
+                $statusOk = $headerData['ok_status'] ?? 'A';
+            @endphp
 
-                @php
-                    // Hanya KODE statusnya yang dipakai di sini (untuk gating tombol &
-                    // kalimat terkunci). Teks + warna badge-nya urusan display-pasien.
-                    $statusOk = $headerData['ok_status'] ?? 'A';
-                @endphp
+            <x-modul-dokumen.header judul="Transaksi Kamar Operasi"
+                ikon="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                :jalur="$sumber ?: null" tutup="closeActions" />
 
-                <div class="relative flex items-start justify-between gap-4">
-                    <div class="flex-1 min-w-0">
-                        <livewire:pages::transaksi.penunjang.kamar-operasi.display-pasien-kamar-operasi.display-pasien-kamar-operasi
-                            :okReg="$okReg" wire:key="display-pasien-kamar-operasi-{{ $okReg }}" />
+            {{-- Display Pasien --}}
+            <div class="px-6 pt-3">
+                <livewire:pages::transaksi.penunjang.kamar-operasi.display-pasien-kamar-operasi.display-pasien-kamar-operasi
+                    :okReg="$okReg" wire:key="display-pasien-kamar-operasi-{{ $okReg }}" />
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2 px-6 py-2 border-b border-hairline dark:border-gray-700">
+                {{-- Dua kartu total (Tagihan Pasien & Jasa On Call) berjajar di baris toolbar. --}}
+                <div class="flex flex-wrap items-stretch gap-1.5">
+                    <div class="flex items-baseline justify-between gap-3 px-4 py-2 border rounded-2xl bg-brand-green/10 dark:bg-brand-lime/10 border-brand-green/20 dark:border-brand-lime/20">
+                        <p class="text-xs font-medium tracking-wide uppercase text-brand-green dark:text-brand-lime whitespace-nowrap">
+                            Tagihan Pasien
+                        </p>
+                        <p class="text-xl font-bold text-ink dark:text-white tabular-nums whitespace-nowrap">
+                            Rp {{ number_format($sumTotal) }}
+                        </p>
                     </div>
-
-                    {{-- Dua kartu total ditumpuk atas-bawah supaya header tidak melebar. --}}
-                    <div class="flex flex-col self-end flex-shrink-0 gap-1.5 min-w-[190px]">
-                        <div class="flex items-baseline justify-between gap-3 px-4 py-2 border rounded-2xl bg-brand-green/10 dark:bg-brand-lime/10 border-brand-green/20 dark:border-brand-lime/20">
-                            <p class="text-xs font-medium tracking-wide uppercase text-brand-green dark:text-brand-lime whitespace-nowrap">
-                                Tagihan Pasien
-                            </p>
-                            <p class="text-xl font-bold text-ink dark:text-white tabular-nums whitespace-nowrap">
-                                Rp {{ number_format($sumTotal) }}
-                            </p>
-                        </div>
-                        <div class="flex items-baseline justify-between gap-3 px-4 py-1.5 border rounded-2xl border-hairline bg-surface-soft dark:border-gray-700 dark:bg-gray-800/40">
-                            <p class="text-xs font-medium tracking-wide uppercase text-muted whitespace-nowrap">
-                                Jasa On Call
-                                <span class="block text-xs normal-case text-muted-soft">tidak ditagihkan</span>
-                            </p>
-                            <p class="text-sm font-semibold text-ink dark:text-gray-200 tabular-nums whitespace-nowrap">
-                                Rp {{ number_format($sumOncall) }}
-                            </p>
-                        </div>
-                    </div>
-
-                    {{-- Badge status TIDAK diulang di sini — display-pasien di kiri
-                         sudah menampilkannya bersama layanan & status kunjungan. --}}
-                    <div class="flex-shrink-0">
-                        <x-icon-button color="gray" type="button" wire:click="closeActions">
-                            <span class="sr-only">Tutup</span>
-                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd"
-                                    d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                                    clip-rule="evenodd" />
-                            </svg>
-                        </x-icon-button>
+                    <div class="flex items-baseline justify-between gap-3 px-4 py-1.5 border rounded-2xl border-hairline bg-surface-soft dark:border-gray-700 dark:bg-gray-800/40">
+                        <p class="text-xs font-medium tracking-wide uppercase text-muted whitespace-nowrap">
+                            Jasa On Call
+                            <span class="block text-xs normal-case text-muted-soft">tidak ditagihkan</span>
+                        </p>
+                        <p class="text-sm font-semibold text-ink dark:text-gray-200 tabular-nums whitespace-nowrap">
+                            Rp {{ number_format($sumOncall) }}
+                        </p>
                     </div>
                 </div>
             </div>

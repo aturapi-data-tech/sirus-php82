@@ -15,16 +15,19 @@
     // Nama x-modal untuk modal di luar komponen Livewire (mis. panduan di layout): tombol tutup
     // mengirim event close-modal lewat Alpine, prop tutup diabaikan. null = pakai wire:click tutup.
     'namaModal' => null,
+    // Ekspresi Alpine untuk tombol tutup (mis. "tryClose()" pada modal ber-cek perubahan
+    // x-dirty-modal-content). Menang atas namaModal & tutup. null = perilaku di atas.
+    'tutupAlpine' => null,
 ])
 
 @php
     $labelJalur = ['RJ' => 'Rawat Jalan', 'UGD' => 'UGD', 'RI' => 'Rawat Inap'][$jalur] ?? null;
     $teksDeskripsi = trim(strip_tags((string) $slot));
-    $atributTutup = new \Illuminate\View\ComponentAttributeBag(
-        $namaModal
-            ? ['x-on:click' => "\$dispatch('close-modal', { name: '{$namaModal}' })"]
-            : ['wire:click' => $tutup],
-    );
+    $atributTutup = new \Illuminate\View\ComponentAttributeBag(match (true) {
+        filled($tutupAlpine) => ['x-on:click' => $tutupAlpine],
+        filled($namaModal) => ['x-on:click' => "\$dispatch('close-modal', { name: '{$namaModal}' })"],
+        default => ['wire:click' => $tutup],
+    });
 @endphp
 
 {{-- Header modal modul dokumen (docs/modul-dokumen-ri-pattern.md §2a):

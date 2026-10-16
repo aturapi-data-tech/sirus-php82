@@ -660,39 +660,20 @@ new class extends Component {
             wire:key="{{ $this->renderKey('modal', [$riHdrNo ?? 'new']) }}">
 
             {{-- HEADER --}}
-            <div class="relative px-6 py-3.5 border-b border-hairline dark:border-gray-700">
-                <div class="absolute inset-0 opacity-[0.06] dark:opacity-[0.10]"
-                    style="background-image: radial-gradient(currentColor 1px, transparent 1px); background-size: 14px 14px;">
-                </div>
+            <x-modul-dokumen.header judul="E-Resep Rawat Inap"
+                ikon="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                jalur="RI" :readOnly="$isFormLocked">
+                Penulisan resep obat pasien rawat inap
+                <x-slot:badge>
+                    @if ($isFormLocked)
+                        <x-badge class="shrink-0 whitespace-nowrap" variant="danger">Pasien Sudah Pulang</x-badge>
+                    @endif
+                </x-slot:badge>
+            </x-modul-dokumen.header>
 
-                <div class="relative flex items-start justify-between gap-4">
-                    {{-- Title kecil + Data Pasien (mengikuti pola EMR RJ) --}}
-                    <div class="flex-1 min-w-0 space-y-2">
-                        {{-- Title kecil --}}
-                        <div class="text-xs font-medium tracking-wide text-muted uppercase dark:text-gray-400">
-                            E-Resep Rawat Inap — Penulisan resep obat pasien rawat inap
-                        </div>
-
-                        {{-- Data Pasien RI (dipindah dari body ke header) --}}
-                        <livewire:pages::transaksi.ri.display-pasien-ri.display-pasien-ri :riHdrNo="$riHdrNo"
-                            wire:key="eresep-ri-display-pasien-header-{{ $riHdrNo }}" />
-
-                        <div class="flex flex-wrap gap-4 mt-3">
-                            @if ($isFormLocked)
-                                <x-badge variant="danger">Read Only — Pasien Sudah Pulang</x-badge>
-                            @endif
-                        </div>
-                    </div>
-
-                    <x-icon-button color="gray" type="button" wire:click="closeModal" class="shrink-0">
-                        <span class="sr-only">Close</span>
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd"
-                                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                                clip-rule="evenodd" />
-                        </svg>
-                    </x-icon-button>
-                </div>
+            <div class="px-6 pt-3">
+                <livewire:pages::transaksi.ri.display-pasien-ri.display-pasien-ri :riHdrNo="$riHdrNo"
+                    wire:key="eresep-ri-display-pasien-header-{{ $riHdrNo }}" />
             </div>
 
             {{-- BODY --}}

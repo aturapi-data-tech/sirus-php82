@@ -500,31 +500,18 @@ new class extends Component {
         @if ($rjNo)
         <div class="flex flex-col h-full" wire:key="{{ $this->renderKey('modal-transfer-ugd-ke-ri', [$rjNo ?? 'new']) }}">
 
-            {{-- ═══════════ HEADER — identitas pasien (gaya EMR UGD) ═══════════ --}}
-            <div class="relative px-6 py-5 border-b border-hairline dark:border-gray-700">
-                <div class="absolute inset-0 opacity-[0.06] dark:opacity-[0.10]"
-                    style="background-image: radial-gradient(currentColor 1px, transparent 1px); background-size: 14px 14px;">
+            {{-- ═══════════ HEADER ═══════════ --}}
+            <x-modul-dokumen.header judul="Transfer ke Rawat Inap"
+                ikon="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
+                jalur="UGD" />
+
+            {{-- Display Pasien --}}
+            @if ($rjNo)
+                <div class="px-6 pt-3">
+                    <livewire:pages::transaksi.ugd.display-pasien-ugd.display-pasien-ugd :rjNo="$rjNo"
+                        wire:key="transfer-ri-display-pasien-{{ $rjNo }}" />
                 </div>
-                <div class="relative flex items-start justify-between gap-4">
-                    <div class="flex-1 min-w-0">
-                        <p class="mb-1 text-xs font-semibold tracking-wide uppercase text-teal-600 dark:text-teal-400">
-                            Transfer ke Rawat Inap
-                        </p>
-                        @if ($rjNo)
-                            <livewire:pages::transaksi.ugd.display-pasien-ugd.display-pasien-ugd :rjNo="$rjNo"
-                                wire:key="transfer-ri-display-pasien-{{ $rjNo }}" />
-                        @endif
-                    </div>
-                    <x-icon-button color="gray" type="button" wire:click="closeModal"
-                        class="shrink-0">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd"
-                                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                                clip-rule="evenodd" />
-                        </svg>
-                    </x-icon-button>
-                </div>
-            </div>
+            @endif
 
             {{-- ═══════════ BODY (scroll) ═══════════ --}}
             <div class="flex-1 px-4 py-5 overflow-y-auto bg-surface-soft/70 dark:bg-gray-950/20">
