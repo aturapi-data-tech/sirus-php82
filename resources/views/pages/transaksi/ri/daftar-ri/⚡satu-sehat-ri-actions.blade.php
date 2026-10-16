@@ -197,81 +197,48 @@ new class extends Component {
         @if ($riHdrNo)
         <div class="flex flex-col min-h-0">
             {{-- HEADER --}}
-            <div class="relative px-6 py-5 border-b border-hairline dark:border-gray-700">
-                <div class="absolute inset-0 opacity-[0.06] dark:opacity-[0.10]"
-                    style="background-image: radial-gradient(currentColor 1px, transparent 1px); background-size: 14px 14px;">
-                </div>
-                <div class="relative flex items-start justify-between gap-4">
-                    <div>
-                        <div class="flex items-center gap-3">
-                            <div
-                                class="flex items-center justify-center w-10 h-10 rounded-xl bg-teal-500/10 dark:bg-teal-400/15">
-                                <svg class="w-6 h-6 text-teal-600 dark:text-teal-400" fill="none"
-                                    stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                        d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                                </svg>
-                            </div>
-                            <div>
-                                <h2 class="font-semibold text-2xl text-ink dark:text-gray-100">Kirim Satu Sehat
-                                    <span class="text-sm font-normal text-muted dark:text-gray-400">— Rawat Inap</span>
-                                </h2>
-                                <p class="mt-0.5 text-sm text-muted dark:text-gray-400">
-                                    <span class="font-semibold">{{ $regName ?: '-' }}</span>
-                                    &mdash; RM: {{ $regNoPasien ?: '-' }}
-                                    &mdash; RI: {{ $riHdrNo ?? '-' }}
-                                    @if (filled($roomDesc))
-                                        &mdash; Kamar: {{ $roomDesc }}
-                                    @endif
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                    {{-- KIRIM SEMUA — menjalankan langkah 1..15 berurutan, satu per putaran.
-                         Sengaja TIDAK memakai orkestrator lama KirimRawatJalanTrait (583 baris,
-                         tak dipakai siapa pun): ia salinan logika terpisah yang tidak ikut
-                         menerima perbaikan pemulihan duplikat, penyimpanan hasil parsial,
-                         maupun guard tanggal masuk kosong. --}}
-                    <div class="flex items-center gap-2 ml-auto">
-                        @if (!empty($antrianKirim) || $langkahAktif !== '')
-                            {{-- Spinner dirender apa adanya, TIDAK lewat wire:loading: tiap langkah
-                                 dijalankan oleh komponen ANAK, jadi wadah ini sendiri tidak sedang
-                                 memuat dan wire:loading di sini takkan pernah menyala. Selama antrean
-                                 belum habis, prosesnya memang sedang berjalan — itu yang ditandai. --}}
-                            <span class="inline-flex items-center gap-1.5 text-xs text-muted dark:text-gray-400">
-                                <x-loading class="text-teal-600 dark:text-teal-400" />
-                                Mengirim <span class="font-semibold">{{ $langkahAktif ?: '…' }}</span>
-                                · sisa {{ count($antrianKirim) }} langkah
-                            </span>
-                            <x-danger-button type="button" wire:click="batalkanKirimSemua">
-                                <span class="inline-flex items-center gap-1.5">
-                                    <x-satu-sehat.ikon-tombol jenis="hentikan" />
-                                    Hentikan
-                                </span>
-                            </x-danger-button>
-                        @else
-                            <x-confirm-button variant="primary" action="kirimSemua()"
-                                title="Kirim semua langkah ke SATUSEHAT?"
-                                message="15 langkah dijalankan berurutan mulai dari Encounter, ditutup Finish Encounter lalu Finish Episode. Langkah yang datanya belum lengkap akan ditolak dan dilewati — rantai tetap lanjut. Kiriman yang sudah berangkat TIDAK bisa dibatalkan."
-                                confirmText="Ya, Kirim Semua"
-                                wire:key="kirim-semua-ri-{{ $riHdrNo ?? 'none' }}">
-                                <span class="inline-flex items-center gap-1.5">
-                                    <x-satu-sehat.ikon-tombol />
-                                    Kirim Semua
-                                </span>
-                            </x-confirm-button>
-                        @endif
-                    </div>
-
-                    <x-icon-button color="gray" type="button"
-                        wire:click="closeModal">
-                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd"
-                                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                                clip-rule="evenodd" />
-                        </svg>
-                    </x-icon-button>
-                </div>
+            <x-modul-dokumen.header judul="Kirim Satu Sehat" ikon="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" jalur="RI">
+                <span class="font-semibold">{{ $regName ?: '-' }}</span>
+                &mdash; RM: {{ $regNoPasien ?: '-' }}
+                &mdash; RI: {{ $riHdrNo ?? '-' }}
+                @if (filled($roomDesc))
+                    &mdash; Kamar: {{ $roomDesc }}
+                @endif
+            </x-modul-dokumen.header>
+            {{-- KIRIM SEMUA — menjalankan langkah 1..15 berurutan, satu per putaran.
+                 Sengaja TIDAK memakai orkestrator lama KirimRawatJalanTrait (583 baris,
+                 tak dipakai siapa pun): ia salinan logika terpisah yang tidak ikut
+                 menerima perbaikan pemulihan duplikat, penyimpanan hasil parsial,
+                 maupun guard tanggal masuk kosong. --}}
+            <div class="flex flex-wrap items-center gap-2 px-6 py-2 border-b border-hairline dark:border-gray-700">
+                @if (!empty($antrianKirim) || $langkahAktif !== '')
+                    {{-- Spinner dirender apa adanya, TIDAK lewat wire:loading: tiap langkah
+                         dijalankan oleh komponen ANAK, jadi wadah ini sendiri tidak sedang
+                         memuat dan wire:loading di sini takkan pernah menyala. Selama antrean
+                         belum habis, prosesnya memang sedang berjalan — itu yang ditandai. --}}
+                    <span class="inline-flex items-center gap-1.5 text-xs text-muted dark:text-gray-400">
+                        <x-loading class="text-teal-600 dark:text-teal-400" />
+                        Mengirim <span class="font-semibold">{{ $langkahAktif ?: '…' }}</span>
+                        · sisa {{ count($antrianKirim) }} langkah
+                    </span>
+                    <x-danger-button type="button" wire:click="batalkanKirimSemua">
+                        <span class="inline-flex items-center gap-1.5">
+                            <x-satu-sehat.ikon-tombol jenis="hentikan" />
+                            Hentikan
+                        </span>
+                    </x-danger-button>
+                @else
+                    <x-confirm-button variant="primary" action="kirimSemua()"
+                        title="Kirim semua langkah ke SATUSEHAT?"
+                        message="15 langkah dijalankan berurutan mulai dari Encounter, ditutup Finish Encounter lalu Finish Episode. Langkah yang datanya belum lengkap akan ditolak dan dilewati — rantai tetap lanjut. Kiriman yang sudah berangkat TIDAK bisa dibatalkan."
+                        confirmText="Ya, Kirim Semua"
+                        wire:key="kirim-semua-ri-{{ $riHdrNo ?? 'none' }}">
+                        <span class="inline-flex items-center gap-1.5">
+                            <x-satu-sehat.ikon-tombol />
+                            Kirim Semua
+                        </span>
+                    </x-confirm-button>
+                @endif
             </div>
 
             {{-- BODY — SFC self-contained per resource --}}

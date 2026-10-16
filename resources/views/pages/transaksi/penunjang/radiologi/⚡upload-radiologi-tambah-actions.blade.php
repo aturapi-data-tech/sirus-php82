@@ -513,52 +513,28 @@ new class extends Component {
         <div class="flex flex-col h-full">
 
             {{-- HEADER --}}
-            <div class="px-6 py-5 border-b bg-surface-soft border-hairline dark:bg-gray-900 dark:border-gray-700 shrink-0">
-                <div class="flex items-start justify-between gap-4">
-                    <div>
-                        <div class="flex items-center gap-3">
-                            <div class="flex items-center justify-center w-10 h-10 rounded-xl bg-brand-green/10 dark:bg-brand-lime/15">
-                                <img src="{{ asset('images/Logogram black solid.png') }}" alt="RSI Madinah"
-                                    class="block w-6 h-6 dark:hidden" />
-                                <img src="{{ asset('images/Logogram white solid.png') }}" alt="RSI Madinah"
-                                    class="hidden w-6 h-6 dark:block" />
-                            </div>
-                            <div>
-                                <h2 class="ds-display-sm dark:text-gray-100">Tambah Pemeriksaan Radiologi</h2>
-                                <p class="mt-0.5 text-sm text-muted dark:text-gray-400">
-                                    Pasien aktif hari ini
-                                    @if ($source === 'RI')
-                                        (sedang dirawat)
-                                    @else
-                                        (terdaftar &amp; belum selesai)
-                                    @endif
-                                </p>
-                            </div>
-                        </div>
+            <x-modul-dokumen.header judul="Tambah Pemeriksaan Radiologi" ikon="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" tutup="closeTambahModal">
+                Pasien aktif hari ini
+                @if ($source === 'RI')
+                    (sedang dirawat)
+                @else
+                    (terdaftar &amp; belum selesai)
+                @endif
+            </x-modul-dokumen.header>
 
-                        {{-- Toggle sumber --}}
-                        <div class="inline-flex mt-3 overflow-hidden border rounded-lg border-hairline dark:border-gray-700">
-                            @foreach (['RJ' => 'Rawat Jalan', 'UGD' => 'UGD', 'RI' => 'Rawat Inap'] as $key => $label)
-                                <button type="button" wire:click="setSource('{{ $key }}')"
-                                    @class([
-                                        'px-3 py-1.5 text-sm font-medium transition',
-                                        'bg-brand-green text-white' => $source === $key,
-                                        'bg-canvas text-body hover:bg-surface-soft dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800' => $source !== $key,
-                                    ])>
-                                    {{ $label }}
-                                </button>
-                            @endforeach
-                        </div>
-                    </div>
-
-                    <x-icon-button color="gray" type="button" wire:click="closeTambahModal" class="shrink-0">
-                        <span class="sr-only">Close</span>
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd"
-                                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                                clip-rule="evenodd" />
-                        </svg>
-                    </x-icon-button>
+            {{-- Toggle sumber --}}
+            <div class="flex flex-wrap items-center gap-2 px-6 py-2 border-b border-hairline dark:border-gray-700 shrink-0">
+                <div class="inline-flex overflow-hidden border rounded-lg border-hairline dark:border-gray-700">
+                    @foreach (['RJ' => 'Rawat Jalan', 'UGD' => 'UGD', 'RI' => 'Rawat Inap'] as $key => $label)
+                        <button type="button" wire:click="setSource('{{ $key }}')"
+                            @class([
+                                'px-3 py-1.5 text-sm font-medium transition',
+                                'bg-brand-green text-white' => $source === $key,
+                                'bg-canvas text-body hover:bg-surface-soft dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800' => $source !== $key,
+                            ])>
+                            {{ $label }}
+                        </button>
+                    @endforeach
                 </div>
             </div>
 

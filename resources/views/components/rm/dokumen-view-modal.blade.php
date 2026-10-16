@@ -19,20 +19,11 @@
 <x-modal :name="$name" size="full" height="full" focusable>
     <div class="flex flex-col h-full">
         {{-- Header --}}
-        <div class="flex items-start justify-between gap-4 px-6 py-4 border-b border-hairline dark:border-gray-700">
-            <div class="min-w-0">
-                <h2 class="text-xl font-semibold text-ink dark:text-gray-100">{{ $title }}</h2>
-                @if (filled($subtitle))
-                    <p class="mt-0.5 text-sm text-muted dark:text-gray-400">{{ $subtitle }}</p>
-                @endif
-            </div>
-            <x-secondary-button type="button" x-on:click="$dispatch('close-modal', { name: '{{ $name }}' })" class="!p-2 shrink-0">
-                <span class="sr-only">Tutup</span>
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
-                </svg>
-            </x-secondary-button>
-        </div>
+        <x-modul-dokumen.header :judul="$title" ikon="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" :namaModal="$name">
+            @if (filled($subtitle))
+                {{ $subtitle }}
+            @endif
+        </x-modul-dokumen.header>
 
         {{-- Body --}}
         @if (filled($previewHtml))

@@ -277,19 +277,9 @@ new class extends Component {
         <div class="flex flex-col h-full" wire:key="{{ $this->renderKey('kamar-operasi-order-modal-ri', [$riHdrNo ?: 'kosong']) }}">
 
             {{-- HEADER --}}
-            <div class="flex items-center justify-between px-6 py-4 border-b shrink-0 border-hairline dark:border-gray-700">
-                <div>
-                    <h2 class="text-lg font-semibold text-ink dark:text-gray-100">Kirim Pasien ke Kamar Operasi</h2>
-                    <p class="text-xs text-muted">Order dari ruangan — petugas OK yang akan melengkapi tarif dan bahan</p>
-                </div>
-                <x-icon-button color="gray" type="button" wire:click="closeModal">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd"
-                            d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                            clip-rule="evenodd" />
-                    </svg>
-                </x-icon-button>
-            </div>
+            <x-modul-dokumen.header judul="Kirim Pasien ke Kamar Operasi" ikon="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z">
+                Order dari ruangan — petugas OK yang akan melengkapi tarif dan bahan
+            </x-modul-dokumen.header>
 
             {{-- BODY — satu kolom dari atas ke bawah, memakai lebar penuh modal,
                  tiap bagian dibingkai x-border-form (pola sama dengan Master Poli). --}}
@@ -330,39 +320,41 @@ new class extends Component {
                         <livewire:lov.jasa-dokter.lov-jasa-dokter-ri target="order-ok-ri-tindakan" label="Cari Tindakan Operasi"
                             :riHdrNo="(int) $riHdrNo" wire:key="order-ok-ri-tindakan-{{ $riHdrNo }}-{{ count($selectedTindakan) }}" />
                         @if (!empty($selectedTindakan))
-                            <table class="w-full mt-3 text-sm text-left">
-                                <thead class="text-xs font-semibold tracking-wide uppercase text-muted">
-                                    <tr>
-                                        <th class="px-2 py-1">Kode</th>
-                                        <th class="px-2 py-1">Tindakan</th>
-                                        <th class="px-2 py-1 text-right">Tarif</th>
-                                        <th class="px-2 py-1 text-center">Aksi</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-hairline-soft dark:divide-gray-800">
-                                    @foreach ($selectedTindakan as $item)
-                                        <tr wire:key="rencana-{{ $item['accdoc_id'] }}">
-                                            <td class="px-2 py-1 font-mono text-muted">{{ $item['accdoc_id'] }}</td>
-                                            <td class="px-2 py-1 text-ink dark:text-gray-200">{{ $item['accdoc_desc'] }}</td>
-                                            <td class="px-2 py-1 text-right text-ink dark:text-gray-200 tabular-nums">
-                                                Rp {{ number_format($item['accdoc_price']) }}
-                                            </td>
-                                            <td class="px-2 py-1 text-center">
-                                                <x-hapus-button wire:click="hapusTindakan('{{ $item['accdoc_id'] }}')" />
-                                            </td>
+                            <div class="mt-3 overflow-x-auto rounded-2xl border border-hairline dark:border-gray-700">
+                                <table class="min-w-full text-sm">
+                                    <thead class="bg-surface-card dark:bg-gray-800">
+                                        <tr class="text-xs font-semibold tracking-wide text-left uppercase text-muted dark:text-gray-300">
+                                            <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Kode</th>
+                                            <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Tindakan</th>
+                                            <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700 text-right">Tarif</th>
+                                            <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700 text-center">Aksi</th>
                                         </tr>
-                                    @endforeach
-                                </tbody>
-                                <tfoot class="border-t border-hairline dark:border-gray-700">
-                                    <tr>
-                                        <td colspan="2" class="px-2 py-2 text-sm font-semibold text-muted">Total rencana</td>
-                                        <td class="px-2 py-2 text-sm font-bold text-right text-ink dark:text-white tabular-nums">
-                                            Rp {{ number_format($this->totalRencana) }}
-                                        </td>
-                                        <td></td>
-                                    </tr>
-                                </tfoot>
-                            </table>
+                                    </thead>
+                                    <tbody>
+                                        @foreach ($selectedTindakan as $item)
+                                            <tr wire:key="rencana-{{ $item['accdoc_id'] }}" class="border-b border-hairline dark:border-gray-700 hover:bg-surface-soft dark:hover:bg-gray-800/60">
+                                                <td class="px-4 py-3 font-mono text-muted">{{ $item['accdoc_id'] }}</td>
+                                                <td class="px-4 py-3 text-ink dark:text-gray-200">{{ $item['accdoc_desc'] }}</td>
+                                                <td class="px-4 py-3 text-right text-ink dark:text-gray-200 tabular-nums">
+                                                    Rp {{ number_format($item['accdoc_price']) }}
+                                                </td>
+                                                <td class="px-4 py-3 text-center">
+                                                    <x-hapus-button wire:click="hapusTindakan('{{ $item['accdoc_id'] }}')" />
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                    <tfoot class="border-t border-hairline dark:border-gray-700">
+                                        <tr>
+                                            <td colspan="2" class="px-4 py-3 text-sm font-semibold text-muted">Total rencana</td>
+                                            <td class="px-4 py-3 text-sm font-bold text-right text-ink dark:text-white tabular-nums">
+                                                Rp {{ number_format($this->totalRencana) }}
+                                            </td>
+                                            <td></td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
                         @else
                             <p class="mt-2 text-xs text-muted-soft">
                                 Boleh dikosongkan — petugas OK bisa melengkapinya setelah operasi.

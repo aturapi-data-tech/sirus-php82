@@ -424,24 +424,24 @@ new class extends Component {
                     <h3 class="text-sm font-semibold text-body dark:text-gray-300">Riwayat Alat Invasif &amp; Tirah Baring</h3>
                     <x-badge variant="gray">{{ count($daftarAlat) }} item</x-badge>
                 </div>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-sm text-left">
-                        <thead class="text-xs font-semibold text-muted uppercase bg-surface-soft dark:bg-gray-800/50 dark:text-gray-400">
-                            <tr>
-                                <th class="px-4 py-3">No</th>
-                                <th class="px-4 py-3">Jenis</th>
-                                <th class="px-4 py-3">Lokasi</th>
-                                <th class="px-4 py-3">Waktu Pasang</th>
-                                <th class="px-4 py-3">Waktu Lepas</th>
-                                <th class="px-4 py-3">Lama</th>
-                                <th class="px-4 py-3">Keterangan</th>
-                                <th class="px-4 py-3">Pemeriksa</th>
+                <div class="overflow-x-auto rounded-2xl border border-hairline dark:border-gray-700">
+                    <table class="min-w-full text-sm">
+                        <thead class="bg-surface-card dark:bg-gray-800">
+                            <tr class="text-xs font-semibold tracking-wide text-left uppercase text-muted dark:text-gray-300">
+                                <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">No</th>
+                                <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Jenis</th>
+                                <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Lokasi</th>
+                                <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Waktu Pasang</th>
+                                <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Waktu Lepas</th>
+                                <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Lama</th>
+                                <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Keterangan</th>
+                                <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Pemeriksa</th>
                                 @if (!$isFormLocked)
-                                    <th class="px-4 py-3 text-center w-20">Hapus</th>
+                                    <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700 text-center w-20">Hapus</th>
                                 @endif
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-hairline-soft dark:divide-gray-800">
+                        <tbody>
                             @forelse ($alatTersusun as $baris)
                                 @php
                                     $jenisBaris = $baris['jenisAlat'] ?? '';
@@ -449,7 +449,7 @@ new class extends Component {
                                     $waktuLepas = $baris['tanggalWaktuSelesai'] ?? '';
                                 @endphp
                                 <tr wire:key="alat-{{ $jenisBaris }}-{{ $waktuPasang }}"
-                                    class="transition hover:bg-surface-soft dark:hover:bg-gray-800/40"
+                                    class="border-b border-hairline dark:border-gray-700 hover:bg-surface-soft dark:hover:bg-gray-800/60"
                                     x-data="{ editing: false, val: '{{ $waktuLepas }}' }">
                                     <td class="px-4 py-3 text-muted dark:text-gray-400">{{ $loop->iteration }}</td>
                                     <td class="px-4 py-3 font-medium text-ink dark:text-gray-100">
@@ -507,7 +507,7 @@ new class extends Component {
                             @empty
                                 <tr>
                                     <td colspan="{{ $isFormLocked ? 8 : 9 }}"
-                                        class="px-4 py-10 text-sm text-center text-muted-soft dark:text-gray-600">
+                                        class="px-4 py-8 text-center text-muted-soft">
                                         <svg class="w-8 h-8 mx-auto mb-2 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                                                 d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />

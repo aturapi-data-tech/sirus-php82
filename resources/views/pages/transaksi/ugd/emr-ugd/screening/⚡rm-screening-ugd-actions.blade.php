@@ -556,42 +556,12 @@ new class extends Component {
             wire:key="{{ $this->renderKey('modal-screening-ugd', [$rjNo ?? 'new']) }}">
 
             {{-- HEADER --}}
-            <div class="relative px-6 py-5 border-b border-hairline dark:border-gray-700">
-                <div class="absolute inset-0 opacity-[0.06]"
-                    style="background-image:radial-gradient(currentColor 1px,transparent 1px);background-size:14px 14px;">
-                </div>
-                <div class="relative flex items-start justify-between gap-4">
-                    <div>
-                        <div class="flex items-center gap-3">
-                            <div class="flex items-center justify-center w-10 h-10 rounded-xl bg-red-500/10">
-                                <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor"
-                                    viewBox="0 0 24 24" stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                        d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-                                </svg>
-                            </div>
-                            <div>
-                                <h2 class="font-semibold text-2xl text-ink dark:text-gray-100">Screening UGD</h2>
-                                <p class="mt-0.5 text-base text-muted dark:text-gray-400">Triase awal pasien Unit Gawat
-                                    Darurat</p>
-                            </div>
-                        </div>
-                        <div class="flex gap-2 mt-3">
-                            <x-badge variant="danger">UGD / IGD</x-badge>
-                            @if ($isFormLocked)
-                                <x-badge variant="danger">Read Only</x-badge>
-                            @endif
-                        </div>
-                    </div>
-                    <x-icon-button color="gray" type="button" wire:click="closeModal">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd"
-                                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                                clip-rule="evenodd" />
-                        </svg>
-                    </x-icon-button>
-                </div>
-            </div>
+            <x-modul-dokumen.header judul="Screening UGD"
+                ikon="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
+                jalur="UGD"
+                :readOnly="$isFormLocked">
+                Triase awal pasien Unit Gawat Darurat
+            </x-modul-dokumen.header>
 
             {{-- BODY --}}
             <div class="flex-1 px-4 py-4 overflow-y-auto bg-surface-soft/70 dark:bg-gray-950/20">

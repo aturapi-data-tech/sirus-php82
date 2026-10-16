@@ -1059,27 +1059,27 @@ new class extends Component {
         @php $levelingList = $pengkajianAwal['levelingDokter'] ?? []; @endphp
 
         @if (count($levelingList) > 0)
-            <div class="mt-3 overflow-x-auto">
-                <table class="w-full text-sm border border-hairline dark:border-gray-700 rounded-lg overflow-hidden">
-                    <thead class="bg-surface-soft dark:bg-gray-800 text-muted dark:text-gray-400 uppercase">
-                        <tr>
-                            <th class="px-3 py-2 text-left">Dokter</th>
-                            <th class="px-3 py-2 text-left">Poli</th>
-                            <th class="px-3 py-2 text-left">Level</th>
-                            <th class="px-3 py-2 text-left">Tgl Entry</th>
+            <div class="mt-3 overflow-x-auto rounded-2xl border border-hairline bg-canvas dark:border-gray-700 dark:bg-gray-900">
+                <table class="min-w-full text-sm">
+                    <thead class="bg-surface-card dark:bg-gray-800">
+                        <tr class="text-xs font-semibold tracking-wide text-left uppercase text-muted dark:text-gray-300">
+                            <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Dokter</th>
+                            <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Poli</th>
+                            <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Level</th>
+                            <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Tgl Entry</th>
                             @if (!$isFormLocked && !$isReadOnlyByRole)
-                                <th class="px-3 py-2 text-center">Aksi</th>
+                                <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700 text-center">Aksi</th>
                             @endif
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-hairline-soft dark:divide-gray-700">
+                    <tbody>
                         @foreach ($levelingList as $idx => $dr)
-                            <tr class="bg-canvas dark:bg-gray-900 hover:bg-surface-soft dark:hover:bg-gray-800/50">
-                                <td class="px-3 py-2 font-medium text-ink dark:text-gray-100">
+                            <tr class="border-b border-hairline dark:border-gray-700 hover:bg-surface-soft dark:hover:bg-gray-800/60">
+                                <td class="px-4 py-3 font-medium text-ink dark:text-gray-100">
                                     {{ $dr['drName'] ?? '-' }}</td>
-                                <td class="px-3 py-2 text-muted dark:text-gray-400">{{ $dr['poliDesc'] ?? '-' }}
+                                <td class="px-4 py-3 text-muted dark:text-gray-400">{{ $dr['poliDesc'] ?? '-' }}
                                 </td>
-                                <td class="px-3 py-2">
+                                <td class="px-4 py-3">
                                     @if (($dr['levelDokter'] ?? '') === 'Utama')
                                         <span
                                             class="px-2 py-0.5 rounded-full bg-brand/10 text-brand font-semibold text-sm">Utama</span>
@@ -1089,9 +1089,9 @@ new class extends Component {
                                             Gabung</span>
                                     @endif
                                 </td>
-                                <td class="px-3 py-2 font-mono text-muted">{{ $dr['tglEntry'] ?? '-' }}</td>
+                                <td class="px-4 py-3 font-mono text-muted">{{ $dr['tglEntry'] ?? '-' }}</td>
                                 @if (!$isFormLocked && !$isReadOnlyByRole)
-                                    <td class="px-3 py-2 text-center">
+                                    <td class="px-4 py-3 text-center">
                                         <div class="flex items-center justify-center gap-1">
                                             @if (($dr['levelDokter'] ?? '') !== 'Utama')
                                                 <x-ghost-button type="button" class="!text-sm !py-0.5 !px-2"

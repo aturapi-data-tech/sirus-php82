@@ -23,9 +23,42 @@
                 {{-- Kode = drId kunjungan: setDrPemeriksa() hanya mengizinkan TTD bila drId == myuser_code dokter login --}}
                 :code="$drId"
                 :locked="$isFormLocked"
+                {{-- Perwakilan tak diberi tombol TTD Dokter biasa (pasti ditolak) — ia memakai tombol di bawah. --}}
+                :canSign="! $this->bolehTtdPerwakilan()"
                 sign="setDrPemeriksa" nameLabel="Dokter Pemeriksa" dateLabel="Selesai Pemeriksaan" signLabel="TTD Dokter" />
 
             <x-input-error :messages="$errors->get('perencanaan.pengkajianMedis.drPemeriksa')" class="mt-1" />
+
+            {{-- Catatan perwakilan hanya untuk manager ke atas (Gate dokumen.ttdPerwakilan) —
+                 user biasa cukup melihat stempel dokter, supaya tidak bingung. Jejaknya tetap di log. --}}
+            @can('dokumen.ttdPerwakilan')
+                @if (!empty($perencanaan['pengkajianMedis']['diwakilkanOleh']['nama']))
+                    <p class="text-xs text-amber-700 dark:text-amber-400">
+                        Diwakilkan oleh {{ $perencanaan['pengkajianMedis']['diwakilkanOleh']['nama'] }}
+                        @if (!empty($perencanaan['pengkajianMedis']['diwakilkanOleh']['role']))
+                            ({{ $perencanaan['pengkajianMedis']['diwakilkanOleh']['role'] }})
+                        @endif
+                    </p>
+                @endif
+            @endcan
+
+            {{-- TTD-E perwakilan (manager ke atas, Gate dokumen.ttdPerwakilan) — pola Resume Medis RI:
+                 stempel tetap atas nama dokter kunjungan, penekan tombol tercatat di stempel & log. --}}
+            @if (!$isFormLocked && blank($perencanaan['pengkajianMedis']['drPemeriksa'] ?? '') && $this->bolehTtdPerwakilan())
+                <div>
+                    <x-confirm-button variant="primary" action="setDrPemeriksaPerwakilan()"
+                        title="TTD-E atas nama {{ $drDesc ?: 'Dokter Pemeriksa' }}?"
+                        message="EMR akan ditandatangani ATAS NAMA dokter pemeriksa dan terkunci. Nama Anda tercatat sebagai perwakilan di stempel & log. Bila keliru: Buka Kunci TTD-E lalu TTD ulang."
+                        confirmText="Ya, TTD Perwakilan" class="justify-center w-full"
+                        wire:key="ttd-perwakilan-ugd-{{ $rjNo }}">
+                        TTD atas nama Dokter
+                    </x-confirm-button>
+                    <p class="mt-1 text-xs text-muted dark:text-gray-400">
+                        Anda bukan dokter pemeriksa — TTD sebagai perwakilan atas nama
+                        <strong>{{ $drDesc ?: '-' }}</strong>.
+                    </p>
+                </div>
+            @endif
 
             {{-- Buka Kunci TTD-E — hanya muncul bila SUDAH ter-TTD, dan hanya untuk role
                  berhak (Gate dokumen.bukaKunci, sama dengan Buka Kunci Screening & modul

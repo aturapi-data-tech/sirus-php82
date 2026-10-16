@@ -373,22 +373,22 @@ new class extends Component {
         @endhasanyrole
 
         <div
-            class="overflow-x-auto bg-canvas border border-hairline rounded-xl shadow-sm dark:bg-gray-900 dark:border-gray-700">
-            <table class="w-full text-sm text-left text-muted dark:text-gray-400">
-                <thead class="text-xs font-semibold text-body uppercase bg-surface-soft dark:bg-gray-800">
-                    <tr>
-                        <th class="px-4 py-3 w-44">Tgl Upload</th>
-                        <th class="px-4 py-3">Keterangan</th>
-                        <th class="px-4 py-3 w-28 text-center">Aksi</th>
+            class="overflow-x-auto rounded-2xl border border-hairline bg-canvas dark:border-gray-700 dark:bg-gray-900">
+            <table class="min-w-full text-sm">
+                <thead class="bg-surface-card dark:bg-gray-800">
+                    <tr class="text-xs font-semibold tracking-wide text-left uppercase text-muted dark:text-gray-300">
+                        <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700 w-44">Tgl Upload</th>
+                        <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Keterangan</th>
+                        <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700 w-28 text-center">Aksi</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-hairline-soft dark:divide-gray-700">
+                <tbody>
                     @forelse (array_reverse($pemeriksaan['uploadHasilPenunjang'] ?? []) as $item)
-                        <tr class="group hover:bg-surface-soft dark:hover:bg-gray-800 transition">
-                            <td class="px-4 py-2 whitespace-nowrap text-body dark:text-gray-300">
+                        <tr class="border-b border-hairline dark:border-gray-700 hover:bg-surface-soft dark:hover:bg-gray-800/60">
+                            <td class="px-4 py-3 whitespace-nowrap text-body dark:text-gray-300">
                                 {{ $item['tglUpload'] ?? '-' }}</td>
-                            <td class="px-4 py-2 text-body dark:text-gray-300">{{ $item['desc'] ?? '-' }}</td>
-                            <td class="px-4 py-2">
+                            <td class="px-4 py-3 text-body dark:text-gray-300">{{ $item['desc'] ?? '-' }}</td>
+                            <td class="px-4 py-3">
                                 <div class="flex items-center justify-center gap-2">
                                     @hasanyrole('Perawat|Admin|Dokter')
                                         <x-icon-button wire:click="openModalViewPenunjang('{{ $item['file'] ?? '' }}')"
@@ -415,7 +415,7 @@ new class extends Component {
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="3" class="px-4 py-8 text-center text-sm text-muted-soft dark:text-gray-500">
+                            <td colspan="3" class="px-4 py-8 text-center text-muted-soft">
                                 Belum ada file penunjang yang diupload.
                             </td>
                         </tr>
@@ -483,34 +483,11 @@ new class extends Component {
     <x-modal name="view-penunjang-pdf-ri" size="full" height="full" focusable>
         <div class="flex flex-col h-[calc(100vh-4rem)]" wire:key="view-penunjang-pdf-ri-{{ $viewFilePDF }}">
 
-            <div class="relative px-6 py-5 border-b border-hairline dark:border-gray-700 shrink-0">
-                <div class="absolute inset-0 opacity-[0.06] dark:opacity-[0.10]"
-                    style="background-image:radial-gradient(currentColor 1px,transparent 1px);background-size:14px 14px">
-                </div>
-                <div class="relative flex items-start justify-between gap-4">
-                    <div class="flex items-center gap-3">
-                        <div
-                            class="flex items-center justify-center w-10 h-10 rounded-xl bg-yellow-400/10 dark:bg-yellow-400/15">
-                            <svg class="w-5 h-5 text-yellow-500" fill="currentColor" viewBox="0 0 24 24">
-                                <path
-                                    d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm-1 1.5L18.5 9H13V3.5zM8 13h8v1.5H8V13zm0 3h8v1.5H8V16zm0-6h3v1.5H8V10z" />
-                            </svg>
-                        </div>
-                        <div>
-                            <h2 class="font-semibold text-2xl text-ink dark:text-gray-100">Hasil Penunjang</h2>
-                            <p class="mt-0.5 text-sm text-muted dark:text-gray-400">Preview file PDF hasil penunjang
-                                pasien</p>
-                        </div>
-                    </div>
-                    <x-icon-button color="gray" type="button" wire:click="closeModalViewPenunjang">
-                        <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd"
-                                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                                clip-rule="evenodd" />
-                        </svg>
-                    </x-icon-button>
-                </div>
-            </div>
+            <x-modul-dokumen.header judul="Hasil Penunjang"
+                ikon="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                tutup="closeModalViewPenunjang">
+                Preview file PDF hasil penunjang pasien
+            </x-modul-dokumen.header>
 
             <div class="flex-1 min-h-0 bg-surface-soft dark:bg-gray-950">
                 @if ($viewFilePDF && (str_starts_with($viewFilePDF, 'data:image/') || preg_match('/\.(jpe?g|png)$/i', $viewFilePDF)))

@@ -383,21 +383,21 @@ new class extends Component {
 
     @if (collect($daftarGizi)->filter(fn($r) => filled(data_get($r, 'tglPenilaian')))->isNotEmpty())
         <x-border-form title="Riwayat Penilaian Gizi" align="start" bgcolor="bg-canvas">
-            <div class="mt-3 overflow-x-auto rounded-lg border border-hairline dark:border-gray-700">
-                <table class="w-full text-sm text-left text-muted dark:text-gray-300">
-                    <thead class="bg-surface-soft dark:bg-gray-700 text-muted dark:text-gray-400">
-                        <tr>
-                            <th class="px-3 py-2">Tgl Penilaian / Petugas</th>
-                            <th class="px-3 py-2">BB / TB / IMT</th>
-                            <th class="px-3 py-2">Skrining</th>
-                            <th class="px-3 py-2">Program Diet</th>
-                            <th class="px-3 py-2">Catatan</th>
+            <div class="mt-3 overflow-x-auto rounded-2xl border border-hairline dark:border-gray-700">
+                <table class="min-w-full text-sm">
+                    <thead class="bg-surface-card dark:bg-gray-800">
+                        <tr class="text-xs font-semibold tracking-wide text-left uppercase text-muted dark:text-gray-300">
+                            <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Tgl Penilaian / Petugas</th>
+                            <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">BB / TB / IMT</th>
+                            <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Skrining</th>
+                            <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Program Diet</th>
+                            <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Catatan</th>
                             @if (!$isFormLocked)
-                                <th class="px-3 py-2"></th>
+                                <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700"></th>
                             @endif
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-hairline-soft dark:divide-gray-700">
+                    <tbody>
                         @foreach (array_reverse(array_filter($daftarGizi, fn($r) => filled(data_get($r, 'tglPenilaian'))), true) as $i => $row)
                             @php
                                 $kat = $row['gizi']['kategoriGizi'] ?? '-';
@@ -408,17 +408,17 @@ new class extends Component {
                                             ? 'bg-green-50 hover:bg-green-100'
                                             : 'hover:bg-surface-soft');
                             @endphp
-                            <tr class="{{ $rowBg }}">
-                                <td class="px-3 py-2 whitespace-nowrap">
+                            <tr class="border-b border-hairline dark:border-gray-700 {{ $rowBg }}">
+                                <td class="px-4 py-3 whitespace-nowrap">
                                     {{ $row['tglPenilaian'] ?? '-' }}
                                     <span class="block text-xs text-muted-soft">{{ $row['petugasPenilai'] ?? '-' }}</span>
                                 </td>
-                                <td class="px-3 py-2 whitespace-nowrap">
+                                <td class="px-4 py-3 whitespace-nowrap">
                                     {{ $row['gizi']['beratBadan'] ?? '' ?: '-' }} kg
                                     · {{ $row['gizi']['tinggiBadan'] ?? '' ?: '-' }} cm
                                     · IMT <span class="font-bold">{{ $row['gizi']['imt'] ?? '' ?: '-' }}</span>
                                 </td>
-                                <td class="px-3 py-2">
+                                <td class="px-4 py-3">
                                     @if (filled($kat) && $kat !== '-')
                                         <span
                                             class="px-2 py-0.5 rounded-full text-sm font-medium whitespace-nowrap
@@ -429,16 +429,16 @@ new class extends Component {
                                         -
                                     @endif
                                 </td>
-                                <td class="px-3 py-2">
+                                <td class="px-4 py-3">
                                     {{ $row['gizi']['programDiet'] ?? '' ?: '-' }}
                                     @if (filled($row['gizi']['programDietKet'] ?? ''))
                                         <span class="block text-xs text-muted-soft">{{ $row['gizi']['programDietKet'] }}</span>
                                     @endif
                                 </td>
-                                <td class="px-3 py-2 text-muted max-w-xs truncate">
+                                <td class="px-4 py-3 text-muted max-w-xs truncate">
                                     {{ $row['gizi']['catatan'] ?? '' ?: '-' }}</td>
                                 @if (!$isFormLocked)
-                                    <td class="px-3 py-2">
+                                    <td class="px-4 py-3">
                                         <x-hapus-button wire:click="removeAssessmentGizi({{ $i }})" confirm="Hapus data gizi ini?" />
                                     </td>
                                 @endif

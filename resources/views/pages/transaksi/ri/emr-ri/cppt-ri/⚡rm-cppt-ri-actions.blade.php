@@ -922,25 +922,25 @@ new class extends Component {
                                                         <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
                                                     </svg>
                                                 </button>
-                                                <div x-show="openB" x-collapse x-cloak class="overflow-x-auto">
-                                                    <table class="w-full text-sm text-left border-t border-hairline-soft dark:border-gray-700">
-                                                        <thead class="bg-surface-soft/60 dark:bg-gray-800 text-muted dark:text-gray-300">
-                                                            <tr>
-                                                                <th class="px-3 py-2 whitespace-nowrap">Tanggal</th>
-                                                                <th class="px-3 py-2">Petugas</th>
-                                                                <th class="px-3 py-2">Pelaksanaan & Monitoring</th>
-                                                                <th class="px-3 py-2">Advokasi / Kolaborasi</th>
-                                                                <th class="px-3 py-2">Terminasi</th>
+                                                <div x-show="openB" x-collapse x-cloak class="overflow-x-auto rounded-2xl border border-hairline dark:border-gray-700">
+                                                    <table class="min-w-full text-sm">
+                                                        <thead class="bg-surface-card dark:bg-gray-800">
+                                                            <tr class="text-xs font-semibold tracking-wide text-left uppercase text-muted dark:text-gray-300">
+                                                                <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Tanggal</th>
+                                                                <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Petugas</th>
+                                                                <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Pelaksanaan & Monitoring</th>
+                                                                <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Advokasi / Kolaborasi</th>
+                                                                <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Terminasi</th>
                                                             </tr>
                                                         </thead>
-                                                        <tbody class="divide-y divide-hairline-soft dark:divide-gray-700">
+                                                        <tbody>
                                                             @foreach ($formBList as $entriFormB)
-                                                                <tr class="align-top bg-canvas dark:bg-gray-800">
-                                                                    <td class="px-3 py-2 whitespace-nowrap font-mono text-muted-soft">{{ $entriFormB['tanggal'] ?? '-' }}</td>
-                                                                    <td class="px-3 py-2 whitespace-nowrap text-body dark:text-gray-200">{{ $entriFormB['tandaTanganPetugas']['petugasName'] ?? '-' }}</td>
-                                                                    <td class="px-3 py-2 whitespace-pre-wrap text-body dark:text-gray-300">{{ trim($entriFormB['pelaksanaanMonitoring'] ?? '') ?: '-' }}</td>
-                                                                    <td class="px-3 py-2 whitespace-pre-wrap text-body dark:text-gray-300">{{ trim($entriFormB['advokasiKolaborasi'] ?? '') ?: '-' }}</td>
-                                                                    <td class="px-3 py-2 whitespace-pre-wrap text-body dark:text-gray-300">{{ trim($entriFormB['terminasi'] ?? '') ?: '-' }}</td>
+                                                                <tr class="border-b border-hairline dark:border-gray-700 hover:bg-surface-soft dark:hover:bg-gray-800/60 align-top">
+                                                                    <td class="px-4 py-3 whitespace-nowrap font-mono text-muted-soft">{{ $entriFormB['tanggal'] ?? '-' }}</td>
+                                                                    <td class="px-4 py-3 whitespace-nowrap text-body dark:text-gray-200">{{ $entriFormB['tandaTanganPetugas']['petugasName'] ?? '-' }}</td>
+                                                                    <td class="px-4 py-3 whitespace-pre-wrap text-body dark:text-gray-300">{{ trim($entriFormB['pelaksanaanMonitoring'] ?? '') ?: '-' }}</td>
+                                                                    <td class="px-4 py-3 whitespace-pre-wrap text-body dark:text-gray-300">{{ trim($entriFormB['advokasiKolaborasi'] ?? '') ?: '-' }}</td>
+                                                                    <td class="px-4 py-3 whitespace-pre-wrap text-body dark:text-gray-300">{{ trim($entriFormB['terminasi'] ?? '') ?: '-' }}</td>
                                                                 </tr>
                                                             @endforeach
                                                         </tbody>

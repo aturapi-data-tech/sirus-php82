@@ -318,30 +318,13 @@ new class extends Component {
         <div class="flex flex-col h-full">
 
             {{-- HEADER MODAL --}}
-            <div class="px-6 py-3 bg-surface-soft dark:bg-gray-900">
-                <div class="flex items-start justify-between gap-4">
-                    <div class="min-w-0">
-                        <h2 class="text-sm font-semibold tracking-wider uppercase text-muted dark:text-gray-400">
-                            Lampiran Rincian Pasien
-                        </h2>
-                        <p class="mt-0.5 text-xs text-muted dark:text-gray-400">
-                            @if ($this->modeSemua)
-                                {{ $this->dataLampiran->count() }} dokter
-                            @else
-                                {{ $this->dataLampiran->first()['header']->dr_name ?? '' }}
-                            @endif
-                        </p>
-                    </div>
-
-                    <x-icon-button color="gray" type="button" wire:click="closeModal">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd"
-                                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                                clip-rule="evenodd" />
-                        </svg>
-                    </x-icon-button>
-                </div>
-            </div>
+            <x-modul-dokumen.header judul="Lampiran Rincian Pasien" ikon="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
+                @if ($this->modeSemua)
+                    {{ $this->dataLampiran->count() }} dokter
+                @else
+                    {{ $this->dataLampiran->first()['header']->dr_name ?? '' }}
+                @endif
+            </x-modul-dokumen.header>
 
             {{-- BODY --}}
             <div class="flex-1 px-4 pt-2 pb-4 overflow-y-auto bg-surface-soft dark:bg-gray-950/20">

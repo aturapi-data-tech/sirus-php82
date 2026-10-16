@@ -292,39 +292,22 @@ new class extends Component {
         {{-- Isi modal hanya di-mount saat ada pasien: tertutup = nol komponen, buka = mount sekali,
              tutup = dihapus tanpa mount ulang (closeModal mengosongkan riHdrNo). --}}
         @if ($riHdrNo)
+        <x-modul-dokumen.header judul="Pindah Kamar" ikon="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4">
+            No. RI: <span class="font-mono font-semibold">{{ $riHdrNo ?? '-' }}</span>
+            <x-slot:badge>
+                @if ($isFormLocked)
+                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300">
+                        <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/></svg>
+                        Terkunci (Pasien Pulang)
+                    </span>
+                @endif
+            </x-slot:badge>
+        </x-modul-dokumen.header>
         <div class="p-6 space-y-5"
             wire:key="{{ $this->renderKey('modal-pindah-kamar-ri', [$riHdrNo ?? 'new']) }}"
             x-data
             x-on:focus-input-pindah-bed.window="$nextTick(() => $refs.inputPindahBed?.focus())">
 
-            {{-- Header --}}
-            <div class="flex items-center justify-between">
-                <div class="flex items-center gap-3">
-                    <div class="flex items-center justify-center w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 shrink-0">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                        </svg>
-                    </div>
-                    <div>
-                        <div class="flex items-center gap-2">
-                            <h3 class="text-base font-semibold text-ink dark:text-gray-100">Pindah Kamar</h3>
-                            @if ($isFormLocked)
-                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300">
-                                    <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/></svg>
-                                    Terkunci (Pasien Pulang)
-                                </span>
-                            @endif
-                        </div>
-                        <p class="text-xs text-muted dark:text-gray-400">No. RI: <span class="font-mono font-semibold">{{ $riHdrNo ?? '-' }}</span></p>
-                    </div>
-                </div>
-                <x-icon-button color="gray" type="button" wire:click="closeModal" class="shrink-0">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </x-icon-button>
-            </div>
 
             @if ($isFormLocked)
                 <div class="p-3 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 text-xs text-red-700 dark:text-red-300">

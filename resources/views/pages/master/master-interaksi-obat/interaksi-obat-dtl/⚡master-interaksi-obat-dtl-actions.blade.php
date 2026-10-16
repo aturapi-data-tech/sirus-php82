@@ -186,31 +186,11 @@ new class extends Component {
         <div :wire:key="$this->renderKey('modal')" class="flex flex-col min-h-0">
 
             {{-- HEADER --}}
-            <div class="relative px-6 py-5 bg-surface-soft">
-                <div class="relative flex items-start justify-between gap-4">
-                    <div class="flex items-center gap-3">
-                        <div class="flex items-center justify-center w-10 h-10 rounded-xl bg-brand-green/10 dark:bg-brand-lime/15">
-                            <img src="{{ asset('images/Logogram black solid.png') }}" alt="Logo" class="block w-6 h-6 dark:hidden" />
-                            <img src="{{ asset('images/Logogram white solid.png') }}" alt="Logo" class="hidden w-6 h-6 dark:block" />
-                        </div>
-                        <div>
-                            <h2 class="ds-display-sm dark:text-gray-100">Tambah Produk</h2>
-                            <p class="mt-0.5 text-sm text-muted dark:text-gray-400">
-                                Cari & klik produk untuk dimasukkan ke interaksi
-                                <span class="font-semibold text-brand dark:text-brand-lime">{{ $intDesc }}</span>.
-                            </p>
-                        </div>
-                    </div>
-                    <x-icon-button color="gray" type="button" wire:click="closeModal">
-                        <span class="sr-only">Tutup</span>
-                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd"
-                                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                                clip-rule="evenodd" />
-                        </svg>
-                    </x-icon-button>
-                </div>
-            </div>
+            <x-modul-dokumen.header judul="Tambah Produk"
+                ikon="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                Cari & klik produk untuk dimasukkan ke interaksi
+                <span class="font-semibold text-brand dark:text-brand-lime">{{ $intDesc }}</span>.
+            </x-modul-dokumen.header>
 
             {{-- BODY --}}
             <div class="flex-1 px-6 py-4 bg-surface-soft dark:bg-gray-950/20" x-enter-chain

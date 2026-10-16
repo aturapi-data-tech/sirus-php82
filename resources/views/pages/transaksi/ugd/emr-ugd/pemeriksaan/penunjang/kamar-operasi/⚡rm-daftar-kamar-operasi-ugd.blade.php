@@ -57,15 +57,7 @@ new class extends Component {
 ?>
 
 <div>
-    <table class="w-full text-base text-left text-muted table-auto">
-        <thead class="text-sm text-body uppercase bg-surface-soft">
-            <tr>
-                <th class="px-4 py-3 text-sm font-medium text-muted uppercase dark:text-gray-400">Tgl Operasi</th>
-                <th class="px-4 py-3 text-sm font-medium text-muted uppercase dark:text-gray-400">Tindakan / Dokter</th>
-                <th class="w-40 px-4 py-3 text-sm font-medium text-center text-muted uppercase dark:text-gray-400">Status</th>
-            </tr>
-        </thead>
-        <tbody class="bg-canvas">
+    <x-modul-dokumen.tabel-daftar :kolom="['Tgl Operasi', 'Tindakan / Dokter', 'Status' => 'w-40 text-center']">
             @forelse ($rows as $row)
                 @php
                     $statusOk = strtoupper($row['ok_status'] ?? 'A');
@@ -78,12 +70,12 @@ new class extends Component {
                     };
                 @endphp
                 {{-- Baris dibatalkan ditandai merah, sama seperti pasien Batal di Pelayanan RJ. --}}
-                <tr wire:key="daftar-ok-ugd-{{ $row['ok_reg'] }}"
-                    class="border-b group {{ $statusOk === 'F' ? 'bg-error/5 dark:bg-red-900/10 border-l-4 border-error' : '' }}">
-                    <td class="px-2 py-2 text-sm font-mono text-muted group-hover:bg-surface-soft whitespace-nowrap">
+                <tbody wire:key="daftar-ok-ugd-{{ $row['ok_reg'] }}" class="border-b border-hairline dark:border-gray-700">
+                <tr class="hover:bg-surface-soft dark:hover:bg-gray-800/60 {{ $statusOk === 'F' ? 'bg-error/5 dark:bg-red-900/10 border-l-4 border-error' : '' }}">
+                    <td class="px-4 py-3 font-mono text-muted dark:text-gray-300 whitespace-nowrap">
                         {{ $row['ok_date'] ?? '-' }}
                     </td>
-                    <td class="px-2 py-2 text-body group-hover:bg-surface-soft">
+                    <td class="px-4 py-3 text-body">
                         <span class="block">{{ $row['tindakan_desc'] ?: 'Belum ada tindakan' }}</span>
                         @if (!empty($row['diag_desc']))
                             <span class="block text-sm text-muted">
@@ -94,17 +86,13 @@ new class extends Component {
                             Operator: {{ $row['operator_name'] ?? '-' }} &middot; Anestesi: {{ $row['anestesi_name'] ?? '-' }}
                         </span>
                     </td>
-                    <td class="px-2 py-2 text-center group-hover:bg-surface-soft">
+                    <td class="px-4 py-3 text-center">
                         <x-badge :variant="$statusVariant">{{ $statusText }}</x-badge>
                     </td>
                 </tr>
+                </tbody>
             @empty
-                <tr>
-                    <td colspan="3" class="px-4 py-6 text-base text-center text-muted-soft">
-                        Belum ada pasien dikirim ke kamar operasi
-                    </td>
-                </tr>
+                <x-modul-dokumen.baris-kosong :kolom="3" pesan="Belum ada pasien dikirim ke kamar operasi" />
             @endforelse
-        </tbody>
-    </table>
+        </x-modul-dokumen.tabel-daftar>
 </div>

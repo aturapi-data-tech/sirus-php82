@@ -288,27 +288,15 @@ new class extends Component {
     <x-modal name="view-lab-luar-pdf" size="full" height="full" focusable>
         <div class="flex flex-col h-[calc(100vh-4rem)]" wire:key="view-lab-luar-{{ $viewFilePDF }}">
             {{-- HEADER --}}
-            <div class="flex items-center justify-between px-6 py-4 border-b border-hairline dark:border-gray-700">
-                <h2 class="text-lg font-semibold text-ink dark:text-gray-100">
-                    Hasil Laboratorium Luar
-                </h2>
-                <div class="flex items-center gap-2">
-                    @if ($viewFilePDF)
-                        <a href="{{ $viewFilePDF }}" target="_blank" rel="noopener"
-                            class="px-3 py-1.5 text-xs font-medium text-body bg-surface-soft rounded-lg hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">
-                            Buka di Tab Baru
-                        </a>
-                    @endif
-                    <x-icon-button color="gray" type="button" wire:click="closeViewPDF">
-                        <span class="sr-only">Tutup</span>
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd"
-                                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                                clip-rule="evenodd" />
-                        </svg>
-                    </x-icon-button>
+            <x-modul-dokumen.header judul="Hasil Laboratorium Luar" ikon="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" tutup="closeViewPDF" />
+            @if ($viewFilePDF)
+                <div class="flex flex-wrap items-center gap-2 px-6 py-2 border-b border-hairline dark:border-gray-700">
+                    <a href="{{ $viewFilePDF }}" target="_blank" rel="noopener"
+                        class="px-3 py-1.5 text-xs font-medium text-body bg-surface-soft rounded-lg hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">
+                        Buka di Tab Baru
+                    </a>
                 </div>
-            </div>
+            @endif
 
             {{-- BODY — iframe streaming via route files.show --}}
             <div class="flex-1 p-2 bg-surface-soft dark:bg-gray-900">

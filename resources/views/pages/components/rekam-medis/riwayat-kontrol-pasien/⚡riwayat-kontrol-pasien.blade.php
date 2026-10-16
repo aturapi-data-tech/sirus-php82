@@ -256,26 +256,11 @@ new class extends Component {
         <div class="flex flex-col h-full min-h-0">
 
             {{-- HEADER --}}
-            <div class="flex items-start justify-between gap-4 px-6 py-4 border-b border-hairline dark:border-gray-700 shrink-0">
-                <div>
-                    <h2 class="text-lg font-semibold text-ink dark:text-gray-100">
-                        Riwayat Jadwal Kontrol
-                    </h2>
-                    <p class="mt-0.5 text-sm text-muted dark:text-gray-400">
-                        <span class="font-semibold text-brand dark:text-brand-lime">{{ $regName ?: '-' }}</span>
-                        <span class="ml-1 font-mono text-xs">{{ $regNo }}</span>
-                        — seluruh riwayat surat kontrol (SKDP) dari kunjungan RJ &amp; RI
-                    </p>
-                </div>
-                <x-icon-button color="gray" type="button" wire:click="closeModal">
-                    <span class="sr-only">Close</span>
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd"
-                            d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                            clip-rule="evenodd" />
-                    </svg>
-                </x-icon-button>
-            </div>
+            <x-modul-dokumen.header judul="Riwayat Jadwal Kontrol" ikon="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z">
+                <span class="font-semibold text-brand dark:text-brand-lime">{{ $regName ?: '-' }}</span>
+                <span class="ml-1 font-mono text-xs">{{ $regNo }}</span>
+                — seluruh riwayat surat kontrol (SKDP) dari kunjungan RJ &amp; RI
+            </x-modul-dokumen.header>
 
             {{-- BODY: timeline riwayat --}}
             <div class="flex-1 px-6 py-4 overflow-y-auto bg-surface-soft/70 dark:bg-gray-950/20">

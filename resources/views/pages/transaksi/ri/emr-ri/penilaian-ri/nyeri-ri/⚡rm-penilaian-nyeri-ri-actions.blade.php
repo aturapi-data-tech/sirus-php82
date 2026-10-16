@@ -516,23 +516,23 @@ new class extends Component {
 
     @if (collect($daftarNyeri)->filter(fn($r) => filled(data_get($r, 'tglPenilaian')))->isNotEmpty())
         <x-border-form title="Riwayat Penilaian Nyeri" align="start" bgcolor="bg-canvas">
-            <div class="mt-3 overflow-x-auto rounded-lg border border-hairline dark:border-gray-700">
-                <table class="w-full text-xs text-left text-muted dark:text-gray-300">
-                    <thead class="bg-surface-soft dark:bg-gray-700 text-muted dark:text-gray-400">
-                        <tr>
-                            <th class="px-3 py-2">Tgl / Petugas</th>
-                            <th class="px-3 py-2">Nyeri</th>
-                            <th class="px-3 py-2">Metode / Skor</th>
-                            <th class="px-3 py-2">Tanda Vital</th>
-                            <th class="px-3 py-2">Detail Nyeri</th>
-                            <th class="px-3 py-2">Kondisi</th>
-                            <th class="px-3 py-2">Intervensi & Catatan</th>
+            <div class="mt-3 overflow-x-auto rounded-2xl border border-hairline dark:border-gray-700">
+                <table class="min-w-full text-sm">
+                    <thead class="bg-surface-card dark:bg-gray-800">
+                        <tr class="text-xs font-semibold tracking-wide text-left uppercase text-muted dark:text-gray-300">
+                            <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Tgl / Petugas</th>
+                            <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Nyeri</th>
+                            <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Metode / Skor</th>
+                            <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Tanda Vital</th>
+                            <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Detail Nyeri</th>
+                            <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Kondisi</th>
+                            <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Intervensi & Catatan</th>
                             @if (!$isFormLocked)
-                                <th class="px-3 py-2"></th>
+                                <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700"></th>
                             @endif
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-hairline-soft dark:divide-gray-700">
+                    <tbody>
                         @foreach (array_reverse(array_filter($daftarNyeri, fn($r) => filled(data_get($r, 'tglPenilaian'))), true) as $i => $row)
                             @php
                                 $tafsir = $this->interpretasiEntri($row);
@@ -546,17 +546,17 @@ new class extends Component {
                                     default => 'hover:bg-surface-soft dark:hover:bg-gray-800',
                                 };
                             @endphp
-                            <tr class="{{ $rowBg }}">
+                            <tr class="border-b border-hairline dark:border-gray-700 {{ $rowBg }}">
 
                                 {{-- Tgl / Petugas --}}
-                                <td class="px-3 py-2 whitespace-nowrap">
+                                <td class="px-4 py-3 whitespace-nowrap">
                                     <div class="font-medium text-ink dark:text-gray-200">
                                         {{ $row['tglPenilaian'] ?? '-' }}</div>
                                     <div class="text-muted-soft">{{ $row['petugasPenilai'] ?? '-' }}</div>
                                 </td>
 
                                 {{-- Status Nyeri --}}
-                                <td class="px-3 py-2">
+                                <td class="px-4 py-3">
                                     <span
                                         class="px-2 py-0.5 rounded-full text-xs font-medium
                         {{ ($row['nyeri']['nyeri'] ?? '') == 'Ya' ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700' }}">
@@ -565,7 +565,7 @@ new class extends Component {
                                 </td>
 
                                 {{-- Metode / Skor / Keterangan --}}
-                                <td class="px-3 py-2">
+                                <td class="px-4 py-3">
                                     <div class="font-medium">{{ $row['nyeri']['nyeriMetode']['nyeriMetode'] ?? '-' }}
                                     </div>
                                     @if ($skala)
@@ -590,7 +590,7 @@ new class extends Component {
                                 </td>
 
                                 {{-- Tanda Vital --}}
-                                <td class="px-3 py-2 whitespace-nowrap">
+                                <td class="px-4 py-3 whitespace-nowrap">
                                     <div>TD: <span
                                             class="font-medium">{{ ($row['nyeri']['sistolik'] ?? '-') . '/' . ($row['nyeri']['distolik'] ?? '-') }}</span>
                                     </div>
@@ -605,7 +605,7 @@ new class extends Component {
                                 </td>
 
                                 {{-- Detail Nyeri --}}
-                                <td class="px-3 py-2">
+                                <td class="px-4 py-3">
                                     @if ($row['nyeri']['pencetus'] ?? '')
                                         <div>Pencetus: <span
                                                 class="font-medium">{{ $row['nyeri']['pencetus'] }}</span></div>
@@ -632,7 +632,7 @@ new class extends Component {
                                 </td>
 
                                 {{-- Kondisi --}}
-                                <td class="px-3 py-2 whitespace-nowrap">
+                                <td class="px-4 py-3 whitespace-nowrap">
                                     @if ($row['nyeri']['tingkatKesadaran'] ?? '')
                                         <div>Kesadaran: <span
                                                 class="font-medium">{{ $row['nyeri']['tingkatKesadaran'] }}</span>
@@ -649,7 +649,7 @@ new class extends Component {
                                 </td>
 
                                 {{-- Intervensi & Catatan --}}
-                                <td class="px-3 py-2 max-w-[200px]">
+                                <td class="px-4 py-3 max-w-[200px]">
                                     @if ($row['nyeri']['ketIntervensiFarmakologi'] ?? '')
                                         <div class="truncate">Farmako: <span
                                                 class="font-medium">{{ $row['nyeri']['ketIntervensiFarmakologi'] }}</span>
@@ -673,7 +673,7 @@ new class extends Component {
                                 </td>
 
                                 @if (!$isFormLocked)
-                                    <td class="px-3 py-2">
+                                    <td class="px-4 py-3">
                                         <x-hapus-button wire:click="removeAssessmentNyeri({{ $i }})" confirm="Hapus data nyeri ini?" />
                                     </td>
                                 @endif

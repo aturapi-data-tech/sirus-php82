@@ -1084,24 +1084,14 @@ new class extends Component {
 
     {{-- ══ MODAL DETAIL PASIEN per KAMAR ══════════════════════════════════ --}}
     <x-modal name="detail-kamar-pasien" size="2xl" padding="p-0">
+        <x-modul-dokumen.header :judul="'Pasien di ' . ($detailRoomName ?: 'Kamar')" ikon="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+            namaModal="detail-kamar-pasien">
+            @if ($detailKelas)
+                {{ $detailKelas }} · {{ count($detailPasien) }} pasien aktif
+            @endif
+        </x-modul-dokumen.header>
         <div class="px-6 py-5">
-            <div class="flex items-start justify-between gap-4">
-                <div class="min-w-0">
-                    <h3 class="text-base font-bold text-ink dark:text-gray-100 truncate">
-                        Pasien di {{ $detailRoomName ?: 'Kamar' }}
-                    </h3>
-                    @if ($detailKelas)
-                        <p class="mt-0.5 text-xs text-muted dark:text-gray-400">
-                            {{ $detailKelas }} · {{ count($detailPasien) }} pasien aktif
-                        </p>
-                    @endif
-                </div>
-                <x-secondary-button x-on:click="$dispatch('close-modal', { name: 'detail-kamar-pasien' })" class="!px-2 !py-1 shrink-0">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
-                </x-secondary-button>
-            </div>
-
-            <div class="mt-4 rounded-lg border border-hairline dark:border-gray-700 overflow-hidden">
+            <div class="rounded-lg border border-hairline dark:border-gray-700 overflow-hidden">
                 @if (count($detailPasien) === 0)
                     <div class="px-4 py-8 text-center text-sm text-muted-soft dark:text-gray-500 italic">
                         Belum ada pasien aktif di kamar ini.

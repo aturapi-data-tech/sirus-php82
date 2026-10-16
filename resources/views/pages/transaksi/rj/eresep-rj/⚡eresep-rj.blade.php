@@ -312,74 +312,49 @@ new class extends Component {
         <div class="flex flex-col min-h-[calc(100vh-8rem)]" wire:key="{{ $this->renderKey('modal', [$rjNo ?? 'new']) }}">
 
             {{-- HEADER --}}
-            <div class="relative px-6 py-3.5 border-b border-hairline dark:border-gray-700">
-                {{-- Background pattern --}}
-                <div class="absolute inset-0 opacity-[0.06] dark:opacity-[0.10]"
-                    style="background-image: radial-gradient(currentColor 1px, transparent 1px); background-size: 14px 14px;">
-                </div>
+            <x-modul-dokumen.header judul="E-Resep Rawat Jalan"
+                ikon="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                jalur="RJ" :readOnly="$isFormLocked">
+                Penulisan resep obat racikan dan non racikan
+            </x-modul-dokumen.header>
 
-                <div class="relative flex items-start justify-between gap-4">
-                    {{-- Title kecil + Data Pasien (mengikuti pola EMR RJ) --}}
-                    <div class="flex-1 min-w-0 space-y-2">
-                        {{-- Title kecil --}}
-                        <div class="text-xs font-medium tracking-wide text-muted uppercase dark:text-gray-400">
-                            E-Resep Rawat Jalan — Penulisan resep obat racikan dan non racikan
-                        </div>
+            <div class="px-6 pt-3">
+                <livewire:pages::transaksi.rj.display-pasien-rj.display-pasien-rj :rjNo="$rjNo"
+                    wire:key="eresep-rj-display-pasien-rj-header-{{ $rjNo }}" />
+            </div>
 
-                        {{-- Data Pasien (dipindah dari body ke header, kayak EMR RJ) --}}
-                        <livewire:pages::transaksi.rj.display-pasien-rj.display-pasien-rj :rjNo="$rjNo"
-                            wire:key="eresep-rj-display-pasien-rj-header-{{ $rjNo }}" />
-
-                        {{-- Info status --}}
-                        <div class="flex flex-wrap items-center gap-4 mt-3">
-                            @if ($isFormLocked)
-                                <x-badge variant="danger">Read Only</x-badge>
+            <div class="flex flex-wrap items-center gap-2 px-6 py-2 border-b border-hairline dark:border-gray-700">
+                {{-- Toggle Status PRB --}}
+                <x-toggle :current="$statusPRB['penanggungJawab']['statusPRB'] ?? 0"
+                    :trueValue="1" :falseValue="0"
+                    wireClick="setStatusPRB"
+                    :disabled="$isFormLocked">
+                    Status PRB
+                    @if (!empty($statusPRB['penanggungJawab']['userLog'] ?? null))
+                        <span class="ml-1 text-xs text-muted dark:text-gray-400">
+                            — {{ $statusPRB['penanggungJawab']['userLog'] }}
+                            @if (!empty($statusPRB['penanggungJawab']['userLogDate'] ?? null))
+                                · {{ $statusPRB['penanggungJawab']['userLogDate'] }}
                             @endif
+                        </span>
+                    @endif
+                </x-toggle>
 
-                            {{-- Toggle Status PRB --}}
-                            <x-toggle :current="$statusPRB['penanggungJawab']['statusPRB'] ?? 0"
-                                :trueValue="1" :falseValue="0"
-                                wireClick="setStatusPRB"
-                                :disabled="$isFormLocked">
-                                Status PRB
-                                @if (!empty($statusPRB['penanggungJawab']['userLog'] ?? null))
-                                    <span class="ml-1 text-xs text-muted dark:text-gray-400">
-                                        — {{ $statusPRB['penanggungJawab']['userLog'] }}
-                                        @if (!empty($statusPRB['penanggungJawab']['userLogDate'] ?? null))
-                                            · {{ $statusPRB['penanggungJawab']['userLogDate'] }}
-                                        @endif
-                                    </span>
-                                @endif
-                            </x-toggle>
-
-                            {{-- Toggle Status Iter --}}
-                            <x-toggle :current="$statusIter['penanggungJawab']['statusIter'] ?? 0"
-                                :trueValue="1" :falseValue="0"
-                                wireClick="setStatusIter"
-                                :disabled="$isFormLocked">
-                                Status Iter
-                                @if (!empty($statusIter['penanggungJawab']['userLog'] ?? null))
-                                    <span class="ml-1 text-xs text-muted dark:text-gray-400">
-                                        — {{ $statusIter['penanggungJawab']['userLog'] }}
-                                        @if (!empty($statusIter['penanggungJawab']['userLogDate'] ?? null))
-                                            · {{ $statusIter['penanggungJawab']['userLogDate'] }}
-                                        @endif
-                                    </span>
-                                @endif
-                            </x-toggle>
-                        </div>
-                    </div>
-
-                    {{-- Tombol close --}}
-                    <x-icon-button color="gray" type="button" wire:click="closeModal" class="shrink-0">
-                        <span class="sr-only">Close</span>
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd"
-                                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                                clip-rule="evenodd" />
-                        </svg>
-                    </x-icon-button>
-                </div>
+                {{-- Toggle Status Iter --}}
+                <x-toggle :current="$statusIter['penanggungJawab']['statusIter'] ?? 0"
+                    :trueValue="1" :falseValue="0"
+                    wireClick="setStatusIter"
+                    :disabled="$isFormLocked">
+                    Status Iter
+                    @if (!empty($statusIter['penanggungJawab']['userLog'] ?? null))
+                        <span class="ml-1 text-xs text-muted dark:text-gray-400">
+                            — {{ $statusIter['penanggungJawab']['userLog'] }}
+                            @if (!empty($statusIter['penanggungJawab']['userLogDate'] ?? null))
+                                · {{ $statusIter['penanggungJawab']['userLogDate'] }}
+                            @endif
+                        </span>
+                    @endif
+                </x-toggle>
             </div>
 
             {{-- BODY --}}

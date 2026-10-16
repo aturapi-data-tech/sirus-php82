@@ -91,22 +91,13 @@ new class extends Component {
             wire:key="{{ $this->renderKey('modal-log-aktivitas-ri', [$riHdrNo ?? 'new']) }}">
 
             {{-- HEADER --}}
-            <div class="relative px-6 py-5 border-b border-hairline dark:border-gray-700">
-                <div class="relative flex items-start justify-between gap-4">
-                    <div class="flex-1 min-w-0">
-                        <livewire:pages::transaksi.ri.display-pasien-ri.display-pasien-ri :riHdrNo="$riHdrNo"
-                            wire:key="log-aktivitas-display-pasien-ri-header-{{ $riHdrNo }}" />
-                        <h3 class="mt-2 text-sm font-semibold text-body dark:text-gray-300">Log Aktivitas</h3>
-                    </div>
-                    <x-icon-button color="gray" type="button" wire:click="closeModal" class="shrink-0">
-                        <span class="sr-only">Close</span>
-                        <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd"
-                                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                                clip-rule="evenodd" />
-                        </svg>
-                    </x-icon-button>
-                </div>
+            <x-modul-dokumen.header judul="Log Aktivitas" ikon="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" jalur="RI">
+            </x-modul-dokumen.header>
+
+            {{-- DISPLAY PASIEN --}}
+            <div class="px-6 pt-3">
+                <livewire:pages::transaksi.ri.display-pasien-ri.display-pasien-ri :riHdrNo="$riHdrNo"
+                    wire:key="log-aktivitas-display-pasien-ri-header-{{ $riHdrNo }}" />
             </div>
 
             {{-- BODY --}}
@@ -130,19 +121,19 @@ new class extends Component {
                         <x-badge variant="gray">{{ count($adminLogs) }} entri</x-badge>
                     </div>
                     <div class="overflow-x-auto">
-                        <table class="w-full text-sm text-left">
-                            <thead class="text-xs font-semibold text-muted uppercase dark:text-gray-400 bg-surface-soft dark:bg-gray-800/50">
-                                <tr>
-                                    <th class="px-4 py-3">Tanggal</th>
-                                    <th class="px-4 py-3">Kategori</th>
-                                    <th class="px-4 py-3">User</th>
-                                    <th class="px-4 py-3">Keterangan</th>
+                        <table class="min-w-full text-sm">
+                            <thead class="bg-surface-card dark:bg-gray-800">
+                                <tr class="text-xs font-semibold tracking-wide text-left uppercase text-muted dark:text-gray-300">
+                                    <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Tanggal</th>
+                                    <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Kategori</th>
+                                    <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">User</th>
+                                    <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Keterangan</th>
                                 </tr>
                             </thead>
-                            <tbody class="divide-y divide-hairline-soft dark:divide-gray-800">
+                            <tbody>
                                 @forelse ($adminLogs as $log)
                                     @php $cat = $log['userLogCat'] ?? 'ADMIN'; @endphp
-                                    <tr wire:key="log-aktivitas-ri-{{ $loop->index }}" class="transition hover:bg-surface-soft dark:hover:bg-gray-800/40">
+                                    <tr wire:key="log-aktivitas-ri-{{ $loop->index }}" class="border-b border-hairline dark:border-gray-700 hover:bg-surface-soft dark:hover:bg-gray-800/60">
                                         <td class="px-4 py-3 font-mono text-xs text-muted whitespace-nowrap">{{ $log['userLogDate'] ?? '-' }}</td>
                                         <td class="px-4 py-3 whitespace-nowrap">
                                             <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium
@@ -157,7 +148,7 @@ new class extends Component {
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="4" class="px-4 py-10 text-sm text-center text-muted-soft dark:text-gray-600">
+                                        <td colspan="4" class="px-4 py-8 text-center text-muted-soft">
                                             Belum ada log aktivitas
                                         </td>
                                     </tr>

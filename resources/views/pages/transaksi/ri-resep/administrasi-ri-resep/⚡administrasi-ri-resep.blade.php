@@ -662,79 +662,67 @@ new class extends Component {
             x-on:focus-input-qty-obat-ri.window="$nextTick(() => $refs.inputQtyRi?.focus())"
             x-on:ri-resep-focus-lov-obat.window="$nextTick(() => $refs.lovObatRi?.querySelector('input')?.focus())">
 
-            {{-- ═══════════ HEADER — pola Administrasi RJ ═══════════ --}}
-            <div class="relative px-6 py-5 border-b border-hairline dark:border-gray-700">
-                <div class="absolute inset-0 opacity-[0.06] dark:opacity-[0.10]"
-                    style="background-image: radial-gradient(currentColor 1px, transparent 1px); background-size: 14px 14px;">
-                </div>
+            {{-- ═══════════ HEADER ═══════════ --}}
+            <x-modul-dokumen.header judul="Administrasi Resep Rawat Inap"
+                ikon="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                jalur="RI" :readOnly="$this->isKasirPosted" />
 
-                <div class="relative space-y-3" x-data="{ expanded: false }">
+            {{-- Display Pasien --}}
+            <div class="px-6 pt-3">
+                <livewire:pages::transaksi.ri-resep.display-pasien-ri-resep.display-pasien-ri-resep
+                    :slsNo="$slsNo" wire:key="ri-resep-display-pasien-{{ $slsNo ?? 'new' }}" />
+            </div>
 
-                    {{-- ROW 1: Display Pasien | Total (clickable toggle) | Close --}}
-                    <div class="flex items-start justify-between gap-4">
-                        <div class="flex-1 min-w-0">
-                            <livewire:pages::transaksi.ri-resep.display-pasien-ri-resep.display-pasien-ri-resep
-                                :slsNo="$slsNo" wire:key="ri-resep-display-pasien-{{ $slsNo ?? 'new' }}" />
-                        </div>
-
-                        @if ($isLoaded)
-                            {{-- Total — kartu yang bisa diklik untuk membuka rincian di ROW 2 --}}
-                            <button type="button" x-on:click="expanded = !expanded"
-                                :title="expanded ? 'Sembunyikan rincian biaya' : 'Tampilkan rincian biaya'"
-                                class="group self-end flex-shrink-0 px-8 pt-3 pb-2 min-w-[220px] text-right transition border rounded-2xl cursor-pointer bg-brand-green/10 dark:bg-brand-lime/10 border-brand-green/20 dark:border-brand-lime/20 hover:bg-brand-green/20 hover:border-brand-green/40 hover:shadow-md dark:hover:bg-brand-lime/20 dark:hover:border-brand-lime/40 focus:outline-none focus:ring-2 focus:ring-brand-green/40 dark:focus:ring-brand-lime/40">
-                                <p
-                                    class="mb-1 text-xs font-medium tracking-wide uppercase text-brand-green dark:text-brand-lime whitespace-nowrap">
-                                    Total Tagihan
-                                </p>
-                                <p class="text-2xl font-bold text-ink dark:text-white tabular-nums whitespace-nowrap">
-                                    Rp {{ number_format($this->totalAll) }}
-                                </p>
-                                <div
-                                    class="flex items-center justify-end gap-1 pt-1.5 mt-1.5 text-xs font-semibold border-t border-brand-green/20 dark:border-brand-lime/20 text-muted dark:text-gray-300 whitespace-nowrap">
-                                    <span>Lihat Rincian</span>
-                                    <svg class="w-3.5 h-3.5 transition-transform" :class="expanded ? 'rotate-180' : ''"
-                                        fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
-                                    </svg>
-                                </div>
-                            </button>
-                        @endif
-
-                        {{-- Close --}}
-                        <x-icon-button color="gray" type="button" wire:click="closeModal" class="flex-shrink-0">
-                            <span class="sr-only">Close</span>
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                                stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </x-icon-button>
-                    </div>
-
-                    {{-- ROW 2: Rincian biaya — collapsible, default tertutup --}}
+            {{-- Total Tagihan (klik → rincian biaya) --}}
+            @if ($isLoaded)
+            <div class="px-6 py-2 space-y-3 border-b border-hairline dark:border-gray-700" x-data="{ expanded: false }">
+                <div class="flex flex-wrap items-center gap-2">
                     @if ($isLoaded)
-                        <div x-show="expanded" x-collapse
-                            class="p-2 border border-hairline rounded-2xl dark:border-gray-700 bg-surface-soft dark:bg-gray-800/40">
-                            <div class="flex items-center gap-2">
-                                @if ($this->isKasirPosted)
-                                    <x-badge variant="danger" class="text-xs whitespace-nowrap shrink-0">Read Only</x-badge>
-                                @endif
-                                <div class="grid flex-1 grid-cols-2 sm:grid-cols-4 gap-1.5 min-w-0">
-                                    @foreach ([['label' => 'Subtotal Obat', 'value' => $this->subtotal], ['label' => 'Jasa Karyawan', 'value' => (int) ($jasaKaryawan ?? 0)], ['label' => 'Total Tagihan', 'value' => $this->totalAll], ['label' => 'Dibayar', 'value' => (int) ($bayar ?? 0)]] as $item)
-                                        <div
-                                            class="px-2.5 py-1.5 bg-canvas border border-hairline rounded-xl dark:bg-gray-900 dark:border-gray-700">
-                                            <p class="text-xs text-muted dark:text-gray-400 mb-0.5 truncate">
-                                                {{ $item['label'] }}</p>
-                                            <p class="text-xs font-semibold text-ink dark:text-gray-200 tabular-nums">
-                                                Rp {{ number_format($item['value']) }}
-                                            </p>
-                                        </div>
-                                    @endforeach
-                                </div>
+                        {{-- Total — kartu yang bisa diklik untuk membuka rincian di ROW 2 --}}
+                        <button type="button" x-on:click="expanded = !expanded"
+                            :title="expanded ? 'Sembunyikan rincian biaya' : 'Tampilkan rincian biaya'"
+                            class="group self-end flex-shrink-0 px-8 pt-3 pb-2 min-w-[220px] text-right transition border rounded-2xl cursor-pointer bg-brand-green/10 dark:bg-brand-lime/10 border-brand-green/20 dark:border-brand-lime/20 hover:bg-brand-green/20 hover:border-brand-green/40 hover:shadow-md dark:hover:bg-brand-lime/20 dark:hover:border-brand-lime/40 focus:outline-none focus:ring-2 focus:ring-brand-green/40 dark:focus:ring-brand-lime/40">
+                            <p
+                                class="mb-1 text-xs font-medium tracking-wide uppercase text-brand-green dark:text-brand-lime whitespace-nowrap">
+                                Total Tagihan
+                            </p>
+                            <p class="text-2xl font-bold text-ink dark:text-white tabular-nums whitespace-nowrap">
+                                Rp {{ number_format($this->totalAll) }}
+                            </p>
+                            <div
+                                class="flex items-center justify-end gap-1 pt-1.5 mt-1.5 text-xs font-semibold border-t border-brand-green/20 dark:border-brand-lime/20 text-muted dark:text-gray-300 whitespace-nowrap">
+                                <span>Lihat Rincian</span>
+                                <svg class="w-3.5 h-3.5 transition-transform" :class="expanded ? 'rotate-180' : ''"
+                                    fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+                                </svg>
                             </div>
-                        </div>
+                        </button>
                     @endif
                 </div>
+
+                {{-- ROW 2: Rincian biaya — collapsible, default tertutup --}}
+                @if ($isLoaded)
+                    <div x-show="expanded" x-collapse
+                        class="p-2 border border-hairline rounded-2xl dark:border-gray-700 bg-surface-soft dark:bg-gray-800/40">
+                        <div class="flex items-center gap-2">
+                            <div class="grid flex-1 grid-cols-2 sm:grid-cols-4 gap-1.5 min-w-0">
+                                @foreach ([['label' => 'Subtotal Obat', 'value' => $this->subtotal], ['label' => 'Jasa Karyawan', 'value' => (int) ($jasaKaryawan ?? 0)], ['label' => 'Total Tagihan', 'value' => $this->totalAll], ['label' => 'Dibayar', 'value' => (int) ($bayar ?? 0)]] as $item)
+                                    <div
+                                        class="px-2.5 py-1.5 bg-canvas border border-hairline rounded-xl dark:bg-gray-900 dark:border-gray-700">
+                                        <p class="text-xs text-muted dark:text-gray-400 mb-0.5 truncate">
+                                            {{ $item['label'] }}</p>
+                                        <p class="text-xs font-semibold text-ink dark:text-gray-200 tabular-nums">
+                                            Rp {{ number_format($item['value']) }}
+                                        </p>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
+                @endif
             </div>
+            @endif
 
             @if (!$isLoaded)
                 <div class="px-6 py-12 text-center text-muted-soft">Memuat data...</div>

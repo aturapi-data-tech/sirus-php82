@@ -249,13 +249,12 @@ new class extends Component {
         <div class="flex flex-col h-full" wire:key="{{ $this->renderKey('kamar-operasi-tambah-modal', [$sumber, $refNo ?: 'kosong']) }}">
 
             {{-- HEADER --}}
-            <div class="flex items-start justify-between px-6 py-4 border-b shrink-0 border-hairline dark:border-gray-700">
-                <div>
-                    <h2 class="text-lg font-semibold text-ink dark:text-gray-100">Tambah Transaksi Kamar Operasi</h2>
-                    <p class="text-xs text-muted">Pilih layanan asal pasien, lalu tentukan dokter operator dan anestesi</p>
-
+            <x-modul-dokumen.header judul="Tambah Transaksi Kamar Operasi" ikon="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" tutup="closeTambah">
+                Pilih layanan asal pasien, lalu tentukan dokter operator dan anestesi
+            </x-modul-dokumen.header>
+            <div class="flex flex-wrap items-center gap-2 px-6 py-2 border-b shrink-0 border-hairline dark:border-gray-700">
                     {{-- Pilihan sumber layanan — pola sama dengan Tambah Pemeriksaan Laboratorium. --}}
-                    <div class="inline-flex mt-3 overflow-hidden border rounded-lg border-hairline dark:border-gray-700">
+                    <div class="inline-flex overflow-hidden border rounded-lg border-hairline dark:border-gray-700">
                         @foreach (['RJ' => 'Rawat Jalan', 'UGD' => 'UGD', 'RI' => 'Rawat Inap'] as $kunci => $label)
                             <button type="button" wire:click="gantiSumber('{{ $kunci }}')"
                                 @class([
@@ -267,14 +266,6 @@ new class extends Component {
                             </button>
                         @endforeach
                     </div>
-                </div>
-                <x-icon-button color="gray" type="button" wire:click="closeTambah">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd"
-                            d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                            clip-rule="evenodd" />
-                    </svg>
-                </x-icon-button>
             </div>
 
             {{-- BODY — area scroll; daftar pasien bisa panjang, jadi hanya bagian

@@ -61,41 +61,29 @@ new class extends Component {
 ?>
 
 <div>
-    <table class="w-full text-base text-left text-muted table-auto">
-        <thead class="text-sm text-body uppercase bg-surface-soft">
-            <tr>
-                <th class="px-4 py-3 text-sm font-medium text-muted uppercase dark:text-gray-400">Tgl Rad</th>
-                <th class="px-4 py-3 text-sm font-medium text-muted uppercase dark:text-gray-400">Pemeriksaan Rad</th>
-                <th class="px-4 py-3 text-sm font-medium text-muted uppercase dark:text-gray-400">Dokter Pengirim</th>
-                <th class="w-24 px-4 py-3 text-sm font-medium text-center text-muted uppercase dark:text-gray-400">Status</th>
-            </tr>
-        </thead>
-        <tbody class="bg-canvas">
+    <x-modul-dokumen.tabel-daftar :kolom="['Tgl Rad', 'Pemeriksaan Rad', 'Dokter Pengirim', 'Status' => 'w-24 text-center']">
             @forelse ($this->rows as $orderRadiologi)
-                <tr class="border-b group">
-                    <td class="px-2 py-2 text-sm font-mono text-muted group-hover:bg-surface-soft whitespace-nowrap">
+                <tbody class="border-b border-hairline dark:border-gray-700">
+                <tr class="hover:bg-surface-soft dark:hover:bg-gray-800/60">
+                    <td class="px-4 py-3 font-mono text-muted dark:text-gray-300 whitespace-nowrap">
                         {{ $orderRadiologi->waktu_entry ? \Carbon\Carbon::parse($orderRadiologi->waktu_entry)->format('d/m/Y H:i') : '-' }}
                     </td>
-                    <td class="px-2 py-2 text-body group-hover:bg-surface-soft">
+                    <td class="px-4 py-3 text-body">
                         @if ($orderRadiologi->cito_status === '1')
                             <x-badge variant="danger" class="mr-1 font-bold">CITO</x-badge>
                         @endif
                         {{ $orderRadiologi->items }}
                     </td>
-                    <td class="px-2 py-2 text-body group-hover:bg-surface-soft">
+                    <td class="px-4 py-3 text-body">
                         {{ $orderRadiologi->dr_pengirim ?? '-' }}
                     </td>
-                    <td class="px-2 py-2 text-center text-muted-soft group-hover:bg-surface-soft">
+                    <td class="px-4 py-3 text-center text-muted-soft">
                         -
                     </td>
                 </tr>
+                </tbody>
             @empty
-                <tr>
-                    <td colspan="4" class="px-4 py-6 text-base text-center text-muted-soft">
-                        Belum ada data radiologi
-                    </td>
-                </tr>
+                <x-modul-dokumen.baris-kosong :kolom="4" pesan="Belum ada data radiologi" />
             @endforelse
-        </tbody>
-    </table>
+        </x-modul-dokumen.tabel-daftar>
 </div>

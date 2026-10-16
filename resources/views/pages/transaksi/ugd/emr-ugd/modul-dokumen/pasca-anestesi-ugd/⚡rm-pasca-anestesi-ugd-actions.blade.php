@@ -961,43 +961,43 @@ new class extends Component {
                             @endunless
 
                             @php $obsRows = $newForm['observasi'] ?? []; @endphp
-                            <div class="overflow-x-auto border rounded-xl border-hairline dark:border-gray-700">
-                                <table class="w-full text-sm text-left">
-                                    <thead class="text-xs font-semibold uppercase text-muted bg-surface-soft dark:bg-gray-800/50 dark:text-gray-400">
-                                        <tr>
-                                            <th class="px-3 py-2">No</th>
-                                            <th class="px-3 py-2 whitespace-nowrap">Waktu</th>
-                                            <th class="px-3 py-2 whitespace-nowrap">TD (mmHg)</th>
-                                            <th class="px-3 py-2 whitespace-nowrap">Nadi</th>
-                                            <th class="px-3 py-2 whitespace-nowrap">Nafas</th>
-                                            <th class="px-3 py-2 whitespace-nowrap">Suhu</th>
-                                            <th class="px-3 py-2 whitespace-nowrap">SpO2</th>
-                                            <th class="px-3 py-2 whitespace-nowrap">GDA</th>
-                                            <th class="px-3 py-2">Catatan</th>
-                                            @unless ($viewOnly)<th class="w-16 px-3 py-2 text-center">Hapus</th>@endunless
+                            <div class="overflow-x-auto rounded-2xl border border-hairline dark:border-gray-700">
+                                <table class="min-w-full text-sm">
+                                    <thead class="bg-surface-card dark:bg-gray-800">
+                                        <tr class="text-xs font-semibold tracking-wide text-left uppercase text-muted dark:text-gray-300">
+                                            <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">No</th>
+                                            <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Waktu</th>
+                                            <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">TD (mmHg)</th>
+                                            <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Nadi</th>
+                                            <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Nafas</th>
+                                            <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Suhu</th>
+                                            <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">SpO2</th>
+                                            <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">GDA</th>
+                                            <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Catatan</th>
+                                            @unless ($viewOnly)<th class="w-16 px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700 text-center">Hapus</th>@endunless
                                         </tr>
                                     </thead>
-                                    <tbody class="divide-y divide-hairline dark:divide-gray-700">
+                                    <tbody>
                                         @forelse ($obsRows as $i => $row)
-                                            <tr wire:key="obs-{{ $i }}-{{ $row['waktu'] ?? '' }}">
-                                                <td class="px-3 py-2 text-muted-soft">{{ $i + 1 }}</td>
-                                                <td class="px-3 py-2 whitespace-nowrap">{{ $row['waktu'] ?? '-' }}</td>
-                                                <td class="px-3 py-2 whitespace-nowrap">{{ (filled($row['sistolik'] ?? '') || filled($row['diastolik'] ?? '')) ? (($row['sistolik'] ?? '-') . '/' . ($row['diastolik'] ?? '-')) : '-' }}</td>
-                                                <td class="px-3 py-2">{{ filled($row['nadi'] ?? '') ? $row['nadi'] : '-' }}</td>
-                                                <td class="px-3 py-2">{{ filled($row['nafas'] ?? '') ? $row['nafas'] : '-' }}</td>
-                                                <td class="px-3 py-2">{{ filled($row['suhu'] ?? '') ? $row['suhu'] : '-' }}</td>
-                                                <td class="px-3 py-2">{{ filled($row['spo2'] ?? '') ? $row['spo2'] : '-' }}</td>
-                                                <td class="px-3 py-2">{{ filled($row['gda'] ?? '') ? $row['gda'] : '-' }}</td>
-                                                <td class="px-3 py-2">{{ filled($row['catatan'] ?? '') ? $row['catatan'] : '-' }}</td>
+                                            <tr wire:key="obs-{{ $i }}-{{ $row['waktu'] ?? '' }}" class="border-b border-hairline dark:border-gray-700 hover:bg-surface-soft dark:hover:bg-gray-800/60">
+                                                <td class="px-4 py-3 text-muted-soft">{{ $i + 1 }}</td>
+                                                <td class="px-4 py-3 font-mono whitespace-nowrap">{{ $row['waktu'] ?? '-' }}</td>
+                                                <td class="px-4 py-3 whitespace-nowrap">{{ (filled($row['sistolik'] ?? '') || filled($row['diastolik'] ?? '')) ? (($row['sistolik'] ?? '-') . '/' . ($row['diastolik'] ?? '-')) : '-' }}</td>
+                                                <td class="px-4 py-3">{{ filled($row['nadi'] ?? '') ? $row['nadi'] : '-' }}</td>
+                                                <td class="px-4 py-3">{{ filled($row['nafas'] ?? '') ? $row['nafas'] : '-' }}</td>
+                                                <td class="px-4 py-3">{{ filled($row['suhu'] ?? '') ? $row['suhu'] : '-' }}</td>
+                                                <td class="px-4 py-3">{{ filled($row['spo2'] ?? '') ? $row['spo2'] : '-' }}</td>
+                                                <td class="px-4 py-3">{{ filled($row['gda'] ?? '') ? $row['gda'] : '-' }}</td>
+                                                <td class="px-4 py-3">{{ filled($row['catatan'] ?? '') ? $row['catatan'] : '-' }}</td>
                                                 @unless ($viewOnly)
-                                                    <td class="px-3 py-2 text-center">
+                                                    <td class="px-4 py-3 text-center">
                                                         <x-hapus-button wire:click.prevent="removeObservasi({{ $i }})" />
                                                     </td>
                                                 @endunless
                                             </tr>
                                         @empty
                                             <tr>
-                                                <td colspan="{{ $viewOnly ? 9 : 10 }}" class="px-3 py-4 text-center text-muted-soft">Belum ada observasi berkala.</td>
+                                                <td colspan="{{ $viewOnly ? 9 : 10 }}" class="px-4 py-8 text-center text-muted-soft">Belum ada observasi berkala.</td>
                                             </tr>
                                         @endforelse
                                     </tbody>
@@ -1238,31 +1238,31 @@ new class extends Component {
                                                                 @if (empty($obsDetail))
                                                                     <span class="text-muted-soft">-</span>
                                                                 @else
-                                                                    <div class="overflow-x-auto border rounded-lg border-hairline dark:border-gray-700">
-                                                                        <table class="w-full text-xs text-left">
-                                                                            <thead class="font-semibold uppercase text-muted-soft bg-surface-soft dark:bg-gray-800/50">
-                                                                                <tr>
-                                                                                    <th class="px-2 py-1.5">Waktu</th>
-                                                                                    <th class="px-2 py-1.5">TD</th>
-                                                                                    <th class="px-2 py-1.5">Nadi</th>
-                                                                                    <th class="px-2 py-1.5">Nafas</th>
-                                                                                    <th class="px-2 py-1.5">Suhu</th>
-                                                                                    <th class="px-2 py-1.5">SpO2</th>
-                                                                                    <th class="px-2 py-1.5">GDA</th>
-                                                                                    <th class="px-2 py-1.5">Catatan</th>
+                                                                    <div class="overflow-x-auto rounded-2xl border border-hairline dark:border-gray-700">
+                                                                        <table class="min-w-full text-sm">
+                                                                            <thead class="bg-surface-card dark:bg-gray-800">
+                                                                                <tr class="text-xs font-semibold tracking-wide text-left uppercase text-muted dark:text-gray-300">
+                                                                                    <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Waktu</th>
+                                                                                    <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">TD</th>
+                                                                                    <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Nadi</th>
+                                                                                    <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Nafas</th>
+                                                                                    <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Suhu</th>
+                                                                                    <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">SpO2</th>
+                                                                                    <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">GDA</th>
+                                                                                    <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Catatan</th>
                                                                                 </tr>
                                                                             </thead>
-                                                                            <tbody class="divide-y divide-hairline dark:divide-gray-700">
+                                                                            <tbody>
                                                                                 @foreach ($obsDetail as $row)
-                                                                                    <tr>
-                                                                                        <td class="px-2 py-1.5 whitespace-nowrap">{{ $row['waktu'] ?? '-' }}</td>
-                                                                                        <td class="px-2 py-1.5 whitespace-nowrap">{{ (filled($row['sistolik'] ?? '') || filled($row['diastolik'] ?? '')) ? (($row['sistolik'] ?? '-') . '/' . ($row['diastolik'] ?? '-')) : '-' }}</td>
-                                                                                        <td class="px-2 py-1.5">{{ filled($row['nadi'] ?? '') ? $row['nadi'] : '-' }}</td>
-                                                                                        <td class="px-2 py-1.5">{{ filled($row['nafas'] ?? '') ? $row['nafas'] : '-' }}</td>
-                                                                                        <td class="px-2 py-1.5">{{ filled($row['suhu'] ?? '') ? $row['suhu'] : '-' }}</td>
-                                                                                        <td class="px-2 py-1.5">{{ filled($row['spo2'] ?? '') ? $row['spo2'] : '-' }}</td>
-                                                                                        <td class="px-2 py-1.5">{{ filled($row['gda'] ?? '') ? $row['gda'] : '-' }}</td>
-                                                                                        <td class="px-2 py-1.5">{{ filled($row['catatan'] ?? '') ? $row['catatan'] : '-' }}</td>
+                                                                                    <tr class="border-b border-hairline dark:border-gray-700 hover:bg-surface-soft dark:hover:bg-gray-800/60">
+                                                                                        <td class="px-4 py-3 font-mono whitespace-nowrap">{{ $row['waktu'] ?? '-' }}</td>
+                                                                                        <td class="px-4 py-3 whitespace-nowrap">{{ (filled($row['sistolik'] ?? '') || filled($row['diastolik'] ?? '')) ? (($row['sistolik'] ?? '-') . '/' . ($row['diastolik'] ?? '-')) : '-' }}</td>
+                                                                                        <td class="px-4 py-3">{{ filled($row['nadi'] ?? '') ? $row['nadi'] : '-' }}</td>
+                                                                                        <td class="px-4 py-3">{{ filled($row['nafas'] ?? '') ? $row['nafas'] : '-' }}</td>
+                                                                                        <td class="px-4 py-3">{{ filled($row['suhu'] ?? '') ? $row['suhu'] : '-' }}</td>
+                                                                                        <td class="px-4 py-3">{{ filled($row['spo2'] ?? '') ? $row['spo2'] : '-' }}</td>
+                                                                                        <td class="px-4 py-3">{{ filled($row['gda'] ?? '') ? $row['gda'] : '-' }}</td>
+                                                                                        <td class="px-4 py-3">{{ filled($row['catatan'] ?? '') ? $row['catatan'] : '-' }}</td>
                                                                                     </tr>
                                                                                 @endforeach
                                                                             </tbody>

@@ -895,10 +895,10 @@ new class extends Component {
         :nonaktif="$disabled || !$rjNo">
         <x-slot:deskripsi>Persiapan pasien & serah-terima ruangan → OK (RM 49): keadaan pra bedah, persiapan pasien (puasa/cukur/premedikasi), kelengkapan administrasi yang disertakan ke kamar operasi. Tiap entri = 1 pengkajian; simpan draft dulu lalu kunci lewat TTD.</x-slot:deskripsi>
         @if ($preOpCount > 0)
-            <div class="overflow-x-auto">
-                <table class="min-w-full text-sm border border-hairline rounded-lg dark:border-gray-700">
-                    <thead class="bg-surface-soft dark:bg-gray-800">
-                        <tr class="text-left text-muted dark:text-gray-300">
+            <div class="overflow-x-auto rounded-2xl border border-hairline dark:border-gray-700">
+                <table class="min-w-full text-sm">
+                    <thead class="bg-surface-card dark:bg-gray-800">
+                        <tr class="text-xs font-semibold tracking-wide text-left text-muted uppercase dark:text-gray-300">
                             <th class="px-3 py-2 border-b">Tanggal</th>
                             <th class="px-3 py-2 border-b">Rencana Operasi</th>
                             <th class="px-3 py-2 border-b">TTD (3 Pihak)</th>

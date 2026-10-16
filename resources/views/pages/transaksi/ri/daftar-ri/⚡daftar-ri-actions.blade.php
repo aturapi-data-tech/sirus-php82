@@ -812,43 +812,14 @@ new class extends Component {
             :wireKey="$this->renderKey('modal', [$formMode, $riHdrNo ?? 'new'])">
 
             {{-- HEADER --}}
-            <div class="relative px-6 py-4 border-b border-hairline dark:border-gray-700 shrink-0">
-                <div class="absolute inset-0 opacity-[0.06]"
-                    style="background-image:radial-gradient(currentColor 1px,transparent 1px);background-size:14px 14px;">
-                </div>
-                <div class="relative flex items-center justify-between gap-4">
-                    <div class="flex items-center gap-3">
-                        <div class="flex items-center justify-center w-10 h-10 rounded-xl bg-blue-500/10">
-                            <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                                stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round"
-                                    d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                            </svg>
-                        </div>
-                        <div>
-                            <h2 class="font-semibold text-2xl text-ink dark:text-gray-100">
-                                {{ $formMode === 'edit' ? 'Ubah Data Rawat Inap' : 'Tambah Data Rawat Inap' }}
-                            </h2>
-                            <div class="flex gap-2 mt-1">
-                                <x-badge :variant="$formMode === 'edit' ? 'warning' : 'success'">
-                                    {{ $formMode === 'edit' ? 'Mode: Edit' : 'Mode: Tambah' }}
-                                </x-badge>
-                                @if ($isFormLocked)
-                                    <x-badge variant="danger">Read Only</x-badge>
-                                @endif
-                            </div>
-                        </div>
-                    </div>
-
-                    <x-icon-button color="gray" type="button" x-on:click="tryClose()" class="shrink-0">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd"
-                                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                                clip-rule="evenodd" />
-                        </svg>
-                    </x-icon-button>
-                </div>
-            </div>
+            <x-modul-dokumen.header :judul="$formMode === 'edit' ? 'Ubah Data Rawat Inap' : 'Tambah Data Rawat Inap'"
+                ikon="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                jalur="RI" :readOnly="$isFormLocked" tutupAlpine="tryClose()">
+                <x-slot:badge>
+                    <x-badge
+                        :variant="$formMode === 'edit' ? 'warning' : 'success'">{{ $formMode === 'edit' ? 'Mode: Edit' : 'Mode: Tambah' }}</x-badge>
+                </x-slot:badge>
+            </x-modul-dokumen.header>
 
             {{-- STICKY DISPLAY PASIEN --}}
             @if (!empty($dataPasien['pasien']['regNo']))

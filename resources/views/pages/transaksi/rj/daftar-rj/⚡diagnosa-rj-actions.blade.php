@@ -24,22 +24,16 @@ new class extends Component {
 <div>
     <x-modal name="diagnosa-rj-daftar" size="full" height="full" focusable>
         <div class="flex flex-col h-full">
-            <div class="px-6 py-4 border-b border-hairline dark:border-gray-700">
-                @if (!empty($rjNo))
-                    <div class="flex items-start gap-3">
-                        <div class="flex-1 min-w-0">
-                            <livewire:pages::transaksi.rj.display-pasien-rj.display-pasien-rj :rjNo="$rjNo"
-                                wire:key="diagnosa-rj-daftar-display-pasien-{{ $rjNo }}" />
-                        </div>
-                        <x-icon-button color="gray" type="button" x-on:click="$dispatch('close-modal', { name: 'diagnosa-rj-daftar' })" class="shrink-0">
-                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
-                            </svg>
-                        </x-icon-button>
-                    </div>
-                @endif
-                <h2 class="mt-2 text-base font-semibold text-ink dark:text-gray-100">EMR Rawat Jalan — Diagnosa</h2>
-            </div>
+            <x-modul-dokumen.header judul="Diagnosa" ikon="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" jalur="RJ" namaModal="diagnosa-rj-daftar">
+            </x-modul-dokumen.header>
+
+            @if (!empty($rjNo))
+                {{-- DISPLAY PASIEN --}}
+                <div class="px-6 pt-3">
+                    <livewire:pages::transaksi.rj.display-pasien-rj.display-pasien-rj :rjNo="$rjNo"
+                        wire:key="diagnosa-rj-daftar-display-pasien-{{ $rjNo }}" />
+                </div>
+            @endif
 
             <div class="flex-1 px-6 py-4 overflow-y-auto">
                 <livewire:pages::transaksi.rj.emr-rj.diagnosa.rm-diagnosa-rj-actions

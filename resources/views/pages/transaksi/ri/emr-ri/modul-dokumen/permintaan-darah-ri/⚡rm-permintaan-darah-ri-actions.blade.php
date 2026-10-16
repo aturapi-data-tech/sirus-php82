@@ -664,27 +664,27 @@ new class extends Component {
                 <x-border-form title="Jenis Darah yang Diperlukan" align="start" bgcolor="bg-surface-soft">
                     <fieldset @disabled($formReadOnly)>
                         <x-input-error :messages="$errors->get('form.jenisDarah')" class="mt-2" />
-                        <div class="mt-3 overflow-x-auto">
-                            <table class="w-full text-sm border-collapse">
-                                <thead>
-                                    <tr class="text-left text-muted dark:text-gray-400">
-                                        <th class="px-2 py-2 border-b border-hairline dark:border-gray-700">Jenis Permintaan</th>
-                                        <th class="px-2 py-2 border-b border-hairline dark:border-gray-700 w-40">Golongan</th>
-                                        <th class="px-2 py-2 border-b border-hairline dark:border-gray-700 w-32">Jumlah</th>
-                                        <th class="px-2 py-2 border-b border-hairline dark:border-gray-700 w-28">Satuan</th>
-                                        <th class="px-2 py-2 border-b border-hairline dark:border-gray-700 w-64">Diperlukan (Tgl &amp; Jam)</th>
+                        <div class="mt-3 overflow-x-auto rounded-2xl border border-hairline dark:border-gray-700">
+                            <table class="min-w-full text-sm">
+                                <thead class="bg-surface-card dark:bg-gray-800">
+                                    <tr class="text-xs font-semibold tracking-wide text-left uppercase text-muted dark:text-gray-300">
+                                        <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Jenis Permintaan</th>
+                                        <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700 w-40">Golongan</th>
+                                        <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700 w-32">Jumlah</th>
+                                        <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700 w-28">Satuan</th>
+                                        <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700 w-64">Diperlukan (Tgl &amp; Jam)</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @foreach (['wb', 'prc', 'ffp'] as $kode)
                                         @php $baris = $form['jenisDarah'][$kode] ?? []; $aktif = !empty($baris['pilih']); @endphp
-                                        <tr wire:key="darah-{{ $kode }}" class="align-top">
-                                            <td class="px-2 py-2 border-b border-hairline dark:border-gray-700">
+                                        <tr wire:key="darah-{{ $kode }}" class="align-top border-b border-hairline dark:border-gray-700 hover:bg-surface-soft dark:hover:bg-gray-800/60">
+                                            <td class="px-2 py-2">
                                                 <x-toggle wire:model.live="form.jenisDarah.{{ $kode }}.pilih"
                                                     :trueValue="true" :falseValue="false"
                                                     :label="$jenisOptions[$kode]" :disabled="$formReadOnly" />
                                             </td>
-                                            <td class="px-2 py-2 border-b border-hairline dark:border-gray-700">
+                                            <td class="px-2 py-2">
                                                 <div class="flex gap-1">
                                                     <x-select-input wire:model.blur="form.jenisDarah.{{ $kode }}.golongan" class="text-sm"
                                                         :error="$errors->has('form.jenisDarah.' . $kode . '.golongan')" :disabled="$formReadOnly || !$aktif">
@@ -702,18 +702,18 @@ new class extends Component {
                                                     </x-select-input>
                                                 </div>
                                             </td>
-                                            <td class="px-2 py-2 border-b border-hairline dark:border-gray-700">
+                                            <td class="px-2 py-2">
                                                 <x-text-input type="number" step="any" wire:model.blur="form.jenisDarah.{{ $kode }}.jumlah"
                                                     class="w-full text-sm" :error="$errors->has('form.jenisDarah.' . $kode . '.jumlah')" :disabled="$formReadOnly || !$aktif" />
                                             </td>
-                                            <td class="px-2 py-2 border-b border-hairline dark:border-gray-700">
+                                            <td class="px-2 py-2">
                                                 <x-select-input wire:model.blur="form.jenisDarah.{{ $kode }}.satuan" class="w-full text-sm" :disabled="$formReadOnly || !$aktif">
                                                     @foreach ($satuanOptions as $s => $sl)
                                                         <option value="{{ $s }}">{{ $sl }}</option>
                                                     @endforeach
                                                 </x-select-input>
                                             </td>
-                                            <td class="px-2 py-2 border-b border-hairline dark:border-gray-700">
+                                            <td class="px-2 py-2">
                                                 <div class="flex items-center gap-1">
                                                     <x-text-input type="text" wire:model.blur="form.jenisDarah.{{ $kode }}.diperlukan"
                                                         placeholder="dd/mm/yyyy hh:mm:ss" class="w-full text-sm"
@@ -727,8 +727,8 @@ new class extends Component {
 
                                     {{-- Lainnya --}}
                                     @php $lain = $form['jenisDarah']['lainnya'] ?? []; $aktifLain = !empty($lain['pilih']); @endphp
-                                    <tr wire:key="darah-lainnya" class="align-top">
-                                        <td class="px-2 py-2 border-b border-hairline dark:border-gray-700">
+                                    <tr wire:key="darah-lainnya" class="align-top border-b border-hairline dark:border-gray-700 hover:bg-surface-soft dark:hover:bg-gray-800/60">
+                                        <td class="px-2 py-2">
                                             <x-toggle wire:model.live="form.jenisDarah.lainnya.pilih"
                                                 :trueValue="true" :falseValue="false" label="Lainnya" :disabled="$formReadOnly" />
                                             <div class="mt-1.5 space-y-1">
@@ -738,7 +738,7 @@ new class extends Component {
                                                     placeholder="2. Sebutkan…" :disabled="$formReadOnly || !$aktifLain" />
                                             </div>
                                         </td>
-                                        <td class="px-2 py-2 border-b border-hairline dark:border-gray-700">
+                                        <td class="px-2 py-2">
                                             <div class="flex gap-1">
                                                 <x-select-input wire:model.blur="form.jenisDarah.lainnya.golongan" class="text-sm"
                                                     :error="$errors->has('form.jenisDarah.lainnya.golongan')" :disabled="$formReadOnly || !$aktifLain">
@@ -755,18 +755,18 @@ new class extends Component {
                                                 </x-select-input>
                                             </div>
                                         </td>
-                                        <td class="px-2 py-2 border-b border-hairline dark:border-gray-700">
+                                        <td class="px-2 py-2">
                                             <x-text-input type="number" step="any" wire:model.blur="form.jenisDarah.lainnya.jumlah"
                                                 class="w-full text-sm" :error="$errors->has('form.jenisDarah.lainnya.jumlah')" :disabled="$formReadOnly || !$aktifLain" />
                                         </td>
-                                        <td class="px-2 py-2 border-b border-hairline dark:border-gray-700">
+                                        <td class="px-2 py-2">
                                             <x-select-input wire:model.blur="form.jenisDarah.lainnya.satuan" class="w-full text-sm" :disabled="$formReadOnly || !$aktifLain">
                                                 @foreach ($satuanOptions as $s => $sl)
                                                     <option value="{{ $s }}">{{ $sl }}</option>
                                                 @endforeach
                                             </x-select-input>
                                         </td>
-                                        <td class="px-2 py-2 border-b border-hairline dark:border-gray-700">
+                                        <td class="px-2 py-2">
                                             <div class="flex items-center gap-1">
                                                 <x-text-input type="text" wire:model.blur="form.jenisDarah.lainnya.diperlukan"
                                                     placeholder="dd/mm/yyyy hh:mm:ss" class="w-full text-sm"

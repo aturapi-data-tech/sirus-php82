@@ -353,10 +353,9 @@ new class extends Component {
     {{-- ============================================ --}}
     <x-modal name="lab-luar-upload" size="lg" focusable>
         <div>
-            <div class="px-6 py-4 border-b border-hairline dark:border-gray-700">
-                <h2 class="text-lg font-semibold">Upload Hasil Lab Luar</h2>
-                <p class="text-xs text-muted">Format PDF atau JPG, maks 5 MB.</p>
-            </div>
+            <x-modul-dokumen.header judul="Upload Hasil Lab Luar" ikon="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" tutup="closeUploadModal">
+                Format PDF atau JPG, maks 5 MB.
+            </x-modul-dokumen.header>
             <div class="px-6 py-5 space-y-4">
                 <x-file-upload
                     name="pdfFile"

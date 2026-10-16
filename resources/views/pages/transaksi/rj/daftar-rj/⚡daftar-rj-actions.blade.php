@@ -459,9 +459,6 @@ new class extends Component {
             'poli_id' => $this->formDaftar['poliId'],
             'dr_id' => $this->formDaftar['drId'],
             'shift' => $this->formDaftar['shift'],
-            'txn_status' => $this->formDaftar['txnStatus'] ?? 'A',
-            'rj_status' => $this->formDaftar['rjStatus'] ?? 'A',
-            'erm_status' => $this->formDaftar['ermStatus'] ?? 'A',
             'pass_status' => $this->formDaftar['passStatus'] ?? 'O',
             'cek_lab' => $this->formDaftar['cekLab'] ?? '0',
             'sl_codefrom' => $this->formDaftar['slCodeFrom'] ?? '02',
@@ -469,6 +466,16 @@ new class extends Component {
             'waktu_masuk_pelayanan' => DB::raw("to_date('" . $this->formDaftar['rjDate'] . "','dd/mm/yyyy hh24:mi:ss')"),
             'vno_sep' => $this->formDaftar['sep']['noSep'] ?? '',
         ];
+
+        // Kolom status hanya ditulis saat CREATE. Sesudahnya milik modul lain — erm_status
+        // (TTD-E dokter), rj_status & txn_status (kasir) — sedangkan isian form adalah potret
+        // saat form DIBUKA: ubah pendaftaran dari form yang lama terbuka dulu menimpa
+        // erm_status 'L' kembali ke 'A', jadi kunjungan yang sudah di-TTD tak lagi Selesai.
+        if ($this->formMode === 'create') {
+            $payload['txn_status'] = $this->formDaftar['txnStatus'] ?? 'A';
+            $payload['rj_status']  = $this->formDaftar['rjStatus'] ?? 'A';
+            $payload['erm_status'] = $this->formDaftar['ermStatus'] ?? 'A';
+        }
 
         // Mode CREATE: include admin prices dari JSON (sudah di-set oleh
         // recomputeAdminPrices() saat user pilih dokter / ubah klaim).
@@ -688,6 +695,13 @@ new class extends Component {
     {
         $allowedFields = ['regNo', 'drId', 'drDesc', 'poliId', 'poliDesc', 'kddrbpjs', 'kdpolibpjs', 'klaimId', 'kunjunganId', 'rjDate', 'shift', 'noAntrian', 'noBooking', 'slCodeFrom', 'passStatus', 'rjStatus', 'txnStatus', 'ermStatus', 'cekLab', 'kunjunganInternalStatus', 'noReferensi', 'postInap', 'internal12', 'internal12Desc', 'kontrol12', 'kontrol12Desc', 'taskIdPelayanan', 'sep', 'klaimStatus'];
 
+        // Saat UPDATE, kunci yang dikelola modul lain TIDAK diambil dari potret form (lihat
+        // buildPayload): status ikut kolom header terbaru lewat findDataRJ, dan dari
+        // taskIdPelayanan hanya task 1–3 milik pendaftaran yang ditulis — task 4–7/99
+        // (poli, apotek, batal) dicatat modul lain sesudah form dibuka.
+        $kunciMilikLain = ['rjStatus', 'txnStatus', 'ermStatus', 'taskIdPelayanan'];
+        $kunciTaskPendaftaran = ['tambahPendaftaran', 'taskId1', 'taskId1Status', 'taskId2', 'taskId2Status', 'taskId3', 'taskId3Status'];
+
         if ($this->formMode === 'create') {
             $this->updateJsonRJ($rjNo, $this->formDaftar);
 
@@ -728,11 +742,14 @@ new class extends Component {
         // Potret sebelum digabung — dasar pembanding untuk log perubahan.
         $sebelum = $existingData;
 
-        foreach ($allowedFields as $field) {
+        foreach (array_diff($allowedFields, $kunciMilikLain) as $field) {
             if (array_key_exists($field, $this->formDaftar)) {
                 $existingData[$field] = $this->formDaftar[$field];
             }
         }
+
+        $taskForm = array_intersect_key($this->formDaftar['taskIdPelayanan'] ?? [], array_flip($kunciTaskPendaftaran));
+        $existingData['taskIdPelayanan'] = array_replace($existingData['taskIdPelayanan'] ?? [], $taskForm);
 
         $this->updateJsonRJ($rjNo, $existingData);
 
@@ -1458,65 +1475,39 @@ new class extends Component {
             :wireKey="$this->renderKey('modal', [$formMode, $rjNo ?? 'new'])">
 
             {{-- HEADER --}}
-            <div class="relative px-6 py-5 border-b border-hairline dark:border-gray-700">
-                <div class="absolute inset-0 opacity-[0.06] dark:opacity-[0.10]"
-                    style="background-image: radial-gradient(currentColor 1px, transparent 1px); background-size: 14px 14px;">
-                </div>
-                <div class="relative flex items-start justify-between gap-4">
-                    <div>
-                        <div class="flex items-center gap-3">
-                            <div
-                                class="flex items-center justify-center w-10 h-10 rounded-xl bg-brand-green/10 dark:bg-brand-lime/15">
-                                <img src="{{ asset('images/Logogram black solid.png') }}" alt="RSI Madinah"
-                                    class="block w-6 h-6 dark:hidden" />
-                                <img src="{{ asset('images/Logogram white solid.png') }}" alt="RSI Madinah"
-                                    class="hidden w-6 h-6 dark:block" />
-                            </div>
-                            <div>
-                                <h2 class="font-semibold text-2xl text-ink dark:text-gray-100">
-                                    {{ $formMode === 'edit' ? 'Ubah Data Rawat Jalan' : 'Tambah Data Rawat Jalan' }}
-                                </h2>
-                                <p class="mt-0.5 text-sm text-muted dark:text-gray-400">Kelola data pendaftaran dan
-                                    pelayanan pasien rawat jalan.</p>
-                            </div>
-                        </div>
-                        <div class="flex gap-2 mt-3">
-                            <x-badge
-                                :variant="$formMode === 'edit' ? 'warning' : 'success'">{{ $formMode === 'edit' ? 'Mode: Edit' : 'Mode: Tambah' }}</x-badge>
-                            @if ($isFormLocked)
-                                <x-badge variant="danger">Read Only</x-badge>
-                            @endif
-                        </div>
+            <x-modul-dokumen.header :judul="$formMode === 'edit' ? 'Ubah Data Rawat Jalan' : 'Tambah Data Rawat Jalan'"
+                ikon="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                jalur="RJ" :readOnly="$isFormLocked" tutupAlpine="tryClose()">
+                Kelola data pendaftaran dan pelayanan pasien rawat jalan.
+                <x-slot:badge>
+                    <x-badge
+                        :variant="$formMode === 'edit' ? 'warning' : 'success'">{{ $formMode === 'edit' ? 'Mode: Edit' : 'Mode: Tambah' }}</x-badge>
+                </x-slot:badge>
+            </x-modul-dokumen.header>
+
+            {{-- Tanggal & Shift (dulu di header) --}}
+            <div class="flex flex-wrap items-center gap-2 px-6 py-2 border-b border-hairline dark:border-gray-700">
+                <div class="flex gap-4">
+                    <div class="flex-1">
+                        <x-input-label value="Tanggal RJ" />
+                        <x-text-input wire:model.live="formDaftar.rjDate" class="block w-full"
+                            :error="$errors->has('formDaftar.rjDate')" :disabled="$isFormLocked" />
+                        <x-input-error :messages="$errors->get('formDaftar.rjDate')" class="mt-1" />
                     </div>
-                    <div class="flex gap-4">
-                        <div class="flex-1">
-                            <x-input-label value="Tanggal RJ" />
-                            <x-text-input wire:model.live="formDaftar.rjDate" class="block w-full"
-                                :error="$errors->has('formDaftar.rjDate')" :disabled="$isFormLocked" />
-                            <x-input-error :messages="$errors->get('formDaftar.rjDate')" class="mt-1" />
-                        </div>
-                        <div class="w-36">
-                            <x-input-label value="Shift" />
-                            <x-select-input wire:model.live="formDaftar.shift" class="w-full mt-1 sm:w-36"
-                                :error="$errors->has('formDaftar.shift')" :disabled="$isFormLocked">
-                                <option value="">-- Pilih Shift --</option>
-                                <option value="1">Shift 1</option>
-                                <option value="2">Shift 2</option>
-                                <option value="3">Shift 3</option>
-                            </x-select-input>
-                            <x-input-error :messages="$errors->get('formDaftar.shift')" class="mt-1" />
-                            @if ($shiftMsg = $this->shiftMismatchMessage())
-                                <p class="mt-1 text-xs font-medium text-red-600 dark:text-red-400">{{ $shiftMsg }}</p>
-                            @endif
-                        </div>
+                    <div class="w-36">
+                        <x-input-label value="Shift" />
+                        <x-select-input wire:model.live="formDaftar.shift" class="w-full mt-1 sm:w-36"
+                            :error="$errors->has('formDaftar.shift')" :disabled="$isFormLocked">
+                            <option value="">-- Pilih Shift --</option>
+                            <option value="1">Shift 1</option>
+                            <option value="2">Shift 2</option>
+                            <option value="3">Shift 3</option>
+                        </x-select-input>
+                        <x-input-error :messages="$errors->get('formDaftar.shift')" class="mt-1" />
+                        @if ($shiftMsg = $this->shiftMismatchMessage())
+                            <p class="mt-1 text-xs font-medium text-red-600 dark:text-red-400">{{ $shiftMsg }}</p>
+                        @endif
                     </div>
-                    <x-icon-button color="gray" type="button" x-on:click="tryClose()">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd"
-                                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                                clip-rule="evenodd" />
-                        </svg>
-                    </x-icon-button>
                 </div>
             </div>
 

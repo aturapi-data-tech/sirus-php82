@@ -234,31 +234,16 @@ new class extends Component {
         <div class="flex flex-col min-h-[calc(100vh-4rem)]">
 
             {{-- ═══════════ HEADER ═══════════ --}}
-            <div class="relative px-6 py-4 border-b border-hairline dark:border-gray-700 shrink-0">
-                <div class="absolute inset-0 opacity-[0.06] dark:opacity-[0.10] pointer-events-none"
-                    style="background-image: radial-gradient(currentColor 1px, transparent 1px); background-size: 14px 14px;">
-                </div>
+            <x-modul-dokumen.header judul="Rekonsiliasi Obat"
+                ikon="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                jalur="UGD">
+            </x-modul-dokumen.header>
 
-                <div class="relative flex items-start justify-between gap-4">
-                    {{-- Display Pasien — kartu identitas yang sama dgn header EMR.
-                         Dirender hanya bila pasien sudah dipilih: mount()-nya membaca
-                         CLOB, jangan dijalankan saat modal masih kosong. --}}
-                    <div class="flex-1 min-w-0">
-                        @if (filled($rjNo))
-                            <livewire:pages::transaksi.ugd.display-pasien-ugd.display-pasien-ugd :rjNo="$rjNo"
-                                wire:key="rekonsiliasi-obat-ugd-display-pasien-{{ $rjNo }}" />
-                        @endif
-                    </div>
-
-                    <x-icon-button color="gray" type="button" wire:click="closeModal" class="shrink-0">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20"
-                            fill="currentColor">
-                            <path fill-rule="evenodd"
-                                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                                clip-rule="evenodd" />
-                        </svg>
-                    </x-icon-button>
-                </div>
+            <div class="px-6 pt-3">
+                @if (filled($rjNo))
+                    <livewire:pages::transaksi.ugd.display-pasien-ugd.display-pasien-ugd :rjNo="$rjNo"
+                        wire:key="rekonsiliasi-obat-ugd-display-pasien-{{ $rjNo }}" />
+                @endif
             </div>
 
             {{-- ═══════════ BODY ═══════════ --}}
@@ -384,78 +369,62 @@ new class extends Component {
                                     </div>
                                 @endunless
 
-                                <div class="overflow-x-auto border bg-canvas rounded-2xl border-hairline dark:border-gray-700">
-                                    <table class="ds-table">
-                                        <thead>
-                                            <tr>
-                                                <th class="ds-c w-10">No</th>
-                                                <th>Obat (Dosis &middot; Rute)</th>
-                                                <th>Keterangan</th>
-                                                <th class="w-44">Petugas</th>
-                                                <th class="ds-c w-14">Aksi</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
+                                <x-modul-dokumen.tabel-daftar :kolom="['Obat (Dosis · Rute)', 'Keterangan', 'Petugas' => 'w-44', 'Aksi' => 'text-center w-14']">
                                             @forelse ($daftarRekonsiliasiObat as $index => $obat)
-                                                <tr wire:key="rekonsiliasi-obat-ugd-{{ $rjNo ?? 'new' }}-{{ $index }}">
-                                                    @php
-                                                        $dosisRute = collect([$obat['dosis'] ?? null, $obat['rute'] ?? null])
-                                                            ->filter(fn($isi) => filled($isi))
-                                                            ->implode(' · ');
-                                                    @endphp
-                                                    <td class="ds-c ds-td-meta">{{ $index + 1 }}</td>
-                                                    <td>
-                                                        <div class="ds-td-strong">{{ $obat['namaObat'] ?? '-' }}</div>
-                                                        @if ($dosisRute)
-                                                            <div class="text-muted dark:text-gray-400">{{ $dosisRute }}</div>
-                                                        @endif
-                                                    </td>
-
-                                                    <td>
-                                                        <div class="space-y-1.5">
-                                                            @foreach ([['dibawaRanap', 'Dibawa saat ranap'], ['digunakanRanap', 'Digunakan saat ranap'], ['lanjutPulang', 'Lanjut saat pulang']] as [$kolom, $judul])
-                                                                @php $nilai = ($obat[$kolom] ?? 'Tidak') === 'Ya' ? 'Ya' : 'Tidak'; @endphp
-                                                                <div class="flex items-center justify-between gap-2">
-                                                                    <span class="text-muted dark:text-gray-400">{{ $judul }}</span>
-                                                                    <span
-                                                                        class="font-medium {{ $nilai === 'Ya' ? 'text-success-deep dark:text-success' : 'text-muted-soft' }}">
-                                                                        {{ $nilai }}
-                                                                    </span>
-                                                                </div>
-                                                            @endforeach
-                                                        </div>
-                                                    </td>
-
-                                                    {{-- Pencatat entri. Baris lama (sebelum field ini ada) tampil '-'. --}}
-                                                    <td>
-                                                        @if (filled($obat['petugasRekonsiliasi'] ?? null))
-                                                            <div class="ds-td-strong">{{ $obat['petugasRekonsiliasi'] }}</div>
-                                                            @if (filled($obat['tglRekonsiliasi'] ?? null))
-                                                                <div class="text-muted dark:text-gray-400">{{ $obat['tglRekonsiliasi'] }}</div>
+                                                <tbody wire:key="rekonsiliasi-obat-ugd-{{ $rjNo ?? 'new' }}-{{ $index }}" class="border-b border-hairline dark:border-gray-700">
+                                                    <tr class="align-top hover:bg-surface-soft dark:hover:bg-gray-800/60">
+                                                        @php
+                                                            $dosisRute = collect([$obat['dosis'] ?? null, $obat['rute'] ?? null])
+                                                                ->filter(fn($isi) => filled($isi))
+                                                                ->implode(' · ');
+                                                        @endphp
+                                                        <td class="px-4 py-3">
+                                                            <div class="ds-td-strong">{{ $obat['namaObat'] ?? '-' }}</div>
+                                                            @if ($dosisRute)
+                                                                <div class="text-muted dark:text-gray-400">{{ $dosisRute }}</div>
                                                             @endif
-                                                        @else
-                                                            <span class="text-muted-soft">-</span>
-                                                        @endif
-                                                    </td>
-
-                                                    <td class="ds-c">
-                                                        @unless ($isFormLocked)
-                                                            <x-hapus-button :action="'removeRekonsiliasiObat(' . $index . ')'" title="Hapus Obat" :message="'Yakin hapus ' . ($obat['namaObat'] ?? 'obat ini') . ' dari daftar?'" />
-                                                        @else
-                                                            <span class="text-muted-soft">&mdash;</span>
-                                                        @endunless
-                                                    </td>
-                                                </tr>
+                                                        </td>
+    
+                                                        <td class="px-4 py-3">
+                                                            <div class="space-y-1.5">
+                                                                @foreach ([['dibawaRanap', 'Dibawa saat ranap'], ['digunakanRanap', 'Digunakan saat ranap'], ['lanjutPulang', 'Lanjut saat pulang']] as [$kolom, $judul])
+                                                                    @php $nilai = ($obat[$kolom] ?? 'Tidak') === 'Ya' ? 'Ya' : 'Tidak'; @endphp
+                                                                    <div class="flex items-center justify-between gap-2">
+                                                                        <span class="text-muted dark:text-gray-400">{{ $judul }}</span>
+                                                                        <span
+                                                                            class="font-medium {{ $nilai === 'Ya' ? 'text-success-deep dark:text-success' : 'text-muted-soft' }}">
+                                                                            {{ $nilai }}
+                                                                        </span>
+                                                                    </div>
+                                                                @endforeach
+                                                            </div>
+                                                        </td>
+    
+                                                        {{-- Pencatat entri. Baris lama (sebelum field ini ada) tampil '-'. --}}
+                                                        <td class="px-4 py-3">
+                                                            @if (filled($obat['petugasRekonsiliasi'] ?? null))
+                                                                <div class="ds-td-strong">{{ $obat['petugasRekonsiliasi'] }}</div>
+                                                                @if (filled($obat['tglRekonsiliasi'] ?? null))
+                                                                    <div class="text-muted dark:text-gray-400">{{ $obat['tglRekonsiliasi'] }}</div>
+                                                                @endif
+                                                            @else
+                                                                <span class="text-muted-soft">-</span>
+                                                            @endif
+                                                        </td>
+    
+                                                        <td class="px-4 py-3 text-center">
+                                                            @unless ($isFormLocked)
+                                                                <x-hapus-button :action="'removeRekonsiliasiObat(' . $index . ')'" title="Hapus Obat" :message="'Yakin hapus ' . ($obat['namaObat'] ?? 'obat ini') . ' dari daftar?'" />
+                                                            @else
+                                                                <span class="text-muted-soft">&mdash;</span>
+                                                            @endunless
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
                                             @empty
-                                                <tr>
-                                                    <td colspan="5" class="ds-c italic text-muted-soft">
-                                                        {{ RekonsiliasiObat::teksDaftarKosong($statusRekonsiliasi) }}
-                                                    </td>
-                                                </tr>
+                                                <x-modul-dokumen.baris-kosong :kolom="4" :pesan="RekonsiliasiObat::teksDaftarKosong($statusRekonsiliasi)" />
                                             @endforelse
-                                        </tbody>
-                                    </table>
-                                </div>
+                                </x-modul-dokumen.tabel-daftar>
 
                             </div>
                         </div>

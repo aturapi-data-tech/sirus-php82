@@ -955,39 +955,39 @@ new class extends Component {
                                                             <dt class="mb-1 text-xs font-semibold tracking-wide uppercase text-muted-soft">Riwayat Kehamilan / Persalinan Yang Lalu</dt>
                                                             <dd class="mt-0.5">
                                                                 @if (!empty($entry['rows']))
-                                                                    <div class="overflow-x-auto rounded-2xl">
-                                                                        <table class="w-full text-xs border-collapse">
-                                                                            <thead>
-                                                                                <tr class="text-left tracking-wide uppercase text-muted bg-surface-soft border-b border-hairline dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400">
-                                                                                    <th class="whitespace-nowrap px-2 py-1.5 font-semibold text-center">No</th>
-                                                                                    <th class="whitespace-nowrap px-2 py-1.5 font-semibold">Kehamilan</th>
-                                                                                    <th class="whitespace-nowrap px-2 py-1.5 font-semibold">Cara Persalinan</th>
-                                                                                    <th class="whitespace-nowrap px-2 py-1.5 font-semibold">Tempat</th>
-                                                                                    <th class="whitespace-nowrap px-2 py-1.5 font-semibold">Penolong</th>
-                                                                                    <th class="whitespace-nowrap px-2 py-1.5 font-semibold">Komplikasi</th>
-                                                                                    <th class="whitespace-nowrap px-2 py-1.5 font-semibold">JK</th>
-                                                                                    <th class="whitespace-nowrap px-2 py-1.5 font-semibold">Keadaan</th>
-                                                                                    <th class="whitespace-nowrap px-2 py-1.5 font-semibold">Umur</th>
-                                                                                    <th class="whitespace-nowrap px-2 py-1.5 font-semibold">BBL</th>
-                                                                                    <th class="whitespace-nowrap px-2 py-1.5 font-semibold">Keterangan</th>
-                                                                                    <th class="whitespace-nowrap px-2 py-1.5 font-semibold">Petugas</th>
+                                                                    <div class="overflow-x-auto rounded-2xl border border-hairline dark:border-gray-700">
+                                                                        <table class="min-w-full text-sm">
+                                                                            <thead class="bg-surface-card dark:bg-gray-800">
+                                                                                <tr class="text-xs font-semibold tracking-wide text-left uppercase text-muted dark:text-gray-300">
+                                                                                    <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700 text-center">No</th>
+                                                                                    <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Kehamilan</th>
+                                                                                    <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Cara Persalinan</th>
+                                                                                    <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Tempat</th>
+                                                                                    <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Penolong</th>
+                                                                                    <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Komplikasi</th>
+                                                                                    <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">JK</th>
+                                                                                    <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Keadaan</th>
+                                                                                    <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Umur</th>
+                                                                                    <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">BBL</th>
+                                                                                    <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Keterangan</th>
+                                                                                    <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Petugas</th>
                                                                                 </tr>
                                                                             </thead>
                                                                             <tbody>
                                                                                 @foreach ($entry['rows'] as $nomorRiwayat => $barisRiwayat)
-                                                                                    <tr class="border-t border-hairline dark:border-gray-700">
-                                                                                        <td class="px-2 py-1 text-center">{{ $nomorRiwayat + 1 }}</td>
-                                                                                        <td class="px-2 py-1">{{ ($barisRiwayat['kehamilan'] ?? '') ?: '-' }}</td>
-                                                                                        <td class="px-2 py-1">{{ ($barisRiwayat['caraPersalinan'] ?? '') ?: '-' }}</td>
-                                                                                        <td class="px-2 py-1">{{ ($barisRiwayat['tempat'] ?? '') ?: '-' }}</td>
-                                                                                        <td class="px-2 py-1">{{ ($barisRiwayat['penolong'] ?? '') ?: '-' }}</td>
-                                                                                        <td class="px-2 py-1">{{ ($barisRiwayat['komplikasi'] ?? '') ?: '-' }}</td>
-                                                                                        <td class="px-2 py-1">{{ ($barisRiwayat['jenisKelaminAnak'] ?? '') ?: '-' }}</td>
-                                                                                        <td class="px-2 py-1">{{ ($barisRiwayat['keadaanAnak'] ?? '') ?: '-' }}</td>
-                                                                                        <td class="px-2 py-1">{{ ($barisRiwayat['umurAnak'] ?? '') ?: '-' }}</td>
-                                                                                        <td class="px-2 py-1">{{ ($barisRiwayat['bbl'] ?? '') ?: '-' }}</td>
-                                                                                        <td class="px-2 py-1">{{ ($barisRiwayat['keterangan'] ?? '') ?: '-' }}</td>
-                                                                                        <td class="px-2 py-1">{{ ($barisRiwayat['petugas'] ?? '') ?: '-' }}</td>
+                                                                                    <tr class="border-b border-hairline dark:border-gray-700 hover:bg-surface-soft dark:hover:bg-gray-800/60">
+                                                                                        <td class="px-4 py-3 text-center">{{ $nomorRiwayat + 1 }}</td>
+                                                                                        <td class="px-4 py-3">{{ ($barisRiwayat['kehamilan'] ?? '') ?: '-' }}</td>
+                                                                                        <td class="px-4 py-3">{{ ($barisRiwayat['caraPersalinan'] ?? '') ?: '-' }}</td>
+                                                                                        <td class="px-4 py-3">{{ ($barisRiwayat['tempat'] ?? '') ?: '-' }}</td>
+                                                                                        <td class="px-4 py-3">{{ ($barisRiwayat['penolong'] ?? '') ?: '-' }}</td>
+                                                                                        <td class="px-4 py-3">{{ ($barisRiwayat['komplikasi'] ?? '') ?: '-' }}</td>
+                                                                                        <td class="px-4 py-3">{{ ($barisRiwayat['jenisKelaminAnak'] ?? '') ?: '-' }}</td>
+                                                                                        <td class="px-4 py-3">{{ ($barisRiwayat['keadaanAnak'] ?? '') ?: '-' }}</td>
+                                                                                        <td class="px-4 py-3">{{ ($barisRiwayat['umurAnak'] ?? '') ?: '-' }}</td>
+                                                                                        <td class="px-4 py-3">{{ ($barisRiwayat['bbl'] ?? '') ?: '-' }}</td>
+                                                                                        <td class="px-4 py-3">{{ ($barisRiwayat['keterangan'] ?? '') ?: '-' }}</td>
+                                                                                        <td class="px-4 py-3">{{ ($barisRiwayat['petugas'] ?? '') ?: '-' }}</td>
                                                                                     </tr>
                                                                                 @endforeach
                                                                             </tbody>

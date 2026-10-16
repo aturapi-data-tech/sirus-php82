@@ -670,58 +670,36 @@ new class extends Component {
             x-on:focus-lov-obat-kasir-ri.window="$nextTick(() => $refs.lovObatRi?.querySelector('input')?.focus())">
 
             {{-- HEADER --}}
-            <div class="flex items-start justify-between gap-4 px-6 py-4 border-b border-hairline dark:border-gray-700">
-                <div class="flex items-start gap-3 min-w-0">
+            <x-modul-dokumen.header judul="Administrasi Kasir Pasien" ikon="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2M12 11h4m-4 4h4m-6-4h.01M10 15h.01">
+                Kelola obat &amp; kasir resep rawat inap
+            </x-modul-dokumen.header>
+
+            {{-- Ringkasan biaya --}}
+            @if ($isLoaded)
+                <div class="flex flex-wrap items-center gap-2 px-6 py-2 border-b border-hairline dark:border-gray-700">
                     <div
-                        class="flex items-center justify-center w-10 h-10 rounded-xl bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 shrink-0">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round"
-                                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2M12 11h4m-4 4h4m-6-4h.01M10 15h.01" />
-                        </svg>
+                        class="px-3 py-1.5 bg-surface-soft border border-hairline rounded-lg dark:bg-gray-800/50 dark:border-gray-700">
+                        <p class="text-[10px] uppercase text-muted">Subtotal Obat</p>
+                        <p class="text-sm font-mono font-semibold text-ink dark:text-gray-200">
+                            Rp {{ number_format($this->subtotal) }}
+                        </p>
                     </div>
-                    <div class="min-w-0">
-                        <h3 class="text-lg font-semibold text-ink dark:text-white">
-                            Administrasi Kasir Pasien
-                        </h3>
-                        <p class="text-sm text-muted dark:text-gray-400">
-                            Kelola obat &amp; kasir resep rawat inap
+                    <div
+                        class="px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-lg dark:bg-amber-900/20 dark:border-amber-700">
+                        <p class="text-[10px] uppercase text-amber-700 dark:text-amber-300">Jasa Karyawan</p>
+                        <p class="text-sm font-mono font-semibold text-amber-800 dark:text-amber-200">
+                            Rp {{ number_format($jasaKaryawan) }}
+                        </p>
+                    </div>
+                    <div
+                        class="px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-lg dark:bg-blue-900/20 dark:border-blue-700">
+                        <p class="text-[10px] uppercase text-blue-700 dark:text-blue-300">Total</p>
+                        <p class="text-base font-mono font-bold text-blue-700 dark:text-blue-300">
+                            Rp {{ number_format($this->totalAll) }}
                         </p>
                     </div>
                 </div>
-                <div class="flex items-center gap-3 shrink-0">
-                    {{-- Ringkasan biaya --}}
-                    @if ($isLoaded)
-                        <div class="flex gap-2">
-                            <div
-                                class="px-3 py-1.5 bg-surface-soft border border-hairline rounded-lg dark:bg-gray-800/50 dark:border-gray-700">
-                                <p class="text-[10px] uppercase text-muted">Subtotal Obat</p>
-                                <p class="text-sm font-mono font-semibold text-ink dark:text-gray-200">
-                                    Rp {{ number_format($this->subtotal) }}
-                                </p>
-                            </div>
-                            <div
-                                class="px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-lg dark:bg-amber-900/20 dark:border-amber-700">
-                                <p class="text-[10px] uppercase text-amber-700 dark:text-amber-300">Jasa Karyawan</p>
-                                <p class="text-sm font-mono font-semibold text-amber-800 dark:text-amber-200">
-                                    Rp {{ number_format($jasaKaryawan) }}
-                                </p>
-                            </div>
-                            <div
-                                class="px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-lg dark:bg-blue-900/20 dark:border-blue-700">
-                                <p class="text-[10px] uppercase text-blue-700 dark:text-blue-300">Total</p>
-                                <p class="text-base font-mono font-bold text-blue-700 dark:text-blue-300">
-                                    Rp {{ number_format($this->totalAll) }}
-                                </p>
-                            </div>
-                        </div>
-                    @endif
-                    <x-icon-button color="gray" type="button" wire:click="closeModal" class="shrink-0">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                    </x-icon-button>
-                </div>
-            </div>
+            @endif
 
             @if (!$isLoaded)
                 <div class="px-6 py-12 text-center text-muted-soft">Memuat data...</div>
