@@ -166,22 +166,22 @@
     {{-- ===== TABEL RIWAYAT ===== --}}
     @if (collect($penilaian['nyeri'] ?? [])->filter(fn($r) => filled(data_get($r, 'tglPenilaian')))->isNotEmpty())
         <x-border-form :title="__('Riwayat Penilaian Nyeri')" :align="__('start')" :bgcolor="__('bg-canvas')">
-            <div class="overflow-x-auto rounded-lg border border-hairline dark:border-gray-700">
-                <table class="w-full text-sm text-left text-muted dark:text-gray-300">
-                    <thead class="bg-surface-soft dark:bg-gray-700 text-muted dark:text-gray-400">
-                        <tr>
-                            <th class="px-3 py-2 font-medium">Tgl Penilaian</th>
-                            <th class="px-3 py-2 font-medium">Petugas</th>
-                            <th class="px-3 py-2 font-medium">Nyeri</th>
-                            <th class="px-3 py-2 font-medium">Metode</th>
-                            <th class="px-3 py-2 font-medium">Skor</th>
-                            <th class="px-3 py-2 font-medium">Keterangan</th>
+            <div class="overflow-x-auto rounded-2xl border border-hairline dark:border-gray-700">
+                <table class="min-w-full text-sm">
+                    <thead class="bg-surface-card dark:bg-gray-800">
+                        <tr class="text-xs font-semibold tracking-wide text-left uppercase text-muted dark:text-gray-300">
+                            <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Tgl Penilaian</th>
+                            <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Petugas</th>
+                            <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Nyeri</th>
+                            <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Metode</th>
+                            <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Skor</th>
+                            <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Keterangan</th>
                             @if (!$isFormLocked)
-                                <th class="px-3 py-2 font-medium"></th>
+                                <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700"></th>
                             @endif
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-hairline-soft dark:divide-gray-700">
+                    <tbody>
                         @foreach (array_reverse(array_filter($penilaian['nyeri'] ?? [], fn($r) => filled(data_get($r, 'tglPenilaian'))), true) as $i => $row)
                             @php
                                 $tafsir = $this->interpretasiEntri($row);
@@ -199,26 +199,26 @@
                                     default => 'hover:bg-surface-soft dark:hover:bg-gray-800',
                                 };
                             @endphp
-                            <tr class="{{ $rowBg }}">
-                                <td class="px-3 py-2 whitespace-nowrap">{{ $row['tglPenilaian'] ?? '-' }}</td>
-                                <td class="px-3 py-2">{{ $row['petugasPenilai'] ?? '-' }}</td>
-                                <td class="px-3 py-2">
+                            <tr class="border-b border-hairline dark:border-gray-700 {{ $rowBg }}">
+                                <td class="px-4 py-3 font-mono whitespace-nowrap">{{ $row['tglPenilaian'] ?? '-' }}</td>
+                                <td class="px-4 py-3">{{ $row['petugasPenilai'] ?? '-' }}</td>
+                                <td class="px-4 py-3">
                                     <span
                                         class="px-2 py-0.5 rounded-full text-sm font-medium
                                         {{ ($row['nyeri']['nyeri'] ?? '') === 'Ya' ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700' }}">
                                         {{ $row['nyeri']['nyeri'] ?? '-' }}
                                     </span>
                                 </td>
-                                <td class="px-3 py-2">
+                                <td class="px-4 py-3">
                                     {{ $row['nyeri']['nyeriMetode']['nyeriMetode'] ?? '-' }}
                                     @if ($skala)
                                         <div class="text-[11px] text-muted-soft">{{ $skala['sasaran'] }}</div>
                                     @endif
                                 </td>
-                                <td class="px-3 py-2 font-bold">
+                                <td class="px-4 py-3 font-bold">
                                     {{ $row['nyeri']['nyeriMetode']['nyeriMetodeScore'] ?? '-' }}@if ($skala)<span class="font-normal text-muted-soft">/{{ $skala['max'] }}</span>@endif
                                 </td>
-                                <td class="px-3 py-2">
+                                <td class="px-4 py-3">
                                     @if ($ket !== '-')
                                         <span class="px-2 py-0.5 rounded-full text-sm font-medium {{ $tafsir['badge'] }}">
                                             {{ $ket }}
@@ -234,7 +234,7 @@
                                     @endif
                                 </td>
                                 @if (!$isFormLocked)
-                                    <td class="px-3 py-2">
+                                    <td class="px-4 py-3">
                                         <x-hapus-button wire:click="removeAssessmentNyeri({{ $i }})" confirm="Hapus data nyeri ini?" />
                                     </td>
                                 @endif

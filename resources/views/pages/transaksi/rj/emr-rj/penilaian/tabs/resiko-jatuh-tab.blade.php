@@ -164,23 +164,23 @@
 
     @if (collect($penilaian['resikoJatuh'] ?? [])->filter(fn($r) => filled(data_get($r, 'tglPenilaian')))->isNotEmpty())
         <x-border-form :title="__('Riwayat Penilaian Risiko Jatuh')" :align="__('start')" :bgcolor="__('bg-canvas')">
-            <div class="overflow-x-auto rounded-lg border border-hairline dark:border-gray-700">
-                <table class="w-full text-sm text-left text-muted dark:text-gray-300">
-                    <thead class="bg-surface-soft dark:bg-gray-700 text-muted dark:text-gray-400">
-                        <tr>
-                            <th class="px-3 py-2 font-medium">Tgl Penilaian</th>
-                            <th class="px-3 py-2 font-medium">Petugas</th>
-                            <th class="px-3 py-2 font-medium">Risiko</th>
-                            <th class="px-3 py-2 font-medium">Metode</th>
-                            <th class="px-3 py-2 font-medium">Skor</th>
-                            <th class="px-3 py-2 font-medium">Kategori</th>
-                            <th class="px-3 py-2 font-medium">Rekomendasi</th>
+            <div class="overflow-x-auto rounded-2xl border border-hairline dark:border-gray-700">
+                <table class="min-w-full text-sm">
+                    <thead class="bg-surface-card dark:bg-gray-800">
+                        <tr class="text-xs font-semibold tracking-wide text-left uppercase text-muted dark:text-gray-300">
+                            <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Tgl Penilaian</th>
+                            <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Petugas</th>
+                            <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Risiko</th>
+                            <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Metode</th>
+                            <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Skor</th>
+                            <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Kategori</th>
+                            <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Rekomendasi</th>
                             @if (!$isFormLocked)
-                                <th class="px-3 py-2 font-medium"></th>
+                                <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700"></th>
                             @endif
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-hairline-soft dark:divide-gray-700">
+                    <tbody>
                         @foreach (array_reverse(array_filter($penilaian['resikoJatuh'] ?? [], fn($r) => filled(data_get($r, 'tglPenilaian'))), true) as $i => $row)
                             @php
                                 $kat = $row['resikoJatuh']['kategoriResiko'] ?? '-';
@@ -194,32 +194,32 @@
                                     default => 'hover:bg-surface-soft dark:hover:bg-gray-800',
                                 };
                             @endphp
-                            <tr class="{{ $rowBg }}">
-                                <td class="px-3 py-2 whitespace-nowrap">{{ $row['tglPenilaian'] ?? '-' }}</td>
-                                <td class="px-3 py-2">{{ $row['petugasPenilai'] ?? '-' }}</td>
-                                <td class="px-3 py-2">
+                            <tr class="border-b border-hairline dark:border-gray-700 {{ $rowBg }}">
+                                <td class="px-4 py-3 font-mono whitespace-nowrap">{{ $row['tglPenilaian'] ?? '-' }}</td>
+                                <td class="px-4 py-3">{{ $row['petugasPenilai'] ?? '-' }}</td>
+                                <td class="px-4 py-3">
                                     <span
                                         class="px-2 py-0.5 rounded-full text-sm font-medium
                                         {{ ($row['resikoJatuh']['resikoJatuh'] ?? '') === 'Ya' ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700' }}">
                                         {{ $row['resikoJatuh']['resikoJatuh'] ?? '-' }}
                                     </span>
                                 </td>
-                                <td class="px-3 py-2">
+                                <td class="px-4 py-3">
                                     {{ $row['resikoJatuh']['resikoJatuhMetode']['resikoJatuhMetode'] ?? '-' }}</td>
-                                <td class="px-3 py-2 font-bold">
+                                <td class="px-4 py-3 font-bold">
                                     {{ $row['resikoJatuh']['resikoJatuhMetode']['resikoJatuhMetodeScore'] ?? '-' }}
                                 </td>
-                                <td class="px-3 py-2">
+                                <td class="px-4 py-3">
                                     <span
                                         class="px-2 py-0.5 rounded-full text-sm font-medium
                                         {{ $kat === 'Tinggi' ? 'bg-red-100 text-red-700' : ($kat === 'Sedang' ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700') }}">
                                         {{ $kat }}
                                     </span>
                                 </td>
-                                <td class="px-3 py-2 text-muted">{{ $row['resikoJatuh']['rekomendasi'] ?? '-' }}
+                                <td class="px-4 py-3 text-muted">{{ $row['resikoJatuh']['rekomendasi'] ?? '-' }}
                                 </td>
                                 @if (!$isFormLocked)
-                                    <td class="px-3 py-2">
+                                    <td class="px-4 py-3">
                                         <x-hapus-button wire:click="removeAssessmentResikoJatuh({{ $i }})" confirm="Hapus data risiko jatuh ini?" />
                                     </td>
                                 @endif

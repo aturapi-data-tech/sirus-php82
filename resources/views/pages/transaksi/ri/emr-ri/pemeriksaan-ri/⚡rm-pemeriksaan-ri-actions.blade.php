@@ -373,22 +373,22 @@ new class extends Component {
         @endhasanyrole
 
         <div
-            class="overflow-x-auto bg-canvas border border-hairline rounded-xl shadow-sm dark:bg-gray-900 dark:border-gray-700">
-            <table class="w-full text-sm text-left text-muted dark:text-gray-400">
-                <thead class="text-xs font-semibold text-body uppercase bg-surface-soft dark:bg-gray-800">
-                    <tr>
-                        <th class="px-4 py-3 w-44">Tgl Upload</th>
-                        <th class="px-4 py-3">Keterangan</th>
-                        <th class="px-4 py-3 w-28 text-center">Aksi</th>
+            class="overflow-x-auto rounded-2xl border border-hairline bg-canvas dark:border-gray-700 dark:bg-gray-900">
+            <table class="min-w-full text-sm">
+                <thead class="bg-surface-card dark:bg-gray-800">
+                    <tr class="text-xs font-semibold tracking-wide text-left uppercase text-muted dark:text-gray-300">
+                        <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700 w-44">Tgl Upload</th>
+                        <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Keterangan</th>
+                        <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700 w-28 text-center">Aksi</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-hairline-soft dark:divide-gray-700">
+                <tbody>
                     @forelse (array_reverse($pemeriksaan['uploadHasilPenunjang'] ?? []) as $item)
-                        <tr class="group hover:bg-surface-soft dark:hover:bg-gray-800 transition">
-                            <td class="px-4 py-2 whitespace-nowrap text-body dark:text-gray-300">
+                        <tr class="border-b border-hairline dark:border-gray-700 hover:bg-surface-soft dark:hover:bg-gray-800/60">
+                            <td class="px-4 py-3 whitespace-nowrap text-body dark:text-gray-300">
                                 {{ $item['tglUpload'] ?? '-' }}</td>
-                            <td class="px-4 py-2 text-body dark:text-gray-300">{{ $item['desc'] ?? '-' }}</td>
-                            <td class="px-4 py-2">
+                            <td class="px-4 py-3 text-body dark:text-gray-300">{{ $item['desc'] ?? '-' }}</td>
+                            <td class="px-4 py-3">
                                 <div class="flex items-center justify-center gap-2">
                                     @hasanyrole('Perawat|Admin|Dokter')
                                         <x-icon-button wire:click="openModalViewPenunjang('{{ $item['file'] ?? '' }}')"
@@ -415,7 +415,7 @@ new class extends Component {
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="3" class="px-4 py-8 text-center text-sm text-muted-soft dark:text-gray-500">
+                            <td colspan="3" class="px-4 py-8 text-center text-muted-soft">
                                 Belum ada file penunjang yang diupload.
                             </td>
                         </tr>

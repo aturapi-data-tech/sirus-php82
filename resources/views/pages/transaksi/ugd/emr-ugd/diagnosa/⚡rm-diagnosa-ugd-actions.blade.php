@@ -491,26 +491,26 @@ new class extends Component {
 
                         {{-- List Diagnosa (di luar frame, seperti pola Risiko Jatuh) --}}
                         @if (!empty($diagnosis))
-                            <div class="overflow-x-auto rounded-lg border border-hairline dark:border-gray-700">
-                                        <table class="w-full text-sm text-left text-muted dark:text-gray-300">
-                                            <thead class="bg-surface-soft dark:bg-gray-700 text-muted dark:text-gray-400">
-                                                <tr>
-                                                    <th class="px-3 py-2 font-medium">Diagnosis</th>
-                                                    <th class="px-3 py-2 font-medium">Kategori</th>
+                            <div class="overflow-x-auto rounded-2xl border border-hairline bg-canvas dark:border-gray-700 dark:bg-gray-900">
+                                        <table class="min-w-full text-sm">
+                                            <thead class="bg-surface-card dark:bg-gray-800">
+                                                <tr class="text-xs font-semibold tracking-wide text-left uppercase text-muted dark:text-gray-300">
+                                                    <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Diagnosis</th>
+                                                    <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Kategori</th>
                                                     @if (!$isFormLocked)
-                                                        <th class="px-3 py-2"></th>
+                                                        <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700"></th>
                                                     @endif
                                                 </tr>
                                             </thead>
-                                            <tbody class="divide-y divide-hairline-soft dark:divide-gray-700">
+                                            <tbody>
                                                 @foreach ($diagnosis as $index => $diagnosa)
                                                     <tr wire:key="diagnosa-ugd-{{ $diagnosa['ugdDtlDtl'] ?? $index }}"
-                                                        class="bg-canvas hover:bg-surface-soft dark:bg-gray-800 dark:hover:bg-gray-700">
-                                                        <td class="px-3 py-2 font-medium text-ink dark:text-white">
+                                                        class="border-b border-hairline dark:border-gray-700 hover:bg-surface-soft dark:hover:bg-gray-800/60">
+                                                        <td class="px-4 py-3 font-medium text-ink dark:text-white">
                                                             {{ $diagnosa['diagId'] ?? ($diagnosa['icdX'] ?? '') }}
                                                             {{ $diagnosa['diagDesc'] ?? '' }}
                                                         </td>
-                                                        <td class="px-3 py-2">
+                                                        <td class="px-4 py-3">
                                                             @php $curKat = $diagnosa['kategoriDiagnosa'] ?? 'Secondary'; @endphp
                                                             <x-select-input x-data
                                                                 @reset-select-kategori-emr.window="if ($event.detail.id === {{ (int) ($diagnosa['ugdDtlDtl'] ?? 0) }}) $el.value = $event.detail.value"
@@ -521,7 +521,7 @@ new class extends Component {
                                                             </x-select-input>
                                                         </td>
                                                         @if (!$isFormLocked)
-                                                            <td class="px-3 py-2">
+                                                            <td class="px-4 py-3">
                                                                 {{-- Entri tanpa id detail (tak ada padanannya di rstxn_ugddtls) tidak bisa dihapus lewat sini; tombolnya dinonaktifkan, bukan meledak. --}}
                                                                 <x-outline-button type="button"
                                                                     wire:click="removeDiagnosaICD10({{ (int) ($diagnosa['ugdDtlDtl'] ?? 0) }})"
@@ -568,26 +568,26 @@ new class extends Component {
 
                         {{-- List Procedure (di luar frame, seperti pola Risiko Jatuh) --}}
                         @if (!empty($procedure))
-                            <div class="overflow-x-auto rounded-lg border border-hairline dark:border-gray-700">
-                                        <table class="w-full text-sm text-left text-muted dark:text-gray-300">
-                                            <thead class="bg-surface-soft dark:bg-gray-700 text-muted dark:text-gray-400">
-                                                <tr>
-                                                    <th class="px-3 py-2 font-medium">Procedure</th>
+                            <div class="overflow-x-auto rounded-2xl border border-hairline bg-canvas dark:border-gray-700 dark:bg-gray-900">
+                                        <table class="min-w-full text-sm">
+                                            <thead class="bg-surface-card dark:bg-gray-800">
+                                                <tr class="text-xs font-semibold tracking-wide text-left uppercase text-muted dark:text-gray-300">
+                                                    <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Procedure</th>
                                                     @if (!$isFormLocked)
-                                                        <th class="px-3 py-2"></th>
+                                                        <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700"></th>
                                                     @endif
                                                 </tr>
                                             </thead>
-                                            <tbody class="divide-y divide-hairline-soft dark:divide-gray-700">
+                                            <tbody>
                                                 @foreach ($procedure as $index => $procedure)
                                                     <tr wire:key="procedure-ugd-{{ $procedure['procedureId'] }}"
-                                                        class="bg-canvas hover:bg-surface-soft dark:bg-gray-800 dark:hover:bg-gray-700">
-                                                        <td class="px-3 py-2 font-medium text-ink dark:text-white">
+                                                        class="border-b border-hairline dark:border-gray-700 hover:bg-surface-soft dark:hover:bg-gray-800/60">
+                                                        <td class="px-4 py-3 font-medium text-ink dark:text-white">
                                                             {{ $procedure['procedureId'] ?? '' }}
                                                             {{ $procedure['procedureDesc'] ?? '' }}
                                                         </td>
                                                         @if (!$isFormLocked)
-                                                            <td class="px-3 py-2">
+                                                            <td class="px-4 py-3">
                                                                 <x-outline-button type="button"
                                                                     wire:click="removeProcedureICD9Cm('{{ $procedure['procedureId'] }}')"
                                                                     wire:confirm="Yakin ingin menghapus procedure {{ $procedure['procedureId'] }}?"

@@ -1016,16 +1016,16 @@ new class extends Component {
         {{-- ── TABEL EXPANDABLE Form A ── --}}
         <div class="mt-4">
             @if (count($listFormA))
-                <div class="overflow-x-auto">
-                    <table class="min-w-full text-sm border border-hairline rounded-lg dark:border-gray-700">
-                        <thead class="bg-surface-soft dark:bg-gray-800">
-                            <tr class="text-left text-sm font-semibold tracking-wide uppercase text-muted dark:text-gray-300">
-                                <th class="w-8 px-2 py-3 border-b"></th>
-                                <th class="px-4 py-3 border-b">Tanggal</th>
-                                <th class="px-4 py-3 border-b">Identifikasi Kasus</th>
-                                <th class="px-4 py-3 border-b">Petugas (TTD)</th>
-                                <th class="px-4 py-3 text-center border-b">Status</th>
-                                <th class="px-4 py-3 text-center border-b">Aksi</th>
+                <div class="overflow-x-auto rounded-2xl border border-hairline dark:border-gray-700">
+                    <table class="min-w-full text-sm">
+                        <thead class="bg-surface-card dark:bg-gray-800">
+                            <tr class="text-xs font-semibold tracking-wide text-left uppercase text-muted dark:text-gray-300">
+                                <th class="w-8 px-2 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700"></th>
+                                <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Tanggal</th>
+                                <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Identifikasi Kasus</th>
+                                <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Petugas (TTD)</th>
+                                <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700 text-center">Status</th>
+                                <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700 text-center">Aksi</th>
                             </tr>
                         </thead>
                         @foreach (collect($listFormA)->sortByDesc(fn($entri) => strtotime(strtr(($entri['tanggal'] ?? '') ?: ($entri['createdAt'] ?? ''), '/', '-')))->values()->all() as $entry)
@@ -1038,7 +1038,7 @@ new class extends Component {
                             @endphp
                             <tbody x-data="{ open: {{ $loop->first ? 'true' : 'false' }} }" class="border-b border-hairline dark:border-gray-700">
                                 <tr @click="open = !open"
-                                    class="cursor-pointer hover:bg-surface-soft dark:hover:bg-gray-800 {{ $editingKeyA && $editingKeyA === $rowKey ? 'bg-brand-lime/10 dark:bg-brand-lime/5' : '' }}">
+                                    class="cursor-pointer hover:bg-surface-soft dark:hover:bg-gray-800/60 {{ $editingKeyA && $editingKeyA === $rowKey ? 'bg-brand-lime/10 dark:bg-brand-lime/5' : '' }}">
                                     <td class="px-2 py-3 text-center align-middle">
                                         <svg class="w-4 h-4 mx-auto transition-transform text-muted" :class="{ 'rotate-90': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />

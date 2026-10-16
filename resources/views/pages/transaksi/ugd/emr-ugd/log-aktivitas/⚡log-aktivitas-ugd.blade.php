@@ -130,19 +130,19 @@ new class extends Component {
                         <x-badge variant="gray">{{ count($adminLogs) }} entri</x-badge>
                     </div>
                     <div class="overflow-x-auto">
-                        <table class="w-full text-sm text-left">
-                            <thead class="text-xs font-semibold text-muted uppercase dark:text-gray-400 bg-surface-soft dark:bg-gray-800/50">
-                                <tr>
-                                    <th class="px-4 py-3">Tanggal</th>
-                                    <th class="px-4 py-3">Kategori</th>
-                                    <th class="px-4 py-3">User</th>
-                                    <th class="px-4 py-3">Keterangan</th>
+                        <table class="min-w-full text-sm">
+                            <thead class="bg-surface-card dark:bg-gray-800">
+                                <tr class="text-xs font-semibold tracking-wide text-left uppercase text-muted dark:text-gray-300">
+                                    <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Tanggal</th>
+                                    <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Kategori</th>
+                                    <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">User</th>
+                                    <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Keterangan</th>
                                 </tr>
                             </thead>
-                            <tbody class="divide-y divide-hairline-soft dark:divide-gray-800">
+                            <tbody>
                                 @forelse ($adminLogs as $log)
                                     @php $cat = $log['userLogCat'] ?? 'ADMIN'; @endphp
-                                    <tr wire:key="log-aktivitas-ugd-{{ $loop->index }}" class="transition hover:bg-surface-soft dark:hover:bg-gray-800/40">
+                                    <tr wire:key="log-aktivitas-ugd-{{ $loop->index }}" class="border-b border-hairline dark:border-gray-700 hover:bg-surface-soft dark:hover:bg-gray-800/60">
                                         <td class="px-4 py-3 font-mono text-xs text-muted whitespace-nowrap">{{ $log['userLogDate'] ?? '-' }}</td>
                                         <td class="px-4 py-3 whitespace-nowrap">
                                             <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium
@@ -157,7 +157,7 @@ new class extends Component {
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="4" class="px-4 py-10 text-sm text-center text-muted-soft dark:text-gray-600">
+                                        <td colspan="4" class="px-4 py-8 text-center text-muted-soft">
                                             Belum ada log aktivitas
                                         </td>
                                     </tr>

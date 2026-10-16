@@ -330,39 +330,41 @@ new class extends Component {
                         <livewire:lov.jasa-dokter.lov-jasa-dokter target="order-ok-ugd-tindakan" label="Cari Tindakan Operasi"
                             wire:key="order-ok-ugd-tindakan-{{ $rjNo }}-{{ count($selectedTindakan) }}" />
                         @if (!empty($selectedTindakan))
-                            <table class="w-full mt-3 text-sm text-left">
-                                <thead class="text-xs font-semibold tracking-wide uppercase text-muted">
-                                    <tr>
-                                        <th class="px-2 py-1">Kode</th>
-                                        <th class="px-2 py-1">Tindakan</th>
-                                        <th class="px-2 py-1 text-right">Tarif</th>
-                                        <th class="px-2 py-1 text-center">Aksi</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-hairline-soft dark:divide-gray-800">
-                                    @foreach ($selectedTindakan as $item)
-                                        <tr wire:key="rencana-{{ $item['accdoc_id'] }}">
-                                            <td class="px-2 py-1 font-mono text-muted">{{ $item['accdoc_id'] }}</td>
-                                            <td class="px-2 py-1 text-ink dark:text-gray-200">{{ $item['accdoc_desc'] }}</td>
-                                            <td class="px-2 py-1 text-right text-ink dark:text-gray-200 tabular-nums">
-                                                Rp {{ number_format($item['accdoc_price']) }}
-                                            </td>
-                                            <td class="px-2 py-1 text-center">
-                                                <x-hapus-button wire:click="hapusTindakan('{{ $item['accdoc_id'] }}')" />
-                                            </td>
+                            <div class="mt-3 overflow-x-auto rounded-2xl border border-hairline dark:border-gray-700">
+                                <table class="min-w-full text-sm">
+                                    <thead class="bg-surface-card dark:bg-gray-800">
+                                        <tr class="text-xs font-semibold tracking-wide text-left uppercase text-muted dark:text-gray-300">
+                                            <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Kode</th>
+                                            <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Tindakan</th>
+                                            <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700 text-right">Tarif</th>
+                                            <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700 text-center">Aksi</th>
                                         </tr>
-                                    @endforeach
-                                </tbody>
-                                <tfoot class="border-t border-hairline dark:border-gray-700">
-                                    <tr>
-                                        <td colspan="2" class="px-2 py-2 text-sm font-semibold text-muted">Total rencana</td>
-                                        <td class="px-2 py-2 text-sm font-bold text-right text-ink dark:text-white tabular-nums">
-                                            Rp {{ number_format($this->totalRencana) }}
-                                        </td>
-                                        <td></td>
-                                    </tr>
-                                </tfoot>
-                            </table>
+                                    </thead>
+                                    <tbody>
+                                        @foreach ($selectedTindakan as $item)
+                                            <tr wire:key="rencana-{{ $item['accdoc_id'] }}" class="border-b border-hairline dark:border-gray-700 hover:bg-surface-soft dark:hover:bg-gray-800/60">
+                                                <td class="px-4 py-3 font-mono text-muted">{{ $item['accdoc_id'] }}</td>
+                                                <td class="px-4 py-3 text-ink dark:text-gray-200">{{ $item['accdoc_desc'] }}</td>
+                                                <td class="px-4 py-3 text-right text-ink dark:text-gray-200 tabular-nums">
+                                                    Rp {{ number_format($item['accdoc_price']) }}
+                                                </td>
+                                                <td class="px-4 py-3 text-center">
+                                                    <x-hapus-button wire:click="hapusTindakan('{{ $item['accdoc_id'] }}')" />
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                    <tfoot class="border-t border-hairline dark:border-gray-700">
+                                        <tr>
+                                            <td colspan="2" class="px-4 py-3 text-sm font-semibold text-muted">Total rencana</td>
+                                            <td class="px-4 py-3 text-sm font-bold text-right text-ink dark:text-white tabular-nums">
+                                                Rp {{ number_format($this->totalRencana) }}
+                                            </td>
+                                            <td></td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
                         @else
                             <p class="mt-2 text-xs text-muted-soft">
                                 Boleh dikosongkan — petugas OK bisa melengkapinya setelah operasi.

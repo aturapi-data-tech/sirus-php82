@@ -926,21 +926,21 @@ new class extends Component {
 
                                 @php $daftarPasang = $newForm['pemasangan'] ?? []; @endphp
                                 @if (count($daftarPasang) > 0)
-                                    <div class="mb-3 overflow-x-auto">
-                                        <table class="w-full overflow-hidden text-sm border rounded-lg border-hairline dark:border-gray-700">
-                                            <thead class="uppercase bg-surface-soft dark:bg-gray-800 text-muted dark:text-gray-400">
-                                                <tr>
-                                                    <th class="px-3 py-2 text-left">Pemasangan</th>
-                                                    <th class="px-3 py-2 text-left">Tgl Pasang</th>
-                                                    <th class="px-3 py-2 text-left">s/d Tgl Lepas</th>
-                                                    <th class="px-3 py-2 text-left">Hari Ke</th>
-                                                    <th class="px-3 py-2 text-left">Tanda Infeksi</th>
+                                    <div class="mb-3 overflow-x-auto rounded-2xl border border-hairline dark:border-gray-700">
+                                        <table class="min-w-full text-sm">
+                                            <thead class="bg-surface-card dark:bg-gray-800">
+                                                <tr class="text-xs font-semibold tracking-wide text-left uppercase text-muted dark:text-gray-300">
+                                                    <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Pemasangan</th>
+                                                    <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Tgl Pasang</th>
+                                                    <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">s/d Tgl Lepas</th>
+                                                    <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Hari Ke</th>
+                                                    <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Tanda Infeksi</th>
                                                     @unless ($formReadOnly)
-                                                        <th class="px-3 py-2 text-center">Aksi</th>
+                                                        <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700 text-center">Aksi</th>
                                                     @endunless
                                                 </tr>
                                             </thead>
-                                            <tbody class="divide-y divide-hairline-soft dark:divide-gray-700">
+                                            <tbody>
                                                 @foreach ($daftarPasang as $indeks => $baris)
                                                     @php
                                                         $tandaBaris = collect($opsiTanda ?: ($opsiTandaBalita + $opsiTandaDewasa))
@@ -948,14 +948,14 @@ new class extends Component {
                                                             ->values()
                                                             ->implode(', ');
                                                     @endphp
-                                                    <tr wire:key="pasang-{{ $indeks }}" class="align-top bg-canvas dark:bg-gray-900">
-                                                        <td class="px-3 py-2 font-medium text-ink dark:text-gray-100">{{ $baris['pasangKe'] ?: '-' }}</td>
-                                                        <td class="px-3 py-2 font-mono text-muted">{{ $baris['tglMulai'] ?: '-' }}</td>
-                                                        <td class="px-3 py-2 font-mono text-muted">{{ $baris['tglSelesai'] ?: '-' }}</td>
-                                                        <td class="px-3 py-2 text-muted">{{ $baris['hariKe'] ?: '-' }}</td>
-                                                        <td class="px-3 py-2 text-body dark:text-gray-300">{{ $tandaBaris ?: '-' }}</td>
+                                                    <tr wire:key="pasang-{{ $indeks }}" class="align-top border-b border-hairline dark:border-gray-700 hover:bg-surface-soft dark:hover:bg-gray-800/60">
+                                                        <td class="px-4 py-3 font-medium text-ink dark:text-gray-100">{{ $baris['pasangKe'] ?: '-' }}</td>
+                                                        <td class="px-4 py-3 font-mono text-muted">{{ $baris['tglMulai'] ?: '-' }}</td>
+                                                        <td class="px-4 py-3 font-mono text-muted">{{ $baris['tglSelesai'] ?: '-' }}</td>
+                                                        <td class="px-4 py-3 text-muted">{{ $baris['hariKe'] ?: '-' }}</td>
+                                                        <td class="px-4 py-3 text-body dark:text-gray-300">{{ $tandaBaris ?: '-' }}</td>
                                                         @unless ($formReadOnly)
-                                                            <td class="px-3 py-2 text-center">
+                                                            <td class="px-4 py-3 text-center">
                                                                 <x-hapus-button wire:click.prevent="hapusPemasangan({{ $indeks }})" confirm="Hapus baris pemasangan ini dari daftar?" title="Hapus dari daftar" />
                                                             </td>
                                                         @endunless

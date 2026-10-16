@@ -760,22 +760,21 @@ new class extends Component {
                         <x-badge variant="gray">{{ count($tandaVitalData) }} item</x-badge>
                     </div>
 
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-base text-left">
-                            <thead
-                                class="text-sm font-semibold text-muted uppercase bg-surface-soft dark:bg-gray-800/50 dark:text-gray-400">
-                                <tr class="text-center">
-                                    <th class="px-4 py-3">No</th>
-                                    <th class="px-4 py-3">Waktu / Pemeriksa</th>
-                                    <th class="px-4 py-3 text-left">Tanda Vital</th>
-                                    <th class="px-4 py-3">EWS / Pantau Ulang</th>
-                                    <th class="px-4 py-3">Cairan / Tetesan</th>
+                    <div class="overflow-x-auto rounded-2xl border border-hairline dark:border-gray-700">
+                        <table class="min-w-full text-sm">
+                            <thead class="bg-surface-card dark:bg-gray-800">
+                                <tr class="text-xs font-semibold tracking-wide text-left uppercase text-muted dark:text-gray-300">
+                                    <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">No</th>
+                                    <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Waktu / Pemeriksa</th>
+                                    <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Tanda Vital</th>
+                                    <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">EWS / Pantau Ulang</th>
+                                    <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700">Cairan / Tetesan</th>
                                     @if (!$isFormLocked)
-                                        <th class="px-4 py-3 text-center">Hapus</th>
+                                        <th class="px-4 py-3 whitespace-nowrap border-b border-hairline dark:border-gray-700 text-center w-20">Hapus</th>
                                     @endif
                                 </tr>
                             </thead>
-                            <tbody class="divide-y divide-hairline-soft dark:divide-gray-800">
+                            <tbody>
                                 @forelse ($sortedTtv as $obs)
                                     @php
                                         $ewsItem = is_array($obs['ews'] ?? null) && !empty($obs['ews']['tersedia']) ? $obs['ews'] : null;
@@ -791,7 +790,7 @@ new class extends Component {
                                         };
                                     @endphp
                                     <tr wire:key="ttv-{{ $obs['id'] ?? $obs['waktuPemeriksaan'] }}"
-                                        class="text-center hover:bg-surface-soft dark:hover:bg-gray-800/40 transition">
+                                        class="border-b border-hairline dark:border-gray-700 hover:bg-surface-soft dark:hover:bg-gray-800/60">
                                         <td class="px-4 py-3 text-muted dark:text-gray-400">{{ $loop->iteration }}
                                         </td>
                                         <td class="px-4 py-3 whitespace-nowrap">
@@ -835,7 +834,7 @@ new class extends Component {
                                             </div>
                                         </td>
                                         @if (!$isFormLocked)
-                                            <td class="px-4 py-3">
+                                            <td class="px-4 py-3 text-center">
                                                 <x-hapus-button wire:click.prevent="removeObservasiLanjutan('{{ $obs['waktuPemeriksaan'] }}')" confirm="Hapus data observasi ini?" />
                                             </td>
                                         @endif
@@ -843,7 +842,7 @@ new class extends Component {
                                 @empty
                                     <tr>
                                         <td colspan="{{ $isFormLocked ? 5 : 6 }}"
-                                            class="px-4 py-10 text-base text-center text-muted-soft dark:text-gray-600">
+                                            class="px-4 py-8 text-center text-muted-soft">
                                             <svg class="w-8 h-8 mx-auto mb-2 opacity-40" fill="none"
                                                 stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round"
