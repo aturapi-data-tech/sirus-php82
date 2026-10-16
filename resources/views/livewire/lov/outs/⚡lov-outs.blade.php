@@ -119,10 +119,11 @@ new class extends Component {
             'label' => (string) ($row->out_desc ?: $row->out_no),
         ])->toArray();
 
-        $this->isOpen        = count($this->options) > 0;
+        // Tetap terbuka walau kosong: pesan "tidak ditemukan" ada di dalam dropdown.
+        $this->isOpen = true;
         $this->selectedIndex = 0;
 
-        if ($this->isOpen) {
+        if (count($this->options) > 0) {
             $this->emitScroll();
         }
     }

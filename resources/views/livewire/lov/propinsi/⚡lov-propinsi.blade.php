@@ -83,10 +83,11 @@ new class extends Component {
             'hint' => "Kode: {$row->prop_id}",
         ])->toArray();
 
-        $this->isOpen = count($this->options) > 0;
+        // Tetap terbuka walau kosong: pesan "tidak ditemukan" ada di dalam dropdown.
+        $this->isOpen = true;
         $this->selectedIndex = 0;
 
-        if ($this->isOpen) {
+        if (count($this->options) > 0) {
             $this->emitScroll();
         }
     }

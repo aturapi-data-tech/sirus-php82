@@ -69,7 +69,8 @@ new class extends Component {
             'label' => (string) ($r->gra_desc ?: $r->gra_id),
         ]))->toArray();
 
-        $this->isOpen = count($this->options) > 0;
+        // Tetap terbuka walau kosong: pesan "tidak ditemukan" ada di dalam dropdown.
+        $this->isOpen = true;
         $this->selectedIndex = 0;
         if ($this->isOpen) $this->emitScroll();
     }
@@ -183,6 +184,12 @@ new class extends Component {
                         </li>
                     @endforeach
                 </ul>
+
+                @if (mb_strlen(trim($search)) >= 1 && count($options) === 0)
+                    <div class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
+                        Group akun tidak ditemukan.
+                    </div>
+                @endif
             </div>
         @endif
     </div>
