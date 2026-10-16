@@ -30,14 +30,18 @@
 
             <x-input-error :messages="$errors->get('perencanaan.pengkajianMedis.drPemeriksa')" class="mt-1" />
 
-            @if (!empty($perencanaan['pengkajianMedis']['diwakilkanOleh']['nama']))
-                <p class="text-xs text-amber-700 dark:text-amber-400">
-                    Diwakilkan oleh {{ $perencanaan['pengkajianMedis']['diwakilkanOleh']['nama'] }}
-                    @if (!empty($perencanaan['pengkajianMedis']['diwakilkanOleh']['role']))
-                        ({{ $perencanaan['pengkajianMedis']['diwakilkanOleh']['role'] }})
-                    @endif
-                </p>
-            @endif
+            {{-- Catatan perwakilan hanya untuk manager ke atas (Gate dokumen.ttdPerwakilan) —
+                 user biasa cukup melihat stempel dokter, supaya tidak bingung. Jejaknya tetap di log. --}}
+            @can('dokumen.ttdPerwakilan')
+                @if (!empty($perencanaan['pengkajianMedis']['diwakilkanOleh']['nama']))
+                    <p class="text-xs text-amber-700 dark:text-amber-400">
+                        Diwakilkan oleh {{ $perencanaan['pengkajianMedis']['diwakilkanOleh']['nama'] }}
+                        @if (!empty($perencanaan['pengkajianMedis']['diwakilkanOleh']['role']))
+                            ({{ $perencanaan['pengkajianMedis']['diwakilkanOleh']['role'] }})
+                        @endif
+                    </p>
+                @endif
+            @endcan
 
             {{-- TTD-E perwakilan (manager ke atas, Gate dokumen.ttdPerwakilan) — pola Resume Medis RI:
                  stempel tetap atas nama dokter kunjungan, penekan tombol tercatat di stempel & log. --}}
