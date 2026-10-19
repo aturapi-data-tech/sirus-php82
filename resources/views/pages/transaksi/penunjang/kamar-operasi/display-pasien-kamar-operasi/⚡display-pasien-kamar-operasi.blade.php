@@ -65,7 +65,8 @@ new class extends Component {
             ->where('o.ok_reg', $this->okReg);
 
         if ($sumber === 'RI') {
-            $query->join('rstxn_rihdrs as h', 'h.rihdr_no', '=', 'o.ref_no')
+            // Baris OK lama hanya mengisi rihdr_no (ref_no kosong) — sama dengan NVL di daftar.
+            $query->join('rstxn_rihdrs as h', 'h.rihdr_no', '=', DB::raw('NVL(o.ref_no, o.rihdr_no)'))
                 ->leftJoin('rsmst_rooms as r', 'r.room_id', '=', 'h.room_id')
                 ->addSelect(DB::raw('h.ri_status as status_induk'), DB::raw('r.room_name as unit_name'));
         } elseif ($sumber === 'UGD') {

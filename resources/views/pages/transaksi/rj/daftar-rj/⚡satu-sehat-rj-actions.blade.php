@@ -198,7 +198,7 @@ new class extends Component {
                  tak dipakai siapa pun): ia salinan logika terpisah yang tidak ikut
                  menerima perbaikan pemulihan duplikat, penyimpanan hasil parsial,
                  maupun guard tanggal kunjungan kosong. --}}
-            <div class="flex flex-wrap items-center gap-2 px-6 py-2 border-b border-hairline dark:border-gray-700">
+            <div class="flex flex-wrap items-center justify-end gap-2 px-6 py-2 border-b border-hairline dark:border-gray-700">
                 @if (!empty($antrianKirim) || $langkahAktif !== '')
                     {{-- Spinner dirender apa adanya, TIDAK lewat wire:loading: tiap langkah
                          dijalankan oleh komponen ANAK, jadi wadah ini sendiri tidak sedang
