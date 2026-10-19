@@ -94,7 +94,7 @@
                             <p class="mt-1 border-t border-black pt-1">
                                 <strong>{{ ($form['namaPenanda'] ?? '') ?: '-' }}</strong>
                             </p>
-                            <p class="text-[9px] text-gray-600">{{ ($form['signatureDate'] ?? '') ?: '-' }}</p>
+                            <p class="text-[9px] text-gray-600">{{ ($form['signaturePasienDate'] ?? '') ?: (($form['signatureDate'] ?? '') ?: '-') }}</p>
                         </td>
 
                         {{-- Dokter IGD --}}
