@@ -2,6 +2,8 @@
 // resources/views/pages/transaksi/ugd/emr-ugd/modul-dokumen/permintaan-rawat-inap-ugd/rm-permintaan-rawat-inap-ugd-actions.blade.php
 // Surat Permintaan Rawat Inap (RM-08.03) — dokter IGD meminta pasien dirawat inap,
 // pasien/keluarga menandatangani "Mengetahui". Pola multi-entri Second Opinion UGD.
+// Dua TTD (pasien/keluarga & dokter IGD) boleh berurutan bebas. SETIAP TTD menjalankan rules()
+// dulu lalu langsung tersimpan; entri baru terkunci setelah keduanya lengkap.
 
 use Livewire\Component;
 use Livewire\Attributes\On;
@@ -39,6 +41,7 @@ new class extends Component {
         'indikasi' => '',
         'namaPenanda' => '',
         'hubunganPasien' => 'pasien',
+        'signaturePasienDate' => '',
         'dokterIgd' => '',
         'dokterIgdCode' => '',
         'dokterIgdDate' => '',
@@ -144,8 +147,6 @@ new class extends Component {
             'newForm.indikasi' => 'required|string|max:1000',
             'newForm.namaPenanda' => 'required|string|max:200',
             'newForm.hubunganPasien' => 'required|string|max:50',
-            'signature' => 'required|string',
-            'newForm.dokterIgd' => 'required|string',
         ];
     }
 
@@ -168,8 +169,6 @@ new class extends Component {
             'newForm.indikasi' => 'Alasan/indikasi rawat inap',
             'newForm.namaPenanda' => 'Nama pasien/keluarga',
             'newForm.hubunganPasien' => 'Hubungan dengan pasien',
-            'signature' => 'Tanda tangan pasien/keluarga',
-            'newForm.dokterIgd' => 'Tanda tangan dokter IGD',
         ];
     }
 
@@ -217,7 +216,18 @@ new class extends Component {
             return;
         }
         $this->signature = TtdPasien::simpan($dataUrl, $this->regNo);   // gambar ke RSTXN_TTDS; di sini cukup referensi "TTD:<no>"
-        $this->incrementVersion('modal-permintaan-rawat-inap-ugd');
+        $this->newForm['signaturePasienDate'] = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
+
+        // Isian dicek dulu. Kalau belum lengkap, TTD pasien tetap disimpan sebagai draft —
+        // pasien/keluarga bisa sudah pergi saat isian dibenahi.
+        try {
+            $this->validateWithToast();
+        } catch (ValidationException $e) {
+            $this->simpanDraftTanpaKunci('TTD Pasien/Keluarga (isian belum lengkap)');
+            throw $e;
+        }
+
+        $this->simpanTtd('Pasien/Keluarga');
     }
 
     public function clearSignature(): void
@@ -226,11 +236,12 @@ new class extends Component {
             return;
         }
         $this->signature = '';
+        $this->newForm['signaturePasienDate'] = '';
         $this->incrementVersion('modal-permintaan-rawat-inap-ugd');
     }
 
     /* ===============================
-     | TTD DOKTER IGD = FINALIZE
+     | TTD DOKTER IGD
      =============================== */
     public function ttdDokterIgd(): void
     {
@@ -243,8 +254,9 @@ new class extends Component {
             return;
         }
 
-        // Stempel ditulis SEBELUM validate() supaya rule 'newForm.dokterIgd' lolos; kalau
-        // validasi atau simpan gagal, stempel dicabut lagi — jangan tertinggal di form.
+        // Isian dicek SEBELUM stempel: gagal = dokter belum TTD, tak ada stempel yang perlu dicabut.
+        $this->validateWithToast();
+
         $stempelLama = [
             'dokterIgd' => $this->newForm['dokterIgd'],
             'dokterIgdCode' => $this->newForm['dokterIgdCode'],
@@ -254,23 +266,70 @@ new class extends Component {
         $this->newForm['dokterIgdCode'] = auth()->user()->myuser_code ?? '';
         $this->newForm['dokterIgdDate'] = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
 
-        try {
-            $this->validateWithToast();
-        } catch (ValidationException $e) {
+        if (!$this->simpanTtd('Dokter IGD')) {
             $this->newForm = array_replace($this->newForm, $stempelLama);
-            throw $e;
         }
+    }
 
+    /** Cabut TTD dokter dari draft (belum terkunci); tersimpan lewat Simpan Draft. */
+    public function hapusTtdDokterIgd(): void
+    {
+        if ($this->isFormLocked || $this->viewOnly) {
+            return;
+        }
+        $this->newForm['dokterIgd'] = '';
+        $this->newForm['dokterIgdCode'] = '';
+        $this->newForm['dokterIgdDate'] = '';
+        $this->incrementVersion('modal-permintaan-rawat-inap-ugd');
+    }
+
+    /** Kedua TTD (pasien/keluarga & dokter IGD) sudah ada di form? */
+    private function semuaTtdTerisi(): bool
+    {
+        return filled($this->signature) && filled($this->newForm['dokterIgd'] ?? null);
+    }
+
+    /**
+     * Simpan entri sesudah salah satu TTD diberikan; kunci otomatis bila keduanya lengkap.
+     * Isian sudah divalidasi pemanggil. false = gagal simpan (toast sudah dikirim).
+     */
+    private function simpanTtd(string $label): bool
+    {
+        $finalized = $this->semuaTtdTerisi();
         $key = $this->editingKey ?: Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
 
         try {
-            $this->persistEntry($key, true, 'Kunci (TTD Dokter IGD)');
-            $this->cancelEdit();
-            $this->dispatch('toast', type: 'success', message: 'Surat permintaan rawat inap ditandatangani dokter IGD dan terkunci.');
+            $this->persistEntry($key, $finalized, 'TTD ' . $label . ($finalized ? ' + Kunci' : ''));
         } catch (\Throwable $e) {
-            $this->newForm = array_replace($this->newForm, $stempelLama);
-            $this->dispatch('toast', type: 'error', message: $e instanceof \RuntimeException ? $e->getMessage() : 'Gagal mengunci: ' . $e->getMessage());
+            $this->dispatch('toast', type: 'error', message: $e instanceof \RuntimeException ? $e->getMessage() : 'Gagal menyimpan TTD: ' . $e->getMessage());
+            return false;
         }
+
+        if ($finalized) {
+            $this->cancelEdit();
+            $this->dispatch('toast', type: 'success', message: 'TTD pasien/keluarga dan dokter IGD lengkap — surat permintaan rawat inap terkunci.');
+        } else {
+            $this->editingKey = $key;   // tetap di formulir, entri kini berupa draft tersimpan
+            $menunggu = filled($this->signature) ? 'dokter IGD' : 'pasien/keluarga';
+            $this->dispatch('toast', type: 'success', message: 'TTD ' . $label . ' tersimpan. Surat terkunci otomatis setelah TTD ' . $menunggu . '.');
+            $this->incrementVersion('modal-permintaan-rawat-inap-ugd');
+        }
+
+        return true;
+    }
+
+    /** Simpan isi form sebagai draft (tak terkunci) dan tetap di formulir; untuk TTD yang tertahan isian. */
+    private function simpanDraftTanpaKunci(string $logVerb): void
+    {
+        $key = $this->editingKey ?: Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
+
+        try {
+            $this->persistEntry($key, false, $logVerb);
+            $this->editingKey = $key;
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal menyimpan TTD: ' . $e->getMessage());
+        }
+        $this->incrementVersion('modal-permintaan-rawat-inap-ugd');
     }
 
     /* ===============================
@@ -306,10 +365,12 @@ new class extends Component {
             'namaPenanda' => $this->newForm['namaPenanda'] ?? '',
             'hubunganPasien' => $this->newForm['hubunganPasien'] ?? 'pasien',
             'signature' => $this->signature,
+            'signaturePasienDate' => filled($this->signature) ? ($this->newForm['signaturePasienDate'] ?? '') : '',
             'signatureDate' => $key,
-            'dokterIgd' => $finalized ? ($this->newForm['dokterIgd'] ?? '') : '',
-            'dokterIgdCode' => $finalized ? ($this->newForm['dokterIgdCode'] ?? '') : '',
-            'dokterIgdDate' => $finalized ? ($this->newForm['dokterIgdDate'] ?? '') : '',
+            // Stempel dokter ikut tersimpan walau masih draft: TTD boleh berurutan bebas.
+            'dokterIgd' => $this->newForm['dokterIgd'] ?? '',
+            'dokterIgdCode' => $this->newForm['dokterIgdCode'] ?? '',
+            'dokterIgdDate' => $this->newForm['dokterIgdDate'] ?? '',
             'finalized' => $finalized,
         ];
     }
@@ -362,6 +423,14 @@ new class extends Component {
             return;
         }
 
+        // Kedua TTD sudah ada (mis. TTD pasien tadi tertahan isian yang belum lengkap):
+        // simpan = melengkapi, jadi rules() aktif lalu kunci.
+        if ($this->semuaTtdTerisi()) {
+            $this->validateWithToast();
+            $this->simpanTtd('Pasien/Keluarga & Dokter IGD');
+            return;
+        }
+
         $key = $this->editingKey ?: Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
 
         try {
@@ -389,6 +458,7 @@ new class extends Component {
             'indikasi' => $entry['indikasi'] ?? '',
             'namaPenanda' => $entry['namaPenanda'] ?? '',
             'hubunganPasien' => $entry['hubunganPasien'] ?? 'pasien',
+            'signaturePasienDate' => $entry['signaturePasienDate'] ?? '',
             'dokterIgd' => $entry['dokterIgd'] ?? '',
             'dokterIgdCode' => $entry['dokterIgdCode'] ?? '',
             'dokterIgdDate' => $entry['dokterIgdDate'] ?? '',
@@ -615,6 +685,7 @@ new class extends Component {
             'indikasi' => '',
             'namaPenanda' => '',
             'hubunganPasien' => 'pasien',
+            'signaturePasienDate' => '',
             'dokterIgd' => '',
             'dokterIgdCode' => '',
             'dokterIgdDate' => '',
@@ -667,7 +738,7 @@ new class extends Component {
                                 {{ Str::limit(($entry['dpjpName'] ?? '') ?: '-', 50) }}
                             </td>
                             <td class="px-3 py-2 text-muted dark:text-gray-400">
-                                <x-modul-dokumen.status-ttd :nama="$this->entryIsFinal($entry) ? ($entry['dokterIgd'] ?? '') : ''" gaya="polos" />
+                                <x-modul-dokumen.status-ttd :nama="$entry['dokterIgd'] ?? ''" gaya="polos" />
                             </td>
                             <td class="px-3 py-2 text-center">
                                 <x-modul-dokumen.status-entri :final="$this->entryIsFinal($entry)" />
@@ -776,6 +847,10 @@ new class extends Component {
                             <h3 class="text-base font-semibold text-ink dark:text-gray-200">
                                 Tanda Tangan
                             </h3>
+                            <p class="text-sm text-muted dark:text-gray-400">
+                                Pasien/keluarga dan dokter IGD boleh tanda tangan lebih dulu yang mana saja. Isian diperiksa setiap kali TTD;
+                                surat <strong>terkunci otomatis</strong> setelah keduanya lengkap.
+                            </p>
 
                             <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
                                 {{-- Pasien / Keluarga (Mengetahui) --}}
@@ -784,7 +859,6 @@ new class extends Component {
                                         class="mb-2 text-sm font-semibold tracking-wide text-center text-muted uppercase dark:text-gray-400">
                                         Mengetahui, Pasien / Keluarga
                                     </div>
-                                    <x-input-error :messages="$errors->get('signature')" class="mb-2" />
                                     @if (!empty($signature))
                                         <x-signature.signature-result :signature="$signature" :date="''"
                                             :disabled="$formReadOnly" wireMethod="clearSignature" />
@@ -813,6 +887,11 @@ new class extends Component {
                                         </x-select-input>
                                         <x-input-error :messages="$errors->get('newForm.hubunganPasien')" class="mt-1" />
                                     </div>
+
+                                    @if (!empty($signature))
+                                        <p class="mt-2 text-sm"><span class="text-muted">Waktu TTD:</span>
+                                            <span class="font-semibold text-ink dark:text-gray-200">{{ ($newForm['signaturePasienDate'] ?? '') ?: ($editingKey ?: '-') }}</span></p>
+                                    @endif
                                 </div>
 
                                 {{-- Dokter IGD --}}
@@ -821,38 +900,12 @@ new class extends Component {
                                         class="mb-2 text-sm font-semibold tracking-wide text-center text-muted uppercase dark:text-gray-400">
                                         Dokter IGD
                                     </div>
-                                    @if (empty($newForm['dokterIgd']))
-                                        @if (!$formReadOnly)
-                                            <div
-                                                class="flex flex-col items-center justify-center flex-1 gap-2 p-6 border-2 border-dashed rounded-xl {{ $errors->has('newForm.dokterIgd') ? 'border-red-400' : 'border-gray-300 dark:border-gray-700' }}">
-                                                <x-primary-button wire:click.prevent="ttdDokterIgd"
-                                                    wire:loading.attr="disabled" wire:target="ttdDokterIgd"
-                                                    class="gap-2">
-                                                    <span wire:loading.remove wire:target="ttdDokterIgd"
-                                                        class="flex items-center gap-1.5">
-                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor"
-                                                            viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                                stroke-width="2"
-                                                                d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 012.828 2.828L11.828 15.828a4 4 0 01-2.828 1.172H7v-2a4 4 0 011.172-2.828z" />
-                                                        </svg>
-                                                        TTD Dokter IGD &amp; Kunci
-                                                    </span>
-                                                    <span wire:loading wire:target="ttdDokterIgd">
-                                                        <x-loading class="w-4 h-4" /> Mengunci...
-                                                    </span>
-                                                </x-primary-button>
-                                                <p class="text-xs text-center text-muted">Menandatangani = validasi &amp; mengunci surat ini. Hanya untuk dokter.</p>
-                                            </div>
-                                            <x-input-error :messages="$errors->get('newForm.dokterIgd')" class="mt-1" />
-                                        @else
-                                            <p class="py-8 text-base italic text-center text-muted-soft">Belum
-                                                ditandatangani.</p>
-                                        @endif
-                                    @else
-                                        <x-signature.ttd-petugas :framed="false" :ttd="$newForm['dokterIgd']" :code="$newForm['dokterIgdCode'] ?? ''"
-                                            :date="$newForm['dokterIgdDate'] ?? ''" :locked="true" nameLabel="Nama Dokter IGD" />
-                                    @endif
+                                    <x-signature.ttd-petugas :framed="false"
+                                        :ttd="$newForm['dokterIgd'] ?? ''" :code="$newForm['dokterIgdCode'] ?? ''"
+                                        :date="$newForm['dokterIgdDate'] ?? ''" :locked="$formReadOnly"
+                                        :canSign="auth()->user()?->hasAnyRole(['Dokter', 'Admin'])"
+                                        sign="ttdDokterIgd" clear="hapusTtdDokterIgd"
+                                        nameLabel="Nama Dokter IGD" signLabel="TTD Dokter IGD" />
                                 </div>
                             </div>
                         </section>
@@ -867,7 +920,7 @@ new class extends Component {
                                                 'tglPermintaan' => '', 'diagnosis' => '', 'dpjpId' => '', 'dpjpName' => '',
                                                 'rencanaTindakan' => '', 'indikasi' => '', 'namaPenanda' => '', 'hubunganPasien' => '',
                                                 'dokterIgd' => '', 'dokterIgdCode' => '', 'dokterIgdDate' => '',
-                                                'signature' => '', 'signatureDate' => '',
+                                                'signature' => '', 'signatureDate' => '', 'signaturePasienDate' => '',
                                             ], $entry);
                                             $isFinal = $this->entryIsFinal($entry);
                                             $rowKey = $entry['signatureDate'] ?? '';
@@ -888,7 +941,7 @@ new class extends Component {
                                                     {{ Str::limit($entry['dpjpName'] ?: '(DPJP belum dipilih)', 50) }}
                                                 </td>
                                                 <td class="px-4 py-3 align-middle text-muted dark:text-gray-300">
-                                                    <x-modul-dokumen.status-ttd :nama="$isFinal ? $entry['dokterIgd'] : ''" />
+                                                    <x-modul-dokumen.status-ttd :nama="$entry['dokterIgd']" />
                                                 </td>
                                                 <td class="px-4 py-3 align-middle text-center">
                                                     <x-modul-dokumen.status-entri :final="$isFinal" />
@@ -924,7 +977,7 @@ new class extends Component {
                                                         <div>
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">TTD Pasien / Keluarga</dt>
                                                             <dd class="mt-0.5">
-                                                                <x-modul-dokumen.status-ttd :sudah="!empty($entry['signature'])" :waktu="$entry['signatureDate'] ?? '-'" gaya="biasa" />
+                                                                <x-modul-dokumen.status-ttd :sudah="!empty($entry['signature'])" :waktu="$entry['signaturePasienDate'] ?: ($entry['signatureDate'] ?: '-')" gaya="biasa" />
                                                             </dd>
                                                         </div>
                                                     </dl>
@@ -946,7 +999,7 @@ new class extends Component {
                 :lihat="$viewOnly"
                 :bisaSimpan="$rjNo && !$isFormLocked"
                 :mengedit="$editingKey">
-                Simpan draft dulu, lalu <strong>kunci</strong> lewat tombol <strong>TTD Dokter IGD &amp; Kunci</strong> di kolom Dokter IGD.
+                TTD pasien/keluarga dan dokter IGD boleh berurutan bebas — surat <strong>terkunci otomatis</strong> setelah keduanya lengkap.
             </x-modul-dokumen.footer>
 
         </div>
