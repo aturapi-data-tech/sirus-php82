@@ -218,7 +218,7 @@ new class extends Component {
 
                 {{-- ===== KANAN: Info Transaksi Operasi ===== --}}
                 <div class="space-y-2 lg:col-span-2">
-                    {{-- Badge + No Txn --}}
+                    {{-- Badge sumber, status kunjungan induk, status transaksi --}}
                     <div class="flex items-center justify-between gap-2">
                         <div class="flex flex-wrap items-center gap-1.5">
                             <span class="inline-block border rounded-full px-2.5 py-0.5 text-xs font-semibold {{ $sumberClass }}">
@@ -230,10 +230,6 @@ new class extends Component {
                             <span class="inline-block border rounded-full px-2.5 py-0.5 text-xs font-semibold {{ $statusClass }}">
                                 {{ $statusText }}
                             </span>
-                        </div>
-                        <div class="text-right shrink-0">
-                            <span class="text-muted">No Txn:</span>
-                            <span class="ml-1 font-mono font-bold text-brand">{{ $header['ok_reg'] }}</span>
                         </div>
                     </div>
 
