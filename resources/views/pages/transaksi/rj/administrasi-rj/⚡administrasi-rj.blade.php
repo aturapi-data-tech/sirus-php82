@@ -516,19 +516,17 @@ new class extends Component {
                 ikon="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                 jalur="RJ" :readOnly="$isFormLocked" />
 
-            {{-- Display Pasien --}}
-            <div class="px-6 pt-3">
-                <livewire:pages::transaksi.rj.display-pasien-rj.display-pasien-rj :rjNo="$rjNo"
-                    wire:key="administrasi-rj-display-pasien-rj-header-{{ $rjNo ?? 'new' }}" />
-            </div>
-
-            {{-- Total Tagihan (klik → rincian biaya) --}}
-            <div class="px-6 py-2 space-y-3 border-b border-hairline dark:border-gray-700" x-data="{ expanded: false }">
-                <div class="flex flex-wrap items-center gap-2">
+            {{-- Display Pasien + Total Tagihan sebaris (klik total → rincian biaya di bawahnya) --}}
+            <div class="px-6 pt-3 pb-2 space-y-3 border-b border-hairline dark:border-gray-700" x-data="{ expanded: false }">
+                <div class="flex items-stretch gap-3">
+                    <div class="flex-1 min-w-0">
+                    <livewire:pages::transaksi.rj.display-pasien-rj.display-pasien-rj :rjNo="$rjNo"
+                        wire:key="administrasi-rj-display-pasien-rj-header-{{ $rjNo ?? 'new' }}" />
+                    </div>
                     {{-- Total Tagihan — clickable card untuk toggle rincian breakdown di ROW 2 --}}
                     <button type="button" x-on:click="expanded = !expanded"
                         :title="expanded ? 'Sembunyikan rincian biaya' : 'Tampilkan rincian biaya'"
-                        class="group self-end flex-shrink-0 px-8 pt-3 pb-2 min-w-[220px] text-right transition border rounded-2xl cursor-pointer bg-brand-green/10 dark:bg-brand-lime/10 border-brand-green/20 dark:border-brand-lime/20 hover:bg-brand-green/20 hover:border-brand-green/40 hover:shadow-md dark:hover:bg-brand-lime/20 dark:hover:border-brand-lime/40 focus:outline-none focus:ring-2 focus:ring-brand-green/40 dark:focus:ring-brand-lime/40">
+                        class="group flex flex-col justify-center flex-shrink-0 px-8 pt-3 pb-2 min-w-[220px] text-right transition border rounded-2xl cursor-pointer bg-brand-green/10 dark:bg-brand-lime/10 border-brand-green/20 dark:border-brand-lime/20 hover:bg-brand-green/20 hover:border-brand-green/40 hover:shadow-md dark:hover:bg-brand-lime/20 dark:hover:border-brand-lime/40 focus:outline-none focus:ring-2 focus:ring-brand-green/40 dark:focus:ring-brand-lime/40">
                         <p
                             class="mb-1 text-xs font-medium tracking-wide uppercase text-brand-green dark:text-brand-lime whitespace-nowrap">
                             Total Tagihan
