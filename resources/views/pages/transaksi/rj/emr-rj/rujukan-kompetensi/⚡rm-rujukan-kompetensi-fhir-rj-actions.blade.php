@@ -1651,22 +1651,30 @@ new class extends Component {
                              tombolnya hilang, jadi penjelasannya ikut hilang — kalau
                              tidak, layar menjelaskan tombol yang sudah tak ada. --}}
                         @if (empty($formRujukan['hasil']['noRujukanSatuSehat']) && !$isFormLocked)
-                        <ul class="mt-1 space-y-0.5 text-xs">
+                        {{-- Kalimat inti tiap tombol selalu tampil; rincian alur jawaban di balik
+                             "Selengkapnya" supaya footer tidak setinggi tiga baris. --}}
+                        <ul class="mt-1 space-y-0.5 text-xs" x-data="{ buka: false }">
                             <li>
                                 <span class="font-semibold text-ink dark:text-gray-200">Kirim Tugas Rujukan</span> —
                                 menanyakan kesediaan RS tujuan. Belum merujuk, belum ada nomor rujukan.
-                                Jawabannya dilihat di <span class="font-semibold text-ink dark:text-gray-200">Persetujuan Faskes</span>
-                                (badge di panel kanan; tombol <span class="font-semibold">Cek Status</span> di footer ini untuk
-                                menanyakan ulang — SATUSEHAT tidak memberi tahu sendiri):
-                                <span class="font-semibold text-success-deep dark:text-green-300">Diterima</span> →
-                                lanjut Kirim Rujukan;
-                                <span class="font-semibold text-error-deep dark:text-red-300">Ditolak</span> →
-                                pilih kandidat lain lalu kirim tugas rujukan ulang;
-                                <span class="font-semibold">belum dijawab</span> → tunggu, rujukan belum bisa diterbitkan.
+                                <span x-show="buka" x-cloak>
+                                    Jawabannya dilihat di <span class="font-semibold text-ink dark:text-gray-200">Persetujuan Faskes</span>
+                                    (badge di panel kanan; tombol <span class="font-semibold">Cek Status</span> di footer ini untuk
+                                    menanyakan ulang — SATUSEHAT tidak memberi tahu sendiri):
+                                    <span class="font-semibold text-success-deep dark:text-green-300">Diterima</span> →
+                                    lanjut Kirim Rujukan;
+                                    <span class="font-semibold text-error-deep dark:text-red-300">Ditolak</span> →
+                                    pilih kandidat lain lalu kirim tugas rujukan ulang;
+                                    <span class="font-semibold">belum dijawab</span> → tunggu, rujukan belum bisa diterbitkan.
+                                </span>
                             </li>
                             <li>
                                 <span class="font-semibold text-ink dark:text-gray-200">Kirim Rujukan</span> —
-                                menerbitkan rujukan resmi &amp; Nomor Rujukan Nasional. Diblokir bila RS tujuan menolak.
+                                menerbitkan rujukan resmi &amp; Nomor Rujukan Nasional.
+                                <span x-show="buka" x-cloak>Diblokir bila RS tujuan menolak.</span>
+                                <button type="button" x-on:click="buka = !buka"
+                                    class="ml-1 font-medium text-brand-green hover:underline dark:text-brand-lime"
+                                    x-text="buka ? 'Ringkas' : 'Selengkapnya'">Selengkapnya</button>
                             </li>
                         </ul>
                         @endif
