@@ -20,8 +20,9 @@
             <x-signature.ttd-petugas :framed="false" :allowClear="false"
                 :ttd="$perencanaan['pengkajianMedis']['drPemeriksa'] ?? ''"
                 :date="$perencanaan['pengkajianMedis']['selesaiPemeriksaan'] ?? ''"
-                {{-- Kode = drId kunjungan: setDrPemeriksa() hanya mengizinkan TTD bila drId == myuser_code dokter login --}}
-                :code="$drId"
+                {{-- Kode = drId kunjungan (setDrPemeriksa() hanya mengizinkan TTD bila drId == myuser_code dokter login);
+                     baru ditampilkan setelah TTD, supaya "Kode" tidak tampak seperti sudah ditandatangani. --}}
+                :code="!empty($perencanaan['pengkajianMedis']['drPemeriksa']) ? $drId : ''"
                 :locked="$isFormLocked"
                 {{-- Perwakilan tak diberi tombol TTD Dokter biasa (pasti ditolak) — ia memakai tombol di bawah. --}}
                 :canSign="! $this->bolehTtdPerwakilan()"
