@@ -455,20 +455,20 @@ new class extends Component {
                 ikon="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
                 :jalur="$sumber ?: null" tutup="closeActions" />
 
-            {{-- Display Pasien --}}
-            <div class="px-6 pt-3">
-                <livewire:pages::transaksi.penunjang.kamar-operasi.display-pasien-kamar-operasi.display-pasien-kamar-operasi
-                    :okReg="$okReg" wire:key="display-pasien-kamar-operasi-{{ $okReg }}" />
-            </div>
+            {{-- Display Pasien + kartu total sebaris (pola Administrasi RJ) --}}
+            <div class="flex items-stretch gap-3 px-6 pt-3 pb-2 border-b border-hairline dark:border-gray-700">
+                <div class="flex-1 min-w-0">
+                    <livewire:pages::transaksi.penunjang.kamar-operasi.display-pasien-kamar-operasi.display-pasien-kamar-operasi
+                        :okReg="$okReg" wire:key="display-pasien-kamar-operasi-{{ $okReg }}" />
+                </div>
 
-            <div class="flex flex-wrap items-center gap-2 px-6 py-2 border-b border-hairline dark:border-gray-700">
-                {{-- Dua kartu total (Tagihan Pasien & Jasa On Call) berjajar di baris toolbar. --}}
-                <div class="flex flex-wrap items-stretch gap-1.5">
-                    <div class="flex items-baseline justify-between gap-3 px-4 py-2 border rounded-2xl bg-brand-green/10 dark:bg-brand-lime/10 border-brand-green/20 dark:border-brand-lime/20">
-                        <p class="text-xs font-medium tracking-wide uppercase text-brand-green dark:text-brand-lime whitespace-nowrap">
+                {{-- Tagihan Pasien (besar) + Jasa On Call (kecil, tidak ditagihkan) bertumpuk di kanan. --}}
+                <div class="flex flex-col flex-shrink-0 gap-1.5 min-w-[220px]">
+                    <div class="flex flex-col justify-center flex-1 px-8 py-3 text-right border rounded-2xl bg-brand-green/10 dark:bg-brand-lime/10 border-brand-green/20 dark:border-brand-lime/20">
+                        <p class="mb-1 text-xs font-medium tracking-wide uppercase text-brand-green dark:text-brand-lime whitespace-nowrap">
                             Tagihan Pasien
                         </p>
-                        <p class="text-xl font-bold text-ink dark:text-white tabular-nums whitespace-nowrap">
+                        <p class="text-2xl font-bold text-ink dark:text-white tabular-nums whitespace-nowrap">
                             Rp {{ number_format($sumTotal) }}
                         </p>
                     </div>
