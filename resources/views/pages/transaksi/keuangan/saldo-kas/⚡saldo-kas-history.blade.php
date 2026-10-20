@@ -17,7 +17,7 @@ new class extends Component {
     public string $accDkStatus = 'D';
 
     /** Mode tampilan: 'harian' (satu tanggal) | 'shift' (satu tanggal, dipotong per shift) | 'bulanan' (satu bulan penuh) */
-    public string $mode = 'harian';
+    public string $mode = 'shift';
 
     /** Format internal: 'YYYY-MM' (mode bulanan) */
     public string $periode = '';
@@ -164,8 +164,8 @@ new class extends Component {
         $this->accDesc     = (string) ($row->acc_name ?? '');
         $this->accDkStatus = (string) ($row->acc_dk_status ?? 'D');
 
-        // Default: mode harian pada tanggal terpilih di parent (set tanggalHarian + input + periode).
-        $this->mode = 'harian';
+        // Default: mode per shift pada tanggal terpilih di parent (set tanggalHarian + input + periode).
+        $this->mode = 'shift';
         $this->setTanggalHarian($tanggal);
 
         $this->incrementVersion('modal');
@@ -465,8 +465,8 @@ new class extends Component {
                         <div>
                             <x-input-label value="Tampilan" class="mb-1 text-xs font-medium text-muted dark:text-gray-400" />
                             <x-tabs variant="pill">
-                                <x-tab :active="$mode === 'harian'" color="emerald" wire:click="setMode('harian')">Harian</x-tab>
                                 <x-tab :active="$mode === 'shift'" color="emerald" wire:click="setMode('shift')">Per Shift</x-tab>
+                                <x-tab :active="$mode === 'harian'" color="emerald" wire:click="setMode('harian')">Harian</x-tab>
                                 <x-tab :active="$mode === 'bulanan'" color="emerald" wire:click="setMode('bulanan')">Bulanan</x-tab>
                             </x-tabs>
                         </div>
