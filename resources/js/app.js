@@ -222,7 +222,12 @@ function loadPdfjs() {
                 "pdfjs-dist/legacy/build/pdf.worker.min.mjs?worker"
             );
             pdfjs.GlobalWorkerOptions.workerPort = new PdfjsWorker();
-            return pdfjs;
+            // Satu PDFWorker bersama, dikirim eksplisit ke getDocument({ worker }): dengan begitu
+            // loadingTask.destroy() hanya membuang dokumennya, worker-nya tetap hidup. Tanpa ini
+            // destroy ikut mencabut worker dari cache, dan PDF yang dibuka sesaat sesudah menutup
+            // yang lain bisa gagal "worker is being destroyed".
+            const worker = new pdfjs.PDFWorker({ port: pdfjs.GlobalWorkerOptions.workerPort });
+            return { pdfjs, worker };
         })();
     }
     return _pdfjsPromise;
@@ -234,6 +239,9 @@ document.addEventListener("alpine:init", () => {
     window.Alpine.data("pratinjauPdf", ({ src, namaFile = "hasil-penunjang.pdf" }) => {
         // Di luar state reaktif: proxy Alpine merusak objek pdf.js (field privat).
         let dokumen = null;
+        // pdf.js 6: destroy() ada di loading task (hasil getDocument), BUKAN di PDFDocumentProxy —
+        // memanggil dokumen.destroy() melempar "destroy is not a function" saat modal ditutup.
+        let tugasMuat = null;
         let isiPdf = null;
         let urutanRender = 0;
         let tugasRender = [];
@@ -248,9 +256,10 @@ document.addEventListener("alpine:init", () => {
             async init() {
                 try {
                     isiPdf = await this.ambilIsi();
-                    const pdfjs = await loadPdfjs();
+                    const { pdfjs, worker } = await loadPdfjs();
                     // slice(): buffer dipindah ke worker; salinan asli tetap untuk cetak/unduh.
-                    dokumen = await pdfjs.getDocument({ data: isiPdf.slice() }).promise;
+                    tugasMuat = pdfjs.getDocument({ data: isiPdf.slice(), worker });
+                    dokumen = await tugasMuat.promise;
                     this.jumlahHalaman = dokumen.numPages;
                     await this.render();
                 } catch (e) {
@@ -263,7 +272,8 @@ document.addEventListener("alpine:init", () => {
 
             destroy() {
                 tugasRender.forEach((tugas) => tugas.cancel());
-                dokumen?.destroy();
+                tugasMuat?.destroy().catch(() => {});
+                tugasMuat = null;
                 dokumen = null;
             },
 

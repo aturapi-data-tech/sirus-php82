@@ -164,6 +164,12 @@ new class extends Component {
 
         try {
             $this->fileBerkas->storeAs(BerkasLuar::FOLDER_UPLOAD, $namaBerkas, 'local');
+            // Disk 'local' ber-'throw' => false dan storeAs() Livewire tak memeriksa hasil put(): gagal tulis
+            // (mis. folder tak boleh dibuat user web server) lolos diam-diam. Pastikan berkasnya benar-benar ada
+            // SEBELUM entri dicatat — kalau tidak, daftar menampilkan "Berkas tidak ditemukan".
+            if (!Storage::disk('local')->exists(BerkasLuar::FOLDER_UPLOAD . '/' . $namaBerkas)) {
+                throw new \RuntimeException('berkas gagal disimpan ke server. Periksa izin tulis folder storage/app/private/' . BerkasLuar::FOLDER_UPLOAD . '.');
+            }
 
             DB::transaction(function () use ($namaBerkas, $sekarang) {
                 $this->lockUGDRow($this->rjNo);
