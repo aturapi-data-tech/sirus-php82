@@ -794,11 +794,6 @@ new class extends Component {
 
                     <livewire:pages::components.rekam-medis.ri.dokumen-view.surveilans-ilo-view-ri :riHdrNo="(string) $riHdrNo"
                         :entries="$ri['surveilansIloRI'] ?? []" wire:key="rm-view-surveilans-ilo-{{ $riHdrNo }}" />
-
-                    {{-- ── Berkas Scan Luar — riwayat lintas kunjungan RJ/UGD/RI pasien ini ── --}}
-                    <livewire:pages::components.rekam-medis.berkas-luar-display.berkas-luar-display
-                        :regNo="(string) ($ri['regNo'] ?? $rm ?? '')"
-                        wire:key="rm-ri-berkas-luar-{{ (string) ($ri['regNo'] ?? $rm ?? '') ?: 'init' }}" />
                 </div>
 
                 {{-- ════ TAB: HASIL PENUNJANG (lab / radiologi / upload — view-only) ════ --}}
@@ -815,6 +810,11 @@ new class extends Component {
                         <button type="button" x-on:click="sub = 'upload'"
                             :class="sub === 'upload' ? 'border-brand-green text-brand-green' : 'border-transparent text-muted hover:text-ink'"
                             class="px-4 py-2 -mb-px text-sm font-semibold transition-colors border-b-2">Upload Penunjang</button>
+                        <button type="button" x-on:click="sub = 'berkas-luar'"
+                            :class="sub === 'berkas-luar' ? 'border-brand-green text-brand-green' :
+                                'border-transparent text-muted hover:text-ink'"
+                            class="px-4 py-2 -mb-px text-sm font-semibold transition-colors border-b-2">Berkas Scan
+                            Luar</button>
                     </div>
 
                     <div x-show="sub === 'laboratorium'" x-cloak class="space-y-4">
@@ -832,6 +832,12 @@ new class extends Component {
                     <div x-show="sub === 'upload'" x-cloak>
                         <livewire:pages::components.rekam-medis.penunjang.upload-penunjang-display.upload-penunjang-display
                             :regNo="$regNoPenunjang" wire:key="rm-ri-penunjang-upload-{{ $regNoPenunjang }}" />
+                    </div>
+
+                    {{-- Berkas Scan Luar (diupload di Modul Dokumen) — riwayat lintas kunjungan RJ/UGD/RI --}}
+                    <div x-show="sub === 'berkas-luar'" x-cloak>
+                        <livewire:pages::components.rekam-medis.berkas-luar-display.berkas-luar-display
+                            :regNo="$regNoPenunjang" wire:key="rm-ri-penunjang-berkas-luar-{{ $regNoPenunjang }}" />
                     </div>
                 </div>
 
