@@ -4,6 +4,8 @@
     'data' => [],
     // Kode formulir RM (mis. "RM-02.01 · Rev.0") — lihat /panduan-dev/koding-formulir-rm.
     'kode' => null,
+    // true = kop selebar kertas + judul di bawahnya (untuk kertas A6: judul di samping kop menjepit alamat).
+    'judulDiBawah' => false,
 ])
 @php
     $manifestPath = public_path('build/manifest.json');
@@ -62,21 +64,30 @@
     @endif
     <div class="kwitansi-wrapper">
 
-        {{-- KOP: Identitas + Judul sejajar --}}
-        <table class="w-full border-collapse">
-            <tr>
-                <td class="align-middle">
-                    <x-logo.identitas-horisontal :showGaris="false" />
-                </td>
-                <td
-                    class="align-middle text-right text-[14px] font-bold uppercase tracking-wide w-auto whitespace-nowrap text-gray-900">
-                    {{ $title ?? 'Kwitansi Pembayaran' }}
-                </td>
-            </tr>
-        </table>
+        @if ($judulDiBawah)
+            {{-- KOP selebar kertas, garis, lalu judul di bawahnya --}}
+            <x-logo.identitas-horisontal :showGaris="false" />
+            <div class="mt-0.5 border-t border-gray-400"></div>
+            <div class="mt-1 text-center text-[9px] font-bold uppercase tracking-wide text-gray-900">
+                {{ $title ?? 'Kwitansi Pembayaran' }}
+            </div>
+        @else
+            {{-- KOP: Identitas + Judul sejajar --}}
+            <table class="w-full border-collapse">
+                <tr>
+                    <td class="align-middle">
+                        <x-logo.identitas-horisontal :showGaris="false" />
+                    </td>
+                    <td
+                        class="align-middle text-right text-[14px] font-bold uppercase tracking-wide w-auto whitespace-nowrap text-gray-900">
+                        {{ $title ?? 'Kwitansi Pembayaran' }}
+                    </td>
+                </tr>
+            </table>
 
-        {{-- Garis --}}
-        <div class="mt-0.5 border-t border-gray-400"></div>
+            {{-- Garis --}}
+            <div class="mt-0.5 border-t border-gray-400"></div>
+        @endif
 
         {{-- Konten utama (dari blade view) --}}
         {{ $slot }}
