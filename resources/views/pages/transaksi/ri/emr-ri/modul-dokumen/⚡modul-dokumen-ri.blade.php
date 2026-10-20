@@ -5,6 +5,7 @@ use Livewire\Component;
 use Livewire\Attributes\On;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
+use App\Support\BerkasLuar;
 
 new class extends Component {
     use EmrRITrait, WithRenderVersioningTrait;
@@ -34,6 +35,7 @@ new class extends Component {
     public int $jumlahInformConsent = 0;
     public int $jumlahEdukasi = 0;
     public int $jumlahPindahRuang = 0;
+    public int $jumlahBerkasLuar = 0;
 
     /** Dokumen dibaca sebagai variabel LOKAL, diperas jadi penanda, lalu dilepas. */
     private function hitungRingkasan(array $data): void
@@ -54,6 +56,7 @@ new class extends Component {
         $this->jumlahInformConsent = count($data['informConsentPasienRI'] ?? []);
         $this->jumlahEdukasi = count($data['edukasiPasienTerintegrasi'] ?? []);
         $this->jumlahPindahRuang = count($data['formPindahAntarRuangRI'] ?? []);
+        $this->jumlahBerkasLuar = count($data[BerkasLuar::NODE['RI']] ?? []);
         $this->adaBedah = collect(['pengkajianPreOpRI', 'praAnestesiRI', 'praInduksiRI',
             'surgicalSafetyChecklistRI', 'laporanOperasiRI', 'laporanAnestesiRI',
             'pascaAnestesiRI', 'instruksiPascaBedahRI'])->contains(fn($k) => !empty($data[$k]));
@@ -77,7 +80,7 @@ new class extends Component {
     protected array $renderAreas = ['modal-modul-dokumen-ri'];
 
     /** Tab yang boleh diminta pemanggil lewat event open(). */
-    private const TAB_BOLEH = ['generalConsent', 'informConsent', 'pelayananBedah', 'vkKebidanan', 'surveilansHais'];
+    private const TAB_BOLEH = ['generalConsent', 'informConsent', 'pelayananBedah', 'vkKebidanan', 'surveilansHais', 'berkasLuar'];
 
     public function mount(): void
     {
@@ -114,6 +117,20 @@ new class extends Component {
         $this->dispatch('open-modal', name: 'modul-dokumen-ri'); // ← WAJIB ada ini
     }
 
+    /** Penanda tab disegarkan saat anak mengubah datanya (Berkas Scan Luar: upload/hapus). */
+    #[On('refresh-modul-dokumen-ri-data')]
+    public function refreshDataDaftarRI(string $riHdrNo): void
+    {
+        if ($this->riHdrNo !== $riHdrNo) {
+            return;
+        }
+
+        $data = $this->findDataRI($riHdrNo);
+        if ($data) {
+            $this->hitungRingkasan($data);
+        }
+    }
+
     public function closeModal(): void
     {
         $this->resetValidation();
@@ -129,7 +146,7 @@ new class extends Component {
         $this->resetVersion();
         $this->isFormLocked = false;
         $this->tabAwal = 'generalConsent';
-        $this->reset(['adaGeneralConsent', 'adaBedah', 'adaObstetriNeonatal', 'adaSurveilans', 'adaSuratKematianFinal', 'statusPulang', 'jumlahMpp', 'jumlahPenundaan', 'jumlahPenolakanObat', 'jumlahPenolakanResusitasi', 'jumlahPulangAps', 'jumlahSecondOpinion', 'jumlahKerohanian', 'jumlahAkhirHayat', 'jumlahEso', 'jumlahPermintaanDarah', 'jumlahInformConsent', 'jumlahEdukasi', 'jumlahPindahRuang']);
+        $this->reset(['adaGeneralConsent', 'adaBedah', 'adaObstetriNeonatal', 'adaSurveilans', 'adaSuratKematianFinal', 'statusPulang', 'jumlahMpp', 'jumlahPenundaan', 'jumlahPenolakanObat', 'jumlahPenolakanResusitasi', 'jumlahPulangAps', 'jumlahSecondOpinion', 'jumlahKerohanian', 'jumlahAkhirHayat', 'jumlahEso', 'jumlahPermintaanDarah', 'jumlahInformConsent', 'jumlahEdukasi', 'jumlahPindahRuang', 'jumlahBerkasLuar']);
     }
 };
 ?>
@@ -377,6 +394,18 @@ new class extends Component {
                             @endif
                         </x-tab>
 
+                        {{-- Berkas Scan Luar — upload berkas dari luar dokumen SIRUS --}}
+                        <x-tab variant="underline" active-expr="activeTab === 'berkasLuar'"
+                            x-on:click="activeTab = 'berkasLuar'" class="inline-flex items-center gap-2">
+                            <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                            </svg>
+                            Berkas Scan Luar
+                            @if ($jumlahBerkasLuar > 0)
+                                <x-badge variant="success" class="text-[10px] px-1.5 py-0">{{ $jumlahBerkasLuar }}</x-badge>
+                            @endif
+                        </x-tab>
+
                         {{-- Surat Kematian — tab hanya muncul bila status pulang di Perencanaan
                              adalah Meninggal (statusPulang BPJS 4), supaya tak jadi tab permanen. --}}
                         @if ($statusPulang === '4')
@@ -536,6 +565,13 @@ new class extends Component {
                     <livewire:pages::transaksi.ri.emr-ri.modul-dokumen.vk-kebidanan-ri.rm-vk-kebidanan-ri-actions
                         :riHdrNo="$riHdrNo" :disabled="$isFormLocked"
                         wire:key="vk-kebidanan-ri-{{ $riHdrNo ?? 'init' }}" />
+                </div>
+
+                {{-- TAB: BERKAS SCAN LUAR --}}
+                <div x-show="activeTab === 'berkasLuar'" x-transition.opacity.duration.200ms style="display:none">
+                    <livewire:pages::transaksi.ri.emr-ri.modul-dokumen.berkas-luar-ri.rm-berkas-luar-ri-actions
+                        :riHdrNo="$riHdrNo" :disabled="$isFormLocked"
+                        wire:key="berkas-luar-ri-{{ $riHdrNo ?? 'init' }}" />
                 </div>
 
             </div>{{-- end body --}}

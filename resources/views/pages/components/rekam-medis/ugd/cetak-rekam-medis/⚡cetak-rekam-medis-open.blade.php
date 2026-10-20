@@ -960,6 +960,11 @@ new class extends Component {
 
                     <livewire:pages::components.rekam-medis.ugd.dokumen-view.catatan-terapi-neonatal-view-ugd :rjNo="$rjNo"
                         :entries="$dataDaftarTxn['catatanTerapiNeonatalUGD'] ?? []" wire:key="rm-view-catatan-terapi-neonatal-ugd-{{ $rjNo }}" />
+
+                    {{-- ── Berkas Scan Luar — riwayat lintas kunjungan RJ/UGD/RI pasien ini ── --}}
+                    <livewire:pages::components.rekam-medis.berkas-luar-display.berkas-luar-display
+                        :regNo="(string) ($dataDaftarTxn['regNo'] ?? '')"
+                        wire:key="rm-ugd-berkas-luar-{{ (string) ($dataDaftarTxn['regNo'] ?? '') ?: 'init' }}" />
                 </div>
 
                 {{-- ════ TAB: HASIL PENUNJANG (lab / radiologi / upload — view-only) ════ --}}

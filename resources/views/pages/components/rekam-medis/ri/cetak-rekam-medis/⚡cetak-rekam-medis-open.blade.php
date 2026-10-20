@@ -794,6 +794,11 @@ new class extends Component {
 
                     <livewire:pages::components.rekam-medis.ri.dokumen-view.surveilans-ilo-view-ri :riHdrNo="(string) $riHdrNo"
                         :entries="$ri['surveilansIloRI'] ?? []" wire:key="rm-view-surveilans-ilo-{{ $riHdrNo }}" />
+
+                    {{-- ── Berkas Scan Luar — riwayat lintas kunjungan RJ/UGD/RI pasien ini ── --}}
+                    <livewire:pages::components.rekam-medis.berkas-luar-display.berkas-luar-display
+                        :regNo="(string) ($ri['regNo'] ?? $rm ?? '')"
+                        wire:key="rm-ri-berkas-luar-{{ (string) ($ri['regNo'] ?? $rm ?? '') ?: 'init' }}" />
                 </div>
 
                 {{-- ════ TAB: HASIL PENUNJANG (lab / radiologi / upload — view-only) ════ --}}
