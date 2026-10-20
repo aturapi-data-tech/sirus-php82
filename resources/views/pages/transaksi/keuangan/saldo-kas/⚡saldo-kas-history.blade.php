@@ -496,34 +496,56 @@ new class extends Component {
             return null;
         }
 
-        $rows = $this->rows;
+        // Mode per shift: urutan & saldo berjalan mengikuti kelompok shift di layar; lainnya satu kelompok.
+        $kelompokList = $this->mode === 'shift'
+            ? $this->susunKelompokShift()
+            : [(object) ['shift' => null, 'items' => $this->rows->all(), 'saldoAkhir' => $this->saldoAkhir]];
+        $saldoAwal  = $this->saldoAwalPeriode;
+        $saldoAkhir = $this->saldoAkhir;
+        $saldoAwalTgl = Carbon::parse($this->dariTanggal)->subDay()->format('d/m/Y');
+        $sampaiTgl    = Carbon::parse($this->sampaiTanggal)->format('d/m/Y');
         $namaBerkas = 'rincian-kas-' . $this->accId . '-' . $this->akhiranPeriode() . '.csv';
 
-        return response()->streamDownload(function () use ($rows) {
+        return response()->streamDownload(function () use ($kelompokList, $saldoAwal, $saldoAkhir, $saldoAwalTgl, $sampaiTgl) {
             $keluaran = fopen('php://output', 'w');
 
             // BOM UTF-8 tanpa "sep=;" — alasannya lihat unduhCsv() Lampiran Gaji Dokter.
             fwrite($keluaran, "\xEF\xBB\xBF");
             fputcsv($keluaran, self::KOLOM_CSV, ';');
 
-            foreach ($rows as $baris) {
-                $tglTransaksi = Carbon::parse($baris->txn_date);
-                fputcsv($keluaran, [
-                    $this->accId,
-                    $tglTransaksi->format('d/m/Y'),
-                    $tglTransaksi->format('H:i:s'),
-                    (string) ($baris->shift ?: '1'),
-                    $this->jenisTransaksi((string) $baris->txn_name),
-                    $this->referensiTransaksi((string) $baris->txn_name),
-                    $baris->txn_name,
-                    $baris->lawan_acc_id,
-                    $baris->lawan_acc_name,
-                    // Angka MENTAH: nominal berformat ribuan dibaca Excel sebagai teks.
-                    (int) round((float) $baris->debit_kita),
-                    (int) round((float) $baris->kredit_kita),
-                    (int) round((float) $baris->saldo_berjalan),
-                ], ';');
+            // Baris saldo: Debit/Kredit DIKOSONGKAN supaya SUM/pivot kedua kolom itu tetap
+            // = total transaksi; angkanya hanya di kolom Saldo Berjalan.
+            $tulisSaldo = fn(string $tanggal, string $shift, string $jenis, string $deskripsi, float $saldo) => fputcsv($keluaran, [
+                $this->accId, $tanggal, '', $shift, $jenis, '', $deskripsi, '', '', '', '', (int) round($saldo),
+            ], ';');
+
+            $tulisSaldo($saldoAwalTgl, '', 'SALDO AWAL', 'Saldo awal per ' . $saldoAwalTgl, $saldoAwal);
+
+            foreach ($kelompokList as $kelompok) {
+                foreach ($kelompok->items as $baris) {
+                    $tglTransaksi = Carbon::parse($baris->txn_date);
+                    fputcsv($keluaran, [
+                        $this->accId,
+                        $tglTransaksi->format('d/m/Y'),
+                        $tglTransaksi->format('H:i:s'),
+                        (string) ($baris->shift ?: '1'),
+                        $this->jenisTransaksi((string) $baris->txn_name),
+                        $this->referensiTransaksi((string) $baris->txn_name),
+                        $baris->txn_name,
+                        $baris->lawan_acc_id,
+                        $baris->lawan_acc_name,
+                        // Angka MENTAH: nominal berformat ribuan dibaca Excel sebagai teks.
+                        (int) round((float) $baris->debit_kita),
+                        (int) round((float) $baris->kredit_kita),
+                        (int) round((float) $baris->saldo_berjalan),
+                    ], ';');
+                }
+                if ($kelompok->shift !== null) {
+                    $tulisSaldo($sampaiTgl, $kelompok->shift, 'SALDO AKHIR SHIFT', 'Saldo akhir shift ' . $kelompok->shift, $kelompok->saldoAkhir);
+                }
             }
+
+            $tulisSaldo($sampaiTgl, '', 'SALDO AKHIR', 'Saldo akhir per ' . $sampaiTgl, $saldoAkhir);
 
             fclose($keluaran);
         }, $namaBerkas, [
