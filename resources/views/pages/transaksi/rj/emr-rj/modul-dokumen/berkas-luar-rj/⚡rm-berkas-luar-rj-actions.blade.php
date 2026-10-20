@@ -108,6 +108,12 @@ new class extends Component {
         $this->resetFormBerkas();
     }
 
+    public function setTglBerkasHariIni(): void
+    {
+        $this->formBerkas['tglBerkas'] = now()->timezone(config('app.timezone'))->format('d/m/Y');
+        $this->resetValidation('formBerkas.tglBerkas');
+    }
+
     private function resetFormBerkas(): void
     {
         $this->reset(['fileBerkas', 'formBerkas']);
@@ -334,8 +340,9 @@ new class extends Component {
 
                         @if ($this->diForm())
                             {{-- ══ FORM UPLOAD ══ --}}
-                            <fieldset @disabled($isFormLocked) class="grid grid-cols-1 gap-4 md:grid-cols-2">
-                                <div>
+                            {{-- Jenis · Tanggal · Keterangan sebaris (md ke atas), berkas di baris bawah. --}}
+                            <fieldset @disabled($isFormLocked) class="grid grid-cols-1 gap-4 md:grid-cols-12">
+                                <div class="md:col-span-3">
                                     <x-input-label for="berkas-luar-jenis" value="Jenis Berkas" :required="true" />
                                     <x-select-input id="berkas-luar-jenis" wire:model="formBerkas.jenis" class="mt-1"
                                         :error="$errors->has('formBerkas.jenis')">
@@ -347,15 +354,19 @@ new class extends Component {
                                     <x-input-error :messages="$errors->get('formBerkas.jenis')" class="mt-1" />
                                 </div>
 
-                                <div>
+                                <div class="md:col-span-3">
                                     <x-input-label for="berkas-luar-tgl" value="Tanggal Berkas (dd/mm/yyyy)" />
-                                    <x-text-input id="berkas-luar-tgl" wire:model="formBerkas.tglBerkas"
-                                        placeholder="Tanggal yang tertera di berkas, boleh kosong" maxlength="10"
-                                        class="block w-full mt-1" :error="$errors->has('formBerkas.tglBerkas')" />
+                                    <div class="flex items-center gap-2 mt-1">
+                                        <x-text-input id="berkas-luar-tgl" wire:model="formBerkas.tglBerkas"
+                                            placeholder="Boleh kosong" maxlength="10"
+                                            class="block w-full" :error="$errors->has('formBerkas.tglBerkas')" />
+                                        <x-now-button wire:click="setTglBerkasHariIni" :disabled="$isFormLocked"
+                                            title="Isi tanggal hari ini" />
+                                    </div>
                                     <x-input-error :messages="$errors->get('formBerkas.tglBerkas')" class="mt-1" />
                                 </div>
 
-                                <div class="md:col-span-2">
+                                <div class="md:col-span-6">
                                     <x-input-label for="berkas-luar-keterangan" value="Keterangan" :required="true" />
                                     <x-text-input id="berkas-luar-keterangan" wire:model="formBerkas.keterangan"
                                         placeholder="Mis. Surat rujukan Puskesmas Ngunut, hasil CT Scan RS X" maxlength="255"
@@ -363,7 +374,7 @@ new class extends Component {
                                     <x-input-error :messages="$errors->get('formBerkas.keterangan')" class="mt-1" />
                                 </div>
 
-                                <div class="md:col-span-2">
+                                <div class="md:col-span-12">
                                     <x-file-upload name="fileBerkas" label="Berkas (PDF / JPG / PNG, maks. 10 MB)"
                                         accept="application/pdf,image/jpeg,image/png" :required="true"
                                         :disabled="$isFormLocked" loading-style="bar" />
