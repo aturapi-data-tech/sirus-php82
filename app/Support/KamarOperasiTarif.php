@@ -210,6 +210,20 @@ final class KamarOperasiTarif
     }
 
     /**
+     * Nomor urut cetak satu baris biaya OK (`rstxn_*oks.ok_desc`) — urutan POS = urutan legacy.
+     * Dipakai kwitansi RI/RJ/UGD supaya rincian operasi tercetak urut seperti cetakan 6i.
+     * "BIAYA OM LOP" (ejaan cetakan 6i) disamakan dengan "BIAYA ON LOOP"; ok_desc lain di luar
+     * daftar → 99 (di belakang).
+     */
+    public static function urutanCetak(string $okDesc): int
+    {
+        $okDesc = trim($okDesc) === 'BIAYA OM LOP' ? 'BIAYA ON LOOP' : trim($okDesc);
+        $indeks = array_search($okDesc, array_values(self::POS), true);
+
+        return $indeks === false ? 99 : $indeks;
+    }
+
+    /**
      * Hitung ulang seluruh pos turunan lalu simpan ke rstxn_oks.
      *
      * SATU-satunya tempat rumus ini ditulis. Ada dua pintu masuk yang memicunya

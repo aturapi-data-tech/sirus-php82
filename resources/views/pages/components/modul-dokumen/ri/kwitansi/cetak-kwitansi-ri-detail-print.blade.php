@@ -161,12 +161,15 @@
         {{-- ─── E. OPERASI (hanya tampil bila ada) ─── --}}
         @if ($data['eOperasi'] > 0)
         <tr><td colspan="4" class="{{ $hdrSection }}">E. OPERASI</td></tr>
+        {{-- Per pos rstxn_rioks.ok_desc (jasa operator, anestesi, sewa OK, …) — rincian untuk klaim casemix. --}}
+        @foreach ($data['eItems'] as $pos)
         <tr>
-            <td class="{{ $cellLabel }}">KAMAR OPERASI (OK)</td>
+            <td class="{{ $cellLabel }} uppercase">{{ $pos->desc }}</td>
             <td class="{{ $cellQty }}"></td>
-            <td class="{{ $cellAmt }}">{{ $rp($data['eOperasi']) }}</td>
+            <td class="{{ $cellAmt }}">{{ $rp($pos->total) }}</td>
             <td></td>
         </tr>
+        @endforeach
         <tr>
             <td colspan="3" class="{{ $cellSubTot }}"></td>
             <td class="{{ $cellSubTot }}">{{ $rp($data['eOperasi']) }}</td>

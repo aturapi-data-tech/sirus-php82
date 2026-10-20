@@ -6,6 +6,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
+use App\Support\KamarOperasiTarif;
 
 new class extends Component {
     use EmrRITrait;
@@ -175,6 +176,21 @@ new class extends Component {
 
         $eOperasi = (int) $costs['ok'];
 
+        // E. OPERASI dijabarkan per pos (ok_desc) seperti cetakan 6i — casemix butuh rinciannya
+        // untuk klaim; dulu hanya satu baris "KAMAR OPERASI (OK)". Lebih dari satu operasi →
+        // pos yang sama dijumlah. Urutan = KamarOperasiTarif::urutanCetak() (urutan legacy).
+        $eItems = DB::table('rstxn_rioks')
+            ->where('rihdr_no', $riHdrNo)
+            ->selectRaw('ok_desc, SUM(NVL(ok_price,0)) as total')
+            ->groupBy('ok_desc')
+            ->get()
+            ->map(fn($pos) => (object) [
+                'desc'  => trim((string) $pos->ok_desc) ?: 'KAMAR OPERASI (OK)',
+                'total' => (int) $pos->total,
+            ])
+            ->sortBy(fn($pos) => sprintf('%02d|%s', KamarOperasiTarif::urutanCetak($pos->desc), $pos->desc))
+            ->values();
+
         // ─── Section F: BIAYA RJ/UGD + per-item LAIN-LAIN ───
         $fTrfRjUgd = (int) $costs['trfUgdRj'];
         $fOthers = DB::table('rstxn_riothers as o')
@@ -253,6 +269,7 @@ new class extends Component {
             'dTotal'      => $dTotal,
 
             'eOperasi' => $eOperasi,
+            'eItems'   => $eItems,
 
             'fTrfRjUgd' => $fTrfRjUgd,
             'fOthers'   => $fOthers,
