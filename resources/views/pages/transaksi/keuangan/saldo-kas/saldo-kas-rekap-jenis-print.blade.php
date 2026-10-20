@@ -30,10 +30,10 @@
     {{-- ── RINGKASAN ── --}}
     <table width="100%" cellpadding="5" cellspacing="0" style="margin-bottom:10px; font-size:11px; border-collapse:collapse; text-align:center;">
         <tr>
-            <td style="border:1px solid #999; background:#f3f4f6; width:25%;">Saldo Awal<br><b>{{ $formatAngka($saldoAwal) }}</b></td>
+            <td style="border:1px solid #999; background:#f3f4f6; width:25%;">Saldo Awal per {{ $saldoAwalTgl }}<br><b>{{ $formatAngka($saldoAwal) }}</b></td>
             <td style="border:1px solid #999; background:#eff6ff; width:25%;">Debit<br><b>{{ $formatAngka($totalDebit) }}</b></td>
             <td style="border:1px solid #999; background:#fff1f2; width:25%;">Kredit<br><b>{{ $formatAngka($totalKredit) }}</b></td>
-            <td style="border:1px solid #999; background:#ecfdf5; width:25%;">Saldo Akhir<br><b style="font-size:12px;">{{ $formatAngka($saldoAkhir) }}</b></td>
+            <td style="border:1px solid #999; background:#ecfdf5; width:25%;">Saldo Akhir per {{ $sampaiLabel }}<br><b style="font-size:12px;">{{ $formatAngka($saldoAkhir) }}</b></td>
         </tr>
     </table>
 
@@ -49,11 +49,8 @@
             </tr>
         </thead>
         <tbody>
-            <tr>
-                <td colspan="4" style="border:1px solid #999; font-style:italic; color:#555;">Saldo per {{ $saldoAwalTgl }}</td>
-                <td style="border:1px solid #999; text-align:right; font-weight:bold;">{{ $formatAngka($saldoAwal) }}</td>
-            </tr>
-
+            {{-- Saldo awal/akhir sengaja TIDAK di tabel ini: tabel tanpa kolom SALDO, angkanya jatuh di
+                 bawah KREDIT dan terbaca sebagai kredit. Saldo cukup di kotak ringkasan di atas. --}}
             @foreach ($kelompokJenis as $kelompok)
                 @if ($kelompok->judul)
                     <tr style="background:#e8f5ee;">
@@ -86,10 +83,6 @@
                 <td style="border:1px solid #999; text-align:right; font-weight:bold;">{{ $jumlahTrx }}</td>
                 <td style="border:1px solid #999; text-align:right; font-weight:bold;">{{ $formatAngka($totalDebit) }}</td>
                 <td style="border:1px solid #999; text-align:right; font-weight:bold;">{{ $formatAngka($totalKredit) }}</td>
-            </tr>
-            <tr style="background:#ecfdf5;">
-                <td colspan="4" style="border:1px solid #999; font-weight:bold;">SALDO PER {{ $sampaiLabel }}</td>
-                <td style="border:1px solid #999; text-align:right; font-weight:bold; font-size:11px;">{{ $formatAngka($saldoAkhir) }}</td>
             </tr>
         </tbody>
     </table>
