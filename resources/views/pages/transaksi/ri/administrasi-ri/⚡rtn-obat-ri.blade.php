@@ -10,7 +10,7 @@ use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 new class extends Component {
     use EmrRITrait, WithRenderVersioningTrait;
 
-    /** Lokasi stok tujuan return: bangsal → Gudang Medis → Apotek (obat dipakai lagi oleh Apotek). */
+    /** Lokasi stok tujuan return: ruangan → Gudang Medis → Apotek (obat dipakai lagi oleh Apotek). */
     public const GUDANG_SL_CODE = '04';
     public const APOTEK_SL_CODE = '02';
 
@@ -25,7 +25,7 @@ new class extends Component {
     public ?int $riHdrNo = null;
     public array $dataRtnObat = [];
 
-    /** Lokasi asal stok return (ruangan) — dipilih di modal Kirim, default Kode SL bangsal pasien. */
+    /** Lokasi asal stok return (ruangan) — dipilih petugas di modal Kirim. */
     public ?string $slCodeAsal = null;
     public ?string $slNameAsal = null;
 
@@ -220,7 +220,34 @@ new class extends Component {
     }
 
     /* ===============================
-     | BUKA MODAL KIRIM — pilih ruangan asal stok, default Kode SL bangsal pasien.
+     | VALIDASI MODAL KIRIM — rules() hanya dipakai validate() tanpa argumen di kirimReturnKeApotek;
+     | insertRtnObat memakai aturan sendiri.
+     =============================== */
+    protected function rules(): array
+    {
+        return [
+            'slCodeAsal' => 'bail|required|not_in:' . self::GUDANG_SL_CODE . ',' . self::APOTEK_SL_CODE . '|exists:immst_stocklocations,sl_code',
+        ];
+    }
+
+    protected function messages(): array
+    {
+        return [
+            'slCodeAsal.required' => ':attribute wajib dipilih.',
+            'slCodeAsal.not_in' => ':attribute tidak boleh Gudang Medis atau Apotek.',
+            'slCodeAsal.exists' => ':attribute tidak terdaftar di Master Lokasi Stok.',
+        ];
+    }
+
+    protected function validationAttributes(): array
+    {
+        return [
+            'slCodeAsal' => 'Ruangan asal stok',
+        ];
+    }
+
+    /* ===============================
+     | BUKA MODAL KIRIM — petugas memilih ruangan asal stok (tanpa nilai awal).
      =============================== */
     public function bukaKirimReturn(): void
     {
@@ -230,14 +257,10 @@ new class extends Component {
             return;
         }
 
-        $bangsal = DB::table('rsview_rihdrs')
-            ->join('rsmst_bangsals', 'rsmst_bangsals.bangsal_id', '=', 'rsview_rihdrs.bangsal_id')
-            ->leftJoin('immst_stocklocations', 'immst_stocklocations.sl_code', '=', 'rsmst_bangsals.sl_codefrom')
-            ->where('rsview_rihdrs.rihdr_no', $this->riHdrNo)
-            ->select('rsmst_bangsals.sl_codefrom', 'immst_stocklocations.sl_name')
-            ->first();
-        $this->slCodeAsal = trim((string) ($bangsal->sl_codefrom ?? '')) ?: null;
-        $this->slNameAsal = $bangsal->sl_name ?? null;
+        // Sengaja kosong — petugas wajib memilih ruangan asal sendiri supaya data transfer rapi.
+        $this->slCodeAsal = null;
+        $this->slNameAsal = null;
+        $this->resetValidation('slCodeAsal');
 
         $this->incrementVersion('modal-kirim-return-ri');
         $this->dispatch('open-modal', name: 'kirim-return-obat-ri');
@@ -247,6 +270,7 @@ new class extends Component {
     public function onPickAsalReturn(string $target, array $payload): void
     {
         $this->slCodeAsal = (string) ($payload['sl_code'] ?? '') ?: null;
+        $this->resetValidation('slCodeAsal');
         $this->slNameAsal = $payload['sl_name'] ?? null;
     }
 
@@ -263,6 +287,9 @@ new class extends Component {
      =============================== */
     public function kirimReturnKeApotek(): void
     {
+        // validate() DULU — pesan merah tampil di bawah LOV ruangan asal.
+        $this->validate();
+
         try {
             DB::transaction(function () {
                 $this->lockRIRow($this->riHdrNo);
@@ -273,13 +300,7 @@ new class extends Component {
                     throw new \RuntimeException('Transaksi RI belum selesai — return baru bisa dikirim ke Apotek setelah pasien pulang.');
                 }
 
-                $slCodeAsal = (string) $this->slCodeAsal;
-                if ($slCodeAsal === '' || in_array($slCodeAsal, [self::GUDANG_SL_CODE, self::APOTEK_SL_CODE], true)) {
-                    throw new \RuntimeException('Pilih ruangan asal stok return dulu (bukan Gudang/Apotek).');
-                }
-                if (!DB::table('immst_stocklocations')->where('sl_code', $slCodeAsal)->exists()) {
-                    throw new \RuntimeException("Lokasi stok {$slCodeAsal} tidak terdaftar di Master Lokasi Stok.");
-                }
+                $slCodeAsal = $this->slCodeAsal;
 
                 $rowsReturn = DB::table('rstxn_riobatrtns')
                     ->where('rihdr_no', $this->riHdrNo)
@@ -584,6 +605,7 @@ new class extends Component {
                 placeholder="Ketik kode / nama ruangan..." :initialSlCode="$slCodeAsal"
                 :excludeSlCode="[self::GUDANG_SL_CODE, self::APOTEK_SL_CODE]" jenisLokasi="medis"
                 wire:key="lov-asal-return-{{ $this->renderKey('modal-kirim-return-ri', [$riHdrNo ?? 'new']) }}" />
+            <x-input-error :messages="$errors->get('slCodeAsal')" class="-mt-3" />
 
             @php $rowsBelumDikirim = collect($dataRtnObat)->whereNull('trf_no_apotek'); @endphp
             <div class="overflow-hidden border border-hairline rounded-xl dark:border-gray-700">
@@ -608,7 +630,7 @@ new class extends Component {
             <div class="flex justify-end gap-2 pt-2 border-t border-hairline-soft dark:border-gray-800">
                 <x-secondary-button type="button" wire:click="tutupKirimReturn">Batal</x-secondary-button>
                 <x-primary-button type="button" wire:click.prevent="kirimReturnKeApotek" wire:loading.attr="disabled"
-                    wire:target="kirimReturnKeApotek" :disabled="!$slCodeAsal">
+                    wire:target="kirimReturnKeApotek">
                     <span wire:loading.remove wire:target="kirimReturnKeApotek">Kirim ke Apotek</span>
                     <span wire:loading wire:target="kirimReturnKeApotek"><x-loading class="w-4 h-4" /></span>
                 </x-primary-button>
