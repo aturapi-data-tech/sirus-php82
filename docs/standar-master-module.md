@@ -210,10 +210,10 @@ Markup modal (3 bagian — header/body/footer):
 ## 5. Validasi
 
 - Pesan **selalu Bahasa Indonesia** + `$attributes` nama field manusiawi.
-- **Form kecil** (≤ ~5 field): tiga array inline di `save()` — `$this->validate($rules, $messages, $attributes)`
-  (gaya baseline agama).
-- **Form besar**: pisahkan method `rules()` / `messages()` / `validationAttributes()` supaya `save()`
-  tetap pendek (gaya master-poli/diagnosa/karyawan — resmi, bukan deviasi).
+- **Semua form** (kecil maupun besar): pisahkan method `rules()` / `messages()` / `validationAttributes()`
+  lalu `$this->validate()` tanpa argumen (gaya master-poli/diagnosa/karyawan). Keputusan 2026-10-20 —
+  berlaku di semua modul, rinciannya di skill `livewire-input-patterns` §5a. Tiga array inline di `save()`
+  (gaya lama baseline agama) tidak dipakai untuk kode baru; berkas lama diseragamkan saat disentuh.
 - Rule unik hanya saat create: `formMode === 'create' ? 'required|...|unique:tabel,kolom' : 'required|...'`
   dan field PK `:disabled="$formMode === 'edit'"` di markup.
 

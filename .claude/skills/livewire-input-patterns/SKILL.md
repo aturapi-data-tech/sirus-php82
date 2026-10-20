@@ -1,6 +1,6 @@
 ---
 name: livewire-input-patterns
-description: Pola input Livewire/Alpine yang sudah teruji di EMR repo ini — mencegah digit hilang, race condition Enter, dan masalah sinkronisasi blur. Baca saat menambah/men-debug input numerik EMR, aksi Enter→$wire, atau komponen x-text-input-number / x-now-button.
+description: Pola input Livewire/Alpine yang sudah teruji di EMR repo ini — mencegah digit hilang, race condition Enter, dan masalah sinkronisasi blur. Baca saat menambah/men-debug input numerik EMR, aksi Enter→$wire, atau komponen x-text-input-number / x-now-button, dan saat menulis validasi Livewire (STANDAR rules()/messages()/validationAttributes() + validate() tanpa argumen, §5a).
 ---
 
 # Livewire / Alpine Input Patterns (EMR)
@@ -64,6 +64,49 @@ Tombol set-waktu standar = komponen `x-now-button` (icon jam, pass-through atrib
 
 ## 5. Validasi → toast + x-input-error
 Pakai trait `WithValidationToast` untuk menampilkan error validasi sebagai toast, plus `x-input-error` di view dokter/perawat EMR. (RJ/UGD sudah pakai pola ini.)
+
+### 5a. Bentuk kode validasi — STANDAR `rules()` (keputusan user 2026-10-20)
+Semua modul (bukan hanya master), form kecil maupun besar: tiga method terpisah lalu
+`$this->validate()` TANPA argumen. Acuan: `master-poli/⚡master-poli-actions.blade.php`,
+`ri/administrasi-ri/⚡rtn-obat-ri.blade.php` (modal Kirim).
+
+```php
+protected function rules(): array
+{
+    return [
+        'slCodeAsal' => 'bail|required|not_in:' . self::GUDANG_SL_CODE . ',' . self::APOTEK_SL_CODE . '|exists:immst_stocklocations,sl_code',
+    ];
+}
+
+protected function messages(): array
+{
+    return [
+        'slCodeAsal.required' => ':attribute wajib dipilih.',
+        'slCodeAsal.not_in' => ':attribute tidak boleh Gudang Medis atau Apotek.',
+    ];
+}
+
+protected function validationAttributes(): array
+{
+    return ['slCodeAsal' => 'Ruangan asal stok'];
+}
+
+public function kirim(): void
+{
+    $this->validate();   // DULU, sebelum guard/transaksi — error merah tampil di field
+    // ...
+}
+```
+
+- Pesan Bahasa Indonesia, pakai `:attribute` (bukan nama field ditulis ulang di tiap pesan);
+  nama manusiawinya di `validationAttributes()`.
+- Rule kondisional (create vs edit, unique) ditulis di dalam `rules()` — contoh `poliId` Master Poli.
+- **Pengecualian — dua form dalam satu komponen:** `validate()` tanpa argumen SELALU menjalankan
+  seluruh `rules()`. Form utama memakai `rules()`; form kedua boleh `$this->validate([...], [...])`
+  inline supaya tidak ikut tervalidasi (contoh `rtn-obat-ri`: `rules()` = modal Kirim,
+  `insertRtnObat()` = inline).
+- Berkas lama yang masih inline (`validate([...])`, ±66 berkas saat keputusan) TIDAK diubah massal —
+  seragamkan hanya saat berkasnya memang disentuh.
 
 ## 6. Stable lookup list (dokterList dkawan-kawan)
 Lookup list (mis. `dokterList`) HANYA boleh depend pada tanggal — decouple dari `filterStatus` / `filterKlaim` agar tidak re-query tiap filter berubah. Detail di `docs/stable-lookup-list-pattern.md`.
