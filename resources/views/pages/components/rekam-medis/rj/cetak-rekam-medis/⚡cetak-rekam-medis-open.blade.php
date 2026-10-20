@@ -921,6 +921,11 @@ new class extends Component {
                         <livewire:pages::components.rekam-medis.rj.dokumen-view.instruksi-pasca-bedah-view-rj
                             :rjNo="$rjNo" :entries="$dataDaftarTxn['instruksiPascaBedahRJ'] ?? []"
                             wire:key="rm-view-instruksi-pasca-bedah-rj-{{ $rjNo }}" />
+
+                        {{-- ── Berkas Scan Luar — riwayat lintas kunjungan RJ/UGD/RI pasien ini ── --}}
+                        <livewire:pages::components.rekam-medis.berkas-luar-display.berkas-luar-display
+                            :regNo="(string) ($dataDaftarTxn['regNo'] ?? '')"
+                            wire:key="rm-rj-berkas-luar-{{ $dataDaftarTxn['regNo'] ?? 'init' }}" />
                     </div>
 
                     {{-- ════ TAB: HASIL PENUNJANG (lab / radiologi / upload — view-only) ════ --}}

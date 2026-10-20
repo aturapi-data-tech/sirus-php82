@@ -214,6 +214,7 @@ Route::middleware(['auth'])->group(function () {
             'mount/penunjang/radiologi',        // Foto + hasil bacaan radiologi (1 folder)
             'mount/penunjang/lab-luar',         // Hasil lab luar (PDF/JPG)
             'mount/penunjang/emr/uploadHasilPenunjang', // Hasil penunjang dari EMR RJ/UGD/RI
+            'mount/dokumen/emr/uploadBerkasLuar',       // Berkas scan luar dari Modul Dokumen RJ/UGD/RI
         ];
 
         $matched = null;
