@@ -142,6 +142,34 @@ trait EmrRITrait
             ->whereRaw("NVL(ok_status,'A') = 'A'");
     }
 
+    /**
+     * Nomor transfer stok Return Obat RI (bangsal → Gudang → Apotek) yang masih
+     * berlaku, yaitu belum berstatus 'F'. Guard MUNDUR: transaksi RI tidak boleh
+     * dibatalkan selama stok return sudah dipindah ke Apotek — batalkan dulu lewat
+     * Batal Kirim di tab Return Obat (atau batal transfer di menu Gudang).
+     * Kosong = tidak ada transfer / semuanya sudah dibatalkan.
+     */
+    protected function daftarTransferReturnObatRI($riHdrNo): array
+    {
+        $rowsReturn = DB::table('rstxn_riobatrtns')
+            ->where('rihdr_no', $riHdrNo)
+            ->whereNotNull('trf_no_apotek')
+            ->get(['trf_no_gudang', 'trf_no_apotek']);
+
+        $daftarTrfNo = $rowsReturn->pluck('trf_no_gudang')->merge($rowsReturn->pluck('trf_no_apotek'))->filter()->unique()->values()->all();
+        if ($daftarTrfNo === []) {
+            return [];
+        }
+
+        return DB::table('imtxn_trfhdrs')
+            ->whereIn('trf_no', $daftarTrfNo)
+            ->whereRaw("NVL(trf_status,'A') <> 'F'")
+            ->orderBy('trf_no')
+            ->pluck('trf_no')
+            ->map(fn($nomor) => (string) $nomor)
+            ->all();
+    }
+
     protected function lockRIRow($riHdrNo): void
     {
         $exists = DB::table('rstxn_rihdrs')

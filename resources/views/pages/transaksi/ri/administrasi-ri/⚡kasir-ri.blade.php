@@ -614,6 +614,13 @@ new class extends Component {
             DB::transaction(function () {
                 $this->lockRIRow($this->riHdrNo);
 
+                // Guard MUNDUR: return obat yang sudah dikirim ke Apotek harus dibatalkan dulu,
+                // supaya return tidak bisa diubah sementara stoknya sudah pindah.
+                $daftarTrfNo = $this->daftarTransferReturnObatRI($this->riHdrNo);
+                if ($daftarTrfNo !== []) {
+                    throw new \RuntimeException('Return obat sudah dikirim ke Apotek (Transfer #' . implode(', #', $daftarTrfNo) . '). Tekan Batal Kirim di tab Return Obat dulu.');
+                }
+
                 $hdr = DB::table('rstxn_rihdrs')
                     ->select('reg_no')
                     ->where('rihdr_no', $this->riHdrNo)
@@ -673,6 +680,8 @@ new class extends Component {
             $this->incrementVersion('kasir-ri');
             $this->dispatch('toast', type: 'success', message: 'Transaksi berhasil dibatalkan. Status pasien kembali ke Rawat Inap.');
             $this->dispatch('administrasi-ri.updated');
+        } catch (\RuntimeException $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
         } catch (\Exception $e) {
             $this->dispatch('toast', type: 'error', message: 'Gagal membatalkan: ' . $e->getMessage());
         }
