@@ -10,6 +10,14 @@ use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 new class extends Component {
     use EmrRITrait, WithRenderVersioningTrait;
 
+    /** Lokasi stok tujuan return: bangsal → Gudang Medis → Apotek (obat dipakai lagi oleh Apotek). */
+    public const GUDANG_SL_CODE = '04';
+    public const APOTEK_SL_CODE = '02';
+
+    /** Status header IMTXN_TRFHDRS (sama dengan modul Transfer Stok). */
+    public const STATUS_TRANSFER_POSTED = 'L';
+    public const STATUS_TRANSFER_BATAL = 'F';
+
     public array $renderVersions = [];
     protected array $renderAreas = ['modal-rtn-obat-ri'];
 
@@ -68,12 +76,14 @@ new class extends Component {
                 'rstxn_riobatrtns.riobat_qty',
                 'rstxn_riobatrtns.riobat_price',
                 'rstxn_riobatrtns.riobat_no',
+                'rstxn_riobatrtns.trf_no_gudang',
+                'rstxn_riobatrtns.trf_no_apotek',
             )
             ->where('rstxn_riobatrtns.rihdr_no', $riHdrNo)
             ->orderByDesc('rstxn_riobatrtns.riobat_date')
             ->get();
 
-        $this->dataRtnObat = $rows->map(fn($r) => (array) $r)->toArray();
+        $this->dataRtnObat = $rows->map(fn($row) => (array) $row)->toArray();
     }
 
     /* ===============================
@@ -184,6 +194,13 @@ new class extends Component {
         try {
             DB::transaction(function () use ($riobatNo) {
                 $this->lockRIRow($this->riHdrNo);
+
+                // Return yang sudah dikirim ke Apotek tidak boleh hilang — stoknya sudah pindah.
+                $sudahDikirim = DB::table('rstxn_riobatrtns')->where('riobat_no', $riobatNo)->whereNotNull('trf_no_apotek')->exists();
+                if ($sudahDikirim) {
+                    throw new \RuntimeException('Return ini sudah dikirim ke Apotek — tekan Batal Kirim dulu.');
+                }
+
                 DB::table('rstxn_riobatrtns')->where('riobat_no', $riobatNo)->delete();
                 $this->appendAdminLogRI($this->riHdrNo, 'Hapus Return Obat #' . $riobatNo);
             });
@@ -195,6 +212,122 @@ new class extends Component {
             $this->dispatch('toast', type: 'error', message: $e->getMessage());
         } catch (\Exception $e) {
             $this->dispatch('toast', type: 'error', message: 'Gagal: ' . $e->getMessage());
+        }
+    }
+
+    /* ===============================
+     | KIRIM RETURN KE APOTEK — HANYA setelah transaksi RI selesai, supaya tidak ada return
+     | baru yang menyusul. Dua transfer langsung berstatus selesai (L):
+     |   1. bangsal pasien → Gudang Medis (04)   2. Gudang Medis (04) → Apotek (02)
+     | Ledger tkview_iostock* membaca transfer berstatus L sebagai mutasi keluar/masuk.
+     =============================== */
+    public function kirimReturnKeApotek(): void
+    {
+        try {
+            DB::transaction(function () {
+                $this->lockRIRow($this->riHdrNo);
+
+                // Dibaca ulang SESUDAH baris RI dikunci — kasir bisa membatalkan transaksi di sela klik.
+                $this->isFormLocked = $this->checkRIStatus($this->riHdrNo);
+                if (!$this->isFormLocked) {
+                    throw new \RuntimeException('Transaksi RI belum selesai — return baru bisa dikirim ke Apotek setelah pasien pulang.');
+                }
+
+                $bangsal = DB::table('rsview_rihdrs')
+                    ->leftJoin('rsmst_bangsals', 'rsmst_bangsals.bangsal_id', '=', 'rsview_rihdrs.bangsal_id')
+                    ->where('rsview_rihdrs.rihdr_no', $this->riHdrNo)
+                    ->select('rsmst_bangsals.bangsal_name', 'rsmst_bangsals.sl_codefrom')
+                    ->first();
+                $slCodeBangsal = trim((string) ($bangsal->sl_codefrom ?? ''));
+                if ($slCodeBangsal === '') {
+                    throw new \RuntimeException('Bangsal ' . ($bangsal->bangsal_name ?? '-') . ' belum punya Kode SL — isi dulu di Master Bangsal.');
+                }
+
+                $rowsReturn = DB::table('rstxn_riobatrtns')
+                    ->where('rihdr_no', $this->riHdrNo)
+                    ->whereNull('trf_no_apotek')
+                    ->get();
+                if ($rowsReturn->isEmpty()) {
+                    throw new \RuntimeException('Tidak ada return yang perlu dikirim.');
+                }
+
+                // Satu baris detail per produk — modul Transfer Stok juga menolak produk ganda.
+                $qtyPerProduk = $rowsReturn->groupBy('product_id')->map(fn($rowsProduk) => $rowsProduk->sum('riobat_qty'));
+                $empId = auth()->user()->emp_id ?? 'SYSTEM';
+
+                $trfNo = [];
+                foreach (['gudang' => [$slCodeBangsal, self::GUDANG_SL_CODE], 'apotek' => [self::GUDANG_SL_CODE, self::APOTEK_SL_CODE]] as $tujuan => [$slCodeFrom, $slCodeTo]) {
+                    $trfNo[$tujuan] = (int) DB::table('imtxn_trfhdrs')->max('trf_no') + 1;
+                    DB::table('imtxn_trfhdrs')->insert([
+                        'trf_no' => $trfNo[$tujuan],
+                        'trf_date' => DB::raw('SYSDATE'),
+                        'sl_codefrom' => $slCodeFrom,
+                        'sl_codeto' => $slCodeTo,
+                        'trf_status' => self::STATUS_TRANSFER_POSTED,
+                        'emp_id' => $empId,
+                    ]);
+
+                    $trfDtl = (int) DB::table('imtxn_trfdtls')->max('trf_dtl');
+                    foreach ($qtyPerProduk as $productId => $qty) {
+                        DB::table('imtxn_trfdtls')->insert([
+                            'trf_no' => $trfNo[$tujuan],
+                            'trf_dtl' => ++$trfDtl,
+                            'product_id' => $productId,
+                            'qty' => $qty,
+                        ]);
+                    }
+                }
+
+                DB::table('rstxn_riobatrtns')
+                    ->whereIn('riobat_no', $rowsReturn->pluck('riobat_no')->all())
+                    ->update(['trf_no_gudang' => $trfNo['gudang'], 'trf_no_apotek' => $trfNo['apotek']]);
+
+                $this->appendAdminLogRI($this->riHdrNo, "Kirim Return Obat ke Apotek: Transfer #{$trfNo['gudang']} (bangsal → Gudang) & #{$trfNo['apotek']} (Gudang → Apotek)");
+            });
+
+            $this->findData($this->riHdrNo);
+            $this->dispatch('toast', type: 'success', message: 'Return obat dikirim ke Apotek.');
+        } catch (\RuntimeException $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
+        } catch (\Exception $e) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal mengirim return: ' . $e->getMessage());
+        }
+    }
+
+    /* ===============================
+     | BATAL KIRIM — pembalik kirimReturnKeApotek: transfernya dibatalkan (F) supaya
+     | ledger tidak menghitungnya lagi, lalu tanda kirim di baris return dikosongkan.
+     =============================== */
+    public function batalKirimReturn(): void
+    {
+        try {
+            DB::transaction(function () {
+                $this->lockRIRow($this->riHdrNo);
+
+                $rowsReturn = DB::table('rstxn_riobatrtns')
+                    ->where('rihdr_no', $this->riHdrNo)
+                    ->whereNotNull('trf_no_apotek')
+                    ->get();
+                if ($rowsReturn->isEmpty()) {
+                    throw new \RuntimeException('Tidak ada return yang sudah dikirim.');
+                }
+
+                $daftarTrfNo = $rowsReturn->pluck('trf_no_gudang')->merge($rowsReturn->pluck('trf_no_apotek'))->unique()->values()->all();
+
+                DB::table('imtxn_trfhdrs')->whereIn('trf_no', $daftarTrfNo)->update(['trf_status' => self::STATUS_TRANSFER_BATAL]);
+                DB::table('rstxn_riobatrtns')
+                    ->whereIn('riobat_no', $rowsReturn->pluck('riobat_no')->all())
+                    ->update(['trf_no_gudang' => null, 'trf_no_apotek' => null]);
+
+                $this->appendAdminLogRI($this->riHdrNo, 'Batal Kirim Return Obat ke Apotek: Transfer #' . implode(', #', $daftarTrfNo) . ' dibatalkan');
+            });
+
+            $this->findData($this->riHdrNo);
+            $this->dispatch('toast', type: 'success', message: 'Kirim return dibatalkan — transfer stok dibatalkan.');
+        } catch (\RuntimeException $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
+        } catch (\Exception $e) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal membatalkan kirim: ' . $e->getMessage());
         }
     }
 
@@ -316,7 +449,31 @@ new class extends Component {
         <div class="overflow-hidden bg-canvas border border-hairline rounded-2xl dark:border-gray-700 dark:bg-gray-900">
             <div class="flex items-center justify-between px-4 py-3 border-b border-hairline dark:border-gray-700">
                 <h3 class="text-sm font-semibold text-body dark:text-gray-300">Return Obat RI</h3>
-                <x-badge variant="gray">{{ count($dataRtnObat) }} item</x-badge>
+                <div class="flex items-center gap-2">
+                    <x-badge variant="gray">{{ count($dataRtnObat) }} item</x-badge>
+                    @php
+                        $jumlahBelumDikirim = collect($dataRtnObat)->whereNull('trf_no_apotek')->count();
+                        $jumlahSudahDikirim = count($dataRtnObat) - $jumlahBelumDikirim;
+                    @endphp
+                    @if ($jumlahSudahDikirim > 0)
+                        <x-confirm-button variant="warning-soft" action="batalKirimReturn()" title="Batal Kirim Return"
+                            message="Transfer stok return pasien ini dibatalkan, stok kembali seperti sebelum dikirim. Lanjutkan?"
+                            confirmText="Ya, batalkan">
+                            Batal Kirim
+                        </x-confirm-button>
+                    @endif
+                    @if ($jumlahBelumDikirim > 0)
+                        <x-confirm-button variant="primary" action="kirimReturnKeApotek()" title="Kirim Return ke Apotek"
+                            :disabled="!$isFormLocked"
+                            message="{{ $jumlahBelumDikirim }} baris return dikirim lewat dua transfer stok: bangsal pasien ke Gudang Medis, lalu Gudang Medis ke Apotek. Lanjutkan?"
+                            confirmText="Ya, kirim">
+                            Kirim Return ke Apotek
+                        </x-confirm-button>
+                        @if (!$isFormLocked)
+                            <span class="text-xs text-muted dark:text-gray-400">aktif setelah transaksi RI selesai</span>
+                        @endif
+                    @endif
+                </div>
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full text-sm text-left">
@@ -327,6 +484,7 @@ new class extends Component {
                             <th class="px-4 py-3 text-right">Qty</th>
                             <th class="px-4 py-3 text-right">Harga</th>
                             <th class="px-4 py-3 text-right">Subtotal</th>
+                            <th class="px-4 py-3">Transfer</th>
                             @if (!$isFormLocked) <th class="w-20 px-4 py-3 text-center">Hapus</th> @endif
                         </tr>
                     </thead>
@@ -340,15 +498,25 @@ new class extends Component {
                                 <td class="px-4 py-1.5 font-semibold text-right text-red-600 dark:text-red-400 whitespace-nowrap">
                                     -Rp {{ number_format(($item['riobat_qty'] ?? 0) * ($item['riobat_price'] ?? 0)) }}
                                 </td>
+                                <td class="px-4 py-1.5 whitespace-nowrap">
+                                    @if (!empty($item['trf_no_apotek']))
+                                        <x-badge variant="success">Terkirim</x-badge>
+                                        <span class="ml-1 font-mono text-xs text-muted">#{{ $item['trf_no_gudang'] }} → #{{ $item['trf_no_apotek'] }}</span>
+                                    @else
+                                        <x-badge variant="warning">Belum dikirim</x-badge>
+                                    @endif
+                                </td>
                                 @if (!$isFormLocked)
                                     <td class="px-4 py-1.5 text-center">
-                                        <x-hapus-button wire:click.prevent="removeRtnObat({{ $item['riobat_no'] }})" confirm="Hapus return obat ini?" />
+                                        @if (empty($item['trf_no_apotek']))
+                                            <x-hapus-button wire:click.prevent="removeRtnObat({{ $item['riobat_no'] }})" confirm="Hapus return obat ini?" />
+                                        @endif
                                     </td>
                                 @endif
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="{{ $isFormLocked ? 5 : 6 }}" class="px-4 py-10 text-sm text-center text-muted-soft dark:text-gray-600">
+                                <td colspan="{{ $isFormLocked ? 6 : 7 }}" class="px-4 py-10 text-sm text-center text-muted-soft dark:text-gray-600">
                                     Belum ada return obat
                                 </td>
                             </tr>
@@ -361,6 +529,7 @@ new class extends Component {
                                 <td class="px-4 py-3 text-sm font-bold text-right text-red-600 dark:text-red-400">
                                     -Rp {{ number_format(collect($dataRtnObat)->sum(fn($i) => ($i['riobat_qty'] ?? 0) * ($i['riobat_price'] ?? 0))) }}
                                 </td>
+                                <td></td>
                                 @if (!$isFormLocked) <td></td> @endif
                             </tr>
                         </tfoot>
