@@ -454,6 +454,7 @@ new class extends Component {
                     'jumlahTrx'      => count($kelompok->items),
                     'subtotalDebit'  => $kelompok->subtotalDebit,
                     'subtotalKredit' => $kelompok->subtotalKredit,
+                    'saldoAwal'      => $kelompok->saldoAwal,
                     'saldoAkhir'     => $kelompok->saldoAkhir,
                 ])
                 ->all();
@@ -465,6 +466,7 @@ new class extends Component {
                 'jumlahTrx'      => $this->rows->count(),
                 'subtotalDebit'  => $this->totalDebit,
                 'subtotalKredit' => $this->totalKredit,
+                'saldoAwal'      => $this->saldoAwalPeriode,
                 'saldoAkhir'     => $this->saldoAkhir,
             ]];
         }

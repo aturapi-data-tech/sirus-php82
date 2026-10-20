@@ -53,8 +53,20 @@
                  bawah KREDIT dan terbaca sebagai kredit. Saldo cukup di kotak ringkasan di atas. --}}
             @foreach ($kelompokJenis as $kelompok)
                 @if ($kelompok->judul)
+                    {{-- Saldo shift di pita judul (berlabel), bukan di baris subtotal: subtotal hanya
+                         menjumlah kolom JML TRX/DEBIT/KREDIT di bawahnya. --}}
                     <tr style="background:#e8f5ee;">
-                        <td colspan="5" style="border:1px solid #999; font-weight:bold;">{{ $kelompok->judul }}</td>
+                        <td colspan="5" style="border:1px solid #999; padding:0;">
+                            <table width="100%" cellpadding="4" cellspacing="0" style="font-size:10px; border-collapse:collapse;">
+                                <tr>
+                                    <td style="font-weight:bold;">{{ $kelompok->judul }}</td>
+                                    <td style="text-align:right; white-space:nowrap;">
+                                        Saldo awal <b>{{ $formatAngka($kelompok->saldoAwal) }}</b>
+                                        &nbsp;&nbsp;Saldo akhir <b>{{ $formatAngka($kelompok->saldoAkhir) }}</b>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
                     </tr>
                 @endif
                 @foreach ($kelompok->rekap as $nomor => $rekap)
@@ -69,7 +81,7 @@
                 @if ($kelompok->subtotalLabel)
                     <tr style="background:#f3f4f6;">
                         <td colspan="2" style="border:1px solid #999; text-align:right; font-weight:bold;">
-                            {{ $kelompok->subtotalLabel }} — saldo akhir {{ $formatAngka($kelompok->saldoAkhir) }}
+                            {{ $kelompok->subtotalLabel }}
                         </td>
                         <td style="border:1px solid #999; text-align:right; font-weight:bold;">{{ $kelompok->jumlahTrx }}</td>
                         <td style="border:1px solid #999; text-align:right; font-weight:bold;">{{ $formatAngka($kelompok->subtotalDebit) }}</td>
