@@ -1,76 +1,21 @@
 {{-- resources/views/pages/transaksi/keuangan/saldo-kas/saldo-kas-rekap-jenis-print.blade.php --}}
 {{--
-    Ukuran A4 bagi 4 (105 × 148,5 mm) di POJOK KANAN ATAS kertas A4 — tinggal dipotong.
-    Sengaja HTML mandiri, bukan x-pdf.layout-*: layout itu selebar A4 dengan kop berlogo besar.
-    Kolom kanan dibuat lewat margin-left (aliran biasa), bukan position:absolute, supaya data
-    panjang (tampilan Bulanan) tetap bersambung di kolom kanan halaman berikutnya.
+    Ukuran kwitansi (A4 bagi 4): dirender di kertas A6 lewat setPaper('a6') di cetakPerJenis().
+    layout-kwitansi sendiri TIDAK menyempitkan isi — di kertas A4 isinya melebar selebar A4 —
+    jadi ukuran kertasnya yang menentukan. PDF A6 yang dicetak ke kertas A4 skala 100%
+    diletakkan printer/peramban di tengah kertas.
     Semua gaya inline: kelas Tailwind arbitrary tidak dirender dompdf.
 --}}
 @php
     // Data sudah disusun di method cetakPerJenis() — di sini hanya format angka.
     $formatAngka = fn($nilai) => number_format((float) $nilai, 0, '.', ',');
-    $sel = 'border:0.5pt solid #999;';
+    $sel = 'border:0.5pt solid #999; padding:1.5px 2.5px;';
 @endphp
-<!DOCTYPE html>
-<html lang="id">
 
-<head>
-    <meta charset="utf-8">
-    <title>TOTAL KAS PER JENIS TRANSAKSI</title>
-    <style>
-        /* Margin atas/bawah dipasang di aturan halaman, bukan padding kotak, supaya halaman sambungan juga berjarak. */
-        @page {
-            size: A4;
-            margin: 6mm 0 5mm 0;
-        }
-
-        * {
-            box-sizing: border-box;
-        }
-
-        body {
-            margin: 0;
-            padding: 0;
-            font-family: sans-serif;
-            font-size: 7px;
-            color: #111;
-        }
-
-        /* Tanpa width: dompdf tak menghormati box-sizing pada padding, width:105mm + padding
-           meluber keluar kertas. Blok mengisi sisa 105mm di kanan, isinya dipersempit padding. */
-        .seperempat {
-            margin-left: 105mm;
-            padding: 0 6mm;
-        }
-
-        table {
-            border-collapse: collapse;
-        }
-
-        td,
-        th {
-            padding: 1.5px 2.5px;
-        }
-    </style>
-</head>
-
-<body>
-    <div class="seperempat">
-
-        {{-- ── KOP RINGKAS ── --}}
-        <table width="100%" cellspacing="0" style="margin-bottom:3px;">
-            <tr>
-                <td style="padding:0; font-size:8px; font-weight:bold;">Rumah Sakit Islam Madinah</td>
-                <td style="padding:0; text-align:right; font-size:6px; color:#555;">Dicetak {{ $dicetakPada }}</td>
-            </tr>
-        </table>
-        <div style="border-top:1pt solid #15803d; margin-bottom:4px;"></div>
-        <div style="text-align:center; font-size:9px; font-weight:bold; text-decoration:underline; margin-bottom:4px;">
-            TOTAL KAS PER JENIS TRANSAKSI
-        </div>
-
+<x-pdf.layout-kwitansi title="TOTAL KAS PER JENIS">
+    <div style="font-size:7px; margin-top:4px;">
         {{-- ── INFO AKUN & PERIODE ── --}}
-        <table width="100%" cellspacing="0" style="margin-bottom:4px;">
+        <table width="100%" cellspacing="0" style="border-collapse:collapse; margin-bottom:4px;">
             <tr>
                 <td style="padding:0.5px 0; width:34px; color:#555;">Akun Kas</td>
                 <td style="padding:0.5px 0; font-weight:bold;">: {{ $accId }} — {{ $accDesc }}</td>
@@ -79,10 +24,14 @@
                 <td style="padding:0.5px 0; color:#555;">Periode</td>
                 <td style="padding:0.5px 0; font-weight:bold;">: {{ $periodeLabel }} &nbsp;<span style="font-weight:normal; color:#555;">({{ $modeLabel }})</span></td>
             </tr>
+            <tr>
+                <td style="padding:0.5px 0; color:#555;">Dicetak</td>
+                <td style="padding:0.5px 0;">: {{ $dicetakPada }}</td>
+            </tr>
         </table>
 
         {{-- ── RINGKASAN ── --}}
-        <table width="100%" cellspacing="0" style="margin-bottom:4px; text-align:center;">
+        <table width="100%" cellspacing="0" style="border-collapse:collapse; margin-bottom:4px; text-align:center;">
             <tr>
                 <td style="{{ $sel }} background:#f3f4f6; width:25%;">Saldo Awal<br><span style="font-size:6px; color:#555;">per {{ $saldoAwalTgl }}</span><br><b>{{ $formatAngka($saldoAwal) }}</b></td>
                 <td style="{{ $sel }} background:#eff6ff; width:25%;">Debit<br><span style="font-size:6px;">&nbsp;</span><br><b>{{ $formatAngka($totalDebit) }}</b></td>
@@ -94,7 +43,7 @@
         {{-- ── TABEL PER JENIS ──
              Kolom mengikuti alur kas: SALDO AWAL + DEBIT − KREDIT = SALDO. Baris jenis hanya mengisi
              DEBIT/KREDIT; saldo awal & saldo akhir hanya di baris subtotal shift dan TOTAL. --}}
-        <table width="100%" cellspacing="0">
+        <table width="100%" cellspacing="0" style="border-collapse:collapse;">
             <thead>
                 <tr style="background:#f3f4f6; font-size:6px;">
                     <th style="{{ $sel }} text-align:center; width:4mm;">NO</th>
@@ -146,8 +95,5 @@
                 </tr>
             </tbody>
         </table>
-
     </div>
-</body>
-
-</html>
+</x-pdf.layout-kwitansi>

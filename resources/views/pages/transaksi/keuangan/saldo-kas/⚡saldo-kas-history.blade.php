@@ -476,8 +476,9 @@ new class extends Component {
             'jumlahTrx'     => $this->rows->count(),
         ];
 
+        // A6 = A4 bagi 4 (ukuran kwitansi); dicetak ke A4 skala 100% jatuh di tengah kertas.
         $pdf = Pdf::loadView('pages.transaksi.keuangan.saldo-kas.saldo-kas-rekap-jenis-print', $dataCetak)
-            ->setPaper('a4', 'portrait');
+            ->setPaper('a6', 'portrait');
 
         $namaFile = 'rekap-jenis-kas-' . $this->accId . '-' . $this->akhiranPeriode() . '.pdf';
 
