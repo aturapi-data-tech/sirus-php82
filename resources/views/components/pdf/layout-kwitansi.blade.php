@@ -65,8 +65,22 @@
     <div class="kwitansi-wrapper">
 
         @if ($judulDiBawah)
-            {{-- KOP selebar kertas, garis, lalu judul di bawahnya --}}
-            <x-logo.identitas-horisontal :showGaris="false" />
+            {{-- KOP RINGKAS (logo & huruf kecil — kertas A6), garis, lalu judul di bawahnya.
+                 Sengaja tidak memakai x-logo.identitas-horisontal: ukurannya baku untuk A4 dan
+                 komponen itu dipakai banyak cetakan lain. --}}
+            <table class="w-full border-collapse">
+                <tr>
+                    <td class="w-10 pr-2 align-middle">
+                        <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('images/Logo Persegi.png'))) }}"
+                            alt="Logo Rumah Sakit Islam Madinah" class="block w-auto h-10">
+                    </td>
+                    <td class="text-[6.5px] leading-tight text-gray-600 align-middle">
+                        <div class="text-[9px] font-bold text-gray-900">Rumah Sakit Islam Madinah</div>
+                        <div>Jl. Jati Wayang, Lk. 2, Ngunut, Kec. Ngunut, Kabupaten Tulungagung, Jawa Timur 66292</div>
+                        <div>Telp. (0355) 396055&ensp;Fax. (0355) 396824&ensp;www.rsimadinah.com</div>
+                    </td>
+                </tr>
+            </table>
             <div class="mt-0.5 border-t border-gray-400"></div>
             <div class="mt-1 text-center text-[9px] font-bold uppercase tracking-wide text-gray-900">
                 {{ $title ?? 'Kwitansi Pembayaran' }}
