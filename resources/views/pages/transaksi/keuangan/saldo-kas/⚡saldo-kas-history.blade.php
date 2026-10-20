@@ -883,23 +883,26 @@ new class extends Component {
 
             <div class="sticky bottom-0 z-10 px-6 py-3 bg-canvas border-t border-hairline dark:bg-gray-900 dark:border-gray-700">
                 <div class="flex justify-end gap-2">
+                    {{-- Urutan dari kanan (sebelah Tutup): ringkasan per jenis → rincian → data Excel. --}}
                     <x-info-button type="button" class="gap-2" wire:click="unduhCsv"
                         :disabled="$this->rows->count() === 0"
                         wire:loading.attr="disabled" wire:target="unduhCsv"
-                        title="Unduh rincian transaksi sebagai CSV — siap dibuka di Excel">
+                        title="Unduh seluruh baris transaksi + saldo awal/akhir untuk diolah atau dibandingkan di Excel">
                         <span wire:loading.remove wire:target="unduhCsv" class="inline-flex items-center gap-2">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8">
                                 <path stroke-linecap="round" stroke-linejoin="round"
                                     d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
                             </svg>
-                            Unduh Excel
+                            Unduh Data Excel
                         </span>
                         <span wire:loading wire:target="unduhCsv" class="inline-flex items-center gap-2">
                             <x-loading /> Menyiapkan...
                         </span>
                     </x-info-button>
-                    <x-cetak-button wire:click="cetakPerJenis" :disabled="$this->rows->count() === 0" label="Cetak per Jenis" />
-                    <x-cetak-button wire:click="cetakRekap" :disabled="$this->rows->count() === 0" label="Cetak Rekap" />
+                    <x-cetak-button wire:click="cetakRekap" :disabled="$this->rows->count() === 0"
+                        label="Cetak Rincian Transaksi" title="Cetak setiap transaksi beserta saldo berjalannya" />
+                    <x-cetak-button wire:click="cetakPerJenis" :disabled="$this->rows->count() === 0"
+                        label="Cetak Total per Jenis" title="Cetak total uang tiap jenis transaksi saja, tanpa rincian baris" />
                     <x-secondary-button type="button" wire:click="closeModal">Tutup</x-secondary-button>
                 </div>
             </div>

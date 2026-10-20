@@ -1,6 +1,6 @@
 {{-- resources/views/pages/transaksi/keuangan/saldo-kas/saldo-kas-rekap-jenis-print.blade.php --}}
 
-<x-pdf.layout-a4-with-out-background title="REKAP KAS PER JENIS TRANSAKSI">
+<x-pdf.layout-a4-with-out-background title="TOTAL KAS PER JENIS TRANSAKSI">
 
     @php
         // Data sudah disusun di method cetakPerJenis() — di sini hanya format angka.
