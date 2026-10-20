@@ -576,7 +576,7 @@ new class extends Component {
     </div>
     {{-- MODAL KIRIM — pilih ruangan asal stok, lalu dua transfer: ruangan → Gudang → Apotek --}}
     <x-modal name="kirim-return-obat-ri" size="2xl" focusable>
-        <x-modul-dokumen.header judul="Kirim Return ke Apotek" ikon="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4">
+        <x-modul-dokumen.header judul="Kirim Return ke Apotek" tutup="tutupKirimReturn" ikon="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4">
             Stok return dipindah lewat dua transfer: ruangan asal → Gudang Medis (04) → Apotek (02).
         </x-modul-dokumen.header>
         <div class="p-6 space-y-5" wire:key="{{ $this->renderKey('modal-kirim-return-ri', [$riHdrNo ?? 'new']) }}">
