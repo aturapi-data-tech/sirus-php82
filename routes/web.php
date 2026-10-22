@@ -67,6 +67,11 @@ Route::middleware(['auth'])->group(function () {
     Route::livewire('/panduan-dev/koding-formulir-rm', 'pages::panduan-dev.koding-formulir-rm.koding-formulir-rm')
         ->name('panduan-dev.koding-formulir-rm');
 
+    // Panduan API Mobile JKN (Antrean Online BPJS) — cara kerja endpoint, host API terpisah,
+    // operasional petugas & penanganan masalah — docs/mobile-jkn-api.md versi web
+    Route::livewire('/panduan-dev/mobile-jkn', 'pages::panduan-dev.mobile-jkn.mobile-jkn')
+        ->name('panduan-dev.mobile-jkn');
+
     // ===========================================
     // DOWN TIME — FORMULIR MANUAL WAKTU HENTI SIMRS
     // ===========================================
