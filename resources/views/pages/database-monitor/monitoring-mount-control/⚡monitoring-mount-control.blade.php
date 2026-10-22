@@ -33,8 +33,15 @@ new class extends Component {
     public bool $pdfuniteInstalled = false;
     public string $pdfuniteVersion = '';
 
+    /* User proses PHP yang menjalankan sudo — dipakai baris sudoers di kartu Setup Server */
+    public string $userProsesPhp = '';
+
     public function mount(): void
     {
+        $this->userProsesPhp = function_exists('posix_geteuid')
+            ? (posix_getpwuid(posix_geteuid())['name'] ?? 'www-data')
+            : 'www-data';
+
         $this->checkMounted();
         $this->checkMountedUpload();
         $this->checkMountedLab();
@@ -1054,6 +1061,88 @@ new class extends Component {
                         </p>
                         <p class="text-[11px] text-rose-800 dark:text-rose-300 leading-relaxed">
                             <strong>Konsekuensi:</strong> backup TTD prosedur terpisah; ukuran kecil per file, total tidak signifikan.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            {{-- ================================================================ --}}
+            {{-- SETUP SERVER — sekali per server, bila Mount gagal karena sudo   --}}
+            {{-- ================================================================ --}}
+            <div class="mt-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-2xl shadow-sm overflow-hidden">
+                <div class="px-4 py-3 border-b border-blue-200 dark:border-blue-700 bg-blue-100/50 dark:bg-blue-900/30">
+                    <h3 class="text-base font-bold text-blue-900 dark:text-blue-200">
+                        Setup Server (sekali per server)
+                    </h3>
+                    <p class="text-[11px] text-blue-700 dark:text-blue-300">
+                        Jalankan di terminal server Ubuntu bila Mount gagal. User PHP halaman ini:
+                        <code class="px-1 rounded bg-blue-100 dark:bg-blue-900/40 font-mono">{{ $userProsesPhp }}</code>
+                    </p>
+                </div>
+
+                <div class="p-4 space-y-3 bg-canvas dark:bg-gray-900">
+                    @foreach ([
+                        [
+                            'judul' => 'Pasang paket',
+                            'ket' => 'cifs-utils untuk mount share Windows/SMB, poppler-utils untuk Gabung Berkas BPJS.',
+                            'kode' => 'sudo apt install -y cifs-utils poppler-utils',
+                        ],
+                        [
+                            'judul' => 'Izinkan user PHP menjalankan mount tanpa password',
+                            'ket' => 'Buka file sudoers baru — selalu lewat visudo, salah ketik di sudoers bisa merusak sudo.',
+                            'kode' => 'sudo visudo -f /etc/sudoers.d/sirus-mount',
+                        ],
+                        [
+                            'judul' => 'Isi file tersebut dengan satu baris ini, simpan, lalu kunci izinnya',
+                            'ket' => 'Baris pertama masuk ke visudo; baris kedua dijalankan di terminal.',
+                            'kode' => $userProsesPhp . ' ALL=(root) NOPASSWD: /usr/bin/mount, /usr/bin/umount, /usr/bin/mountpoint, /usr/bin/apt-get' . "\n" . 'sudo chmod 440 /etc/sudoers.d/sirus-mount',
+                        ],
+                        [
+                            'judul' => 'Uji dari terminal',
+                            'ket' => 'Hasil "is not a mountpoint" / "is a mountpoint" = izin sudah benar. "password is required" = user atau path perintah belum cocok (cek: which mount umount mountpoint).',
+                            'kode' => 'sudo -u ' . $userProsesPhp . ' sudo -n /usr/bin/mountpoint ' . $mountPoint,
+                        ],
+                        [
+                            'judul' => 'Kembali ke halaman ini',
+                            'ket' => 'Tekan Buat Folder di tiap kartu, lalu Mount All. Status berubah menjadi Terhubung.',
+                            'kode' => '',
+                        ],
+                    ] as $nomor => $langkah)
+                        <div class="p-3 rounded-lg bg-surface-soft dark:bg-gray-800/60 border border-hairline dark:border-gray-700">
+                            <div class="flex items-start gap-2 mb-1">
+                                <span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-blue-500 text-white text-[10px] font-bold shrink-0">{{ $nomor + 1 }}</span>
+                                <p class="text-xs font-bold text-ink dark:text-gray-100">{{ $langkah['judul'] }}</p>
+                            </div>
+                            <p class="text-[11px] text-muted dark:text-gray-400 leading-relaxed">{{ $langkah['ket'] }}</p>
+                            @if ($langkah['kode'] !== '')
+                                <code class="block mt-1.5 px-2 py-1.5 text-[10px] font-mono whitespace-pre-wrap break-all rounded bg-gray-900 text-gray-100 dark:bg-gray-800">{{ $langkah['kode'] }}</code>
+                            @endif
+                        </div>
+                    @endforeach
+
+                    {{-- Pesan error → penyebab --}}
+                    <div class="pt-2 border-t border-hairline dark:border-gray-700">
+                        <p class="text-[10px] font-bold uppercase tracking-wide text-muted dark:text-gray-400 mb-2">Pesan error → penyebab</p>
+                        @foreach ([
+                            ['a terminal is required / a password is required', 'Langkah 2–3 belum dibuat, atau nama user di sudoers tidak sama dengan user PHP di atas.'],
+                            ['unknown filesystem type \'cifs\' / wrong fs type', 'cifs-utils belum terpasang (langkah 1).'],
+                            ['mount point does not exist / No such file', 'Folder belum ada — tekan Buat Folder dulu.'],
+                            ['mount error(13): Permission denied', 'Share 172.8.8.12 menolak tanpa kredensial — samakan setelan dengan server lama (/etc/fstab, file kredensial SMB).'],
+                            ['mount error(112) / Host is down', 'File server mati atau port 445 diblok firewall.'],
+                            ['Status Tidak Terhubung padahal Mount berhasil', 'Tekan Cek Status; bila tetap, sudoers belum mengizinkan /usr/bin/mountpoint.'],
+                        ] as [$pesanError, $penyebab])
+                            <div class="mb-2 p-2.5 rounded-lg border border-hairline dark:border-gray-700">
+                                <p class="text-[10px] font-mono font-semibold text-red-700 dark:text-red-300 break-all">{{ $pesanError }}</p>
+                                <p class="text-[11px] text-muted dark:text-gray-400 leading-snug mt-0.5">{{ $penyebab }}</p>
+                            </div>
+                        @endforeach
+                    </div>
+
+                    <div class="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/50">
+                        <p class="text-[11px] text-amber-800 dark:text-amber-300 leading-relaxed">
+                            Project pindah folder/server? Mount Point default di atas ditulis tetap
+                            (<code class="px-1 rounded bg-amber-100 dark:bg-amber-900/40 font-mono">/var/www/html/sirus-php82/...</code>) —
+                            ubah di berkas halaman ini, lepas mount lama (<code class="px-1 rounded bg-amber-100 dark:bg-amber-900/40 font-mono">sudo umount &lt;path lama&gt;</code>), lalu Mount All lagi.
                         </p>
                     </div>
                 </div>
