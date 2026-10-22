@@ -28,6 +28,12 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    // Host API Mobile JKN (tanpa http:// dan port), mis. apijkn.rsimadinah.id.
+    // Kosong = route API Mobile JKN tidak dimuat.
+    'mobile_jkn' => [
+        'host' => env('MOBILE_JKN_HOST'),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),
