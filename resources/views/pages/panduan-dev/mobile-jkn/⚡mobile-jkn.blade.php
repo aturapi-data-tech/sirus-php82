@@ -120,8 +120,8 @@ TXT,
     ServerName  dev-sirus.rsimadinah.com
     ServerAlias apijkn.rsimadinah.com
 
-    DocumentRoot /var/www/sirus-php82/public
-    <Directory /var/www/sirus-php82/public>
+    DocumentRoot /var/www/html/sirus-php82/public
+    <Directory /var/www/html/sirus-php82/public>
         Options FollowSymLinks
         AllowOverride All
         Require all granted

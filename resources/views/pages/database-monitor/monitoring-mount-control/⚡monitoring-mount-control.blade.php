@@ -7,17 +7,17 @@ use Symfony\Component\Process\Exception\ProcessFailedException;
 
 new class extends Component {
     public string $shareServer = '//172.8.8.12/rad_path/';
-    public string $mountPoint = '/opt/lampp/htdocs/sirus-php82/storage/app/private/mount/penunjang/radiologi';
+    public string $mountPoint = '/var/www/html/sirus-php82/storage/app/private/mount/penunjang/radiologi';
     // (RAD Share — foto + hasil bacaan share folder ini, di-mount dari //172.8.8.12/rad_path/)
     public string $shareServerUpload = '//172.8.8.12/upload_path/';
-    public string $mountPointUpload = '/opt/lampp/htdocs/sirus-php82/storage/app/private/mount/penunjang/emr/uploadHasilPenunjang';
+    public string $mountPointUpload = '/var/www/html/sirus-php82/storage/app/private/mount/penunjang/emr/uploadHasilPenunjang';
     public string $shareServerLab = '//172.8.8.12/lab_path/';
-    public string $mountPointLab = '/opt/lampp/htdocs/sirus-php82/storage/app/private/mount/penunjang/lab-luar';
+    public string $mountPointLab = '/var/www/html/sirus-php82/storage/app/private/mount/penunjang/lab-luar';
     public string $shareServerBpjs = '//172.8.8.12/bpjs_path/';
-    public string $mountPointBpjs = '/opt/lampp/htdocs/sirus-php82/storage/app/private/mount/bpjs';
+    public string $mountPointBpjs = '/var/www/html/sirus-php82/storage/app/private/mount/bpjs';
     // Berkas Scan Luar dari Modul Dokumen RJ/UGD/RI — folder sama dengan App\Support\BerkasLuar::FOLDER_MOUNT.
     public string $shareServerDokumen = '//172.8.8.12/dokumen_path/';
-    public string $mountPointDokumen = '/opt/lampp/htdocs/sirus-php82/storage/app/private/mount/dokumen/emr/uploadBerkasLuar';
+    public string $mountPointDokumen = '/var/www/html/sirus-php82/storage/app/private/mount/dokumen/emr/uploadBerkasLuar';
     public string $statusMessage = '';
     public string $statusMessageUpload = '';
     public string $statusMessageLab = '';
