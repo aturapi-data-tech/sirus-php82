@@ -207,6 +207,53 @@ document.addEventListener("alpine:init", () => {
             if (i > -1 && i < els.length - 1) els[i + 1].focus();
         });
     });
+
+    // x-melayang="<elemen patokan>": pendamping x-anchor.fixed untuk dropdown yang melayang
+    // (LOV, menu titik-3). x-anchor mengurus POSISI & arah buka (flip ke atas bila ruang bawah
+    // kurang); directive ini mengurus UKURAN:
+    //   - tinggi maks = ruang terlega di atas/bawah patokan (min 120px), tak melebihi max-h
+    //     kelas aslinya (max-h-72/96 dst.) — sisanya di-scroll di dalam daftar;
+    //   - .lebar   → lebar dropdown = lebar patokan (LOV selebar input);
+    //   - .daftar  → tinggi maks dipasang di <ul> pertama (daftar LOV), bukan di elemen ini.
+    // Diukur ulang saat elemen tampil/berubah ukuran (ResizeObserver), resize & scroll halaman.
+    // Elemennya WAJIB wire:ignore.self di komponen Livewire — tanpa itu morph menghapus style.
+    window.Alpine.directive("melayang", (el, { expression, modifiers }, { evaluateLater, cleanup }) => {
+        const ambilPatokan = evaluateLater(expression || "$el.parentElement");
+        // <ul> dicari ULANG tiap ukur: di x-combobox daftarnya baru lahir saat dibuka (x-if).
+        // max-h kelas aslinya dibaca sekali per elemen sebelum ditimpa style inline.
+        const batasAsli = new WeakMap();
+        const ambilTarget = () => {
+            const target = modifiers.includes("daftar") ? el.querySelector("ul") || el : el;
+            if (!batasAsli.has(target)) {
+                batasAsli.set(target, parseFloat(getComputedStyle(target).maxHeight) || Infinity);
+                if (target === el) el.style.overflowY = "auto";
+            }
+            return target;
+        };
+
+        const ukur = () => {
+            ambilPatokan((patokan) => {
+                if (!patokan || !patokan.getBoundingClientRect) return;
+                const target = ambilTarget();
+                const r = patokan.getBoundingClientRect();
+                const ruang = Math.max(window.innerHeight - r.bottom, r.top) - 24;
+                if (modifiers.includes("lebar")) el.style.width = r.width + "px";
+                target.style.maxHeight = Math.max(120, Math.min(batasAsli.get(target), ruang)) + "px";
+            });
+        };
+
+        const pengamat = new ResizeObserver(() => requestAnimationFrame(ukur));
+        pengamat.observe(el);
+        window.addEventListener("resize", ukur);
+        window.addEventListener("scroll", ukur, true);
+        ukur();
+
+        cleanup(() => {
+            pengamat.disconnect();
+            window.removeEventListener("resize", ukur);
+            window.removeEventListener("scroll", ukur, true);
+        });
+    });
 });
 
 // pdf.js — LAZY-LOADED seperti TinyMCE: bundle baru diunduh saat <x-pratinjau-pdf> pertama dibuka.
@@ -222,7 +269,12 @@ function loadPdfjs() {
                 "pdfjs-dist/legacy/build/pdf.worker.min.mjs?worker"
             );
             pdfjs.GlobalWorkerOptions.workerPort = new PdfjsWorker();
-            return pdfjs;
+            // Satu PDFWorker bersama, dikirim eksplisit ke getDocument({ worker }): dengan begitu
+            // loadingTask.destroy() hanya membuang dokumennya, worker-nya tetap hidup. Tanpa ini
+            // destroy ikut mencabut worker dari cache, dan PDF yang dibuka sesaat sesudah menutup
+            // yang lain bisa gagal "worker is being destroyed".
+            const worker = new pdfjs.PDFWorker({ port: pdfjs.GlobalWorkerOptions.workerPort });
+            return { pdfjs, worker };
         })();
     }
     return _pdfjsPromise;
@@ -234,6 +286,9 @@ document.addEventListener("alpine:init", () => {
     window.Alpine.data("pratinjauPdf", ({ src, namaFile = "hasil-penunjang.pdf" }) => {
         // Di luar state reaktif: proxy Alpine merusak objek pdf.js (field privat).
         let dokumen = null;
+        // pdf.js 6: destroy() ada di loading task (hasil getDocument), BUKAN di PDFDocumentProxy —
+        // memanggil dokumen.destroy() melempar "destroy is not a function" saat modal ditutup.
+        let tugasMuat = null;
         let isiPdf = null;
         let urutanRender = 0;
         let tugasRender = [];
@@ -248,9 +303,10 @@ document.addEventListener("alpine:init", () => {
             async init() {
                 try {
                     isiPdf = await this.ambilIsi();
-                    const pdfjs = await loadPdfjs();
+                    const { pdfjs, worker } = await loadPdfjs();
                     // slice(): buffer dipindah ke worker; salinan asli tetap untuk cetak/unduh.
-                    dokumen = await pdfjs.getDocument({ data: isiPdf.slice() }).promise;
+                    tugasMuat = pdfjs.getDocument({ data: isiPdf.slice(), worker });
+                    dokumen = await tugasMuat.promise;
                     this.jumlahHalaman = dokumen.numPages;
                     await this.render();
                 } catch (e) {
@@ -263,7 +319,8 @@ document.addEventListener("alpine:init", () => {
 
             destroy() {
                 tugasRender.forEach((tugas) => tugas.cancel());
-                dokumen?.destroy();
+                tugasMuat?.destroy().catch(() => {});
+                tugasMuat = null;
                 dokumen = null;
             },
 

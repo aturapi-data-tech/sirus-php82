@@ -7,33 +7,46 @@ use Symfony\Component\Process\Exception\ProcessFailedException;
 
 new class extends Component {
     public string $shareServer = '//172.8.8.12/rad_path/';
-    public string $mountPoint = '/opt/lampp/htdocs/sirus-php82/storage/app/private/mount/penunjang/radiologi';
+    public string $mountPoint = '/var/www/html/sirus-php82/storage/app/private/mount/penunjang/radiologi';
     // (RAD Share — foto + hasil bacaan share folder ini, di-mount dari //172.8.8.12/rad_path/)
     public string $shareServerUpload = '//172.8.8.12/upload_path/';
-    public string $mountPointUpload = '/opt/lampp/htdocs/sirus-php82/storage/app/private/mount/penunjang/emr/uploadHasilPenunjang';
+    public string $mountPointUpload = '/var/www/html/sirus-php82/storage/app/private/mount/penunjang/emr/uploadHasilPenunjang';
     public string $shareServerLab = '//172.8.8.12/lab_path/';
-    public string $mountPointLab = '/opt/lampp/htdocs/sirus-php82/storage/app/private/mount/penunjang/lab-luar';
+    public string $mountPointLab = '/var/www/html/sirus-php82/storage/app/private/mount/penunjang/lab-luar';
     public string $shareServerBpjs = '//172.8.8.12/bpjs_path/';
-    public string $mountPointBpjs = '/opt/lampp/htdocs/sirus-php82/storage/app/private/mount/bpjs';
+    public string $mountPointBpjs = '/var/www/html/sirus-php82/storage/app/private/mount/bpjs';
+    // Berkas Scan Luar dari Modul Dokumen RJ/UGD/RI — folder sama dengan App\Support\BerkasLuar::FOLDER_MOUNT.
+    public string $shareServerDokumen = '//172.8.8.12/dokumen_path/';
+    public string $mountPointDokumen = '/var/www/html/sirus-php82/storage/app/private/mount/dokumen/emr/uploadBerkasLuar';
     public string $statusMessage = '';
     public string $statusMessageUpload = '';
     public string $statusMessageLab = '';
     public string $statusMessageBpjs = '';
+    public string $statusMessageDokumen = '';
     public bool $isMounted = false;
     public bool $isMountedUpload = false;
     public bool $isMountedLab = false;
     public bool $isMountedBpjs = false;
+    public bool $isMountedDokumen = false;
 
     /* poppler-utils (pdfunite) — dipakai fitur Gabung Berkas BPJS */
     public bool $pdfuniteInstalled = false;
     public string $pdfuniteVersion = '';
 
+    /* User proses PHP yang menjalankan sudo — dipakai baris sudoers di kartu Setup Server */
+    public string $userProsesPhp = '';
+
     public function mount(): void
     {
+        $this->userProsesPhp = function_exists('posix_geteuid')
+            ? (posix_getpwuid(posix_geteuid())['name'] ?? 'www-data')
+            : 'www-data';
+
         $this->checkMounted();
         $this->checkMountedUpload();
         $this->checkMountedLab();
         $this->checkMountedBpjs();
+        $this->checkMountedDokumen();
         $this->checkPdfunite();
     }
 
@@ -125,6 +138,11 @@ new class extends Component {
     public function createMountPointBpjs(): void
     {
         $this->createDirectorySafe($this->mountPointBpjs, 'BPJS');
+    }
+
+    public function createMountPointDokumen(): void
+    {
+        $this->createDirectorySafe($this->mountPointDokumen, 'Berkas Scan Luar');
     }
 
     private function createDirectorySafe(string $path, string $label): void
@@ -342,6 +360,72 @@ new class extends Component {
         }
     }
 
+    public function mountShareDokumen(): void
+    {
+        $process = new Process(['sudo', '/usr/bin/mount', '-t', 'cifs', $this->shareServerDokumen, $this->mountPointDokumen]);
+
+        try {
+            $process->setTimeout(10);
+            $process->run();
+
+            if (!$process->isSuccessful()) {
+                throw new ProcessFailedException($process);
+            }
+
+            $this->statusMessageDokumen = '✓ Mount berhasil di: ' . $this->mountPointDokumen;
+            $this->dispatch('toast', type: 'success', message: $this->statusMessageDokumen);
+        } catch (ProcessFailedException $e) {
+            $this->statusMessageDokumen = '✗ Mount gagal: ' . trim($process->getErrorOutput());
+            $this->dispatch('toast', type: 'error', message: $this->statusMessageDokumen);
+        } catch (\Throwable $e) {
+            $this->statusMessageDokumen = '✗ Error: ' . $e->getMessage();
+            $this->dispatch('toast', type: 'error', message: $this->statusMessageDokumen);
+        }
+
+        $this->checkMountedDokumen();
+    }
+
+    public function unmountShareDokumen(): void
+    {
+        $process = new Process(['sudo', '/usr/bin/umount', $this->mountPointDokumen]);
+
+        try {
+            $process->setTimeout(10);
+            $process->run();
+
+            if (!$process->isSuccessful()) {
+                throw new ProcessFailedException($process);
+            }
+
+            $this->statusMessageDokumen = '✓ Unmount berhasil dari: ' . $this->mountPointDokumen;
+            $this->dispatch('toast', type: 'success', message: $this->statusMessageDokumen);
+        } catch (ProcessFailedException $e) {
+            $this->statusMessageDokumen = '✗ Unmount gagal: ' . trim($process->getErrorOutput());
+            $this->dispatch('toast', type: 'error', message: $this->statusMessageDokumen);
+        } catch (\Throwable $e) {
+            $this->statusMessageDokumen = '✗ Error: ' . $e->getMessage();
+            $this->dispatch('toast', type: 'error', message: $this->statusMessageDokumen);
+        }
+
+        $this->checkMountedDokumen();
+    }
+
+    public function checkMountedDokumen(): void
+    {
+        try {
+            $process = new Process(['sudo', '/usr/bin/mountpoint', '-q', $this->mountPointDokumen]);
+
+            $process->setTimeout(2);
+            $process->run();
+
+            $this->isMountedDokumen = $process->getExitCode() === 0;
+        } catch (ProcessTimedOutException) {
+            $this->isMountedDokumen = false;
+        } catch (\Throwable) {
+            $this->isMountedDokumen = false;
+        }
+    }
+
     /* ===============================
      | BULK ACTIONS — Mount All / Unmount All
      =============================== */
@@ -352,6 +436,7 @@ new class extends Component {
         if (!$this->isMountedUpload)  $this->mountShareUpload();
         if (!$this->isMountedLab)     $this->mountShareLab();
         if (!$this->isMountedBpjs)    $this->mountShareBpjs();
+        if (!$this->isMountedDokumen) $this->mountShareDokumen();
 
         $this->dispatch('toast', type: 'success', message: '✓ Mount All selesai. Cek status tiap share.');
     }
@@ -363,6 +448,7 @@ new class extends Component {
         if ($this->isMountedUpload)  $this->unmountShareUpload();
         if ($this->isMountedLab)     $this->unmountShareLab();
         if ($this->isMountedBpjs)    $this->unmountShareBpjs();
+        if ($this->isMountedDokumen) $this->unmountShareDokumen();
 
         $this->dispatch('toast', type: 'success', message: '✓ Unmount All selesai.');
     }
@@ -494,7 +580,7 @@ new class extends Component {
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
                 {{-- =================================================== --}}
-                {{-- LEFT (2/3): 4 SHARE SECTIONS                          --}}
+                {{-- LEFT (2/3): 5 SHARE SECTIONS                          --}}
                 {{-- =================================================== --}}
                 <div class="lg:col-span-2 space-y-6">
 
@@ -756,7 +842,72 @@ new class extends Component {
                 </div>
             </div>
 
-                </div> {{-- /lg:col-span-2 (left side: 4 share sections) --}}
+
+            {{-- ================================================================ --}}
+            {{-- SECTION: BERKAS SCAN LUAR SHARE --}}
+            {{-- ================================================================ --}}
+            <div class="bg-canvas border border-hairline shadow-sm rounded-2xl dark:border-gray-700 dark:bg-gray-900 overflow-hidden">
+                <div class="px-5 py-3 bg-surface-soft border-b border-hairline dark:bg-gray-800/60 dark:border-gray-700">
+                    <div class="flex flex-wrap items-center gap-3">
+                        <div class="flex items-center gap-2">
+                            <span class="text-sm font-bold text-body uppercase dark:text-gray-200">Berkas Scan Luar Share</span>
+                            @if ($isMountedDokumen)
+                                <x-badge variant="success">Terhubung</x-badge>
+                            @else
+                                <x-badge variant="danger">Tidak Terhubung</x-badge>
+                            @endif
+                        </div>
+
+                        <div class="flex items-center gap-2 ml-auto">
+                            <x-ghost-button type="button" wire:click="checkMountedDokumen" wire:loading.attr="disabled"
+                                wire:target="checkMountedDokumen" class="whitespace-nowrap">
+                                <span wire:loading.remove wire:target="checkMountedDokumen">Cek Status</span>
+                                <span wire:loading wire:target="checkMountedDokumen"><x-loading /></span>
+                            </x-ghost-button>
+                            <x-secondary-button type="button" wire:click="createMountPointDokumen" wire:loading.attr="disabled"
+                                wire:target="createMountPointDokumen" class="whitespace-nowrap" title="Buat folder mount point (idempotent)">
+                                <span wire:loading.remove wire:target="createMountPointDokumen">Buat Folder</span>
+                                <span wire:loading wire:target="createMountPointDokumen"><x-loading /></span>
+                            </x-secondary-button>
+                            <x-primary-button type="button" wire:click="mountShareDokumen" wire:loading.attr="disabled"
+                                wire:target="mountShareDokumen" :disabled="$isMountedDokumen" class="whitespace-nowrap">
+                                <span wire:loading.remove wire:target="mountShareDokumen">Mount</span>
+                                <span wire:loading wire:target="mountShareDokumen"><x-loading /></span>
+                            </x-primary-button>
+                            <x-warning-button type="button" wire:click="unmountShareDokumen" wire:loading.attr="disabled"
+                                wire:target="unmountShareDokumen" :disabled="!$isMountedDokumen" class="whitespace-nowrap">
+                                <span wire:loading.remove wire:target="unmountShareDokumen">Unmount</span>
+                                <span wire:loading wire:target="unmountShareDokumen"><x-loading /></span>
+                            </x-warning-button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="p-5 space-y-4">
+                    <div>
+                        <x-input-label value="Share Server (Berkas Scan Luar)" />
+                        <x-text-input wire:model.live="shareServerDokumen" class="block w-full mt-1 font-mono"
+                            placeholder="//host/share" />
+                    </div>
+                    <div>
+                        <x-input-label value="Mount Point (Berkas Scan Luar)" />
+                        <x-text-input wire:model.live="mountPointDokumen" class="block w-full mt-1 font-mono"
+                            placeholder="/mnt/target" />
+                    </div>
+
+                    @if ($statusMessageDokumen !== '')
+                        <div @class([
+                            'p-3 rounded-lg border text-xs font-medium',
+                            'bg-green-50 border-green-200 text-green-800 dark:bg-green-900/30 dark:border-green-700 dark:text-green-300' => str_starts_with($statusMessageDokumen, '✓'),
+                            'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/30 dark:border-red-700 dark:text-red-300' => str_starts_with($statusMessageDokumen, '✗'),
+                        ])>
+                            <p class="break-all">{{ $statusMessageDokumen }}</p>
+                        </div>
+                    @endif
+                </div>
+            </div>
+
+                </div> {{-- /lg:col-span-2 (left side: 5 share sections) --}}
 
                 {{-- =================================================== --}}
                 {{-- RIGHT (1/3): VISUAL ARSITEKTUR MOUNTING (sticky)     --}}
@@ -858,6 +1009,13 @@ new class extends Component {
                                 'server' => '\\\\172.8.8.12\\bpjs_path',
                                 'mount' => 'mount/bpjs',
                             ],
+                            [
+                                'name' => 'Berkas Scan Luar (Modul Dokumen)',
+                                'desc' => 'Saat petugas upload berkas dari luar (hasil scan) di Modul Dokumen RJ/UGD/RI — surat rujukan, hasil pemeriksaan luar, resume RS lain, kartu identitas.',
+                                'upload' => 'upload/dokumen/emr/uploadBerkasLuar',
+                                'server' => '\\\\172.8.8.12\\dokumen_path',
+                                'mount' => 'mount/dokumen/emr/uploadBerkasLuar',
+                            ],
                         ] as $share)
                             <div class="mb-2 p-2.5 rounded-lg bg-canvas dark:bg-gray-900 border border-hairline dark:border-gray-700">
                                 <p class="text-xs font-bold text-ink dark:text-gray-100 mb-0.5">{{ $share['name'] }}</p>
@@ -903,6 +1061,88 @@ new class extends Component {
                         </p>
                         <p class="text-[11px] text-rose-800 dark:text-rose-300 leading-relaxed">
                             <strong>Konsekuensi:</strong> backup TTD prosedur terpisah; ukuran kecil per file, total tidak signifikan.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            {{-- ================================================================ --}}
+            {{-- SETUP SERVER — sekali per server, bila Mount gagal karena sudo   --}}
+            {{-- ================================================================ --}}
+            <div class="mt-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-2xl shadow-sm overflow-hidden">
+                <div class="px-4 py-3 border-b border-blue-200 dark:border-blue-700 bg-blue-100/50 dark:bg-blue-900/30">
+                    <h3 class="text-base font-bold text-blue-900 dark:text-blue-200">
+                        Setup Server (sekali per server)
+                    </h3>
+                    <p class="text-[11px] text-blue-700 dark:text-blue-300">
+                        Jalankan di terminal server Ubuntu bila Mount gagal. User PHP halaman ini:
+                        <code class="px-1 rounded bg-blue-100 dark:bg-blue-900/40 font-mono">{{ $userProsesPhp }}</code>
+                    </p>
+                </div>
+
+                <div class="p-4 space-y-3 bg-canvas dark:bg-gray-900">
+                    @foreach ([
+                        [
+                            'judul' => 'Pasang paket',
+                            'ket' => 'cifs-utils untuk mount share Windows/SMB, poppler-utils untuk Gabung Berkas BPJS.',
+                            'kode' => 'sudo apt install -y cifs-utils poppler-utils',
+                        ],
+                        [
+                            'judul' => 'Izinkan user PHP menjalankan mount tanpa password',
+                            'ket' => 'Buka file sudoers baru — selalu lewat visudo, salah ketik di sudoers bisa merusak sudo.',
+                            'kode' => 'sudo visudo -f /etc/sudoers.d/sirus-mount',
+                        ],
+                        [
+                            'judul' => 'Isi file tersebut dengan satu baris ini, simpan, lalu kunci izinnya',
+                            'ket' => 'Baris pertama masuk ke visudo; baris kedua dijalankan di terminal.',
+                            'kode' => $userProsesPhp . ' ALL=(root) NOPASSWD: /usr/bin/mount, /usr/bin/umount, /usr/bin/mountpoint, /usr/bin/apt-get' . "\n" . 'sudo chmod 440 /etc/sudoers.d/sirus-mount',
+                        ],
+                        [
+                            'judul' => 'Uji dari terminal',
+                            'ket' => 'Hasil "is not a mountpoint" / "is a mountpoint" = izin sudah benar. "password is required" = user atau path perintah belum cocok (cek: which mount umount mountpoint).',
+                            'kode' => 'sudo -u ' . $userProsesPhp . ' sudo -n /usr/bin/mountpoint ' . $mountPoint,
+                        ],
+                        [
+                            'judul' => 'Kembali ke halaman ini',
+                            'ket' => 'Tekan Buat Folder di tiap kartu, lalu Mount All. Status berubah menjadi Terhubung.',
+                            'kode' => '',
+                        ],
+                    ] as $nomor => $langkah)
+                        <div class="p-3 rounded-lg bg-surface-soft dark:bg-gray-800/60 border border-hairline dark:border-gray-700">
+                            <div class="flex items-start gap-2 mb-1">
+                                <span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-blue-500 text-white text-[10px] font-bold shrink-0">{{ $nomor + 1 }}</span>
+                                <p class="text-xs font-bold text-ink dark:text-gray-100">{{ $langkah['judul'] }}</p>
+                            </div>
+                            <p class="text-[11px] text-muted dark:text-gray-400 leading-relaxed">{{ $langkah['ket'] }}</p>
+                            @if ($langkah['kode'] !== '')
+                                <code class="block mt-1.5 px-2 py-1.5 text-[10px] font-mono whitespace-pre-wrap break-all rounded bg-gray-900 text-gray-100 dark:bg-gray-800">{{ $langkah['kode'] }}</code>
+                            @endif
+                        </div>
+                    @endforeach
+
+                    {{-- Pesan error → penyebab --}}
+                    <div class="pt-2 border-t border-hairline dark:border-gray-700">
+                        <p class="text-[10px] font-bold uppercase tracking-wide text-muted dark:text-gray-400 mb-2">Pesan error → penyebab</p>
+                        @foreach ([
+                            ['a terminal is required / a password is required', 'Langkah 2–3 belum dibuat, atau nama user di sudoers tidak sama dengan user PHP di atas.'],
+                            ['unknown filesystem type \'cifs\' / wrong fs type', 'cifs-utils belum terpasang (langkah 1).'],
+                            ['mount point does not exist / No such file', 'Folder belum ada — tekan Buat Folder dulu.'],
+                            ['mount error(13): Permission denied', 'Share 172.8.8.12 menolak tanpa kredensial — samakan setelan dengan server lama (/etc/fstab, file kredensial SMB).'],
+                            ['mount error(112) / Host is down', 'File server mati atau port 445 diblok firewall.'],
+                            ['Status Tidak Terhubung padahal Mount berhasil', 'Tekan Cek Status; bila tetap, sudoers belum mengizinkan /usr/bin/mountpoint.'],
+                        ] as [$pesanError, $penyebab])
+                            <div class="mb-2 p-2.5 rounded-lg border border-hairline dark:border-gray-700">
+                                <p class="text-[10px] font-mono font-semibold text-red-700 dark:text-red-300 break-all">{{ $pesanError }}</p>
+                                <p class="text-[11px] text-muted dark:text-gray-400 leading-snug mt-0.5">{{ $penyebab }}</p>
+                            </div>
+                        @endforeach
+                    </div>
+
+                    <div class="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/50">
+                        <p class="text-[11px] text-amber-800 dark:text-amber-300 leading-relaxed">
+                            Project pindah folder/server? Mount Point default di atas ditulis tetap
+                            (<code class="px-1 rounded bg-amber-100 dark:bg-amber-900/40 font-mono">/var/www/html/sirus-php82/...</code>) —
+                            ubah di berkas halaman ini, lepas mount lama (<code class="px-1 rounded bg-amber-100 dark:bg-amber-900/40 font-mono">sudo umount &lt;path lama&gt;</code>), lalu Mount All lagi.
                         </p>
                     </div>
                 </div>

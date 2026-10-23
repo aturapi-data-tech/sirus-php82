@@ -1,6 +1,6 @@
 {{-- resources/views/pages/transaksi/keuangan/saldo-kas/saldo-kas-history-print.blade.php --}}
 
-<x-pdf.layout-a4-with-out-background title="REKAP RIWAYAT TRANSAKSI KAS">
+<x-pdf.layout-a4-with-out-background title="RINCIAN TRANSAKSI KAS">
 
     @php
         // Semua tanggal sudah dipra-format di method cetakRekap() — di sini hanya format angka.

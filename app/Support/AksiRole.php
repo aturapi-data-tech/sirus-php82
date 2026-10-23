@@ -124,8 +124,25 @@ class AksiRole
     /** Membatalkan penerimaan barang dari PBF yang sedang dibuka (medis & non-medis). */
     public const TRANSAKSI_BATAL_PENERIMAAN = ['Admin', 'Tu'];
 
+    /**
+     * Ubah Data Kunjungan RJ dari Antrian Kasir — koreksi pasien, tanggal, shift & klaim selama
+     * pasien masih dalam pelayanan (di form Daftar RJ field itu terkunci di mode edit).
+     * Daftar awal = role yang membuka Administrasi di Antrian Kasir RJ.
+     */
+    public const RJ_UBAH_DATA_KUNJUNGAN = ['Admin', 'Tu', 'Manager Umum', 'Supervisor Tu'];
+
+    /** Ubah Data Kunjungan UGD dari Antrian Kasir UGD — sama maksudnya dengan RJ, jalur terpisah. */
+    public const UGD_UBAH_DATA_KUNJUNGAN = ['Admin', 'Tu', 'Manager Umum', 'Supervisor Tu'];
+
     /** Membuka form Pindah Kamar pasien rawat inap. */
     public const RI_PINDAH_KAMAR = ['Mr', 'Admin', 'Perawat', 'Tu'];
+
+    /**
+     * Cek Jumlah Record & Reset per tab Administrasi RI (menu titik-3 Daftar RI).
+     * Manager ke atas: reset menghapus SEMUA baris satu tab sekaligus, dipakai membereskan
+     * data anomali (mis. paket ber-Qty salah ketik) — petugas entri tidak boleh memakainya.
+     */
+    public const RI_RESET_ADMINISTRASI = ['Admin', 'Manager Umum', 'Manager Medis'];
 
     /**
      * Mengakses tab Case Manager (Form A & B MPP) di modul dokumen RI.

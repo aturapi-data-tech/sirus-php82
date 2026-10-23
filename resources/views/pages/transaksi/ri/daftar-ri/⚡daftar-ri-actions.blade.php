@@ -907,7 +907,7 @@ new class extends Component {
 
                         <div x-ref="lovPasienRi"
                             x-on:keydown.enter.prevent="$nextTick(() => $refs.lovDokterRi?.querySelector('input')?.focus())">
-                            <livewire:lov.pasien.lov-pasien target="riFormPasien" :initialRegNo="$formDaftar['regNo'] ?? ''" :disabled="$isFormLocked" />
+                            <livewire:lov.pasien.lov-pasien target="riFormPasien" :initialRegNo="$formDaftar['regNo'] ?? ''" :disabled="$isFormLocked || $formMode === 'edit'" />
                             <x-input-error :messages="$errors->get('formDaftar.regNo')" class="mt-1" />
                         </div>
 

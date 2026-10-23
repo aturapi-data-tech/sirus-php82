@@ -455,6 +455,13 @@ new class extends Component {
                     </svg>
                     Upload Penunjang
                 </x-tab>
+                <x-tab variant="underline" active-expr="subTab === 'berkas-luar'"
+                    x-on:click="subTab = 'berkas-luar'" class="inline-flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                    Berkas Scan Luar
+                </x-tab>
             </div>
         </div>
 
@@ -475,6 +482,12 @@ new class extends Component {
         <div x-show="subTab === 'upload'" x-cloak>
             <livewire:pages::components.rekam-medis.penunjang.upload-penunjang-display.upload-penunjang-display
                 :regNo="$regNoPasien" wire:key="emr-ri.upload-penunjang-display-{{ $regNoPasien ?: 'new' }}" />
+        </div>
+
+        {{-- Berkas Scan Luar (diupload di Modul Dokumen) — riwayat lintas kunjungan RJ/UGD/RI --}}
+        <div x-show="subTab === 'berkas-luar'" x-cloak>
+            <livewire:pages::components.rekam-medis.berkas-luar-display.berkas-luar-display
+                :regNo="$regNoPasien" wire:key="emr-ri.berkas-luar-display-{{ $regNoPasien ?: 'new' }}" />
         </div>
 
     </div>{{-- end tab hasil --}}

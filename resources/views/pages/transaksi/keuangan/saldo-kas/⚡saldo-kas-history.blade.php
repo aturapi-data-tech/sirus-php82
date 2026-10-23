@@ -17,7 +17,7 @@ new class extends Component {
     public string $accDkStatus = 'D';
 
     /** Mode tampilan: 'harian' (satu tanggal) | 'shift' (satu tanggal, dipotong per shift) | 'bulanan' (satu bulan penuh) */
-    public string $mode = 'harian';
+    public string $mode = 'shift';
 
     /** Format internal: 'YYYY-MM' (mode bulanan) */
     public string $periode = '';
@@ -164,8 +164,8 @@ new class extends Component {
         $this->accDesc     = (string) ($row->acc_name ?? '');
         $this->accDkStatus = (string) ($row->acc_dk_status ?? 'D');
 
-        // Default: mode harian pada tanggal terpilih di parent (set tanggalHarian + input + periode).
-        $this->mode = 'harian';
+        // Default: mode per shift pada tanggal terpilih di parent (set tanggalHarian + input + periode).
+        $this->mode = 'shift';
         $this->setTanggalHarian($tanggal);
 
         $this->incrementVersion('modal');
@@ -209,6 +209,24 @@ new class extends Component {
         return $this->saldoAwalPeriode + $this->totalDebit - $this->totalKredit;
     }
 
+    /** Jenis transaksi = txn_name sebelum '(' pertama, mis. "RJ_ADMIN (123/456)" → "RJ_ADMIN". */
+    private function jenisTransaksi(string $txnName): string
+    {
+        $name = trim($txnName);
+        $pos = strpos($name, '(');
+        $jenis = $pos !== false ? trim(substr($name, 0, $pos)) : $name;
+        return $jenis === '' ? '-' : $jenis;
+    }
+
+    /**
+     * Nomor referensi = isi kurung TERAKHIR txn_name (no. kas TU, rj_no/reg_no, dst.) —
+     * kurung terakhir karena keterangan kas TU (tucashk_desc) bisa memuat kurung sendiri.
+     */
+    private function referensiTransaksi(string $txnName): string
+    {
+        return preg_match('/\(([^()]*)\)\s*$/', trim($txnName), $cocok) ? trim($cocok[1]) : '';
+    }
+
     /**
      * Rekap per jenis transaksi (prefix txn_name sebelum '('): jumlah + total nominal.
      * Urut nominal terbesar. Menerima sekumpulan baris (semua / per shift).
@@ -216,15 +234,12 @@ new class extends Component {
     private function rekapJenisDari($rows)
     {
         return collect($rows)
-            ->groupBy(function ($baris) {
-                $name = trim((string) $baris->txn_name);
-                $pos = strpos($name, '(');
-                $jenis = $pos !== false ? trim(substr($name, 0, $pos)) : $name;
-                return $jenis === '' ? '-' : $jenis;
-            })
+            ->groupBy(fn($baris) => $this->jenisTransaksi((string) $baris->txn_name))
             ->map(fn($grup, $jenis) => (object) [
                 'jenis'   => $jenis,
                 'count'   => $grup->count(),
+                'debit'   => (float) $grup->sum('debit_kita'),
+                'kredit'  => (float) $grup->sum('kredit_kita'),
                 'nominal' => (float) $grup->sum(fn($baris) => (float) $baris->debit_kita + (float) $baris->kredit_kita),
             ])
             ->sortByDesc('nominal')
@@ -406,15 +421,158 @@ new class extends Component {
             }
         }
 
+        $dataCetak = $this->kepalaCetak() + [
+            'transaksiList' => $transaksiList,
+            'shiftGroups'   => $shiftGroups,
+        ];
+
+        $pdf = Pdf::loadView('pages.transaksi.keuangan.saldo-kas.saldo-kas-history-print', $dataCetak)
+            ->setPaper('a4', 'portrait');
+
+        $namaFile = 'rekap-kas-' . $this->accId . '-' . $this->akhiranPeriode() . '.pdf';
+
+        return response()->streamDownload(fn() => print $pdf->output(), $namaFile);
+    }
+
+    /**
+     * Cetak ringkas per jenis transaksi: jumlah trx + total debit/kredit tiap jenis, tanpa rincian baris.
+     * Mode per shift: dipecah per shift (subtotal + saldo akhir tiap shift); harian/bulanan: satu kelompok.
+     */
+    public function cetakPerJenis(): mixed
+    {
+        if ($this->rows->isEmpty()) {
+            $this->dispatch('toast', type: 'error', message: 'Tidak ada data untuk dicetak.');
+            return null;
+        }
+
+        if ($this->mode === 'shift') {
+            $kelompokJenis = collect($this->susunKelompokShift())
+                ->map(fn($kelompok) => (object) [
+                    'judul'          => 'SHIFT ' . $kelompok->shift . ($kelompok->range ? ' (' . $kelompok->range . ')' : ''),
+                    'subtotalLabel'  => 'Subtotal Shift ' . $kelompok->shift,
+                    'rekap'          => $this->rekapJenisDari($kelompok->items),
+                    'jumlahTrx'      => count($kelompok->items),
+                    'subtotalDebit'  => $kelompok->subtotalDebit,
+                    'subtotalKredit' => $kelompok->subtotalKredit,
+                    'saldoAwal'      => $kelompok->saldoAwal,
+                    'saldoAkhir'     => $kelompok->saldoAkhir,
+                ])
+                ->all();
+        } else {
+            $kelompokJenis = [(object) [
+                'judul'          => null,
+                'subtotalLabel'  => null,
+                'rekap'          => $this->rekapJenis,
+                'jumlahTrx'      => $this->rows->count(),
+                'subtotalDebit'  => $this->totalDebit,
+                'subtotalKredit' => $this->totalKredit,
+                'saldoAwal'      => $this->saldoAwalPeriode,
+                'saldoAkhir'     => $this->saldoAkhir,
+            ]];
+        }
+
+        $dataCetak = $this->kepalaCetak() + [
+            'kelompokJenis' => $kelompokJenis,
+            'jumlahTrx'     => $this->rows->count(),
+        ];
+
+        // A6 = A4 bagi 4 (ukuran kwitansi); dicetak ke A4 skala 100% jatuh di tengah kertas.
+        $pdf = Pdf::loadView('pages.transaksi.keuangan.saldo-kas.saldo-kas-rekap-jenis-print', $dataCetak)
+            ->setPaper('a6', 'portrait');
+
+        $namaFile = 'rekap-jenis-kas-' . $this->accId . '-' . $this->akhiranPeriode() . '.pdf';
+
+        return response()->streamDownload(fn() => print $pdf->output(), $namaFile);
+    }
+
+    /**
+     * Unduh rincian transaksi tampilan aktif sebagai CSV siap Excel (pola Lampiran Gaji Dokter).
+     *
+     * SENGAJA PIPIH: satu baris = satu jurnal, tanpa baris judul/subtotal shift, supaya bisa
+     * dipivot dan dibandingkan dengan unduhan lain waktu (VLOOKUP pada kolom Referensi) untuk
+     * melacak transaksi yang berubah/hilang/bertambah. Akun & shift ikut di setiap baris.
+     */
+    public function unduhCsv(): mixed
+    {
+        if ($this->rows->isEmpty()) {
+            $this->dispatch('toast', type: 'warning', message: 'Tidak ada data untuk diunduh.');
+            return null;
+        }
+
+        // Mode per shift: urutan & saldo berjalan mengikuti kelompok shift di layar; lainnya satu kelompok.
+        $kelompokList = $this->mode === 'shift'
+            ? $this->susunKelompokShift()
+            : [(object) ['shift' => null, 'items' => $this->rows->all(), 'saldoAkhir' => $this->saldoAkhir]];
+        $saldoAwal  = $this->saldoAwalPeriode;
+        $saldoAkhir = $this->saldoAkhir;
+        $saldoAwalTgl = Carbon::parse($this->dariTanggal)->subDay()->format('d/m/Y');
+        $sampaiTgl    = Carbon::parse($this->sampaiTanggal)->format('d/m/Y');
+        $namaBerkas = 'rincian-kas-' . $this->accId . '-' . $this->akhiranPeriode() . '.csv';
+
+        return response()->streamDownload(function () use ($kelompokList, $saldoAwal, $saldoAkhir, $saldoAwalTgl, $sampaiTgl) {
+            $keluaran = fopen('php://output', 'w');
+
+            // BOM UTF-8 tanpa "sep=;" — alasannya lihat unduhCsv() Lampiran Gaji Dokter.
+            fwrite($keluaran, "\xEF\xBB\xBF");
+            fputcsv($keluaran, self::KOLOM_CSV, ';');
+
+            // Baris saldo: Debit/Kredit DIKOSONGKAN supaya SUM/pivot kedua kolom itu tetap
+            // = total transaksi; angkanya hanya di kolom Saldo Berjalan.
+            $tulisSaldo = fn(string $tanggal, string $shift, string $jenis, string $deskripsi, float $saldo) => fputcsv($keluaran, [
+                $this->accId, $tanggal, '', $shift, $jenis, '', $deskripsi, '', '', '', '', (int) round($saldo),
+            ], ';');
+
+            $tulisSaldo($saldoAwalTgl, '', 'SALDO AWAL', 'Saldo awal per ' . $saldoAwalTgl, $saldoAwal);
+
+            foreach ($kelompokList as $kelompok) {
+                foreach ($kelompok->items as $baris) {
+                    $tglTransaksi = Carbon::parse($baris->txn_date);
+                    fputcsv($keluaran, [
+                        $this->accId,
+                        $tglTransaksi->format('d/m/Y'),
+                        $tglTransaksi->format('H:i:s'),
+                        (string) ($baris->shift ?: '1'),
+                        $this->jenisTransaksi((string) $baris->txn_name),
+                        $this->referensiTransaksi((string) $baris->txn_name),
+                        $baris->txn_name,
+                        $baris->lawan_acc_id,
+                        $baris->lawan_acc_name,
+                        // Angka MENTAH: nominal berformat ribuan dibaca Excel sebagai teks.
+                        (int) round((float) $baris->debit_kita),
+                        (int) round((float) $baris->kredit_kita),
+                        (int) round((float) $baris->saldo_berjalan),
+                    ], ';');
+                }
+                if ($kelompok->shift !== null) {
+                    $tulisSaldo($sampaiTgl, $kelompok->shift, 'SALDO AKHIR SHIFT', 'Saldo akhir shift ' . $kelompok->shift, $kelompok->saldoAkhir);
+                }
+            }
+
+            $tulisSaldo($sampaiTgl, '', 'SALDO AKHIR', 'Saldo akhir per ' . $sampaiTgl, $saldoAkhir);
+
+            fclose($keluaran);
+        }, $namaBerkas, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+        ]);
+    }
+
+    /** Judul kolom CSV — urutannya sejajar dengan nilai di unduhCsv(). */
+    public const KOLOM_CSV = [
+        'Akun', 'Tanggal', 'Jam', 'Shift', 'Jenis', 'Referensi', 'Deskripsi',
+        'Lawan Akun', 'Nama Lawan Akun', 'Debit', 'Kredit', 'Saldo Berjalan',
+    ];
+
+    /** Data kepala cetakan (akun, periode, ringkasan saldo) — dipakai kedua cetakan. */
+    private function kepalaCetak(): array
+    {
         $tglMulai  = Carbon::parse($this->dariTanggal);
         $tglSampai = Carbon::parse($this->sampaiTanggal);
-        $modeLabel = ['harian' => 'Harian', 'shift' => 'Harian (per Shift)', 'bulanan' => 'Bulanan'][$this->mode] ?? 'Harian';
 
-        $dataCetak = [
+        return [
             'accId'        => $this->accId,
             'accDesc'      => $this->accDesc,
             'mode'         => $this->mode,
-            'modeLabel'    => $modeLabel,
+            'modeLabel'    => ['harian' => 'Harian', 'shift' => 'Harian (per Shift)', 'bulanan' => 'Bulanan'][$this->mode] ?? 'Harian',
             'periodeLabel' => $this->isModeHarian()
                 ? $tglMulai->format('d/m/Y')
                 : $tglMulai->format('d/m/Y') . ' — ' . $tglSampai->format('d/m/Y'),
@@ -425,19 +583,13 @@ new class extends Component {
             'totalDebit'   => $this->totalDebit,
             'totalKredit'  => $this->totalKredit,
             'saldoAkhir'   => $this->saldoAkhir,
-            'transaksiList' => $transaksiList,
-            'shiftGroups'   => $shiftGroups,
         ];
+    }
 
-        $pdf = Pdf::loadView('pages.transaksi.keuangan.saldo-kas.saldo-kas-history-print', $dataCetak)
-            ->setPaper('a4', 'portrait');
-
-        $akhiranPeriode = $this->isModeHarian()
-            ? $tglMulai->format('Ymd')
-            : $tglMulai->format('Ym');
-        $namaFile = 'rekap-kas-' . $this->accId . '-' . $akhiranPeriode . '.pdf';
-
-        return response()->streamDownload(fn() => print $pdf->output(), $namaFile);
+    /** Akhiran nama berkas: Ymd (harian/shift) atau Ym (bulanan). */
+    private function akhiranPeriode(): string
+    {
+        return Carbon::parse($this->dariTanggal)->format($this->isModeHarian() ? 'Ymd' : 'Ym');
     }
 
     public function closeModal(): void
@@ -465,8 +617,8 @@ new class extends Component {
                         <div>
                             <x-input-label value="Tampilan" class="mb-1 text-xs font-medium text-muted dark:text-gray-400" />
                             <x-tabs variant="pill">
-                                <x-tab :active="$mode === 'harian'" color="emerald" wire:click="setMode('harian')">Harian</x-tab>
                                 <x-tab :active="$mode === 'shift'" color="emerald" wire:click="setMode('shift')">Per Shift</x-tab>
+                                <x-tab :active="$mode === 'harian'" color="emerald" wire:click="setMode('harian')">Harian</x-tab>
                                 <x-tab :active="$mode === 'bulanan'" color="emerald" wire:click="setMode('bulanan')">Bulanan</x-tab>
                             </x-tabs>
                         </div>
@@ -734,7 +886,26 @@ new class extends Component {
 
             <div class="sticky bottom-0 z-10 px-6 py-3 bg-canvas border-t border-hairline dark:bg-gray-900 dark:border-gray-700">
                 <div class="flex justify-end gap-2">
-                    <x-cetak-button wire:click="cetakRekap" :disabled="$this->rows->count() === 0" label="Cetak Rekap" />
+                    {{-- Urutan dari kanan (sebelah Tutup): ringkasan per jenis → rincian → data Excel. --}}
+                    <x-info-button type="button" class="gap-2" wire:click="unduhCsv"
+                        :disabled="$this->rows->count() === 0"
+                        wire:loading.attr="disabled" wire:target="unduhCsv"
+                        title="Unduh seluruh baris transaksi + saldo awal/akhir untuk diolah atau dibandingkan di Excel">
+                        <span wire:loading.remove wire:target="unduhCsv" class="inline-flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                            </svg>
+                            Unduh Data Excel
+                        </span>
+                        <span wire:loading wire:target="unduhCsv" class="inline-flex items-center gap-2">
+                            <x-loading /> Menyiapkan...
+                        </span>
+                    </x-info-button>
+                    <x-cetak-button wire:click="cetakRekap" :disabled="$this->rows->count() === 0"
+                        label="Cetak Rincian Transaksi" title="Cetak setiap transaksi beserta saldo berjalannya" />
+                    <x-cetak-button wire:click="cetakPerJenis" :disabled="$this->rows->count() === 0"
+                        label="Cetak Total per Jenis" title="Cetak total uang tiap jenis transaksi saja, tanpa rincian baris" />
                     <x-secondary-button type="button" wire:click="closeModal">Tutup</x-secondary-button>
                 </div>
             </div>

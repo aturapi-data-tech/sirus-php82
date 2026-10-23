@@ -566,7 +566,7 @@ new class extends Component {
                                 tab = tujuan.tab;
                                 if (tujuan.focus) setTimeout(() => window.dispatchEvent(new CustomEvent(tujuan.focus)), 120);
                             "
-                            class="overflow-hidden bg-canvas border border-hairline rounded-2xl dark:border-gray-700 dark:bg-gray-900">
+                            class="bg-canvas border border-hairline rounded-2xl dark:border-gray-700 dark:bg-gray-900">
 
                             <x-tabs variant="underline" class="flex-wrap p-2">
                                 @foreach ($EmrMenuAdministrasi as $menu)

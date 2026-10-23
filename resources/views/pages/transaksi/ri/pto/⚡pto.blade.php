@@ -245,7 +245,7 @@ new class extends Component {
                                                          (re-render baris bakal menutup dropdown Alpine-nya). --}}
                                                     @can('rekonsiliasi.obat')
                                                         <div @click.stop class="mt-0.5">
-                                                            <x-dropdown width="w-[300px]">
+                                                            <x-dropdown width="w-[300px]" :melayang="true">
                                                                 <x-slot name="trigger">
                                                                     <x-secondary-button type="button" class="p-2.5">
                                                                         <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">

@@ -630,7 +630,7 @@ new class extends Component {
                                                  mengira fiturnya rusak. Untuk RJ/UGD isinya dinonaktifkan
                                                  berikut alasannya. --}}
                                             @hasanyrole('Admin|Perawat|Dokter|Casemix|Mr|Gizi')
-                                                <x-dropdown align="right" width="w-72">
+                                                <x-dropdown align="right" width="w-72" :melayang="true">
                                                 <x-slot name="trigger">
                                                     <x-secondary-button type="button" class="p-2.5">
                                                         <span class="sr-only">Menu lainnya</span>

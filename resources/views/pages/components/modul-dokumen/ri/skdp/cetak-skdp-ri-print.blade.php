@@ -1,6 +1,6 @@
 {{-- cetak-skdp-ri-print.blade.php --}}
 
-<x-pdf.layout-kwitansi title="">
+<x-pdf.layout-kwitansi title="" :tengahA4="false">
 
     {{-- JUDUL --}}
     <div class="text-center mt-1 mb-2">

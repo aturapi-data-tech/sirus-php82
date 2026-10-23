@@ -593,7 +593,7 @@ new class extends Component {
                                     {{-- AKSI — tombol utama + dropdown titik-3 (pola daftar-ri) --}}
                                     <td class="px-6 py-5 align-top text-center">
                                         <div class="flex items-center justify-center gap-2">
-                                            <x-dropdown position="left" width="w-[440px]">
+                                            <x-dropdown position="left" width="w-[440px]" :melayang="true">
                                                 <x-slot name="trigger">
                                                     <x-secondary-button type="button" class="p-2.5">
                                                         <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">

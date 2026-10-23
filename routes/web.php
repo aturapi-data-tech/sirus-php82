@@ -74,6 +74,10 @@ Route::middleware(['auth'])->group(function () {
     // Tutorial whitelist IP BPJS — forward proxy Squid di VPS + BpjsHttp, dari nol sampai produksi
     Route::livewire('/panduan-dev/bpjs-proxy', 'pages::panduan-dev.bpjs-proxy.bpjs-proxy')
         ->name('panduan-dev.bpjs-proxy');
+    // Panduan API Mobile JKN (Antrean Online BPJS) — cara kerja endpoint, host API terpisah,
+    // operasional petugas & penanganan masalah — docs/mobile-jkn-api.md versi web
+    Route::livewire('/panduan-dev/mobile-jkn', 'pages::panduan-dev.mobile-jkn.mobile-jkn')
+        ->name('panduan-dev.mobile-jkn');
 
     // ===========================================
     // DOWN TIME — FORMULIR MANUAL WAKTU HENTI SIMRS
@@ -222,6 +226,7 @@ Route::middleware(['auth'])->group(function () {
             'mount/penunjang/radiologi',        // Foto + hasil bacaan radiologi (1 folder)
             'mount/penunjang/lab-luar',         // Hasil lab luar (PDF/JPG)
             'mount/penunjang/emr/uploadHasilPenunjang', // Hasil penunjang dari EMR RJ/UGD/RI
+            'mount/dokumen/emr/uploadBerkasLuar',       // Berkas scan luar dari Modul Dokumen RJ/UGD/RI
         ];
 
         $matched = null;

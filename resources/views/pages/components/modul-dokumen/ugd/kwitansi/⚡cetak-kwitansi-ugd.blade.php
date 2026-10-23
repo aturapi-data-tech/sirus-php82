@@ -7,6 +7,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
+use App\Support\KamarOperasiTarif;
 
 new class extends Component {
     use EmrUGDTrait;
@@ -58,6 +59,18 @@ new class extends Component {
         ",
             ['rjno' => $rjNo],
         );
+
+        // Pos KAMAR OPERASI (satu baris per ok_desc) berbagi satu txn_no di view, jadi ORDER BY
+        // txn_no saja membuat urutannya acak. Diurutkan ulang ke urutan legacy (Jasa Dokter
+        // Operator, Anestesi, …, Sewa Alat); sortBy stabil, baris pos lain tetap seperti view.
+        $rincian = collect($rincian)
+            ->sortBy(fn($baris) => sprintf(
+                '%03d|%02d',
+                (int) $baris->txn_no,
+                ($baris->txn_id ?? '') === 'KAMAR OPERASI' ? KamarOperasiTarif::urutanCetak((string) $baris->txn_desc) : 0,
+            ))
+            ->values()
+            ->all();
 
         // ── Kalkulasi Biaya ──
         $subtotal = (int) collect($rincian)->sum('txn_nominal');

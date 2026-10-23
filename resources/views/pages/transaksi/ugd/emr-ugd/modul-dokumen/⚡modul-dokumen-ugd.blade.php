@@ -5,6 +5,7 @@ use Livewire\Component;
 use Livewire\Attributes\On;
 use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
+use App\Support\BerkasLuar;
 
 new class extends Component {
     use EmrUGDTrait, WithRenderVersioningTrait;
@@ -35,6 +36,7 @@ new class extends Component {
     public int $jumlahPermintaanRawatInap = 0;
     public int $jumlahEso = 0;
     public int $jumlahAkhirHayat = 0;
+    public int $jumlahBerkasLuar = 0;
 
     /** Dokumen dibaca sebagai variabel LOKAL, diperas jadi penanda, lalu dilepas. */
     private function hitungRingkasan(array $data): void
@@ -54,6 +56,7 @@ new class extends Component {
         $this->jumlahPermintaanRawatInap = count($data['permintaanRawatInapUGD'] ?? []);
         $this->jumlahEso = count($data['pelaporanEsoUGD'] ?? []);
         $this->jumlahAkhirHayat = count($data['pengkajianAkhirHayatUGD'] ?? []);
+        $this->jumlahBerkasLuar = count($data[BerkasLuar::NODE['UGD']] ?? []);
         $this->adaBedah = collect([
             'pengkajianPreOpUGD', 'praAnestesiUGD', 'praInduksiUGD', 'surgicalSafetyChecklistUGD',
             'laporanOperasiUGD', 'laporanAnestesiUGD', 'pascaAnestesiUGD', 'instruksiPascaBedahUGD',
@@ -81,7 +84,7 @@ new class extends Component {
     public string $tabAwal = 'suket';
 
     /** Tab yang boleh diminta pemanggil lewat event open. */
-    private const TAB_BOLEH = ['suket', 'permintaan-rawat-inap', 'trf-ri', 'general-consent', 'inform-consent', 'form-penjaminan', 'penundaan-pelayanan', 'akhir-hayat', 'surat-kematian', 'pelayanan-bedah', 'vk-kebidanan'];
+    private const TAB_BOLEH = ['suket', 'permintaan-rawat-inap', 'trf-ri', 'general-consent', 'inform-consent', 'form-penjaminan', 'penundaan-pelayanan', 'akhir-hayat', 'surat-kematian', 'pelayanan-bedah', 'vk-kebidanan', 'berkas-luar'];
 
     #[On('emr-ugd.modul-dokumen.open')]
     public function openModulDokumen(int $rjNo, string $tab = 'suket'): void
@@ -143,7 +146,7 @@ new class extends Component {
             'rjNo', 'adaSuket', 'adaTrfUgd', 'adaGeneralConsent', 'adaBedah', 'adaObstetriNeonatal',
             'adaSuratKematianFinal', 'triaseSaran', 'jumlahInformConsent', 'jumlahPenjaminan',
             'jumlahPenundaan', 'jumlahPenolakanObat', 'jumlahPenolakanResusitasi', 'jumlahPulangAps',
-            'jumlahSecondOpinion', 'jumlahEso', 'jumlahAkhirHayat', 'jumlahPermintaanRawatInap',
+            'jumlahSecondOpinion', 'jumlahEso', 'jumlahAkhirHayat', 'jumlahPermintaanRawatInap', 'jumlahBerkasLuar',
         ]);
         $this->resetVersion();
         $this->isFormLocked = false;
@@ -403,6 +406,21 @@ new class extends Component {
                                         @endif
                                     </x-tab>
 
+                                    {{-- Berkas Scan Luar — upload berkas dari luar dokumen SIRUS --}}
+                                    <x-tab variant="underline" active-expr="activeTab === 'berkas-luar'"
+                                        x-on:click="activeTab = 'berkas-luar'"
+                                        class="inline-flex items-center gap-2">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                        </svg>
+                                        Berkas Scan Luar
+                                        @if ($jumlahBerkasLuar > 0)
+                                            <x-badge variant="success"
+                                                class="text-[10px] px-1.5 py-0">{{ $jumlahBerkasLuar }}</x-badge>
+                                        @endif
+                                    </x-tab>
+
                                     {{-- Surat Keterangan Kematian — tab hanya muncul bila Screening UGD
                                          menyimpulkan P0, supaya tak jadi tab permanen di tiap pasien. --}}
                                     @if ($triaseSaran === 'P0')
@@ -524,6 +542,13 @@ new class extends Component {
                                 <livewire:pages::transaksi.ugd.emr-ugd.modul-dokumen.akhir-hayat-ugd.rm-akhir-hayat-ugd-actions
                                     :rjNo="$rjNo" :disabled="$isFormLocked"
                                     wire:key="akhir-hayat-ugd-{{ $rjNo ?? 'init' }}" />
+                            </div>
+
+                            {{-- Panel: Berkas Scan Luar --}}
+                            <div x-show="activeTab === 'berkas-luar'" x-transition.opacity.duration.300ms>
+                                <livewire:pages::transaksi.ugd.emr-ugd.modul-dokumen.berkas-luar-ugd.rm-berkas-luar-ugd-actions
+                                    :rjNo="$rjNo" :disabled="$isFormLocked"
+                                    wire:key="berkas-luar-ugd-{{ $rjNo ?? 'init' }}" />
                             </div>
 
                             {{-- Panel: Surat Keterangan Kematian --}}

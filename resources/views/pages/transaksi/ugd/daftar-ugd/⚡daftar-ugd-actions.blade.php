@@ -1055,12 +1055,12 @@ new class extends Component {
                     <div class="flex-1">
                         <x-input-label value="Tanggal Masuk UGD" />
                         <x-text-input wire:model.live="formDaftar.rjDate" class="block w-full"
-                            :disabled="$isFormLocked" />
+                            :disabled="$isFormLocked || $formMode === 'edit'" />
                         <x-input-error :messages="$errors->get('formDaftar.rjDate')" class="mt-1" />
                     </div>
                     <div class="w-36">
                         <x-input-label value="Shift" />
-                        <x-select-input wire:model.live="formDaftar.shift" class="w-full mt-1" :disabled="$isFormLocked">
+                        <x-select-input wire:model.live="formDaftar.shift" class="w-full mt-1" :disabled="$isFormLocked || $formMode === 'edit'">
                             <option value="">-- Shift --</option>
                             <option value="1">Shift 1</option>
                             <option value="2">Shift 2</option>
@@ -1129,7 +1129,7 @@ new class extends Component {
                         <div x-ref="lovPasienUgd"
                             x-on:keydown.enter.prevent="$nextTick(() => $refs.lovDokterUgd?.querySelector('input')?.focus())">
                             <livewire:lov.pasien.lov-pasien target="ugdFormPasien" :initialRegNo="$formDaftar['regNo'] ?? ''"
-                                :disabled="$isFormLocked" />
+                                :disabled="$isFormLocked || $formMode === 'edit'" />
                             <x-input-error :messages="$errors->get('formDaftar.regNo')" class="mt-1" />
                         </div>
                         <div x-ref="lovDokterUgd">

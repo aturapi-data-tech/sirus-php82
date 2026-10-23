@@ -10,12 +10,24 @@ use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 new class extends Component {
     use EmrRITrait, WithRenderVersioningTrait;
 
+    /** Lokasi stok tujuan return: ruangan → Gudang Medis → Apotek (obat dipakai lagi oleh Apotek). */
+    public const GUDANG_SL_CODE = '04';
+    public const APOTEK_SL_CODE = '02';
+
+    /** Status header IMTXN_TRFHDRS (sama dengan modul Transfer Stok). */
+    public const STATUS_TRANSFER_POSTED = 'L';
+    public const STATUS_TRANSFER_BATAL = 'F';
+
     public array $renderVersions = [];
-    protected array $renderAreas = ['modal-rtn-obat-ri'];
+    protected array $renderAreas = ['modal-rtn-obat-ri', 'modal-kirim-return-ri'];
 
     public bool $isFormLocked = false;
     public ?int $riHdrNo = null;
     public array $dataRtnObat = [];
+
+    /** Lokasi asal stok return (ruangan) — dipilih petugas di modal Kirim. */
+    public ?string $slCodeAsal = null;
+    public ?string $slNameAsal = null;
 
     public array $formEntry = [
         'riobatDate'   => '',
@@ -68,12 +80,14 @@ new class extends Component {
                 'rstxn_riobatrtns.riobat_qty',
                 'rstxn_riobatrtns.riobat_price',
                 'rstxn_riobatrtns.riobat_no',
+                'rstxn_riobatrtns.trf_no_gudang',
+                'rstxn_riobatrtns.trf_no_apotek',
             )
             ->where('rstxn_riobatrtns.rihdr_no', $riHdrNo)
             ->orderByDesc('rstxn_riobatrtns.riobat_date')
             ->get();
 
-        $this->dataRtnObat = $rows->map(fn($r) => (array) $r)->toArray();
+        $this->dataRtnObat = $rows->map(fn($row) => (array) $row)->toArray();
     }
 
     /* ===============================
@@ -184,6 +198,13 @@ new class extends Component {
         try {
             DB::transaction(function () use ($riobatNo) {
                 $this->lockRIRow($this->riHdrNo);
+
+                // Return yang sudah dikirim ke Apotek tidak boleh hilang — stoknya sudah pindah.
+                $sudahDikirim = DB::table('rstxn_riobatrtns')->where('riobat_no', $riobatNo)->whereNotNull('trf_no_apotek')->exists();
+                if ($sudahDikirim) {
+                    throw new \RuntimeException('Return ini sudah dikirim ke Apotek — tekan Batal Kirim dulu.');
+                }
+
                 DB::table('rstxn_riobatrtns')->where('riobat_no', $riobatNo)->delete();
                 $this->appendAdminLogRI($this->riHdrNo, 'Hapus Return Obat #' . $riobatNo);
             });
@@ -195,6 +216,178 @@ new class extends Component {
             $this->dispatch('toast', type: 'error', message: $e->getMessage());
         } catch (\Exception $e) {
             $this->dispatch('toast', type: 'error', message: 'Gagal: ' . $e->getMessage());
+        }
+    }
+
+    /* ===============================
+     | VALIDASI MODAL KIRIM — rules() hanya dipakai validate() tanpa argumen di kirimReturnKeApotek;
+     | insertRtnObat memakai aturan sendiri.
+     =============================== */
+    protected function rules(): array
+    {
+        return [
+            'slCodeAsal' => 'bail|required|not_in:' . self::GUDANG_SL_CODE . ',' . self::APOTEK_SL_CODE . '|exists:immst_stocklocations,sl_code',
+        ];
+    }
+
+    protected function messages(): array
+    {
+        return [
+            'slCodeAsal.required' => ':attribute wajib dipilih.',
+            'slCodeAsal.not_in' => ':attribute tidak boleh Gudang Medis atau Apotek.',
+            'slCodeAsal.exists' => ':attribute tidak terdaftar di Master Lokasi Stok.',
+        ];
+    }
+
+    protected function validationAttributes(): array
+    {
+        return [
+            'slCodeAsal' => 'Ruangan asal stok',
+        ];
+    }
+
+    /* ===============================
+     | BUKA MODAL KIRIM — petugas memilih ruangan asal stok (tanpa nilai awal).
+     =============================== */
+    public function bukaKirimReturn(): void
+    {
+        $this->isFormLocked = $this->checkRIStatus($this->riHdrNo);
+        if (!$this->isFormLocked) {
+            $this->dispatch('toast', type: 'error', message: 'Transaksi RI belum selesai — return baru bisa dikirim ke Apotek setelah pasien pulang.');
+            return;
+        }
+
+        // Sengaja kosong — petugas wajib memilih ruangan asal sendiri supaya data transfer rapi.
+        $this->slCodeAsal = null;
+        $this->slNameAsal = null;
+        $this->resetValidation('slCodeAsal');
+
+        $this->incrementVersion('modal-kirim-return-ri');
+        $this->dispatch('open-modal', name: 'kirim-return-obat-ri');
+    }
+
+    #[On('lov.selected.asal-return-ri')]
+    public function onPickAsalReturn(string $target, array $payload): void
+    {
+        $this->slCodeAsal = (string) ($payload['sl_code'] ?? '') ?: null;
+        $this->resetValidation('slCodeAsal');
+        $this->slNameAsal = $payload['sl_name'] ?? null;
+    }
+
+    public function tutupKirimReturn(): void
+    {
+        $this->dispatch('close-modal', name: 'kirim-return-obat-ri');
+    }
+
+    /* ===============================
+     | KIRIM RETURN KE APOTEK — HANYA setelah transaksi RI selesai, supaya tidak ada return
+     | baru yang menyusul. Dua transfer langsung berstatus selesai (L):
+     |   1. ruangan asal (dipilih di modal) → Gudang Medis (04)   2. Gudang Medis (04) → Apotek (02)
+     | Ledger tkview_iostock* membaca transfer berstatus L sebagai mutasi keluar/masuk.
+     =============================== */
+    public function kirimReturnKeApotek(): void
+    {
+        // validate() DULU — pesan merah tampil di bawah LOV ruangan asal.
+        $this->validate();
+
+        try {
+            DB::transaction(function () {
+                $this->lockRIRow($this->riHdrNo);
+
+                // Dibaca ulang SESUDAH baris RI dikunci — kasir bisa membatalkan transaksi di sela klik.
+                $this->isFormLocked = $this->checkRIStatus($this->riHdrNo);
+                if (!$this->isFormLocked) {
+                    throw new \RuntimeException('Transaksi RI belum selesai — return baru bisa dikirim ke Apotek setelah pasien pulang.');
+                }
+
+                $slCodeAsal = $this->slCodeAsal;
+
+                $rowsReturn = DB::table('rstxn_riobatrtns')
+                    ->where('rihdr_no', $this->riHdrNo)
+                    ->whereNull('trf_no_apotek')
+                    ->get();
+                if ($rowsReturn->isEmpty()) {
+                    throw new \RuntimeException('Tidak ada return yang perlu dikirim.');
+                }
+
+                // Satu baris detail per produk — modul Transfer Stok juga menolak produk ganda.
+                $qtyPerProduk = $rowsReturn->groupBy('product_id')->map(fn($rowsProduk) => $rowsProduk->sum('riobat_qty'));
+                $empId = auth()->user()->emp_id ?? 'SYSTEM';
+
+                $trfNo = [];
+                foreach (['gudang' => [$slCodeAsal, self::GUDANG_SL_CODE], 'apotek' => [self::GUDANG_SL_CODE, self::APOTEK_SL_CODE]] as $tujuan => [$slCodeFrom, $slCodeTo]) {
+                    $trfNo[$tujuan] = (int) DB::table('imtxn_trfhdrs')->max('trf_no') + 1;
+                    DB::table('imtxn_trfhdrs')->insert([
+                        'trf_no' => $trfNo[$tujuan],
+                        'trf_date' => DB::raw('SYSDATE'),
+                        'sl_codefrom' => $slCodeFrom,
+                        'sl_codeto' => $slCodeTo,
+                        'trf_status' => self::STATUS_TRANSFER_POSTED,
+                        'emp_id' => $empId,
+                    ]);
+
+                    $trfDtl = (int) DB::table('imtxn_trfdtls')->max('trf_dtl');
+                    foreach ($qtyPerProduk as $productId => $qty) {
+                        DB::table('imtxn_trfdtls')->insert([
+                            'trf_no' => $trfNo[$tujuan],
+                            'trf_dtl' => ++$trfDtl,
+                            'product_id' => $productId,
+                            'qty' => $qty,
+                        ]);
+                    }
+                }
+
+                DB::table('rstxn_riobatrtns')
+                    ->whereIn('riobat_no', $rowsReturn->pluck('riobat_no')->all())
+                    ->update(['trf_no_gudang' => $trfNo['gudang'], 'trf_no_apotek' => $trfNo['apotek']]);
+
+                $this->appendAdminLogRI($this->riHdrNo, "Kirim Return Obat ke Apotek: Transfer #{$trfNo['gudang']} ({$slCodeAsal} {$this->slNameAsal} → Gudang) & #{$trfNo['apotek']} (Gudang → Apotek)");
+            });
+
+            $this->findData($this->riHdrNo);
+            $this->tutupKirimReturn();
+            $this->dispatch('toast', type: 'success', message: 'Return obat dikirim ke Apotek.');
+        } catch (\RuntimeException $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
+        } catch (\Exception $e) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal mengirim return: ' . $e->getMessage());
+        }
+    }
+
+    /* ===============================
+     | BATAL KIRIM — pembalik kirimReturnKeApotek: transfernya dibatalkan (F) supaya
+     | ledger tidak menghitungnya lagi, lalu tanda kirim di baris return dikosongkan.
+     =============================== */
+    public function batalKirimReturn(): void
+    {
+        try {
+            DB::transaction(function () {
+                $this->lockRIRow($this->riHdrNo);
+
+                $rowsReturn = DB::table('rstxn_riobatrtns')
+                    ->where('rihdr_no', $this->riHdrNo)
+                    ->whereNotNull('trf_no_apotek')
+                    ->get();
+                if ($rowsReturn->isEmpty()) {
+                    throw new \RuntimeException('Tidak ada return yang sudah dikirim.');
+                }
+
+                $daftarTrfNo = $rowsReturn->pluck('trf_no_gudang')->merge($rowsReturn->pluck('trf_no_apotek'))->unique()->values()->all();
+
+                DB::table('imtxn_trfhdrs')->whereIn('trf_no', $daftarTrfNo)->update(['trf_status' => self::STATUS_TRANSFER_BATAL]);
+                DB::table('rstxn_riobatrtns')
+                    ->whereIn('riobat_no', $rowsReturn->pluck('riobat_no')->all())
+                    ->update(['trf_no_gudang' => null, 'trf_no_apotek' => null]);
+
+                $this->appendAdminLogRI($this->riHdrNo, 'Batal Kirim Return Obat ke Apotek: Transfer #' . implode(', #', $daftarTrfNo) . ' dibatalkan');
+            });
+
+            $this->findData($this->riHdrNo);
+            $this->dispatch('toast', type: 'success', message: 'Kirim return dibatalkan — transfer stok dibatalkan.');
+        } catch (\RuntimeException $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
+        } catch (\Exception $e) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal membatalkan kirim: ' . $e->getMessage());
         }
     }
 
@@ -316,7 +509,28 @@ new class extends Component {
         <div class="overflow-hidden bg-canvas border border-hairline rounded-2xl dark:border-gray-700 dark:bg-gray-900">
             <div class="flex items-center justify-between px-4 py-3 border-b border-hairline dark:border-gray-700">
                 <h3 class="text-sm font-semibold text-body dark:text-gray-300">Return Obat RI</h3>
-                <x-badge variant="gray">{{ count($dataRtnObat) }} item</x-badge>
+                <div class="flex items-center gap-2">
+                    <x-badge variant="gray">{{ count($dataRtnObat) }} item</x-badge>
+                    @php
+                        $jumlahBelumDikirim = collect($dataRtnObat)->whereNull('trf_no_apotek')->count();
+                        $jumlahSudahDikirim = count($dataRtnObat) - $jumlahBelumDikirim;
+                    @endphp
+                    @if ($jumlahSudahDikirim > 0)
+                        <x-confirm-button variant="warning-soft" action="batalKirimReturn()" title="Batal Kirim Return"
+                            message="Transfer stok return pasien ini dibatalkan, stok kembali seperti sebelum dikirim. Lanjutkan?"
+                            confirmText="Ya, batalkan">
+                            Batal Kirim
+                        </x-confirm-button>
+                    @endif
+                    @if ($jumlahBelumDikirim > 0)
+                        <x-primary-button type="button" wire:click="bukaKirimReturn" :disabled="!$isFormLocked">
+                            Kirim Return ke Apotek
+                        </x-primary-button>
+                        @if (!$isFormLocked)
+                            <span class="text-xs text-muted dark:text-gray-400">aktif setelah transaksi RI selesai</span>
+                        @endif
+                    @endif
+                </div>
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full text-sm text-left">
@@ -327,6 +541,7 @@ new class extends Component {
                             <th class="px-4 py-3 text-right">Qty</th>
                             <th class="px-4 py-3 text-right">Harga</th>
                             <th class="px-4 py-3 text-right">Subtotal</th>
+                            <th class="px-4 py-3">Transfer</th>
                             @if (!$isFormLocked) <th class="w-20 px-4 py-3 text-center">Hapus</th> @endif
                         </tr>
                     </thead>
@@ -340,15 +555,25 @@ new class extends Component {
                                 <td class="px-4 py-1.5 font-semibold text-right text-red-600 dark:text-red-400 whitespace-nowrap">
                                     -Rp {{ number_format(($item['riobat_qty'] ?? 0) * ($item['riobat_price'] ?? 0)) }}
                                 </td>
+                                <td class="px-4 py-1.5 whitespace-nowrap">
+                                    @if (!empty($item['trf_no_apotek']))
+                                        <x-badge variant="success">Terkirim</x-badge>
+                                        <span class="ml-1 font-mono text-xs text-muted">#{{ $item['trf_no_gudang'] }} → #{{ $item['trf_no_apotek'] }}</span>
+                                    @else
+                                        <x-badge variant="warning">Belum dikirim</x-badge>
+                                    @endif
+                                </td>
                                 @if (!$isFormLocked)
                                     <td class="px-4 py-1.5 text-center">
-                                        <x-hapus-button wire:click.prevent="removeRtnObat({{ $item['riobat_no'] }})" confirm="Hapus return obat ini?" />
+                                        @if (empty($item['trf_no_apotek']))
+                                            <x-hapus-button wire:click.prevent="removeRtnObat({{ $item['riobat_no'] }})" confirm="Hapus return obat ini?" />
+                                        @endif
                                     </td>
                                 @endif
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="{{ $isFormLocked ? 5 : 6 }}" class="px-4 py-10 text-sm text-center text-muted-soft dark:text-gray-600">
+                                <td colspan="{{ $isFormLocked ? 6 : 7 }}" class="px-4 py-10 text-sm text-center text-muted-soft dark:text-gray-600">
                                     Belum ada return obat
                                 </td>
                             </tr>
@@ -361,6 +586,7 @@ new class extends Component {
                                 <td class="px-4 py-3 text-sm font-bold text-right text-red-600 dark:text-red-400">
                                     -Rp {{ number_format(collect($dataRtnObat)->sum(fn($i) => ($i['riobat_qty'] ?? 0) * ($i['riobat_price'] ?? 0))) }}
                                 </td>
+                                <td></td>
                                 @if (!$isFormLocked) <td></td> @endif
                             </tr>
                         </tfoot>
@@ -369,4 +595,46 @@ new class extends Component {
             </div>
         </div>
     </div>
+    {{-- MODAL KIRIM — pilih ruangan asal stok, lalu dua transfer: ruangan → Gudang → Apotek --}}
+    <x-modal name="kirim-return-obat-ri" size="2xl" focusable>
+        <x-modul-dokumen.header judul="Kirim Return ke Apotek" tutup="tutupKirimReturn" ikon="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4">
+            Stok return dipindah lewat dua transfer: ruangan asal → Gudang Medis (04) → Apotek (02).
+        </x-modul-dokumen.header>
+        <div class="p-6 space-y-5" wire:key="{{ $this->renderKey('modal-kirim-return-ri', [$riHdrNo ?? 'new']) }}">
+            <livewire:lov.stocklocation.lov-stocklocation target="asal-return-ri" label="Ruangan asal stok"
+                placeholder="Ketik kode / nama ruangan..." :initialSlCode="$slCodeAsal"
+                :excludeSlCode="[self::GUDANG_SL_CODE, self::APOTEK_SL_CODE]" jenisLokasi="medis"
+                wire:key="lov-asal-return-{{ $this->renderKey('modal-kirim-return-ri', [$riHdrNo ?? 'new']) }}" />
+            <x-input-error :messages="$errors->get('slCodeAsal')" class="-mt-3" />
+
+            @php $rowsBelumDikirim = collect($dataRtnObat)->whereNull('trf_no_apotek'); @endphp
+            <div class="overflow-hidden border border-hairline rounded-xl dark:border-gray-700">
+                <table class="w-full text-sm text-left">
+                    <thead class="text-xs font-semibold text-gray-600 uppercase bg-surface-soft dark:bg-gray-800/50 dark:text-gray-300">
+                        <tr>
+                            <th class="px-4 py-2">Produk</th>
+                            <th class="px-4 py-2 text-right">Qty</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-hairline-soft dark:divide-gray-800">
+                        @foreach ($rowsBelumDikirim->groupBy('product_id') as $rowsProduk)
+                            <tr>
+                                <td class="px-4 py-1.5 text-ink dark:text-gray-200">{{ $rowsProduk->first()['product_name'] ?? $rowsProduk->first()['product_id'] }}</td>
+                                <td class="px-4 py-1.5 text-right text-body dark:text-gray-300">{{ $rowsProduk->sum('riobat_qty') }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="flex justify-end gap-2 pt-2 border-t border-hairline-soft dark:border-gray-800">
+                <x-secondary-button type="button" wire:click="tutupKirimReturn">Batal</x-secondary-button>
+                <x-primary-button type="button" wire:click.prevent="kirimReturnKeApotek" wire:loading.attr="disabled"
+                    wire:target="kirimReturnKeApotek">
+                    <span wire:loading.remove wire:target="kirimReturnKeApotek">Kirim ke Apotek</span>
+                    <span wire:loading wire:target="kirimReturnKeApotek"><x-loading class="w-4 h-4" /></span>
+                </x-primary-button>
+            </div>
+        </div>
+    </x-modal>
 </div>

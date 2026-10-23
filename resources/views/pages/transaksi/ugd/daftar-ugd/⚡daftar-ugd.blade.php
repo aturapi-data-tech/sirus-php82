@@ -577,7 +577,7 @@ new class extends Component {
                                                 </div>
                                                 <x-list.identitas-pasien :regNo="$row->reg_no" :nama="$row->reg_name"
                                                     :sex="$row->sex" :tglLahir="$row->birth_date"
-                                                    :alamat="$row->address" :collapseUmur="true" />
+                                                    :alamat="$row->address" :collapseUmur="false" />
                                             </div>
                                         </div>
                                     </td>
@@ -773,7 +773,7 @@ new class extends Component {
                                                 <div class="flex flex-col items-stretch gap-2 shrink-0">
 
                                                 {{-- Dropdown Aksi --}}
-                                                <x-dropdown position="left" width="w-[440px]">
+                                                <x-dropdown position="left" width="w-[440px]" :melayang="true">
                                                     <x-slot name="trigger">
                                                         <x-secondary-button type="button" class="p-2 w-full justify-center">
                                                             <svg class="w-5 h-5" fill="currentColor"

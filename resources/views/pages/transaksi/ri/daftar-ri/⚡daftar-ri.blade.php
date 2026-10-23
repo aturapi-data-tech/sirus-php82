@@ -107,6 +107,10 @@ new class extends Component {
     {
         $this->dispatch('berkas-bpjs.open', rjNo: $rihdrNo);
     }
+    public function openCekJumlahRecord(int $riHdrNo): void
+    {
+        $this->dispatch('daftar-ri.cek-jumlah-record.open', riHdrNo: $riHdrNo);
+    }
 
     #[On('refresh-after-ri.saved')]
     public function refreshAfterSaved(): void
@@ -708,7 +712,7 @@ new class extends Component {
 
                                             <x-cetak-button wire:click="cetakEtiket('{{ $row->reg_no }}')" label="Etiket" />
 
-                                            <x-dropdown position="left" width="w-[440px]">
+                                            <x-dropdown position="left" width="w-[440px]" :melayang="true">
                                                 <x-slot name="trigger">
                                                     <x-secondary-button type="button" class="p-2.5">
                                                         <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
@@ -873,6 +877,23 @@ new class extends Component {
                                                             </x-dropdown-link>
                                                         @endcan
 
+                                                        {{-- Cek Jumlah Record & Reset per tab Administrasi — manager ke atas (AksiRole::RI_RESET_ADMINISTRASI) --}}
+                                                        @can('ri.resetAdministrasi')
+                                                            <x-dropdown-link href="#"
+                                                                wire:click.prevent="openCekJumlahRecord({{ $row->rihdr_no }})"
+                                                                class="px-3 py-2 text-sm rounded-lg h-full bg-gray-50 hover:bg-gray-100 dark:bg-gray-800/40 dark:hover:bg-gray-800">
+                                                                <div class="flex items-start gap-2">
+                                                                    <svg class="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 7v10c0 2 3.6 4 8 4s8-2 8-4V7M4 7c0 2 3.6 4 8 4s8-2 8-4M4 7c0-2 3.6-4 8-4s8 2 8 4m-16 5c0 2 3.6 4 8 4s8-2 8-4" />
+                                                                    </svg>
+                                                                    <span class="min-w-0">
+                                                                        <span class="block font-semibold">Cek Jumlah Record</span>
+                                                                        <span class="block text-xs font-normal text-muted dark:text-gray-400">Total record &amp; reset tiap tab Administrasi</span>
+                                                                    </span>
+                                                                </div>
+                                                            </x-dropdown-link>
+                                                        @endcan
+
                                                         </div>
 
                                                         <div
@@ -942,6 +963,7 @@ new class extends Component {
             {{-- iDRG/INACBG Modal (sibling, listen ke event daftar-ri.idrg.open) --}}
             <livewire:pages::transaksi.ri.daftar-ri.idrg-ri-actions wire:key="idrg-ri-actions" />
             <livewire:pages::transaksi.ri.daftar-ri.satu-sehat-ri-actions wire:key="satu-sehat-ri-actions" />
+            <livewire:pages::transaksi.ri.daftar-ri.cek-jumlah-record-ri-actions wire:key="cek-jumlah-record-ri-actions" />
             <livewire:pages::transaksi.ri.daftar-ri-bulanan.berkas-bpjs-ri-actions wire:key="berkas-bpjs-ri-actions" />
 
             <livewire:pages::transaksi.ri.emr-ri.modul-dokumen.modul-dokumen-ri wire:key="modul-dokumen-ri" />

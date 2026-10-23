@@ -14,12 +14,15 @@ new class extends Component {
     public const WAREHOUSE_SL_CODE = '04';   // Gudang Medis
     public const APOTEK_SL_CODE    = '02';   // Apotek
 
+    /** Tab lihat-saja: transfer MASUK ke Gudang dari ruangan (mis. Kirim Return Obat RI). */
+    public const TAB_MASUK_DARI_RUANGAN = 'ruangan';
+
     public string $searchKeyword = '';
     public int $itemsPerPage = 10;
     public string $filterBulan = '';
     public string $filterStatus = '';
 
-    /** Tab sumber: '04' (Gudang) atau '02' (Apotek). */
+    /** Tab sumber: '04' (Gudang), '02' (Apotek), atau 'ruangan' (masuk Gudang dari ruangan). */
     public string $filterFromSource = self::WAREHOUSE_SL_CODE;
 
     public function mount(): void
@@ -35,7 +38,7 @@ new class extends Component {
 
     public function setFromSource(string $slCode): void
     {
-        if (!in_array($slCode, [self::WAREHOUSE_SL_CODE, self::APOTEK_SL_CODE], true)) {
+        if (!in_array($slCode, [self::WAREHOUSE_SL_CODE, self::APOTEK_SL_CODE, self::TAB_MASUK_DARI_RUANGAN], true)) {
             return;
         }
         $this->filterFromSource = $slCode;
@@ -44,6 +47,10 @@ new class extends Component {
 
     public function openCreate(): void
     {
+        // Transfer dari ruangan dibuat oleh modul asalnya (tab Return Obat RI), bukan dari sini.
+        if ($this->filterFromSource === self::TAB_MASUK_DARI_RUANGAN) {
+            return;
+        }
         $this->dispatch('transfer-stock.openCreate', slCodeFrom: $this->filterFromSource);
     }
 
@@ -104,7 +111,12 @@ new class extends Component {
             $query->where('h.trf_status', $this->filterStatus);
         }
 
-        $query->where('h.sl_codefrom', $this->filterFromSource);
+        if ($this->filterFromSource === self::TAB_MASUK_DARI_RUANGAN) {
+            $query->where('h.sl_codeto', self::WAREHOUSE_SL_CODE)
+                ->whereNotIn('h.sl_codefrom', [self::WAREHOUSE_SL_CODE, self::APOTEK_SL_CODE]);
+        } else {
+            $query->where('h.sl_codefrom', $this->filterFromSource);
+        }
 
         return $query->paginate($this->itemsPerPage);
     }
@@ -114,7 +126,7 @@ new class extends Component {
 <div>
     <x-page-title
         title="Transfer Stok Antar Ruang"
-        subtitle="Catat perpindahan obat / alkes antar lokasi. Sumber transfer hanya dari Gudang Medis atau Apotek." />
+        subtitle="Catat perpindahan obat / alkes antar lokasi. Sumber transfer hanya dari Gudang Medis atau Apotek; tab Masuk dari Ruangan hanya untuk dilihat." />
 
     <div class="w-full h-[calc(100vh-5rem)] flex flex-col bg-surface-soft dark:bg-gray-800">
         <div class="flex flex-col flex-1 min-h-0 px-6 pt-2 pb-6">
@@ -168,14 +180,16 @@ new class extends Component {
                                 <option value="100">100</option>
                             </x-select-input>
                         </div>
-                        <x-primary-button type="button" wire:click="openCreate" class="whitespace-nowrap"
-                            title="Buat transfer stok baru">
-                            <svg class="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                                stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
-                            </svg>
-                            Buat Transfer Baru
-                        </x-primary-button>
+                        @if ($filterFromSource !== self::TAB_MASUK_DARI_RUANGAN)
+                            <x-primary-button type="button" wire:click="openCreate" class="whitespace-nowrap"
+                                title="Buat transfer stok baru">
+                                <svg class="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                    stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                                </svg>
+                                Buat Transfer Baru
+                            </x-primary-button>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -200,6 +214,16 @@ new class extends Component {
                         </svg>
                         Dari Apotek
                         <span class="px-2 py-0.5 text-xs font-mono bg-canvas border border-gray-300 rounded dark:bg-gray-900 dark:border-gray-600">02</span>
+                    </x-tab>
+                    <x-tab variant="underline" :active="$filterFromSource === self::TAB_MASUK_DARI_RUANGAN"
+                        wire:click="setFromSource('{{ self::TAB_MASUK_DARI_RUANGAN }}')" class="inline-flex items-center gap-2"
+                        title="Transfer masuk ke Gudang Medis dari ruangan, mis. Kirim Return Obat RI — hanya lihat">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                        </svg>
+                        Masuk dari Ruangan
+                        <span class="px-2 py-0.5 text-xs font-mono bg-canvas border border-gray-300 rounded dark:bg-gray-900 dark:border-gray-600">→ 04</span>
                     </x-tab>
                 </div>
             </x-scrollable-tabs>

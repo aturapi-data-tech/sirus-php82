@@ -597,39 +597,100 @@ new class extends Component {
                                                 </span>
                                             </div>
                                         @else
-                                            <div class="flex flex-col gap-2">
-
-                                                {{-- Administrasi — Admin | Tu --}}
-                                                @hasanyrole('Admin|Tu|Manager Umum|Supervisor Tu')
-                                                    <x-secondary-button
-                                                        wire:click="openAdministrasiPasien('{{ $row->rj_no }}')"
-                                                        class="text-xs whitespace-nowrap justify-center !bg-purple-600 !text-white !border-purple-700 hover:!bg-purple-700 dark:!bg-purple-600 dark:!text-white dark:!border-purple-700 dark:hover:!bg-purple-700">
-                                                        <svg class="w-3.5 h-3.5 mr-1" fill="none"
-                                                            stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                                d="M2 8h20v12a1 1 0 01-1 1H3a1 1 0 01-1-1V8zm0 0V6a1 1 0 011-1h18a1 1 0 011 1v2M12 14a2 2 0 100-4 2 2 0 000 4z" />
+                                            {{-- Aksi kasir — menu titik-3 baku (sama dengan Pelayanan), melayang agar baris terbawah tak terpotong --}}
+                                            <x-dropdown width="w-[440px]" :melayang="true">
+                                                <x-slot name="trigger">
+                                                    <x-secondary-button type="button" class="p-2.5">
+                                                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                                            <path d="M6 10a2 2 0 11-4 0 2 2 0 014 0zM12 10a2 2 0 11-4 0 2 2 0 014 0zM16 12a2 2 0 100-4 2 2 0 000 4z" />
                                                         </svg>
-                                                        Administrasi
                                                     </x-secondary-button>
-                                                @endhasanyrole
+                                                </x-slot>
 
-                                                {{-- Transfer ke UGD — aktif HANYA saat status Antrian (rj_status='A') --}}
-                                                @hasanyrole('Admin|Tu|Perawat|Manager Umum|Supervisor Tu')
-                                                    <x-secondary-button type="button"
-                                                        :disabled="$row->rj_status !== 'A'"
-                                                        wire:click="$dispatch('open-transfer-rj-ke-ugd', { rjNo: {{ $row->rj_no }} })"
-                                                        title="{{ $row->rj_status === 'A' ? 'Transfer pasien ke UGD' : 'Hanya bisa saat status Antrian' }}"
-                                                        class="text-xs whitespace-nowrap justify-center !bg-teal-600 !text-white !border-teal-700 hover:!bg-teal-700 dark:!bg-teal-600 dark:!text-white dark:!border-teal-700 dark:hover:!bg-teal-700">
-                                                        <svg class="w-3.5 h-3.5 mr-1" fill="none"
-                                                            stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                                d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                                                        </svg>
-                                                        Transfer ke UGD
-                                                    </x-secondary-button>
-                                                @endhasanyrole
+                                                <x-slot name="content">
+                                                    <div class="p-2 space-y-2">
+                                                        <x-list.identitas-aksi :regNo="$row->reg_no" :nama="$row->reg_name" :sex="$row->sex"
+                                                            jalur="Rawat Jalan" />
 
-                                            </div>
+                                                        <div class="grid grid-cols-2 gap-1 items-stretch">
+                                                        @hasanyrole('Admin|Tu|Manager Umum|Supervisor Tu')
+                                                        <x-dropdown-link href="#" wire:click.prevent="openAdministrasiPasien('{{ $row->rj_no }}')"
+                                                            class="px-3 py-2 text-sm rounded-lg h-full bg-purple-50 hover:bg-purple-100 dark:bg-purple-900/20 dark:hover:bg-purple-900/40">
+                                                            <div class="flex items-start gap-2">
+                                                                <svg class="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M2 8h20v12a1 1 0 01-1 1H3a1 1 0 01-1-1V8zm0 0V6a1 1 0 011-1h18a1 1 0 011 1v2M12 14a2 2 0 100-4 2 2 0 000 4z" />
+                                                                </svg>
+                                                                <span class="min-w-0">
+                                                                    <span class="block font-semibold">Administrasi</span>
+                                                                    <span class="block text-xs font-normal text-muted dark:text-gray-400">Tagihan &amp; pembayaran</span>
+                                                                </span>
+                                                            </div>
+                                                        </x-dropdown-link>
+                                                        @endhasanyrole
+
+                                                        {{-- Transfer — aktif HANYA saat status Antrian (rj_status='A') --}}
+                                                        @hasanyrole('Admin|Tu|Perawat|Manager Umum|Supervisor Tu')
+                                                        @if ($row->rj_status === 'A')
+                                                        <x-dropdown-link href="#" wire:click.prevent="$dispatch('open-transfer-rj-ke-ugd', { rjNo: {{ $row->rj_no }} })"
+                                                            class="px-3 py-2 text-sm rounded-lg h-full bg-teal-50 hover:bg-teal-100 dark:bg-teal-900/20 dark:hover:bg-teal-900/40">
+                                                            <div class="flex items-start gap-2">
+                                                                <svg class="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                                                                </svg>
+                                                                <span class="min-w-0">
+                                                                    <span class="block font-semibold">Transfer ke UGD</span>
+                                                                    <span class="block text-xs font-normal text-muted dark:text-gray-400">Pindahkan biaya ke UGD</span>
+                                                                </span>
+                                                            </div>
+                                                        </x-dropdown-link>
+                                                        @else
+                                                        <div class="px-3 py-2 text-sm rounded-lg h-full bg-gray-50 text-muted-soft opacity-60 cursor-not-allowed dark:bg-gray-800/40" title="Hanya saat status Antrian">
+                                                            <div class="flex items-start gap-2">
+                                                                <svg class="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                                                                </svg>
+                                                                <span class="min-w-0">
+                                                                    <span class="block font-semibold">Transfer ke UGD</span>
+                                                                    <span class="block text-xs font-normal text-muted dark:text-gray-400">Hanya saat status Antrian</span>
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                        @endif
+                                                        @endhasanyrole
+
+                                                        {{-- Ubah Data Kunjungan (tanggal/shift/klaim) — HANYA saat status Antrian --}}
+                                                        @can('rj.ubahDataKunjungan')
+                                                        @if ($row->rj_status === 'A')
+                                                        <x-dropdown-link href="#" wire:click.prevent="$dispatch('open-ubah-data-kunjungan-rj', { rjNo: {{ $row->rj_no }} })"
+                                                            class="px-3 py-2 text-sm rounded-lg h-full bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/20 dark:hover:bg-amber-900/40">
+                                                            <div class="flex items-start gap-2">
+                                                                <svg class="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                                </svg>
+                                                                <span class="min-w-0">
+                                                                    <span class="block font-semibold">Ubah Data Kunjungan</span>
+                                                                    <span class="block text-xs font-normal text-muted dark:text-gray-400">Tanggal, shift &amp; klaim</span>
+                                                                </span>
+                                                            </div>
+                                                        </x-dropdown-link>
+                                                        @else
+                                                        <div class="px-3 py-2 text-sm rounded-lg h-full bg-gray-50 text-muted-soft opacity-60 cursor-not-allowed dark:bg-gray-800/40" title="Hanya saat status Antrian">
+                                                            <div class="flex items-start gap-2">
+                                                                <svg class="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                                </svg>
+                                                                <span class="min-w-0">
+                                                                    <span class="block font-semibold">Ubah Data Kunjungan</span>
+                                                                    <span class="block text-xs font-normal text-muted dark:text-gray-400">Hanya saat status Antrian</span>
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                        @endif
+                                                        @endcan
+                                                        </div>
+                                                    </div>
+                                                </x-slot>
+                                            </x-dropdown>
                                         @endif
                                     </td>
                                 </tr>
@@ -667,6 +728,7 @@ new class extends Component {
         <livewire:pages::transaksi.rj.emr-rj.log-aktivitas.log-aktivitas-rj wire:key="log-aktivitas-rj" />
         <livewire:pages::transaksi.rj.administrasi-rj.administrasi-rj wire:key="administrasi-rj-actions" />
         <livewire:pages::transaksi.rj.administrasi-rj.transfer-rj-ke-ugd-actions wire:key="transfer-rj-ke-ugd-actions" />
+        <livewire:pages::transaksi.rj.administrasi-rj.ubah-data-kunjungan-rj-actions wire:key="ubah-data-kunjungan-rj-actions" />
 
     </div>
 </div>

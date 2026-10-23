@@ -156,21 +156,9 @@ new class extends Component {
                 {{-- ── TAB NAV ── --}}
                 <div class="px-6 border-b bg-canvas border-hairline shrink-0 dark:bg-gray-900 dark:border-gray-700">
                     <nav class="flex gap-1 -mb-px">
-                        <button type="button" x-on:click="tab = 'resume'"
-                            :class="tab === 'resume' ? 'border-brand-green text-brand-green' :
-                                'border-transparent text-muted hover:text-ink'"
-                            class="px-4 py-3 text-base font-semibold transition-colors border-b-2">Assesment Awal Rawat
-                            Jalan</button>
-                        <button type="button" x-on:click="tab = 'dokumen'"
-                            :class="tab === 'dokumen' ? 'border-brand-green text-brand-green' :
-                                'border-transparent text-muted hover:text-ink'"
-                            class="px-4 py-3 text-base font-semibold transition-colors border-b-2">Modul
-                            Dokumen</button>
-                        <button type="button" x-on:click="tab = 'penunjang'"
-                            :class="tab === 'penunjang' ? 'border-brand-green text-brand-green' :
-                                'border-transparent text-muted hover:text-ink'"
-                            class="px-4 py-3 text-base font-semibold transition-colors border-b-2">Hasil
-                            Penunjang</button>
+                        <x-tab variant="underline" active-expr="tab === 'resume'" x-on:click="tab = 'resume'">Assesment Awal Rawat Jalan</x-tab>
+                        <x-tab variant="underline" active-expr="tab === 'dokumen'" x-on:click="tab = 'dokumen'">Modul Dokumen</x-tab>
+                        <x-tab variant="underline" active-expr="tab === 'penunjang'" x-on:click="tab = 'penunjang'">Hasil Penunjang</x-tab>
                     </nav>
                 </div>
 
@@ -927,19 +915,10 @@ new class extends Component {
                     @php $regNoPenunjang = (string) ($dataDaftarTxn['regNo'] ?? ''); @endphp
                     <div x-show="tab === 'penunjang'" x-cloak class="px-6 py-5" x-data="{ sub: 'laboratorium' }">
                         <div class="flex flex-wrap gap-1 mb-4 border-b border-hairline dark:border-gray-700">
-                            <button type="button" x-on:click="sub = 'laboratorium'"
-                                :class="sub === 'laboratorium' ? 'border-brand-green text-brand-green' :
-                                    'border-transparent text-muted hover:text-ink'"
-                                class="px-4 py-2 -mb-px text-sm font-semibold transition-colors border-b-2">Laboratorium</button>
-                            <button type="button" x-on:click="sub = 'radiologi'"
-                                :class="sub === 'radiologi' ? 'border-brand-green text-brand-green' :
-                                    'border-transparent text-muted hover:text-ink'"
-                                class="px-4 py-2 -mb-px text-sm font-semibold transition-colors border-b-2">Radiologi</button>
-                            <button type="button" x-on:click="sub = 'upload'"
-                                :class="sub === 'upload' ? 'border-brand-green text-brand-green' :
-                                    'border-transparent text-muted hover:text-ink'"
-                                class="px-4 py-2 -mb-px text-sm font-semibold transition-colors border-b-2">Upload
-                                Penunjang</button>
+                            <x-tab variant="underline" active-expr="sub === 'laboratorium'" x-on:click="sub = 'laboratorium'">Laboratorium</x-tab>
+                            <x-tab variant="underline" active-expr="sub === 'radiologi'" x-on:click="sub = 'radiologi'">Radiologi</x-tab>
+                            <x-tab variant="underline" active-expr="sub === 'upload'" x-on:click="sub = 'upload'">Upload Penunjang</x-tab>
+                            <x-tab variant="underline" active-expr="sub === 'berkas-luar'" x-on:click="sub = 'berkas-luar'">Berkas Scan Luar</x-tab>
                         </div>
 
                         <div x-show="sub === 'laboratorium'" x-cloak class="space-y-4">
@@ -957,6 +936,12 @@ new class extends Component {
                         <div x-show="sub === 'upload'" x-cloak>
                             <livewire:pages::components.rekam-medis.penunjang.upload-penunjang-display.upload-penunjang-display
                                 :regNo="$regNoPenunjang" wire:key="rm-rj-penunjang-upload-{{ $regNoPenunjang }}" />
+                        </div>
+
+                        {{-- Berkas Scan Luar (diupload di Modul Dokumen) — riwayat lintas kunjungan RJ/UGD/RI --}}
+                        <div x-show="sub === 'berkas-luar'" x-cloak>
+                            <livewire:pages::components.rekam-medis.berkas-luar-display.berkas-luar-display
+                                :regNo="$regNoPenunjang" wire:key="rm-rj-penunjang-berkas-luar-{{ $regNoPenunjang }}" />
                         </div>
                     </div>
 

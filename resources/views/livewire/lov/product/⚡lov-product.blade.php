@@ -277,9 +277,13 @@ new class extends Component {
         @endif
 
         {{-- dropdown hanya saat mode cari dan tidak readonly --}}
+        {{-- MELAYANG (pola semua LOV): x-anchor.fixed = posisi terhadap layar + buka ke atas bila
+             ruang bawah kurang; x-melayang (resources/js/app.js) = lebar ikut input, tinggi daftar
+             ikut ruang. Tanpa x-teleport (@click.outside x-lov.dropdown menganggap klik item klik
+             di luar). wire:ignore.self WAJIB — morph Livewire menghapus style posisi. --}}
         @if ($isOpen && $selected === null && !$readonly)
-            <div
-                class="absolute z-50 w-full mt-2 overflow-hidden bg-white border border-gray-200 shadow-lg rounded-xl dark:bg-gray-900 dark:border-gray-700">
+            <div wire:ignore.self x-anchor.fixed.bottom-start.offset.8="$el.parentElement" x-melayang.lebar.daftar
+                class="z-50 overflow-hidden bg-white border border-gray-200 shadow-lg rounded-xl dark:bg-gray-900 dark:border-gray-700">
                 <ul class="overflow-y-auto divide-y divide-gray-100 max-h-72 dark:divide-gray-800">
                     @foreach ($options as $index => $option)
                         <li wire:key="lov-product-{{ $option['product_id'] ?? $index }}-{{ $index }}"

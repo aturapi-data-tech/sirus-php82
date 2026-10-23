@@ -165,6 +165,46 @@ new class extends Component {
     }
 
     /* ===============================
+     | VALIDASI
+     =============================== */
+    protected function rules(): array
+    {
+        return [
+            'formEntry.jasaDokterId'    => 'bail|required|exists:rsmst_accdocs,accdoc_id',
+            'formEntry.jasaDokterPrice' => 'bail|required|numeric|min:0',
+            // Batas atas: tiap 1 qty meng-insert ulang seluruh paket lain-lain (lihat paketLainLainJasaDokter).
+            'formEntry.jasaDokterQty'   => 'bail|required|numeric|min:1|max:100',
+            'formEntry.drId'            => 'bail|nullable|exists:rsmst_doctors,dr_id',
+        ];
+    }
+
+    protected function messages(): array
+    {
+        return [
+            'formEntry.jasaDokterId.required'    => ':attribute wajib dipilih.',
+            'formEntry.jasaDokterId.exists'      => ':attribute tidak valid.',
+            'formEntry.jasaDokterPrice.required' => ':attribute wajib diisi.',
+            'formEntry.jasaDokterPrice.numeric'  => ':attribute harus berupa angka.',
+            'formEntry.jasaDokterPrice.min'      => ':attribute tidak boleh negatif.',
+            'formEntry.jasaDokterQty.required'   => ':attribute wajib diisi.',
+            'formEntry.jasaDokterQty.numeric'    => ':attribute harus berupa angka.',
+            'formEntry.jasaDokterQty.min'        => ':attribute minimal :min.',
+            'formEntry.jasaDokterQty.max'        => ':attribute maksimal :max.',
+            'formEntry.drId.exists'              => ':attribute tidak valid.',
+        ];
+    }
+
+    protected function validationAttributes(): array
+    {
+        return [
+            'formEntry.jasaDokterId'    => 'Jasa dokter',
+            'formEntry.jasaDokterPrice' => 'Tarif',
+            'formEntry.jasaDokterQty'   => 'Jumlah',
+            'formEntry.drId'            => 'Dokter',
+        ];
+    }
+
+    /* ===============================
      | INSERT
      =============================== */
     public function insertJasaDokter(): void
@@ -174,22 +214,7 @@ new class extends Component {
             return;
         }
 
-        $this->validate(
-            [
-                'formEntry.jasaDokterId'    => 'bail|required|exists:rsmst_accdocs,accdoc_id',
-                'formEntry.jasaDokterPrice' => 'bail|required|numeric|min:0',
-                'formEntry.jasaDokterQty'   => 'bail|required|numeric|min:1',
-                'formEntry.drId'            => 'bail|nullable|exists:rsmst_doctors,dr_id',
-            ],
-            [
-                'formEntry.jasaDokterId.required'    => 'Jasa dokter wajib dipilih.',
-                'formEntry.jasaDokterId.exists'      => 'Jasa dokter tidak valid.',
-                'formEntry.jasaDokterPrice.required' => 'Tarif wajib diisi.',
-                'formEntry.jasaDokterPrice.numeric'  => 'Tarif harus berupa angka.',
-                'formEntry.jasaDokterQty.required'   => 'Jumlah wajib diisi.',
-                'formEntry.jasaDokterQty.min'        => 'Jumlah minimal 1.',
-            ],
-        );
+        $this->validate();
 
         try {
             DB::transaction(function () {
