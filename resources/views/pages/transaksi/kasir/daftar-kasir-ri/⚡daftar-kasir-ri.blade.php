@@ -299,21 +299,70 @@ new class extends Component {
 
                                     {{-- AKSI --}}
                                     <td class="px-6 py-4 text-center align-top">
-                                        {{-- flex-col bikin tombol melebar memenuhi sel — pola Kasir RJ --}}
-                                        <div class="flex flex-col gap-2">
-                                            @hasanyrole('Admin|Tu|Manager Umum|Supervisor Tu')
-                                                <x-secondary-button
-                                                    wire:click="openAdministrasiPasien('{{ $row->rihdr_no }}')"
-                                                    class="whitespace-nowrap justify-center !bg-purple-600 !text-white !border-purple-700 hover:!bg-purple-700 dark:!bg-purple-600 dark:!text-white dark:!border-purple-700 dark:hover:!bg-purple-700">
-                                                    <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor"
-                                                        viewBox="0 0 24 24" stroke-width="2">
-                                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                                            d="M2 8h20v12a1 1 0 01-1 1H3a1 1 0 01-1-1V8zm0 0V6a1 1 0 011-1h18a1 1 0 011 1v2M12 14a2 2 0 100-4 2 2 0 000 4z" />
+                                        {{-- Aksi kasir RI — menu titik-3 baku (sama dengan Kasir RJ/UGD), melayang agar baris terbawah tak terpotong --}}
+                                        <x-dropdown width="w-[440px]" :melayang="true">
+                                            <x-slot name="trigger">
+                                                <x-secondary-button type="button" class="p-2.5">
+                                                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                                        <path d="M6 10a2 2 0 11-4 0 2 2 0 014 0zM12 10a2 2 0 11-4 0 2 2 0 014 0zM16 12a2 2 0 100-4 2 2 0 000 4z" />
                                                     </svg>
-                                                    Administrasi
                                                 </x-secondary-button>
-                                            @endhasanyrole
-                                        </div>
+                                            </x-slot>
+
+                                            <x-slot name="content">
+                                                <div class="p-2 space-y-2">
+                                                    <x-list.identitas-aksi :regNo="$row->reg_no" :nama="$row->reg_name" :sex="$row->sex"
+                                                        jalur="Rawat Inap" />
+
+                                                    <div class="grid grid-cols-2 gap-1 items-stretch">
+                                                    @hasanyrole('Admin|Tu|Manager Umum|Supervisor Tu')
+                                                    <x-dropdown-link href="#" wire:click.prevent="openAdministrasiPasien('{{ $row->rihdr_no }}')"
+                                                        class="px-3 py-2 text-sm rounded-lg h-full bg-purple-50 hover:bg-purple-100 dark:bg-purple-900/20 dark:hover:bg-purple-900/40">
+                                                        <div class="flex items-start gap-2">
+                                                            <svg class="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M2 8h20v12a1 1 0 01-1 1H3a1 1 0 01-1-1V8zm0 0V6a1 1 0 011-1h18a1 1 0 011 1v2M12 14a2 2 0 100-4 2 2 0 000 4z" />
+                                                            </svg>
+                                                            <span class="min-w-0">
+                                                                <span class="block font-semibold">Administrasi</span>
+                                                                <span class="block text-xs font-normal text-muted dark:text-gray-400">Tagihan &amp; pembayaran</span>
+                                                            </span>
+                                                        </div>
+                                                    </x-dropdown-link>
+                                                    @endhasanyrole
+
+                                                    {{-- Ubah Data Kunjungan (KLAIM saja) — HANYA selama pasien dirawat --}}
+                                                    @can('ri.ubahDataKunjungan')
+                                                    @if (($row->ri_status ?? 'I') === 'I')
+                                                    <x-dropdown-link href="#" wire:click.prevent="$dispatch('open-ubah-data-kunjungan-ri', { riHdrNo: {{ $row->rihdr_no }} })"
+                                                        class="px-3 py-2 text-sm rounded-lg h-full bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/20 dark:hover:bg-amber-900/40">
+                                                        <div class="flex items-start gap-2">
+                                                            <svg class="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                            </svg>
+                                                            <span class="min-w-0">
+                                                                <span class="block font-semibold">Ubah Data Kunjungan</span>
+                                                                <span class="block text-xs font-normal text-muted dark:text-gray-400">Koreksi klaim</span>
+                                                            </span>
+                                                        </div>
+                                                    </x-dropdown-link>
+                                                    @else
+                                                    <div class="px-3 py-2 text-sm rounded-lg h-full bg-gray-50 text-muted-soft opacity-60 cursor-not-allowed dark:bg-gray-800/40" title="Hanya selama pasien dirawat">
+                                                        <div class="flex items-start gap-2">
+                                                            <svg class="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                            </svg>
+                                                            <span class="min-w-0">
+                                                                <span class="block font-semibold">Ubah Data Kunjungan</span>
+                                                                <span class="block text-xs font-normal text-muted dark:text-gray-400">Hanya selama pasien dirawat</span>
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    @endif
+                                                    @endcan
+                                                    </div>
+                                                </div>
+                                            </x-slot>
+                                        </x-dropdown>
                                     </td>
                                 </tr>
                             @empty
@@ -347,6 +396,7 @@ new class extends Component {
         {{-- Modal Administrasi RI (shared dengan Daftar RI utama) --}}
         <livewire:pages::transaksi.ri.emr-ri.log-aktivitas.log-aktivitas-ri wire:key="log-aktivitas-ri" />
         <livewire:pages::transaksi.ri.administrasi-ri.administrasi-ri wire:key="daftar-kasir-ri-administrasi" />
+        <livewire:pages::transaksi.kasir.daftar-kasir-ri.ubah-data-kunjungan-ri-actions wire:key="daftar-kasir-ri-ubah-data-kunjungan" />
 
     </div>
 </div>

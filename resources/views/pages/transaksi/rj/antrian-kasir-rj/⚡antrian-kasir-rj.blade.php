@@ -728,7 +728,7 @@ new class extends Component {
         <livewire:pages::transaksi.rj.emr-rj.log-aktivitas.log-aktivitas-rj wire:key="log-aktivitas-rj" />
         <livewire:pages::transaksi.rj.administrasi-rj.administrasi-rj wire:key="administrasi-rj-actions" />
         <livewire:pages::transaksi.rj.administrasi-rj.transfer-rj-ke-ugd-actions wire:key="transfer-rj-ke-ugd-actions" />
-        <livewire:pages::transaksi.rj.administrasi-rj.ubah-data-kunjungan-rj-actions wire:key="ubah-data-kunjungan-rj-actions" />
+        <livewire:pages::transaksi.rj.antrian-kasir-rj.ubah-data-kunjungan-rj-actions wire:key="ubah-data-kunjungan-rj-actions" />
 
     </div>
 </div>

@@ -134,6 +134,12 @@ class AksiRole
     /** Ubah Data Kunjungan UGD dari Antrian Kasir UGD — sama maksudnya dengan RJ, jalur terpisah. */
     public const UGD_UBAH_DATA_KUNJUNGAN = ['Admin', 'Tu', 'Manager Umum', 'Supervisor Tu'];
 
+    /**
+     * Ubah Data Kunjungan RI (KLAIM saja) dari menu titik-3 Daftar Kasir RI — kasir RI (Tu) tak punya
+     * akses "Pendaftaran Ubah" (Mr/Admin/Supervisor Tu), jadi koreksi klaim lewat jalur ini.
+     */
+    public const RI_UBAH_DATA_KUNJUNGAN = ['Admin', 'Tu', 'Manager Umum', 'Supervisor Tu'];
+
     /** Membuka form Pindah Kamar pasien rawat inap. */
     public const RI_PINDAH_KAMAR = ['Mr', 'Admin', 'Perawat', 'Tu'];
 

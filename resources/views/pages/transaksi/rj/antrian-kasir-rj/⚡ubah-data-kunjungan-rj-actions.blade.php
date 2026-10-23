@@ -1,5 +1,5 @@
 <?php
-// resources/views/pages/transaksi/rj/administrasi-rj/ubah-data-kunjungan-rj-actions.blade.php
+// resources/views/pages/transaksi/rj/antrian-kasir-rj/ubah-data-kunjungan-rj-actions.blade.php
 //
 // Komponen TERSENDIRI untuk kasir: mengoreksi TANGGAL, SHIFT, dan KLAIM kunjungan RJ selama
 // pasien masih dalam pelayanan (rj_status 'A'). Di form Daftar RJ tanggal & shift terkunci di

@@ -627,7 +627,7 @@ new class extends Component {
         <livewire:pages::transaksi.ugd.emr-ugd.log-aktivitas.log-aktivitas-ugd wire:key="log-aktivitas-ugd" />
         <livewire:pages::transaksi.ugd.administrasi-ugd.administrasi-ugd wire:key="administrasi-ugd-actions" />
         <livewire:pages::transaksi.ugd.administrasi-ugd.transfer-ugd-ke-ri-actions wire:key="transfer-ugd-ke-ri-actions" />
-        <livewire:pages::transaksi.ugd.administrasi-ugd.ubah-data-kunjungan-ugd-actions wire:key="ubah-data-kunjungan-ugd-actions" />
+        <livewire:pages::transaksi.ugd.antrian-kasir-ugd.ubah-data-kunjungan-ugd-actions wire:key="ubah-data-kunjungan-ugd-actions" />
 
     </div>
 </div>
