@@ -207,6 +207,44 @@ document.addEventListener("alpine:init", () => {
             if (i > -1 && i < els.length - 1) els[i + 1].focus();
         });
     });
+
+    // x-melayang="<elemen patokan>": pendamping x-anchor.fixed untuk dropdown yang melayang
+    // (LOV, menu titik-3). x-anchor mengurus POSISI & arah buka (flip ke atas bila ruang bawah
+    // kurang); directive ini mengurus UKURAN:
+    //   - tinggi maks = ruang terlega di atas/bawah patokan (min 120px), tak melebihi max-h
+    //     kelas aslinya (max-h-72/96 dst.) — sisanya di-scroll di dalam daftar;
+    //   - .lebar   → lebar dropdown = lebar patokan (LOV selebar input);
+    //   - .daftar  → tinggi maks dipasang di <ul> pertama (daftar LOV), bukan di elemen ini.
+    // Diukur ulang saat elemen tampil/berubah ukuran (ResizeObserver), resize & scroll halaman.
+    // Elemennya WAJIB wire:ignore.self di komponen Livewire — tanpa itu morph menghapus style.
+    window.Alpine.directive("melayang", (el, { expression, modifiers }, { evaluateLater, cleanup }) => {
+        const ambilPatokan = evaluateLater(expression || "$el.parentElement");
+        const target = modifiers.includes("daftar") ? el.querySelector("ul") || el : el;
+        const batasAsli = parseFloat(getComputedStyle(target).maxHeight) || Infinity;
+        if (target === el) el.style.overflowY = "auto";
+
+        const ukur = () => {
+            ambilPatokan((patokan) => {
+                if (!patokan || !patokan.getBoundingClientRect) return;
+                const r = patokan.getBoundingClientRect();
+                const ruang = Math.max(window.innerHeight - r.bottom, r.top) - 24;
+                if (modifiers.includes("lebar")) el.style.width = r.width + "px";
+                target.style.maxHeight = Math.max(120, Math.min(batasAsli, ruang)) + "px";
+            });
+        };
+
+        const pengamat = new ResizeObserver(() => requestAnimationFrame(ukur));
+        pengamat.observe(el);
+        window.addEventListener("resize", ukur);
+        window.addEventListener("scroll", ukur, true);
+        ukur();
+
+        cleanup(() => {
+            pengamat.disconnect();
+            window.removeEventListener("resize", ukur);
+            window.removeEventListener("scroll", ukur, true);
+        });
+    });
 });
 
 // pdf.js — LAZY-LOADED seperti TinyMCE: bundle baru diunduh saat <x-pratinjau-pdf> pertama dibuka.

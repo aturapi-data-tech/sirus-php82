@@ -166,7 +166,7 @@ new class extends Component {
         @endif
 
         @if ($isOpen && $selected === null && !$disabled)
-            <div class="absolute z-50 w-full mt-2 overflow-hidden bg-white border border-gray-200 shadow-lg rounded-xl dark:bg-gray-900 dark:border-gray-700">
+            <div wire:ignore.self x-anchor.fixed.bottom-start.offset.8="$el.parentElement" x-melayang.lebar.daftar class="z-50 overflow-hidden bg-white border border-gray-200 shadow-lg rounded-xl dark:bg-gray-900 dark:border-gray-700">
                 <ul class="overflow-y-auto divide-y divide-gray-100 max-h-72 dark:divide-gray-800">
                     @foreach ($options as $i => $o)
                         <li wire:key="lov-gra-{{ $o['gra_id'] }}-{{ $i }}" x-ref="lovItem{{ $i }}">

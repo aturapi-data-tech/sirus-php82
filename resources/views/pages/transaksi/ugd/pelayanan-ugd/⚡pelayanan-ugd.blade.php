@@ -756,7 +756,7 @@ new class extends Component {
                                             <x-cetak-button wire:click="cetakEtiket('{{ $row->reg_no }}')" label="Etiket" />
 
                                             {{-- Dropdown Aksi --}}
-                                            <x-dropdown position="left" width="w-[440px]">
+                                            <x-dropdown position="left" width="w-[440px]" :melayang="true">
                                                 <x-slot name="trigger">
                                                     <x-secondary-button type="button" class="p-2.5">
                                                         <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">

@@ -384,8 +384,10 @@ new class extends Component {
                             tab = tujuan.tab;
                             if (tujuan.focus) setTimeout(() => window.dispatchEvent(new CustomEvent(tujuan.focus)), 120);
                         "
-                        class="overflow-hidden bg-canvas border border-hairline rounded-2xl dark:border-gray-700 dark:bg-gray-900">
+                        class="bg-canvas border border-hairline rounded-2xl dark:border-gray-700 dark:bg-gray-900">
 
+                        {{-- SENGAJA tanpa overflow-hidden: dropdown LOV (absolute, max-h-72) di dalam tab
+                             terpotong di batas kartu bila kartunya dipotong. --}}
                         {{-- Tab Nav --}}
                         <x-tabs variant="underline" class="flex-wrap p-2">
                             @foreach ($EmrMenuAdministrasi as $menu)
