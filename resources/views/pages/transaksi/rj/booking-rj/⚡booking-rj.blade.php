@@ -4,6 +4,7 @@ use Livewire\Component;
 use Livewire\WithPagination;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
@@ -237,6 +238,15 @@ new class extends Component {
             return;
         }
 
+        // ── Guard pendaftaran ganda: pasien sudah didaftar di loket (Daftar RJ, ...RSIM)
+        //    ke dokter yang sama hari ini → checkin booking akan membuat kunjungan kedua.
+        //    Dicek ulang di dalam lock sebelum insert.
+        $rjNoTerdaftar = $this->cekSudahTerdaftarRj((string) $row->norm, $cekQuota->dr_id, $row->tanggalperiksa);
+        if ($rjNoTerdaftar) {
+            $this->dispatch('toast', type: 'error', message: "Pasien sudah terdaftar di dokter yang sama hari ini (No. RJ {$rjNoTerdaftar}). Checkin dibatalkan agar tidak terdaftar dua kali.", title: 'Pendaftaran Ganda', duration: 8000);
+            return;
+        }
+
         // No antrian mengikuti nomor yang ditetapkan saat booking
         $noAntrian = (int) $row->angkaantrean;
         $nomorAntrean = (string) $row->nomorantrean;
@@ -255,8 +265,9 @@ new class extends Component {
 
         $rjNo = null;
         try {
-            // Atomic: insert rjhdrs + update referensi dalam 1 transaction
-            $rjNo = DB::transaction(function () use ($nobooking, $row, $cekQuota, $noAntrian, $nomorAntrean, $rjDateStr, $shift, $now, $adminPrices) {
+            // Atomic: insert rjhdrs + update referensi dalam 1 transaction, di bawah lock
+            // yang sama dengan simpan Daftar RJ (lock:rjno-seq) agar loket & checkin mengantre.
+            $rjNo = Cache::lock('lock:rjno-seq', 15)->block(5, fn() => DB::transaction(function () use ($nobooking, $row, $cekQuota, $noAntrian, $nomorAntrean, $rjDateStr, $shift, $now, $adminPrices) {
                 // Re-check status di dalam transaction (race-safe)
                 $freshRow = DB::table('referensi_mobilejkn_bpjs')
                     ->where('nobooking', $nobooking)
@@ -269,6 +280,11 @@ new class extends Component {
                 // Re-check rjhdrs di dalam transaction
                 if (DB::table('rstxn_rjhdrs')->where('nobooking', $nobooking)->exists()) {
                     throw new \RuntimeException('Booking sudah di-checkin oleh proses lain.');
+                }
+
+                $rjNoTerdaftar = $this->cekSudahTerdaftarRj((string) $row->norm, $cekQuota->dr_id, $row->tanggalperiksa);
+                if ($rjNoTerdaftar) {
+                    throw new \RuntimeException("Pasien sudah terdaftar di dokter yang sama hari ini (No. RJ {$rjNoTerdaftar}).");
                 }
 
                 // Hitung rj_no baru di dalam lock
@@ -307,7 +323,7 @@ new class extends Component {
                     ]);
 
                 return $rjNoNew;
-            });
+            }));
         } catch (\Throwable $e) {
             $this->dispatch('toast', type: 'error', message: 'Gagal checkin: ' . $e->getMessage());
             return;
@@ -375,6 +391,24 @@ new class extends Component {
         } catch (\Exception $e) {
             $this->dispatch('toast', type: 'error', message: 'Error: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * rj_no kunjungan pasien yang sudah ada di dokter + tanggal yang sama (non-KR, rj_status bukan 'F' batal),
+     * null bila belum. Semantik sama dengan cekSudahTerdaftarRj() di AntrolBPJSController
+     * (checkin JKN Mobile) dan cekDuplikatPendaftaran() di daftar-rj-actions.
+     */
+    private function cekSudahTerdaftarRj(string $regNo, string $drId, string $tanggalperiksa): ?string
+    {
+        $rjNo = DB::table('rstxn_rjhdrs')
+            ->where('reg_no', strtoupper($regNo))
+            ->where('dr_id', $drId)
+            ->whereRaw("NVL(rj_status,'A') != 'F'")
+            ->whereRaw("NVL(klaim_id,'UM') != 'KR'")
+            ->whereRaw("to_char(rj_date,'yyyy-mm-dd') = ?", [$tanggalperiksa])
+            ->value('rj_no');
+
+        return $rjNo ? (string) $rjNo : null;
     }
 
     /**

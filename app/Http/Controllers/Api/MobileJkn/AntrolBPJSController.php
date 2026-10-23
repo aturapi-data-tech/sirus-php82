@@ -411,6 +411,13 @@ class AntrolBPJSController extends Controller
                         throw new Exception("Terdapat Antrian (" . $antrian_nik->nobooking . ") dengan nomor NIK yang sama pada tanggal tersebut yang belum selesai. Silahkan batalkan terlebih dahulu jika ingin mendaftarkan lagi.");
                     }
 
+                    // Cek 1b: Pasien sudah terdaftar di loket (Daftar RJ) ke dokter yang sama
+                    // pada tanggal tersebut? Booking JKN tidak diperlukan lagi.
+                    $rjNoTerdaftar = $this->cekSudahTerdaftarRj((string) $request->norm, $cekQuota->dr_id, $request->tanggalperiksa);
+                    if ($rjNoTerdaftar) {
+                        throw new Exception("Pasien sudah terdaftar di Poli " . $cekQuota->poli_desc . " Dokter " . $cekQuota->dr_name . " tanggal " . $request->tanggalperiksa . " (No. RJ " . $rjNoTerdaftar . "). Booking tidak diperlukan.");
+                    }
+
                     // Cek 2: nobooking sudah ada? (idempotency — cegah insert ganda)
                     $existingBooking = DB::table('referensi_mobilejkn_bpjs')
                         ->where('nobooking', $noBooking)
@@ -625,20 +632,23 @@ class AntrolBPJSController extends Controller
         // Skip quota check: pasien sudah lolos validasi quota saat booking,
         // jadi tidak boleh ditolak saat checkin meskipun slot terisi oleh pendaftaran admin/loket.
 
+        // Pre-check cepat (tanpa lock) — dicek ulang di dalam lock sebelum insert
+        $pesanSudahTerdaftar = fn(string $rjNoTerdaftar) => "Pasien sudah terdaftar di Poli " . $cekQuota->poli_desc . " Dokter " . $cekQuota->dr_name . " hari ini (No. RJ " . $rjNoTerdaftar . "). Checkin tidak diperlukan, silakan langsung menuju poli.";
+        $rjNoTerdaftar = $this->cekSudahTerdaftarRj((string) $antrian->norm, $cekQuota->dr_id, $antrian->tanggalperiksa);
+        if ($rjNoTerdaftar) {
+            return $this->sendError($request, $pesanSudahTerdaftar($rjNoTerdaftar), 201);
+        }
+
+        // Pakai angkaantrean yang sudah ditetapkan saat booking (konsisten dengan admin checkin)
+        $noAntrian = (int) $antrian->angkaantrean;
+
+        // rj_date = waktu realtime checkin (bukan jadwal dokter)
+        // Alasan: jika dokter datang lebih awal dan mulai pelayanan,
+        // task 3 (checkin) harus mencerminkan waktu sebenarnya agar
+        // tidak terjadi anomali task 4 < task 3 di BPJS
+        $rjDateStr = $waktuCheckin->format('Y-m-d H:i:s');
+
         try {
-            $rjNo = DB::table('rstxn_rjhdrs')
-                ->select(DB::raw("nvl(max(rj_no) + 1, 1) as rjno_max"))
-                ->value('rjno_max');
-
-            // Pakai angkaantrean yang sudah ditetapkan saat booking (konsisten dengan admin checkin)
-            $noAntrian = (int) $antrian->angkaantrean;
-
-            // rj_date = waktu realtime checkin (bukan jadwal dokter)
-            // Alasan: jika dokter datang lebih awal dan mulai pelayanan,
-            // task 3 (checkin) harus mencerminkan waktu sebenarnya agar
-            // tidak terjadi anomali task 4 < task 3 di BPJS
-            $rjDateStr = $waktuCheckin->format('Y-m-d H:i:s');
-
             // Shift dari rstxn_shiftctls berdasarkan jam checkin realtime
             $shiftRow = DB::table('rstxn_shiftctls')
                 ->whereRaw("? BETWEEN shift_start AND shift_end", [$waktuCheckin->format('H:i:s')])
@@ -654,28 +664,43 @@ class AntrolBPJSController extends Controller
                 ->where('dr_id', $cekQuota->dr_id)
                 ->first();
 
-            DB::table('rstxn_rjhdrs')->insert([
-                'rj_no'                => $rjNo,
-                'rj_date'              => DB::raw("to_date('" . $rjDateStr . "', 'yyyy-mm-dd hh24:mi:ss')"),
-                'reg_no'               => strtoupper($antrian->norm),
-                'nobooking'            => $request->kodebooking,
-                'no_antrian'           => $noAntrian,
-                'klaim_id'             => 'JM',
-                'poli_id'              => $cekQuota->poli_id,
-                'dr_id'                => $cekQuota->dr_id,
-                'shift'                => $shift,
-                'txn_status'           => 'A',
-                'rj_status'            => 'A',
-                'erm_status'           => 'A',
-                'pass_status'          => 'O',
-                'cek_lab'              => '0',
-                'sl_codefrom'          => '02',
-                'kunjungan_internal_status' => $antrian->jeniskunjungan == 2 ? '1' : '0',
-                'waktu_masuk_pelayanan' => DB::raw("to_date('" . $rjDateStr . "', 'yyyy-mm-dd hh24:mi:ss')"),
-                'rs_admin'             => (int) ($dokter->rs_admin ?? 0),
-                'rj_admin'             => 0, // pass_status 'O' → tidak charge admin OB
-                'poli_price'           => (int) ($dokter->poli_price_bpjs ?? 0),
-            ]);
+            // Lock yang sama dengan simpan Daftar RJ (lock:rjno-seq): loket & checkin JKN
+            // saling mengantre, jadi cek terdaftar + rj_no + insert tidak bisa disalip.
+            $rjNo = Cache::lock('lock:rjno-seq', 15)->block(5, function () use ($request, $antrian, $cekQuota, $noAntrian, $rjDateStr, $shift, $dokter, $pesanSudahTerdaftar) {
+                $rjNoTerdaftar = $this->cekSudahTerdaftarRj((string) $antrian->norm, $cekQuota->dr_id, $antrian->tanggalperiksa);
+                if ($rjNoTerdaftar) {
+                    throw new Exception($pesanSudahTerdaftar($rjNoTerdaftar));
+                }
+
+                $rjNo = DB::table('rstxn_rjhdrs')
+                    ->select(DB::raw("nvl(max(rj_no) + 1, 1) as rjno_max"))
+                    ->value('rjno_max');
+
+                DB::table('rstxn_rjhdrs')->insert([
+                    'rj_no'                => $rjNo,
+                    'rj_date'              => DB::raw("to_date('" . $rjDateStr . "', 'yyyy-mm-dd hh24:mi:ss')"),
+                    'reg_no'               => strtoupper($antrian->norm),
+                    'nobooking'            => $request->kodebooking,
+                    'no_antrian'           => $noAntrian,
+                    'klaim_id'             => 'JM',
+                    'poli_id'              => $cekQuota->poli_id,
+                    'dr_id'                => $cekQuota->dr_id,
+                    'shift'                => $shift,
+                    'txn_status'           => 'A',
+                    'rj_status'            => 'A',
+                    'erm_status'           => 'A',
+                    'pass_status'          => 'O',
+                    'cek_lab'              => '0',
+                    'sl_codefrom'          => '02',
+                    'kunjungan_internal_status' => $antrian->jeniskunjungan == 2 ? '1' : '0',
+                    'waktu_masuk_pelayanan' => DB::raw("to_date('" . $rjDateStr . "', 'yyyy-mm-dd hh24:mi:ss')"),
+                    'rs_admin'             => (int) ($dokter->rs_admin ?? 0),
+                    'rj_admin'             => 0, // pass_status 'O' → tidak charge admin OB
+                    'poli_price'           => (int) ($dokter->poli_price_bpjs ?? 0),
+                ]);
+
+                return $rjNo;
+            });
         } catch (Exception $e) {
             return $this->sendError($request, $e->getMessage(), 201);
         }
@@ -1049,6 +1074,30 @@ class AntrolBPJSController extends Controller
             ->count();
 
         return $jumlahRJ + $jumlahBooking;
+    }
+
+    /**
+     * Cari kunjungan RJ pasien yang sudah ada di dokter + tanggal yang sama.
+     *
+     * Menutup kasus pasien didaftar di loket (Daftar RJ, kode booking ...RSIM) lalu
+     * booking/checkin lagi lewat JKN Mobile (...JKN) → terdaftar dua kali. Semantik
+     * sama dengan cekDuplikatPendaftaran() di daftar-rj-actions untuk jalur non-KR:
+     * kunjungan KR (kronis) sah berdampingan dengan kunjungan biasa; kunjungan batal
+     * (rj_status 'F', dari batalKunjungan kasir RJ) diabaikan.
+     *
+     * @return string|null rj_no kunjungan yang sudah ada, null bila belum terdaftar
+     */
+    private function cekSudahTerdaftarRj(string $regNo, string $drId, string $tanggalperiksa): ?string
+    {
+        $rjNo = DB::table('rstxn_rjhdrs')
+            ->where('reg_no', strtoupper($regNo))
+            ->where('dr_id', $drId)
+            ->whereRaw("NVL(rj_status,'A') != 'F'")
+            ->whereRaw("NVL(klaim_id,'UM') != 'KR'")
+            ->whereRaw("to_char(rj_date,'yyyy-mm-dd') = ?", [$tanggalperiksa])
+            ->value('rj_no');
+
+        return $rjNo ? (string) $rjNo : null;
     }
 
     /**
