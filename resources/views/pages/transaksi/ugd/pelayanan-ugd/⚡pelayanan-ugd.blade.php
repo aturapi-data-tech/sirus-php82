@@ -583,7 +583,7 @@ new class extends Component {
                                                 </div>
                                                 <x-list.identitas-pasien :regNo="$row->reg_no" :nama="$row->reg_name"
                                                     :sex="$row->sex" :tglLahir="$row->birth_date"
-                                                    :alamat="$row->address" :collapseUmur="true" />
+                                                    :alamat="$row->address" :collapseUmur="false" />
                                             </div>
                                         </div>
                                     </td>
