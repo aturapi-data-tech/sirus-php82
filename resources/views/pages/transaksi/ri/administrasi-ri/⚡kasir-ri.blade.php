@@ -60,7 +60,10 @@ new class extends Component {
     public ?string $statusPulang = null;   // L / H
 
     // ── Step control ──
+    // Urutan kerja kasir pulang: 1) tanggal pulang & hitung kamar → 2) periksa hari kamar yang
+    // diakui → 3) tagihan akhir (diskon) → 4) pembayaran. Langkah 4 baru aktif setelah 1 & 2.
     public bool $tglPulangSudahDiproses = false;
+    public bool $hariKamarDikonfirmasi = false;
 
     /* ===============================
      | MOUNT
@@ -82,6 +85,19 @@ new class extends Component {
     {
         if ($this->riHdrNo) {
             $this->loadKasirRI($this->riHdrNo);
+        }
+    }
+
+    /**
+     * Biaya diubah di tab lain (Hari/tarif di tab Kamar, tindakan, obat, …) — dulu Kasir Pulang
+     * tidak mendengarnya, jadi totalnya basi sampai modal dibuka ulang. Hanya hitung ulang;
+     * isian kasir (bayar, akun kas, keterangan keluar) tidak di-reset.
+     */
+    #[On('administrasi-ri.updated')]
+    public function onAdministrasiRiUpdated(): void
+    {
+        if ($this->riHdrNo && !$this->isFormLocked) {
+            $this->hitungTotal();
         }
     }
 
@@ -173,12 +189,28 @@ new class extends Component {
         $this->incrementVersion('kasir-ri');
     }
 
+    /* ===============================
+     | LANGKAH 2 — PERIKSA HARI KAMAR (koreksi di tab Kamar, di sini hanya konfirmasi)
+     =============================== */
+    public function konfirmasiHariKamar(): void
+    {
+        if (!$this->tglPulangSudahDiproses) {
+            $this->dispatch('toast', type: 'error', message: 'Proses tanggal pulang (langkah 1) dulu.');
+            return;
+        }
+        $this->hariKamarDikonfirmasi = true;
+        // LOV Keterangan Keluar membaca :disabled saat mount — versi naik = LOV dipasang ulang aktif.
+        $this->incrementVersion('kasir-ri');
+        $this->dispatch('focus-lov-outs-kasir-ri');
+    }
+
     private function resetKasir(): void
     {
         $this->reset(['riHdrNo', 'dokumenTermuat', 'bayar', 'accId', 'accName', 'riStatus', 'statusPulang', 'exitDate', 'outNo', 'outDesc']);
         $this->resetVersion();
         $this->isFormLocked             = false;
         $this->tglPulangSudahDiproses   = false;
+        $this->hariKamarDikonfirmasi    = false;
         $this->totalAll                 = 0;
         $this->angsuranAwal             = 0;
         $this->riDiskon                 = 0;
@@ -387,8 +419,12 @@ new class extends Component {
             });
 
             $this->tglPulangSudahDiproses = true;
+            $this->hariKamarDikonfirmasi = false;
             $this->hitungTotal();
             $this->incrementVersion('kasir-ri');
+            // end_date & day kamar terakhir berubah → tab Kamar (Selesai/Hari) & Total Tagihan header
+            // Administrasi ikut dimuat ulang. Dulu terlewat: keduanya basi sampai modal dibuka ulang.
+            $this->dispatch('administrasi-ri.updated');
             $this->dispatch('toast', type: 'success', message: 'Tanggal pulang & perhitungan kamar berhasil diproses.');
         } catch (\RuntimeException $e) {
             $this->dispatch('toast', type: 'error', message: $e->getMessage());
@@ -473,6 +509,11 @@ new class extends Component {
         // Cek perhitungan kamar sudah diproses
         if (!$this->tglPulangSudahDiproses) {
             $this->dispatch('toast', type: 'error', message: 'Data perhitungan kamar belum diproses. Klik "Proses Tgl Pulang" terlebih dahulu.');
+            return;
+        }
+
+        if (!$this->hariKamarDikonfirmasi) {
+            $this->dispatch('toast', type: 'error', message: 'Periksa hari kamar (langkah 2) lalu klik "Hari kamar sudah benar" terlebih dahulu.');
             return;
         }
 
@@ -811,7 +852,113 @@ new class extends Component {
         </div>
     @endif
 
-    {{-- RINGKASAN BIAYA --}}
+    @php $siapBayar = $tglPulangSudahDiproses && $hariKamarDikonfirmasi; @endphp
+
+    @if (!$isFormLocked)
+
+        {{-- LANGKAH 1 — TGL PULANG & PERHITUNGAN KAMAR --}}
+        <div class="p-4 border rounded-2xl
+            {{ $tglPulangSudahDiproses
+                ? 'border-emerald-200 dark:border-emerald-800/40 bg-emerald-50/50 dark:bg-emerald-900/10'
+                : 'border-hairline dark:border-gray-700 bg-surface-soft dark:bg-gray-800/40' }}">
+
+            <div class="flex items-center gap-2 mb-3">
+                <span class="inline-flex items-center justify-center w-6 h-6 text-xs font-bold text-white rounded-full
+                    {{ $tglPulangSudahDiproses ? 'bg-emerald-500' : 'bg-gray-400' }}">
+                    1
+                </span>
+                <h4 class="text-sm font-semibold {{ $tglPulangSudahDiproses ? 'text-success dark:text-success' : 'text-body dark:text-gray-300' }}">
+                    Proses Tanggal Pulang & Perhitungan Kamar
+                </h4>
+                @if ($tglPulangSudahDiproses)
+                    <x-badge variant="success" class="text-xs">Selesai</x-badge>
+                @endif
+            </div>
+
+            <div class="flex items-end gap-2">
+                <div class="w-64">
+                    <x-input-label value="Tanggal Pulang" class="mb-1" />
+                    <x-text-input wire:model="exitDate" placeholder="dd/mm/yyyy hh:mm:ss"
+                        class="w-full text-sm font-mono" :disabled="$tglPulangSudahDiproses" />
+                    <x-input-error :messages="$errors->get('exitDate')" class="mt-1" />
+                </div>
+
+                @if (!$tglPulangSudahDiproses)
+                    {{-- Tombol update ke waktu sekarang --}}
+                    <button type="button" wire:click="refreshExitDate"
+                        title="Set ke tanggal & jam sekarang"
+                        class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-muted dark:text-gray-300 bg-canvas dark:bg-gray-800 border border-hairline dark:border-gray-700 rounded-xl hover:bg-surface-soft dark:hover:bg-gray-700 transition whitespace-nowrap">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        Sekarang
+                    </button>
+
+                    <x-primary-button wire:click="updateTglPulang" wire:loading.attr="disabled"
+                        wire:target="updateTglPulang">
+                        <span wire:loading.remove wire:target="updateTglPulang">Proses Tgl Pulang</span>
+                        <span wire:loading wire:target="updateTglPulang"><x-loading /></span>
+                    </x-primary-button>
+                @endif
+            </div>
+        </div>
+
+        {{-- LANGKAH 2 — PERIKSA HARI KAMAR YANG DIAKUI --}}
+        <div class="p-4 border rounded-2xl
+            {{ $hariKamarDikonfirmasi
+                ? 'border-emerald-200 dark:border-emerald-800/40 bg-emerald-50/50 dark:bg-emerald-900/10'
+                : 'border-hairline dark:border-gray-700 bg-surface-soft dark:bg-gray-800/40' }}">
+
+            <div class="flex flex-wrap items-center gap-2 mb-2">
+                <span class="inline-flex items-center justify-center w-6 h-6 text-xs font-bold text-white rounded-full
+                    {{ $hariKamarDikonfirmasi ? 'bg-emerald-500' : ($tglPulangSudahDiproses ? 'bg-brand-green dark:bg-brand-lime dark:text-gray-900' : 'bg-gray-300') }}">
+                    2
+                </span>
+                <h4 class="text-sm font-semibold {{ $hariKamarDikonfirmasi ? 'text-success dark:text-success' : 'text-body dark:text-gray-300' }}">
+                    Periksa Hari Kamar yang Diakui
+                </h4>
+                @if ($hariKamarDikonfirmasi)
+                    <x-badge variant="success" class="text-xs">Sudah dicek</x-badge>
+                @elseif (!$tglPulangSudahDiproses)
+                    <span class="text-xs text-muted-soft italic">— Selesaikan langkah 1 terlebih dahulu</span>
+                @endif
+            </div>
+            <p class="mb-3 text-xs text-muted dark:text-gray-400">
+                Hari kamar dihitung otomatis saat langkah 1. Periksa di tab <strong>Kamar</strong> — bila jumlah
+                hari yang ditagih berbeda (mis. menginap kurang dari 24 jam diakui 1 hari, atau 0 untuk kamar
+                transit), ubah kolom Hari di sana. Total di bawah ikut diperbarui otomatis.
+            </p>
+
+            @if ($tglPulangSudahDiproses && !$hariKamarDikonfirmasi)
+                <div class="flex flex-wrap justify-end gap-2">
+                    <x-secondary-button type="button"
+                        x-on:click="$dispatch('administrasi-ri-goto-tab', { tab: 'RiRoom' })">
+                        Buka tab Kamar
+                    </x-secondary-button>
+                    <x-primary-button wire:click="konfirmasiHariKamar" wire:loading.attr="disabled" wire:target="konfirmasiHariKamar">
+                        Hari kamar sudah benar — lanjut
+                    </x-primary-button>
+                </div>
+            @endif
+        </div>
+
+    @endif
+
+    {{-- TAGIHAN — langkah 3 saat proses; saat terkunci tampil sebagai tagihan final --}}
+    <div class="space-y-2">
+        @if (!$isFormLocked)
+            <div class="flex flex-wrap items-center gap-2 px-1">
+                <span class="inline-flex items-center justify-center w-6 h-6 text-xs font-bold text-white rounded-full
+                    {{ $siapBayar ? 'bg-brand-green dark:bg-brand-lime dark:text-gray-900' : 'bg-gray-300' }}">
+                    3
+                </span>
+                <h4 class="text-sm font-semibold text-body dark:text-gray-300">Tagihan Akhir</h4>
+                @if (!$siapBayar)
+                    <span class="text-xs text-muted-soft italic">— angka masih sementara sampai langkah 1 &amp; 2 selesai</span>
+                @endif
+            </div>
+        @endif
     <div class="p-4 border border-hairline rounded-2xl dark:border-gray-700 bg-surface-soft dark:bg-gray-800/40">
         <h4 class="mb-3 text-xs font-semibold tracking-wide text-muted uppercase dark:text-gray-400">Rincian Tagihan</h4>
         <div class="grid grid-cols-4 gap-2 mb-3 md:grid-cols-6 xl:grid-cols-8">
@@ -901,58 +1048,10 @@ new class extends Component {
             <x-input-error :messages="$message" class="mt-1" />
         @enderror
     </div>
+    </div>
 
     @if (!$isFormLocked)
-
-        {{-- STEP 1 — TGL PULANG & PERHITUNGAN KAMAR --}}
-        <div class="p-4 border rounded-2xl
-            {{ $tglPulangSudahDiproses
-                ? 'border-emerald-200 dark:border-emerald-800/40 bg-emerald-50/50 dark:bg-emerald-900/10'
-                : 'border-hairline dark:border-gray-700 bg-surface-soft dark:bg-gray-800/40' }}">
-
-            <div class="flex items-center gap-2 mb-3">
-                <span class="inline-flex items-center justify-center w-6 h-6 text-xs font-bold text-white rounded-full
-                    {{ $tglPulangSudahDiproses ? 'bg-emerald-500' : 'bg-gray-400' }}">
-                    1
-                </span>
-                <h4 class="text-sm font-semibold {{ $tglPulangSudahDiproses ? 'text-success dark:text-success' : 'text-body dark:text-gray-300' }}">
-                    Proses Tanggal Pulang & Perhitungan Kamar
-                </h4>
-                @if ($tglPulangSudahDiproses)
-                    <x-badge variant="success" class="text-xs">Selesai</x-badge>
-                @endif
-            </div>
-
-            <div class="flex items-end gap-2">
-                <div class="w-64">
-                    <x-input-label value="Tanggal Pulang" class="mb-1" />
-                    <x-text-input wire:model="exitDate" placeholder="dd/mm/yyyy hh:mm:ss"
-                        class="w-full text-sm font-mono" :disabled="$tglPulangSudahDiproses" />
-                    <x-input-error :messages="$errors->get('exitDate')" class="mt-1" />
-                </div>
-
-                @if (!$tglPulangSudahDiproses)
-                    {{-- Tombol update ke waktu sekarang --}}
-                    <button type="button" wire:click="refreshExitDate"
-                        title="Set ke tanggal & jam sekarang"
-                        class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-muted dark:text-gray-300 bg-canvas dark:bg-gray-800 border border-hairline dark:border-gray-700 rounded-xl hover:bg-surface-soft dark:hover:bg-gray-700 transition whitespace-nowrap">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                        </svg>
-                        Sekarang
-                    </button>
-
-                    <x-primary-button wire:click="updateTglPulang" wire:loading.attr="disabled"
-                        wire:target="updateTglPulang">
-                        <span wire:loading.remove wire:target="updateTglPulang">Proses Tgl Pulang</span>
-                        <span wire:loading wire:target="updateTglPulang"><x-loading /></span>
-                    </x-primary-button>
-                @endif
-            </div>
-        </div>
-
-        {{-- STEP 2 — PEMBAYARAN --}}
+        {{-- LANGKAH 4 — PEMBAYARAN (aktif setelah langkah 1 & 2) --}}
         <div class="p-4 border border-hairline rounded-2xl dark:border-gray-700 bg-surface-soft dark:bg-gray-800/40"
             x-data
             x-on:focus-input-bayar-ri.window="$nextTick(() => {
@@ -969,12 +1068,12 @@ new class extends Component {
 
             <div class="flex items-center gap-2 mb-3">
                 <span class="inline-flex items-center justify-center w-6 h-6 text-xs font-bold text-white rounded-full
-                    {{ $tglPulangSudahDiproses ? 'bg-brand-green dark:bg-brand-lime dark:text-gray-900' : 'bg-gray-300' }}">
-                    2
+                    {{ $siapBayar ? 'bg-brand-green dark:bg-brand-lime dark:text-gray-900' : 'bg-gray-300' }}">
+                    4
                 </span>
                 <h4 class="text-sm font-semibold text-body dark:text-gray-300">Pembayaran Pasien Pulang</h4>
-                @if (!$tglPulangSudahDiproses)
-                    <span class="text-xs text-muted-soft italic">— Selesaikan Step 1 terlebih dahulu</span>
+                @if (!$siapBayar)
+                    <span class="text-xs text-muted-soft italic">— Selesaikan langkah 1 &amp; 2 terlebih dahulu</span>
                 @endif
             </div>
 
@@ -984,7 +1083,7 @@ new class extends Component {
                 <div
                     x-on:focus-lov-outs-kasir-ri.window="$nextTick(() => $el.querySelector('input')?.focus())">
                     <livewire:lov.outs.lov-outs target="outs-kasir-ri" label="Keterangan Keluar"
-                        :initialOutNo="$outNo" :disabled="!$tglPulangSudahDiproses"
+                        :initialOutNo="$outNo" :disabled="!$siapBayar"
                         wire:key="lov-outs-kasir-ri-{{ $riHdrNo }}-{{ $renderVersions['kasir-ri'] ?? 0 }}" />
                     <x-input-error :messages="$errors->get('outNo')" class="mt-1" />
                 </div>
@@ -1002,7 +1101,7 @@ new class extends Component {
                     <x-input-label value="Nominal Bayar (Rp)" class="mb-1" />
                     <x-text-input-number wire:model="bayar" placeholder="0"
                         :error="$errors->has('bayar')"
-                        :disabled="!$tglPulangSudahDiproses"
+                        :disabled="!$siapBayar"
                         x-ref="inputBayarRI"
                         x-on:keydown.enter.prevent="$el.blur(); $wire.postTransaksi()" />
                     <x-input-error :messages="$errors->get('bayar')" class="mt-1" />
@@ -1013,34 +1112,17 @@ new class extends Component {
                 <div class="pt-6">
                     <x-primary-button wire:click="postTransaksi" wire:loading.attr="disabled"
                         wire:target="postTransaksi"
-                        :disabled="!$tglPulangSudahDiproses">
+                        :disabled="!$siapBayar">
                         <span wire:loading.remove wire:target="postTransaksi">Proses Pulang</span>
                         <span wire:loading wire:target="postTransaksi"><x-loading /></span>
                     </x-primary-button>
                 </div>
                 @endhasanyrole
 
-                {{-- Batal Inap (status F) — hanya saat Dirawat & belum ada transaksi. Admin, Supervisor Tu --}}
-                @if ($riStatus === 'I')
-                    @hasanyrole(['Admin', 'Supervisor Tu'])
-                        <div class="pt-4 mt-4 border-t border-hairline dark:border-gray-700">
-                            <p class="mb-2 text-[11px] text-gray-500 dark:text-gray-400">
-                                Batalkan pendaftaran inap (status jadi <span class="font-semibold">Batal/F</span>).
-                                Hanya bila belum ada transaksi &amp; bukan dari transfer.
-                            </p>
-                            <x-confirm-button variant="danger" :action="'batalInap()'" title="Batal Inap"
-                                message="Batalkan pendaftaran inap ini? Status akan menjadi BATAL (F). Aksi hanya berhasil jika RI belum punya transaksi apa pun."
-                                confirmText="Ya, batal inap" cancelText="Batal">
-                                Batal Inap
-                            </x-confirm-button>
-                        </div>
-                    @endhasanyrole
-                @endif
-
             </div>
 
             {{-- Hasil dari nominal yang diketik: kurang (jadi bon) / pas / kembalian --}}
-            @if ($tglPulangSudahDiproses && (int) ($bayar ?? 0) > 0)
+            @if ($siapBayar && (int) ($bayar ?? 0) > 0)
                 @php $selisih = (int) ($bayar ?? 0) - $sisaTagihan; @endphp
                 <dl class="max-w-md mt-3 border-t border-hairline dark:border-gray-700">
                     <div class="flex items-center justify-between gap-4 py-2.5">
@@ -1061,7 +1143,7 @@ new class extends Component {
             @endif
 
             {{-- Badge status pembayaran --}}
-            @if ($tglPulangSudahDiproses)
+            @if ($siapBayar)
                 @if ((int) ($bayar ?? 0) >= $sisaTagihan)
                     <div class="flex items-center gap-1.5 mt-3">
                         <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1087,6 +1169,22 @@ new class extends Component {
 
         </div>
 
+        {{-- BATAL INAP — terpisah dari alur bayar supaya tak tertekan saat memproses pulang --}}
+        @if ($riStatus === 'I')
+            @hasanyrole(['Admin', 'Supervisor Tu'])
+                <div class="p-4 border border-red-200 rounded-2xl bg-red-50/40 dark:border-red-900/40 dark:bg-red-900/10">
+                    <p class="mb-2 text-xs text-muted dark:text-gray-400">
+                        Batalkan pendaftaran inap (status jadi <span class="font-semibold">Batal/F</span>).
+                        Hanya bila belum ada transaksi &amp; bukan dari transfer.
+                    </p>
+                    <x-confirm-button variant="danger" :action="'batalInap()'" title="Batal Inap"
+                        message="Batalkan pendaftaran inap ini? Status akan menjadi BATAL (F). Aksi hanya berhasil jika RI belum punya transaksi apa pun."
+                        confirmText="Ya, batal inap" cancelText="Batal">
+                        Batal Inap
+                    </x-confirm-button>
+                </div>
+            @endhasanyrole
+        @endif
     @endif
 
     {{-- TABEL RIWAYAT PAYMENT FINAL --}}

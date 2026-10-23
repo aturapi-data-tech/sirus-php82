@@ -396,6 +396,8 @@ new class extends Component {
         {{-- Modal Administrasi RI (shared dengan Daftar RI utama) --}}
         <livewire:pages::transaksi.ri.emr-ri.log-aktivitas.log-aktivitas-ri wire:key="log-aktivitas-ri" />
         <livewire:pages::transaksi.ri.administrasi-ri.administrasi-ri wire:key="daftar-kasir-ri-administrasi" />
+        {{-- Pindah Kamar — dibuka dari tombol di tab Kamar Administrasi RI (event emr-ri.pindah-kamar.open) --}}
+        <livewire:pages::transaksi.ri.administrasi-ri.pindah-kamar-ri wire:key="daftar-kasir-ri-pindah-kamar" />
         <livewire:pages::transaksi.kasir.daftar-kasir-ri.ubah-data-kunjungan-ri-actions wire:key="daftar-kasir-ri-ubah-data-kunjungan" />
 
     </div>

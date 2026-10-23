@@ -736,6 +736,8 @@ new class extends Component {
             {{-- Modul Dokumen & Administrasi — modal sama dgn daftar-ri (sibling, dengar event emr-ri.*) --}}
             <livewire:pages::transaksi.ri.emr-ri.modul-dokumen.modul-dokumen-ri wire:key="modul-dokumen-ri" />
             <livewire:pages::transaksi.ri.administrasi-ri.administrasi-ri wire:key="administrasi-ri-actions" />
+            {{-- Pindah Kamar — dibuka dari tombol di tab Kamar Administrasi RI (event emr-ri.pindah-kamar.open) --}}
+            <livewire:pages::transaksi.ri.administrasi-ri.pindah-kamar-ri wire:key="gizi-ri-pindah-kamar" />
             {{-- Log aktivitas — dibuka dari tombol log di dalam modal Administrasi --}}
             <livewire:pages::transaksi.ri.emr-ri.log-aktivitas.log-aktivitas-ri wire:key="log-aktivitas-ri" />
 
