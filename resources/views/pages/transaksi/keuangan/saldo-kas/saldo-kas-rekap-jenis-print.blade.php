@@ -12,7 +12,7 @@
     $sel = 'border border-gray-400 px-0.5 py-px';
 @endphp
 
-<x-pdf.layout-kwitansi title="TOTAL KAS PER JENIS TRANSAKSI" :judulDiBawah="true">
+<x-pdf.layout-kwitansi title="TOTAL KAS PER JENIS TRANSAKSI" :judulDiBawah="true" :tengahA4="false">
     <div class="mt-1 text-[7px]">
         {{-- ── INFO AKUN & PERIODE ── --}}
         <table class="w-full mb-1 border-collapse">

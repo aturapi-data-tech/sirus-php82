@@ -6,6 +6,13 @@
     'kode' => null,
     // true = kop selebar kertas + judul di bawahnya (untuk kertas A6: judul di samping kop menjepit alamat).
     'judulDiBawah' => false,
+    // true = isi dicetak di kotak seperempat A4 (105 × 148.5 mm) di TENGAH ATAS kertas A4 —
+    // untuk kertas kecil (A4 bagi 4) yang diumpankan di tengah printer; pemanggil tetap setPaper('A4').
+    // Dibuat lewat margin @page (dompdf mengabaikan width/height @page tetapi menghormati margin):
+    // atas 0, (210 − 105) / 2 = 52.5 mm kiri-kanan, 297 − 148.5 = 148.5 mm bawah. Isi yang lebih
+    // panjang dari kotak berlanjut ke kotak yang sama di halaman berikutnya.
+    // false = kertas sudah diatur sendiri oleh pemanggil (mis. setPaper('a6')) — tanpa margin.
+    'tengahA4' => true,
 ])
 @php
     $manifestPath = public_path('build/manifest.json');
@@ -23,9 +30,7 @@
     <title>{{ $title ?? 'Kwitansi' }}</title>
     <style>
         @page {
-            width: 105mm;
-            height: 148.5mm;
-            margin: 0;
+            margin: {{ $tengahA4 ? '0 52.5mm 148.5mm' : '0' }};
         }
 
         * {
@@ -40,7 +45,7 @@
         }
 
         .kwitansi-wrapper {
-            padding: 6mm 8mm;
+            padding: {{ $tengahA4 ? '4mm 6mm' : '6mm 8mm' }};
         }
 
         /* ── KODE FORMULIR RM (pojok kiri bawah) ── */
@@ -64,7 +69,7 @@
     @endif
     <div class="kwitansi-wrapper">
 
-        @if ($judulDiBawah)
+        @if ($judulDiBawah || $tengahA4)
             {{-- KOP RINGKAS (logo & huruf kecil — kertas A6), garis, lalu judul di bawahnya.
                  Sengaja tidak memakai x-logo.identitas-horisontal: ukurannya baku untuk A4 dan
                  komponen itu dipakai banyak cetakan lain. --}}

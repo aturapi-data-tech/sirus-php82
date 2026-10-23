@@ -7,10 +7,9 @@
      SATU LEMBAR saja — model dua lembar berdampingan (Arsip & Dokter) warisan
      workbook Excel ditinggalkan. Kalau butuh salinan untuk arsip, cetak dua kali.
 
-     Ukuran teks memakai skala Tailwind: text-base (16px) untuk isi, text-sm
-     (14px) untuk catatan kecil, text-lg (18px) untuk Gaji Diterima. Sejak jadi
-     satu lembar A4, isinya hanya memakai bagian atas kertas sehingga ruangnya
-     masih longgar untuk ukuran ini. --}}
+     Dicetak di kotak seperempat A4 di tengah atas kertas (tengahA4 bawaan layout),
+     jadi ukuran teksnya kecil: 9px untuk isi, 8px untuk catatan, 10px untuk
+     Gaji Diterima. --}}
 
 <x-pdf.layout-kwitansi title="Slip Gaji Dokter">
     @include('pages.components.manajemen.cetak-slip-gaji.isi-slip')
