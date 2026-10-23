@@ -330,6 +330,36 @@ new class extends Component {
                                                     </x-dropdown-link>
                                                     @endhasanyrole
 
+                                                    {{-- Pindah Kamar — sama dengan Daftar RI; HANYA selama pasien dirawat --}}
+                                                    @can('ri.pindahKamar')
+                                                    @if (($row->ri_status ?? 'I') === 'I')
+                                                    <x-dropdown-link href="#" wire:click.prevent="$dispatch('emr-ri.pindah-kamar.open', { riHdrNo: {{ $row->rihdr_no }} })"
+                                                        class="px-3 py-2 text-sm rounded-lg h-full bg-orange-50 hover:bg-orange-100 dark:bg-orange-900/20 dark:hover:bg-orange-900/40">
+                                                        <div class="flex items-start gap-2">
+                                                            <svg class="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                                                            </svg>
+                                                            <span class="min-w-0">
+                                                                <span class="block font-semibold">Pindah Kamar</span>
+                                                                <span class="block text-xs font-normal text-muted dark:text-gray-400">{{ $row->room_name ?? '-' }}</span>
+                                                            </span>
+                                                        </div>
+                                                    </x-dropdown-link>
+                                                    @else
+                                                    <div class="px-3 py-2 text-sm rounded-lg h-full bg-gray-50 text-muted-soft opacity-60 cursor-not-allowed dark:bg-gray-800/40" title="Hanya selama pasien dirawat">
+                                                        <div class="flex items-start gap-2">
+                                                            <svg class="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                                                            </svg>
+                                                            <span class="min-w-0">
+                                                                <span class="block font-semibold">Pindah Kamar</span>
+                                                                <span class="block text-xs font-normal text-muted dark:text-gray-400">Hanya selama pasien dirawat</span>
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    @endif
+                                                    @endcan
+
                                                     {{-- Ubah Data Kunjungan (KLAIM saja) — HANYA selama pasien dirawat --}}
                                                     @can('ri.ubahDataKunjungan')
                                                     @if (($row->ri_status ?? 'I') === 'I')

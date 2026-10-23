@@ -434,6 +434,65 @@ new class extends Component {
     }
 
     /* ===============================
+     | PEMBALIK LANGKAH 1 — buka lagi kamar terakhir
+     |
+     | Dipakai bila sesudah Proses Tgl Pulang ternyata ada tambahan/pindah kamar atau tanggal
+     | pulang salah. Sama dengan cara batalTransaksi() membuka kamar: end_date & day dikosongkan,
+     | hari kembali berjalan otomatis. Hanya selama pasien masih dirawat (belum Proses Pulang).
+     =============================== */
+    public function batalTglPulang(): void
+    {
+        if ($this->isFormLocked) {
+            $this->dispatch('toast', type: 'error', message: 'Pasien sudah pulang, transaksi terkunci.');
+            return;
+        }
+
+        if (!$this->tglPulangSudahDiproses) {
+            return;
+        }
+
+        $maxTrfrNo = $this->getMaxTrfrNo($this->riHdrNo);
+        if (!$maxTrfrNo) {
+            $this->dispatch('toast', type: 'error', message: 'Data kamar tidak ditemukan.');
+            return;
+        }
+
+        try {
+            DB::transaction(function () use ($maxTrfrNo) {
+                $this->lockRIRow($this->riHdrNo);
+
+                if ($this->checkRIStatus($this->riHdrNo)) {
+                    throw new \RuntimeException('Pasien sudah diproses pulang oleh user lain.');
+                }
+
+                $kamar = DB::table('rsmst_trfrooms')
+                    ->where('trfr_no', $maxTrfrNo)
+                    ->select(DB::raw("to_char(end_date, 'dd/mm/yyyy hh24:mi:ss') as selesai"), 'day')
+                    ->first();
+
+                DB::table('rsmst_trfrooms')
+                    ->where('trfr_no', $maxTrfrNo)
+                    ->update(['end_date' => null, 'day' => null]);
+
+                $this->appendAdminLogRI($this->riHdrNo, "Batal Proses Tgl Pulang — kamar #{$maxTrfrNo} dibuka lagi (Selesai: "
+                    . ($kamar->selesai ?? '-') . ', Hari: ' . ($kamar->day ?? '-') . ' → kosong / berjalan)');
+            });
+
+            $this->tglPulangSudahDiproses = false;
+            $this->hariKamarDikonfirmasi = false;
+            $this->exitDate = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
+            $this->hitungTotal();
+            $this->incrementVersion('kasir-ri');
+            $this->dispatch('administrasi-ri.updated');
+            $this->dispatch('toast', type: 'success', message: 'Kamar terakhir dibuka lagi. Proses Tgl Pulang bisa diulang.');
+        } catch (\RuntimeException $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
+        } catch (\Exception $e) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal membuka kamar: ' . $e->getMessage());
+        }
+    }
+
+    /* ===============================
      | VALIDASI
      =============================== */
     protected function rules(): array
@@ -872,6 +931,13 @@ new class extends Component {
                 </h4>
                 @if ($tglPulangSudahDiproses)
                     <x-badge variant="success" class="text-xs">Selesai</x-badge>
+                    <div class="ml-auto">
+                        <x-confirm-button variant="danger" :action="'batalTglPulang()'" title="Ulangi Proses Tgl Pulang"
+                            message="Buka lagi kamar terakhir? Tanggal keluar & hari kamar dikosongkan (hari kembali berjalan), lalu Proses Tgl Pulang bisa diulang — mis. ada tambahan/pindah kamar atau tanggal pulang salah."
+                            confirmText="Ya, buka lagi" cancelText="Batal">
+                            Ulangi
+                        </x-confirm-button>
+                    </div>
                 @endif
             </div>
 
@@ -884,16 +950,8 @@ new class extends Component {
                 </div>
 
                 @if (!$tglPulangSudahDiproses)
-                    {{-- Tombol update ke waktu sekarang --}}
-                    <button type="button" wire:click="refreshExitDate"
-                        title="Set ke tanggal & jam sekarang"
-                        class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-muted dark:text-gray-300 bg-canvas dark:bg-gray-800 border border-hairline dark:border-gray-700 rounded-xl hover:bg-surface-soft dark:hover:bg-gray-700 transition whitespace-nowrap">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                        </svg>
-                        Sekarang
-                    </button>
+                    {{-- Set tanggal pulang ke waktu sekarang — komponen baku x-now-button --}}
+                    <x-now-button wire:click="refreshExitDate" title="Set ke tanggal & jam sekarang" />
 
                     <x-primary-button wire:click="updateTglPulang" wire:loading.attr="disabled"
                         wire:target="updateTglPulang">

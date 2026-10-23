@@ -406,32 +406,53 @@ new class extends Component {
                     </div>
                 </div>
                 @if (!$isFormLocked)
-                    @hasanyrole('Mr|Admin|Perawat|Tu')
-                        <button type="button" wire:click="openPindahKamar"
-                            class="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold rounded-xl text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 transition shrink-0 shadow-sm">
+                    @can('ri.pindahKamar')
+                        {{-- Pindah Kamar — amber (palet semantik tombol; sama dengan footer EMR RI) --}}
+                        <x-primary-button type="button" wire:click="openPindahKamar"
+                            wire:loading.attr="disabled" wire:target="openPindahKamar"
+                            class="gap-1 shrink-0 !bg-amber-500 hover:!bg-amber-600 !text-white focus:!ring-amber-300 dark:!bg-amber-500 dark:!text-white dark:hover:!bg-amber-600 dark:focus:!ring-amber-900">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                             </svg>
                             Pindah Kamar
-                        </button>
-                    @endhasanyrole
+                        </x-primary-button>
+                    @endcan
                 @endif
             </div>
         </div>
     @elseif (!$isFormLocked)
-        <div class="p-4 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-2xl text-center">
-            <div class="text-sm text-muted dark:text-gray-400 mb-3">Pasien belum di-assign ke kamar</div>
-            @hasanyrole('Mr|Admin|Perawat|Tu')
-                <button type="button" wire:click="openPindahKamar"
-                    class="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-xl text-white bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 transition shadow-sm">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+        {{-- Tak ada kamar aktif — dua keadaan yang dulu tampil sama ("belum di-assign" + tombol Assign):
+             (a) belum pernah punya kamar → tawarkan Assign; (b) sudah ada riwayat tapi semua ditutup
+             (Proses Tgl Pulang di Kasir Pulang) → JANGAN tawarkan Assign, kamar baru akan terbuka
+             sesudah pasien dipulangkan. --}}
+        @if (count($daftarRoom ?? []) === 0)
+            <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-2.5 border border-hairline rounded-xl bg-surface-soft dark:bg-gray-800/40 dark:border-gray-700">
+                <span class="flex items-center gap-2 text-sm text-muted dark:text-gray-400">
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    Assign Kamar
-                </button>
-            @endhasanyrole
-        </div>
+                    Belum ada kamar untuk pasien ini.
+                </span>
+                @can('ri.pindahKamar')
+                    <x-primary-button type="button" wire:click="openPindahKamar" class="gap-1.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                        Assign Kamar
+                    </x-primary-button>
+                @endcan
+            </div>
+        @else
+            <div class="flex items-center gap-2 px-4 py-2.5 text-sm border border-hairline rounded-xl text-muted bg-surface-soft dark:bg-gray-800/40 dark:border-gray-700 dark:text-gray-400">
+                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                </svg>
+                <span>Kamar sudah ditutup (tanggal pulang diproses) — periksa kolom Hari di Riwayat Kamar di bawah.
+                    Ada tambahan/pindah kamar? Klik <strong>Ulangi</strong> di Kasir Pulang langkah 1 untuk membuka lagi kamar terakhir.</span>
+            </div>
+        @endif
     @endif
 
     {{-- ========================================================
