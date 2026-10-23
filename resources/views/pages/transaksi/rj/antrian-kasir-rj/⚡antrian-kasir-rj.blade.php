@@ -629,6 +629,22 @@ new class extends Component {
                                                     </x-secondary-button>
                                                 @endhasanyrole
 
+                                                {{-- Ubah Data Kunjungan (tanggal/shift/klaim) — kasir, HANYA saat status Antrian --}}
+                                                @can('rj.ubahDataKunjungan')
+                                                    <x-secondary-button type="button"
+                                                        :disabled="$row->rj_status !== 'A'"
+                                                        wire:click="$dispatch('open-ubah-data-kunjungan-rj', { rjNo: {{ $row->rj_no }} })"
+                                                        title="{{ $row->rj_status === 'A' ? 'Koreksi tanggal, shift, atau klaim kunjungan' : 'Hanya bisa saat status Antrian' }}"
+                                                        class="text-xs whitespace-nowrap justify-center !bg-amber-600 !text-white !border-amber-700 hover:!bg-amber-700 dark:!bg-amber-600 dark:!text-white dark:!border-amber-700 dark:hover:!bg-amber-700">
+                                                        <svg class="w-3.5 h-3.5 mr-1" fill="none"
+                                                            stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                        </svg>
+                                                        Ubah Data Kunjungan
+                                                    </x-secondary-button>
+                                                @endcan
+
                                             </div>
                                         @endif
                                     </td>
@@ -667,6 +683,7 @@ new class extends Component {
         <livewire:pages::transaksi.rj.emr-rj.log-aktivitas.log-aktivitas-rj wire:key="log-aktivitas-rj" />
         <livewire:pages::transaksi.rj.administrasi-rj.administrasi-rj wire:key="administrasi-rj-actions" />
         <livewire:pages::transaksi.rj.administrasi-rj.transfer-rj-ke-ugd-actions wire:key="transfer-rj-ke-ugd-actions" />
+        <livewire:pages::transaksi.rj.administrasi-rj.ubah-data-kunjungan-rj-actions wire:key="ubah-data-kunjungan-rj-actions" />
 
     </div>
 </div>
