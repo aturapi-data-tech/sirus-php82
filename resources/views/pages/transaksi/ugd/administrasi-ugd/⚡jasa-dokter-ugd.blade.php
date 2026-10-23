@@ -130,28 +130,46 @@ new class extends Component {
         $this->dispatch('focus-input-tarif');
     }
 
+    protected function rules(): array
+    {
+        return [
+            'formEntryJasaDokter.jasaDokterId' => 'bail|required|exists:rsmst_accdocs,accdoc_id',
+            'formEntryJasaDokter.jasaDokterDesc' => 'bail|required',
+            'formEntryJasaDokter.jasaDokterPrice' => 'bail|required|numeric|min:0',
+            'formEntryJasaDokter.drId' => 'bail|nullable|exists:rsmst_doctors,dr_id',
+        ];
+    }
+
+    protected function messages(): array
+    {
+        return [
+            'formEntryJasaDokter.jasaDokterId.required' => ':attribute harus diisi.',
+            'formEntryJasaDokter.jasaDokterId.exists' => ':attribute tidak valid.',
+            'formEntryJasaDokter.jasaDokterDesc.required' => ':attribute harus diisi.',
+            'formEntryJasaDokter.jasaDokterPrice.required' => ':attribute harus diisi.',
+            'formEntryJasaDokter.jasaDokterPrice.numeric' => ':attribute harus berupa angka.',
+            'formEntryJasaDokter.jasaDokterPrice.min' => ':attribute tidak boleh negatif.',
+            'formEntryJasaDokter.drId.exists' => ':attribute tidak valid.',
+        ];
+    }
+
+    protected function validationAttributes(): array
+    {
+        return [
+            'formEntryJasaDokter.jasaDokterId' => 'ID jasa dokter',
+            'formEntryJasaDokter.jasaDokterDesc' => 'Deskripsi jasa dokter',
+            'formEntryJasaDokter.jasaDokterPrice' => 'Harga jasa dokter',
+            'formEntryJasaDokter.drId' => 'ID dokter',
+        ];
+    }
+
     public function insertJasaDokter(): void
     {
         if ($this->isFormLocked) {
             $this->dispatch('toast', type: 'error', message: 'Pasien sudah pulang, transaksi terkunci.');
             return;
         }
-        $this->validate(
-            [
-                'formEntryJasaDokter.jasaDokterId' => 'bail|required|exists:rsmst_accdocs,accdoc_id',
-                'formEntryJasaDokter.jasaDokterDesc' => 'bail|required',
-                'formEntryJasaDokter.jasaDokterPrice' => 'bail|required|numeric',
-                'formEntryJasaDokter.drId' => 'bail|nullable|exists:rsmst_doctors,dr_id',
-            ],
-            [
-                'formEntryJasaDokter.jasaDokterId.required' => 'ID jasa dokter harus diisi.',
-                'formEntryJasaDokter.jasaDokterId.exists' => 'ID jasa dokter tidak valid.',
-                'formEntryJasaDokter.jasaDokterDesc.required' => 'Deskripsi jasa dokter harus diisi.',
-                'formEntryJasaDokter.jasaDokterPrice.required' => 'Harga jasa dokter harus diisi.',
-                'formEntryJasaDokter.jasaDokterPrice.numeric' => 'Harga jasa dokter harus berupa angka.',
-                'formEntryJasaDokter.drId.exists' => 'ID dokter tidak valid.',
-            ],
-        );
+        $this->validate();
         try {
             DB::transaction(function () {
                 $this->lockUGDRow($this->rjNo);

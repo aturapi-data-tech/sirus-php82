@@ -121,6 +121,39 @@ new class extends Component {
     }
 
     /* ===============================
+     | VALIDASI
+     =============================== */
+    protected function rules(): array
+    {
+        return [
+            'formEntryJasaKaryawan.jasaKaryawanId' => 'bail|required|exists:rsmst_actemps,acte_id',
+            'formEntryJasaKaryawan.jasaKaryawanDesc' => 'bail|required',
+            'formEntryJasaKaryawan.jasaKaryawanPrice' => 'bail|required|numeric|min:0',
+        ];
+    }
+
+    protected function messages(): array
+    {
+        return [
+            'formEntryJasaKaryawan.jasaKaryawanId.required' => ':attribute harus diisi.',
+            'formEntryJasaKaryawan.jasaKaryawanId.exists' => ':attribute tidak valid.',
+            'formEntryJasaKaryawan.jasaKaryawanDesc.required' => ':attribute harus diisi.',
+            'formEntryJasaKaryawan.jasaKaryawanPrice.required' => ':attribute harus diisi.',
+            'formEntryJasaKaryawan.jasaKaryawanPrice.numeric' => ':attribute harus berupa angka.',
+            'formEntryJasaKaryawan.jasaKaryawanPrice.min' => ':attribute tidak boleh negatif.',
+        ];
+    }
+
+    protected function validationAttributes(): array
+    {
+        return [
+            'formEntryJasaKaryawan.jasaKaryawanId' => 'ID karyawan',
+            'formEntryJasaKaryawan.jasaKaryawanDesc' => 'Deskripsi jasa',
+            'formEntryJasaKaryawan.jasaKaryawanPrice' => 'Harga jasa',
+        ];
+    }
+
+    /* ===============================
      | INSERT JASA KARYAWAN
      =============================== */
     public function insertJasaKaryawan(): void
@@ -130,20 +163,7 @@ new class extends Component {
             return;
         }
 
-        $this->validate(
-            [
-                'formEntryJasaKaryawan.jasaKaryawanId' => 'bail|required|exists:rsmst_actemps,acte_id',
-                'formEntryJasaKaryawan.jasaKaryawanDesc' => 'bail|required',
-                'formEntryJasaKaryawan.jasaKaryawanPrice' => 'bail|required|numeric',
-            ],
-            [
-                'formEntryJasaKaryawan.jasaKaryawanId.required' => 'ID karyawan harus diisi.',
-                'formEntryJasaKaryawan.jasaKaryawanId.exists' => 'ID karyawan tidak valid.',
-                'formEntryJasaKaryawan.jasaKaryawanDesc.required' => 'Deskripsi jasa harus diisi.',
-                'formEntryJasaKaryawan.jasaKaryawanPrice.required' => 'Harga jasa harus diisi.',
-                'formEntryJasaKaryawan.jasaKaryawanPrice.numeric' => 'Harga jasa harus berupa angka.',
-            ],
-        );
+        $this->validate();
 
         try {
             DB::transaction(function () {

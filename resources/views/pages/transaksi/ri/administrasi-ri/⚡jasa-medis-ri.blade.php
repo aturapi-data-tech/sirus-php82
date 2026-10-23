@@ -138,6 +138,43 @@ new class extends Component {
     }
 
     /* ===============================
+     | VALIDASI
+     =============================== */
+    protected function rules(): array
+    {
+        return [
+            'formEntry.jasaMedisId'    => 'bail|required|exists:rsmst_actparamedics,pact_id',
+            'formEntry.jasaMedisPrice' => 'bail|required|numeric|min:0',
+            // Batas atas: tiap 1 qty meng-insert ulang seluruh paket lain-lain (lihat paketLainLainJasaMedis).
+            'formEntry.jasaMedisQty'   => 'bail|required|numeric|min:1|max:100',
+        ];
+    }
+
+    protected function messages(): array
+    {
+        return [
+            'formEntry.jasaMedisId.required'    => ':attribute wajib dipilih.',
+            'formEntry.jasaMedisId.exists'      => ':attribute tidak valid.',
+            'formEntry.jasaMedisPrice.required' => ':attribute wajib diisi.',
+            'formEntry.jasaMedisPrice.numeric'  => ':attribute harus berupa angka.',
+            'formEntry.jasaMedisPrice.min'      => ':attribute tidak boleh negatif.',
+            'formEntry.jasaMedisQty.required'   => ':attribute wajib diisi.',
+            'formEntry.jasaMedisQty.numeric'    => ':attribute harus berupa angka.',
+            'formEntry.jasaMedisQty.min'        => ':attribute minimal :min.',
+            'formEntry.jasaMedisQty.max'        => ':attribute maksimal :max.',
+        ];
+    }
+
+    protected function validationAttributes(): array
+    {
+        return [
+            'formEntry.jasaMedisId'    => 'Jasa medis',
+            'formEntry.jasaMedisPrice' => 'Tarif',
+            'formEntry.jasaMedisQty'   => 'Jumlah',
+        ];
+    }
+
+    /* ===============================
      | INSERT
      =============================== */
     public function insertJasaMedis(): void
@@ -147,21 +184,7 @@ new class extends Component {
             return;
         }
 
-        $this->validate(
-            [
-                'formEntry.jasaMedisId'    => 'bail|required|exists:rsmst_actparamedics,pact_id',
-                'formEntry.jasaMedisPrice' => 'bail|required|numeric|min:0',
-                'formEntry.jasaMedisQty'   => 'bail|required|numeric|min:1',
-            ],
-            [
-                'formEntry.jasaMedisId.required'    => 'Jasa medis wajib dipilih.',
-                'formEntry.jasaMedisId.exists'      => 'Jasa medis tidak valid.',
-                'formEntry.jasaMedisPrice.required' => 'Tarif wajib diisi.',
-                'formEntry.jasaMedisPrice.numeric'  => 'Tarif harus berupa angka.',
-                'formEntry.jasaMedisQty.required'   => 'Jumlah wajib diisi.',
-                'formEntry.jasaMedisQty.min'        => 'Jumlah minimal 1.',
-            ],
-        );
+        $this->validate();
 
         try {
             DB::transaction(function () {

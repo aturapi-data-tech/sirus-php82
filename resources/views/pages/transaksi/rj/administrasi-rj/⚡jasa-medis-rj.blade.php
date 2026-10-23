@@ -125,6 +125,39 @@ new class extends Component {
     }
 
     /* ===============================
+     | VALIDASI
+     =============================== */
+    protected function rules(): array
+    {
+        return [
+            'formEntryJasaMedis.jasaMedisId' => 'bail|required|exists:rsmst_actparamedics,pact_id',
+            'formEntryJasaMedis.jasaMedisDesc' => 'bail|required',
+            'formEntryJasaMedis.jasaMedisPrice' => 'bail|required|numeric|min:0',
+        ];
+    }
+
+    protected function messages(): array
+    {
+        return [
+            'formEntryJasaMedis.jasaMedisId.required' => ':attribute harus diisi.',
+            'formEntryJasaMedis.jasaMedisId.exists' => ':attribute tidak valid.',
+            'formEntryJasaMedis.jasaMedisDesc.required' => ':attribute harus diisi.',
+            'formEntryJasaMedis.jasaMedisPrice.required' => ':attribute harus diisi.',
+            'formEntryJasaMedis.jasaMedisPrice.numeric' => ':attribute harus berupa angka.',
+            'formEntryJasaMedis.jasaMedisPrice.min' => ':attribute tidak boleh negatif.',
+        ];
+    }
+
+    protected function validationAttributes(): array
+    {
+        return [
+            'formEntryJasaMedis.jasaMedisId' => 'ID jasa medis',
+            'formEntryJasaMedis.jasaMedisDesc' => 'Deskripsi jasa medis',
+            'formEntryJasaMedis.jasaMedisPrice' => 'Harga jasa medis',
+        ];
+    }
+
+    /* ===============================
      | INSERT JASA MEDIS
      =============================== */
     public function insertJasaMedis(): void
@@ -134,20 +167,7 @@ new class extends Component {
             return;
         }
 
-        $this->validate(
-            [
-                'formEntryJasaMedis.jasaMedisId' => 'bail|required|exists:rsmst_actparamedics,pact_id',
-                'formEntryJasaMedis.jasaMedisDesc' => 'bail|required',
-                'formEntryJasaMedis.jasaMedisPrice' => 'bail|required|numeric',
-            ],
-            [
-                'formEntryJasaMedis.jasaMedisId.required' => 'ID jasa medis harus diisi.',
-                'formEntryJasaMedis.jasaMedisId.exists' => 'ID jasa medis tidak valid.',
-                'formEntryJasaMedis.jasaMedisDesc.required' => 'Deskripsi jasa medis harus diisi.',
-                'formEntryJasaMedis.jasaMedisPrice.required' => 'Harga jasa medis harus diisi.',
-                'formEntryJasaMedis.jasaMedisPrice.numeric' => 'Harga jasa medis harus berupa angka.',
-            ],
-        );
+        $this->validate();
 
         try {
             DB::transaction(function () {
