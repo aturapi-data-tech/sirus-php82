@@ -877,8 +877,8 @@ new class extends Component {
                                                             </x-dropdown-link>
                                                         @endcan
 
-                                                        {{-- Alat bantu sementara — hapus bersama komponen cek-jumlah-record-ri-actions bila tak dipakai lagi --}}
-                                                        @hasanyrole('Admin')
+                                                        {{-- Cek Jumlah Record & Reset per tab Administrasi — manager ke atas (AksiRole::RI_RESET_ADMINISTRASI) --}}
+                                                        @can('ri.resetAdministrasi')
                                                             <x-dropdown-link href="#"
                                                                 wire:click.prevent="openCekJumlahRecord({{ $row->rihdr_no }})"
                                                                 class="px-3 py-2 text-sm rounded-lg h-full bg-gray-50 hover:bg-gray-100 dark:bg-gray-800/40 dark:hover:bg-gray-800">
@@ -888,11 +888,11 @@ new class extends Component {
                                                                     </svg>
                                                                     <span class="min-w-0">
                                                                         <span class="block font-semibold">Cek Jumlah Record</span>
-                                                                        <span class="block text-xs font-normal text-muted dark:text-gray-400">Total record tiap tab Administrasi</span>
+                                                                        <span class="block text-xs font-normal text-muted dark:text-gray-400">Total record &amp; reset tiap tab Administrasi</span>
                                                                     </span>
                                                                 </div>
                                                             </x-dropdown-link>
-                                                        @endhasanyrole
+                                                        @endcan
 
                                                         </div>
 

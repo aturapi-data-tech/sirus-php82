@@ -51,6 +51,7 @@ class AppServiceProvider extends ServiceProvider
 
         Gate::define('transaksi.batalPenerimaan', fn ($user) => $user->hasAnyRole(AksiRole::TRANSAKSI_BATAL_PENERIMAAN));
         Gate::define('ri.pindahKamar', fn ($user) => $user->hasAnyRole(AksiRole::RI_PINDAH_KAMAR));
+        Gate::define('ri.resetAdministrasi', fn ($user) => $user->hasAnyRole(AksiRole::RI_RESET_ADMINISTRASI));
 
         Gate::define('ri.caseManager', fn ($user) => $user->hasAnyRole(AksiRole::RI_CASE_MANAGER));
 
