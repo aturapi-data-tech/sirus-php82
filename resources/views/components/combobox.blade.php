@@ -244,11 +244,18 @@
         3. typeof-guard di :class/x-text/handler — kalau toh ada <li> yang ter-init tanpa
            scope, ekspresinya menghasilkan nilai kosong, BUKAN ReferenceError; batch
            initTree jalan terus dan komponen lain di halaman tidak ikut jadi korban.
+
+        MELAYANG (pola sama dengan semua LOV): x-anchor.fixed = posisi terhadap layar, jadi tak
+        terpotong kartu/modal ber-overflow, dan membuka ke ATAS bila ruang bawah kurang;
+        x-melayang (resources/js/app.js) = lebar ikut kotak input, tinggi daftar ikut ruang.
+        wire:ignore di atas sudah menjaga style posisinya dari morph Livewire.
     --}}
     <div wire:ignore
          x-show="open && filtered.length > 0"
          x-transition.opacity.duration.100ms
-         class="absolute z-50 w-full mt-2 overflow-hidden bg-white border border-gray-200 shadow-lg rounded-xl dark:bg-gray-900 dark:border-gray-700">
+         x-anchor.fixed.bottom-start.offset.8="$el.previousElementSibling"
+         x-melayang.lebar.daftar="$el.previousElementSibling"
+         class="z-50 overflow-hidden bg-white border border-gray-200 shadow-lg rounded-xl dark:bg-gray-900 dark:border-gray-700">
         <template x-if="open">
             <ul class="overflow-y-auto divide-y divide-gray-100 max-h-72 dark:divide-gray-800">
                 <template x-for="(opt, idx) in filtered" :key="idx + '-' + opt.jenis + '-' + opt.id">

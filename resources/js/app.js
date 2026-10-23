@@ -219,17 +219,26 @@ document.addEventListener("alpine:init", () => {
     // Elemennya WAJIB wire:ignore.self di komponen Livewire — tanpa itu morph menghapus style.
     window.Alpine.directive("melayang", (el, { expression, modifiers }, { evaluateLater, cleanup }) => {
         const ambilPatokan = evaluateLater(expression || "$el.parentElement");
-        const target = modifiers.includes("daftar") ? el.querySelector("ul") || el : el;
-        const batasAsli = parseFloat(getComputedStyle(target).maxHeight) || Infinity;
-        if (target === el) el.style.overflowY = "auto";
+        // <ul> dicari ULANG tiap ukur: di x-combobox daftarnya baru lahir saat dibuka (x-if).
+        // max-h kelas aslinya dibaca sekali per elemen sebelum ditimpa style inline.
+        const batasAsli = new WeakMap();
+        const ambilTarget = () => {
+            const target = modifiers.includes("daftar") ? el.querySelector("ul") || el : el;
+            if (!batasAsli.has(target)) {
+                batasAsli.set(target, parseFloat(getComputedStyle(target).maxHeight) || Infinity);
+                if (target === el) el.style.overflowY = "auto";
+            }
+            return target;
+        };
 
         const ukur = () => {
             ambilPatokan((patokan) => {
                 if (!patokan || !patokan.getBoundingClientRect) return;
+                const target = ambilTarget();
                 const r = patokan.getBoundingClientRect();
                 const ruang = Math.max(window.innerHeight - r.bottom, r.top) - 24;
                 if (modifiers.includes("lebar")) el.style.width = r.width + "px";
-                target.style.maxHeight = Math.max(120, Math.min(batasAsli, ruang)) + "px";
+                target.style.maxHeight = Math.max(120, Math.min(batasAsli.get(target), ruang)) + "px";
             });
         };
 
