@@ -19,6 +19,12 @@ new class extends Component {
 
     public string $tab = 'ringkasan';
 
+    /* Grafik berjalan (opsional) — sampel tetap dikumpulkan tiap poll walau grafik disembunyikan,
+       jadi saat dinyalakan riwayat 10 menit terakhir langsung tampil. */
+    public bool $grafikBerjalan = false;
+    private const JUMLAH_SAMPEL = 60; // 60 × poll 10 detik = 10 menit
+    public array $sampelPool = ['jam' => [], 'aktif' => [], 'antrean' => []];
+
     /* User proses PHP — dipakai baris sudoers di tab Setup Server */
     public string $userProsesPhp = '';
 
@@ -41,7 +47,106 @@ new class extends Component {
 
     public function refresh(): void
     {
-        unset($this->statusPool, $this->timeoutApache, $this->logFpm, $this->slowlog, $this->errorLaravel);
+        unset($this->statusPool, $this->timeoutApache, $this->logFpm, $this->slowlog, $this->errorLaravel, $this->kesehatan);
+    }
+
+    /* Dipanggil wire:poll tab Ringkasan: muat ulang angka + catat satu sampel untuk grafik berjalan. */
+    public function ambilSampel(): void
+    {
+        $this->refresh();
+        $statusPool = $this->statusPool;
+        if ($statusPool === null) {
+            return;
+        }
+        foreach (['jam' => now()->format('H:i:s'), 'aktif' => $statusPool['aktif'], 'antrean' => $statusPool['antrean']] as $kunci => $nilai) {
+            $this->sampelPool[$kunci][] = $nilai;
+            $this->sampelPool[$kunci] = array_slice($this->sampelPool[$kunci], -self::JUMLAH_SAMPEL);
+        }
+        $this->kirimSampel();
+    }
+
+    public function updatedGrafikBerjalan(): void
+    {
+        // Kanvas baru dirender di respons ini — kirim riwayat yang ada supaya grafik langsung terisi.
+        $this->kirimSampel();
+    }
+
+    private function kirimSampel(): void
+    {
+        if (!$this->grafikBerjalan) {
+            return;
+        }
+        $this->dispatch('monitor-server-sampel',
+            jam: $this->sampelPool['jam'],
+            aktif: $this->sampelPool['aktif'],
+            antrean: $this->sampelPool['antrean'],
+            batas: $this->maxChildren,
+        );
+    }
+
+    /* pm.max_children pool ini dibaca dari berkas pool.d (milik root tapi bisa dibaca semua user).
+       fpm_get_status() tidak memuatnya. null = berkas tak terbaca (mis. bukan server FPM). */
+    #[Computed]
+    public function maxChildren(): ?int
+    {
+        $namaPool = $this->statusPool['pool'] ?? null;
+        if ($namaPool === null) {
+            return null;
+        }
+        $berkas = '/etc/php/' . PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION . '/fpm/pool.d/' . $namaPool . '.conf';
+        $isi = is_readable($berkas) ? (string) file_get_contents($berkas) : '';
+        return preg_match('/^\s*pm\.max_children\s*=\s*(\d+)/m', $isi, $cocok) ? (int) $cocok[1] : null;
+    }
+
+    /**
+     * Status keseluruhan Normal / Waspada / Bahaya + alasannya. Ambang sama dengan tabel
+     * "Tanda-tanda" di tab Ringkasan — ubah keduanya bersamaan.
+     * Error Laravel sengaja TIDAK ikut: error aplikasi tak berarti server tak bisa diakses.
+     */
+    #[Computed]
+    public function kesehatan(): array
+    {
+        $statusPool = $this->statusPool;
+        $batas = $this->maxChildren;
+        $bahaya = [];
+        $waspada = [];
+
+        if ($statusPool !== null) {
+            if ($statusPool['antrean'] > 0) {
+                $bahaya[] = "Ada {$statusPool['antrean']} request mengantre — semua worker sedang sibuk.";
+            }
+            if ($batas) {
+                $persen = (int) round($statusPool['aktif'] / $batas * 100);
+                if ($persen >= 90) {
+                    $bahaya[] = "Worker aktif {$statusPool['aktif']} dari {$batas} ({$persen}%) — hampir penuh.";
+                } elseif ($persen >= 70) {
+                    $waspada[] = "Worker aktif {$statusPool['aktif']} dari {$batas} ({$persen}%).";
+                }
+            }
+            $workerLama = collect($statusPool['workerList'])->filter(fn($worker) => $worker['state'] === 'Running' && $worker['durasiDetik'] >= 15)->count();
+            if ($workerLama > 0) {
+                $waspada[] = "{$workerLama} worker sedang mengerjakan request lebih dari 15 detik.";
+            }
+        }
+
+        $timeoutApache = $this->timeoutApache;
+        $logFpm = $this->logFpm;
+        foreach ([
+            ['baru' => $timeoutApache['jumlah15Menit'], 'hariIni' => $timeoutApache['jumlahHariIni'], 'teks' => 'timeout 504 (pengguna gagal membuka halaman)'],
+            ['baru' => $logFpm['jumlah15Menit']['maxChildren'], 'hariIni' => $logFpm['jumlahHariIni']['maxChildren'], 'teks' => 'pool mentok max_children'],
+            ['baru' => $logFpm['jumlah15Menit']['dimatikan'], 'hariIni' => $logFpm['jumlahHariIni']['dimatikan'], 'teks' => 'worker dimatikan karena timed out'],
+        ] as $tanda) {
+            if ($tanda['baru'] > 0) {
+                $bahaya[] = "{$tanda['baru']}× {$tanda['teks']} dalam 15 menit terakhir.";
+            } elseif ($tanda['hariIni'] > 0) {
+                $waspada[] = "{$tanda['hariIni']}× {$tanda['teks']} hari ini (bukan 15 menit terakhir).";
+            }
+        }
+
+        return [
+            'level' => $bahaya ? 'bahaya' : ($waspada ? 'waspada' : 'normal'),
+            'alasan' => array_merge($bahaya, $waspada),
+        ];
     }
 
     /* Status pool PHP-FPM yang melayani halaman ini (fpm_get_status hanya ada di SAPI fpm). */
@@ -92,8 +197,10 @@ new class extends Component {
     {
         $bacaan = $this->bacaEkorBerkas(self::BERKAS_LOG_APACHE, self::BATAS_BYTE_BACA);
         $hariIni = Carbon::today();
+        $batasBaru = now()->subMinutes(15);
         $rows = [];
         $jumlahHariIni = 0;
+        $jumlah15Menit = 0;
         $perHalaman = [];
 
         foreach ($bacaan['baris'] as $baris) {
@@ -112,6 +219,9 @@ new class extends Component {
                 $jumlahHariIni++;
                 $perHalaman[$halaman] = ($perHalaman[$halaman] ?? 0) + 1;
             }
+            if ($waktu->greaterThanOrEqualTo($batasBaru)) {
+                $jumlah15Menit++;
+            }
             $rows[] = [
                 'waktu' => $waktu->format('d/m H:i:s'),
                 'client' => $cocokClient[1] ?? '-',
@@ -123,6 +233,7 @@ new class extends Component {
         return [
             'pesan' => $bacaan['pesan'],
             'jumlahHariIni' => $jumlahHariIni,
+            'jumlah15Menit' => $jumlah15Menit,
             'perHalaman' => array_slice($perHalaman, 0, 10, true),
             'rows' => array_slice(array_reverse($rows), 0, 300),
         ];
@@ -136,6 +247,8 @@ new class extends Component {
         $hariIni = Carbon::today();
         $rows = [];
         $jumlahHariIni = ['maxChildren' => 0, 'dimatikan' => 0, 'lambat' => 0];
+        $jumlah15Menit = ['maxChildren' => 0, 'dimatikan' => 0, 'lambat' => 0];
+        $batasBaru = now()->subMinutes(15);
 
         foreach ($bacaan['baris'] as $baris) {
             if (!preg_match('/^\[(\d{2}-\w{3}-\d{4} [\d:]{8})\] (WARNING|ERROR|ALERT): (.*)$/', $baris, $cocok)) {
@@ -151,6 +264,9 @@ new class extends Component {
             if ($waktu->isSameDay($hariIni) && isset($jumlahHariIni[$jenis])) {
                 $jumlahHariIni[$jenis]++;
             }
+            if ($waktu->greaterThanOrEqualTo($batasBaru) && isset($jumlah15Menit[$jenis])) {
+                $jumlah15Menit[$jenis]++;
+            }
             $rows[] = [
                 'waktu' => $waktu->format('d/m H:i:s'),
                 'level' => $cocok[2],
@@ -162,6 +278,7 @@ new class extends Component {
         return [
             'pesan' => $bacaan['pesan'],
             'jumlahHariIni' => $jumlahHariIni,
+            'jumlah15Menit' => $jumlah15Menit,
             'rows' => array_slice(array_reverse($rows), 0, 300),
         ];
     }
@@ -355,7 +472,33 @@ new class extends Component {
             {{-- RINGKASAN & WORKER                                             --}}
             {{-- ============================================================ --}}
             @if ($tab === 'ringkasan')
-                <div wire:poll.10s></div>
+                <div wire:poll.10s="ambilSampel"></div>
+
+                {{-- STATUS KESELURUHAN — ambang di kesehatan(), sama dengan tabel Tanda-tanda di bawah --}}
+                @php
+                    $kesehatan = $this->kesehatan;
+                    $gayaStatus = [
+                        'normal' => ['kotak' => 'bg-emerald-50 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-700', 'teks' => 'text-emerald-800 dark:text-emerald-200', 'judul' => 'NORMAL', 'ikon' => 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z', 'ket' => 'Apache & PHP-FPM melayani tanpa antrean, timeout, atau worker penuh dalam 15 menit terakhir.'],
+                        'waspada' => ['kotak' => 'bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-700', 'teks' => 'text-amber-800 dark:text-amber-200', 'judul' => 'WASPADA', 'ikon' => 'M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z', 'ket' => 'Server masih bisa diakses, tapi ada tanda beban berat atau masalah tadi. Pantau, cari penyebabnya di tab terkait.'],
+                        'bahaya' => ['kotak' => 'bg-rose-50 border-rose-200 dark:bg-rose-900/20 dark:border-rose-700', 'teks' => 'text-rose-800 dark:text-rose-200', 'judul' => 'BAHAYA', 'ikon' => 'M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z', 'ket' => 'Pengguna sedang/baru saja gagal membuka halaman. Lihat worker Sibuk terlama & tab Slowlog.'],
+                    ][$kesehatan['level']];
+                @endphp
+                <div class="flex gap-3 p-4 mt-4 border rounded-2xl {{ $gayaStatus['kotak'] }}">
+                    <svg class="w-8 h-8 shrink-0 {{ $gayaStatus['teks'] }}" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="{{ $gayaStatus['ikon'] }}" />
+                    </svg>
+                    <div class="{{ $gayaStatus['teks'] }}">
+                        <p class="text-lg font-bold">Server {{ $gayaStatus['judul'] }}</p>
+                        <p class="text-sm">{{ $gayaStatus['ket'] }}</p>
+                        @if ($kesehatan['alasan'])
+                            <ul class="mt-1 text-sm list-disc list-inside">
+                                @foreach ($kesehatan['alasan'] as $alasan)
+                                    <li>{{ $alasan }}</li>
+                                @endforeach
+                            </ul>
+                        @endif
+                    </div>
+                </div>
 
                 <div class="grid grid-cols-2 gap-3 mt-4 lg:grid-cols-4">
                     @foreach ([
@@ -373,6 +516,126 @@ new class extends Component {
                     @endforeach
                 </div>
 
+                {{-- GRAFIK BERJALAN (opsional) — Chart.js dimuat dari CDN saat pertama dibutuhkan,
+                     pola sama dengan Monitoring Dashboard Oracle (perfChart). --}}
+                <div class="mt-4 bg-canvas border border-hairline shadow-sm rounded-2xl dark:border-gray-700 dark:bg-gray-900">
+                    <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-hairline dark:border-gray-700">
+                        <div>
+                            <h3 class="text-base font-bold text-ink dark:text-gray-100">Grafik Worker Berjalan</h3>
+                            <p class="text-sm text-muted dark:text-gray-400">Worker aktif & antrean tiap 10 detik, 10 menit terakhir — garis putus-putus = batas <code>pm.max_children</code>.</p>
+                        </div>
+                        <x-toggle wire:model.live="grafikBerjalan" :trueValue="true" :falseValue="false" label="Tampilkan grafik" />
+                    </div>
+                    @if ($grafikBerjalan)
+                        @if ($statusPool === null)
+                            <p class="px-4 py-6 text-sm text-muted dark:text-gray-400">Grafik butuh status pool — halaman ini tidak berjalan di PHP-FPM.</p>
+                        @else
+                            <div class="p-4" wire:ignore>
+                                <div class="relative h-72">
+                                    <canvas id="grafikWorkerFpm" aria-label="Grafik worker aktif dan antrean PHP-FPM"></canvas>
+                                </div>
+                            </div>
+                            <p class="px-4 pb-3 text-sm text-muted dark:text-gray-400">
+                                Grafik mulai mengisi sejak halaman ini dibuka (riwayat tidak disimpan). Garis <b>Worker aktif</b> yang menempel ke batas, atau <b>Antrean</b> di atas 0, berarti pengguna mulai menunggu.
+                            </p>
+                        @endif
+                    @endif
+                </div>
+
+                @once
+                    <script>
+                        (function () {
+                            let grafik = null;
+
+                            function muatChartJs() {
+                                return new Promise((resolve, reject) => {
+                                    if (window.Chart) return resolve();
+                                    let tag = document.querySelector('script[data-chartjs]');
+                                    if (tag) {
+                                        tag.addEventListener('load', resolve);
+                                        tag.addEventListener('error', reject);
+                                        return;
+                                    }
+                                    tag = document.createElement('script');
+                                    tag.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js';
+                                    tag.defer = tag.async = true;
+                                    tag.dataset.chartjs = '';
+                                    tag.onload = resolve;
+                                    tag.onerror = reject;
+                                    document.head.appendChild(tag);
+                                });
+                            }
+
+                            // Warna seri tervalidasi (skill dataviz: biru = slot 1, oranye = slot 2; langkah gelap untuk dark mode).
+                            function warna() {
+                                const gelap = document.documentElement.classList.contains('dark');
+                                return {
+                                    aktif: gelap ? '#3987e5' : '#2a78d6',
+                                    antrean: gelap ? '#d95926' : '#eb6834',
+                                    batas: gelap ? '#9ca3af' : '#6b7280',
+                                    grid: gelap ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+                                    teks: gelap ? '#c3c2b7' : '#52514e',
+                                };
+                            }
+
+                            function siapkanGrafik() {
+                                const el = document.getElementById('grafikWorkerFpm');
+                                if (!el) return null;
+                                // Kanvas lama hilang (ganti tab / grafik dimatikan) → buat ulang di kanvas baru.
+                                if (grafik && grafik.canvas !== el) {
+                                    grafik.destroy();
+                                    grafik = null;
+                                }
+                                if (grafik) return grafik;
+                                const w = warna();
+                                grafik = new Chart(el.getContext('2d'), {
+                                    type: 'line',
+                                    data: {
+                                        labels: [],
+                                        datasets: [
+                                            { label: 'Worker aktif', data: [], borderColor: w.aktif, backgroundColor: w.aktif, borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, tension: 0.2 },
+                                            { label: 'Antrean', data: [], borderColor: w.antrean, backgroundColor: w.antrean, borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, tension: 0.2 },
+                                            { label: 'Batas max_children', data: [], borderColor: w.batas, borderWidth: 1, borderDash: [6, 4], pointRadius: 0, pointHoverRadius: 0 },
+                                        ],
+                                    },
+                                    options: {
+                                        animation: false,
+                                        maintainAspectRatio: false,
+                                        interaction: { mode: 'index', intersect: false },
+                                        plugins: {
+                                            legend: { labels: { color: w.teks, boxWidth: 12, boxHeight: 2 } },
+                                            tooltip: { mode: 'index', intersect: false },
+                                        },
+                                        scales: {
+                                            x: { ticks: { color: w.teks, maxTicksLimit: 8 }, grid: { display: false } },
+                                            y: { beginAtZero: true, ticks: { color: w.teks, precision: 0 }, grid: { color: w.grid }, title: { display: true, text: 'Jumlah', color: w.teks } },
+                                        },
+                                    },
+                                });
+                                return grafik;
+                            }
+
+                            window.addEventListener('monitor-server-sampel', async (ev) => {
+                                try {
+                                    await muatChartJs();
+                                    // Tunggu morph Livewire selesai memasang kanvas.
+                                    requestAnimationFrame(() => {
+                                        const chart = siapkanGrafik();
+                                        if (!chart) return;
+                                        const { jam, aktif, antrean, batas } = ev.detail;
+                                        chart.data.labels = jam;
+                                        chart.data.datasets[0].data = aktif;
+                                        chart.data.datasets[1].data = antrean;
+                                        chart.data.datasets[2].data = batas ? jam.map(() => batas) : [];
+                                        chart.data.datasets[2].hidden = !batas;
+                                        chart.update('none');
+                                    });
+                                } catch {}
+                            });
+                        })();
+                    </script>
+                @endonce
+
                 <div class="mt-4 bg-canvas border border-hairline shadow-sm rounded-2xl dark:border-gray-700 dark:bg-gray-900">
                     <div class="px-4 py-3 border-b border-hairline dark:border-gray-700">
                         <h3 class="text-base font-bold text-ink dark:text-gray-100">Worker PHP-FPM (live, refresh 10 detik)</h3>
@@ -385,7 +648,8 @@ new class extends Component {
                         <div class="grid grid-cols-2 gap-3 p-4 text-sm lg:grid-cols-4">
                             <div><span class="text-muted dark:text-gray-400">Pool:</span> <b class="font-mono">{{ $statusPool['pool'] }}</b></div>
                             <div><span class="text-muted dark:text-gray-400">Aktif / Idle / Total:</span>
-                                <b>{{ $statusPool['aktif'] }}</b> / {{ $statusPool['idle'] }} / {{ $statusPool['total'] }}</div>
+                                <b>{{ $statusPool['aktif'] }}</b> / {{ $statusPool['idle'] }} / {{ $statusPool['total'] }}
+                                <span class="text-muted dark:text-gray-400">· batas {{ $this->maxChildren ?? '?' }}</span></div>
                             <div><span class="text-muted dark:text-gray-400">Aktif tertinggi:</span> <b>{{ $statusPool['aktifTertinggi'] }}</b></div>
                             <div><span class="text-muted dark:text-gray-400">Mentok max_children:</span>
                                 <b class="{{ $statusPool['mentokMaxChildren'] > 0 ? 'text-rose-700 dark:text-rose-300' : '' }}">{{ $statusPool['mentokMaxChildren'] }}×</b></div>
@@ -434,6 +698,50 @@ new class extends Component {
                             <code>pm.max_children</code> dan Antrean &gt; 0, server mulai menjawab 504. Untuk Idle, DURASI adalah lama request terakhirnya.
                         </p>
                     @endif
+                </div>
+
+                {{-- TANDA-TANDA — sama dengan ambang di kesehatan(); ubah keduanya bersamaan --}}
+                <div class="mt-4 bg-canvas border border-hairline shadow-sm rounded-2xl dark:border-gray-700 dark:bg-gray-900">
+                    <div class="px-4 py-3 border-b border-hairline dark:border-gray-700">
+                        <h3 class="text-base font-bold text-ink dark:text-gray-100">Tanda-tanda: kapan harus waspada</h3>
+                        <p class="text-sm text-muted dark:text-gray-400">Status di atas dihitung dari tabel ini. "Baru" = 15 menit terakhir.</p>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full text-sm">
+                            <thead class="text-muted bg-surface-card dark:bg-gray-800 dark:text-gray-200">
+                                <tr class="text-left">
+                                    <th class="px-4 py-2 font-semibold">INDIKATOR</th>
+                                    <th class="px-4 py-2 font-semibold text-emerald-700 dark:text-emerald-300">NORMAL</th>
+                                    <th class="px-4 py-2 font-semibold text-amber-700 dark:text-amber-300">WASPADA</th>
+                                    <th class="px-4 py-2 font-semibold text-rose-700 dark:text-rose-300">BAHAYA</th>
+                                    <th class="px-4 py-2 font-semibold">YANG DILAKUKAN</th>
+                                </tr>
+                            </thead>
+                            <tbody class="align-top text-body divide-y divide-hairline dark:divide-gray-700 dark:text-gray-200">
+                                @foreach ([
+                                    ['Worker aktif dibanding batas', '&lt; 70%', '70–89%', '≥ 90%', 'Lihat worker Sibuk terlama di tabel Worker; bila sering tinggi padahal request cepat, naikkan pm.max_children (cek RAM & sesi Oracle).'],
+                                    ['Antrean request', '0', '—', '&gt; 0', 'Semua worker sibuk, pengguna menunggu. Cari request yang menahan worker (durasi terlama) & tab Slowlog.'],
+                                    ['Worker mengerjakan 1 request', '&lt; 15 detik', '≥ 15 detik', '—', 'Biasanya laporan/query berat. Catat halamannya (kolom REQUEST) untuk dioptimalkan.'],
+                                    ['Timeout Apache (504)', '0 hari ini', 'ada hari ini', 'ada di 15 menit terakhir', 'Tab Timeout Apache → kolom halaman menunjukkan asal pengguna yang gagal.'],
+                                    ['Pool mentok max_children', '0 hari ini', 'ada hari ini', 'ada di 15 menit terakhir', 'Tab Log PHP-FPM. Bila berulang tiap jam sibuk, kapasitas pool kurang atau ada request yang macet.'],
+                                    ['Worker dimatikan (timed out)', '0 hari ini', 'ada hari ini', 'ada di 15 menit terakhir', 'Request melebihi request_terminate_timeout (300 dtk). Tab Slowlog menunjukkan baris kode penyebabnya.'],
+                                ] as [$indikator, $normal, $waspada, $bahaya, $tindakan])
+                                    <tr>
+                                        <td class="px-4 py-2 font-semibold">{{ $indikator }}</td>
+                                        <td class="px-4 py-2">{!! $normal !!}</td>
+                                        <td class="px-4 py-2">{!! $waspada !!}</td>
+                                        <td class="px-4 py-2">{!! $bahaya !!}</td>
+                                        <td class="px-4 py-2 text-muted dark:text-gray-400">{{ $tindakan }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                    <p class="px-4 py-3 text-sm border-t text-muted border-hairline dark:border-gray-700 dark:text-gray-400">
+                        <b>Error Laravel</b> tidak ikut menentukan status: error aplikasi (validasi, data kosong) tidak berarti server tak bisa diakses.
+                        Perhatikan bila satu pesan yang sama muncul ratusan kali. Status ini hanya untuk pool <code>{{ $statusPool['pool'] ?? 'ini' }}</code>;
+                        pool lain (mis. <code>www</code> untuk SIAP/SIGAP) hanya terlihat lewat tab Log PHP-FPM.
+                    </p>
                 </div>
 
                 {{-- Panduan --}}
