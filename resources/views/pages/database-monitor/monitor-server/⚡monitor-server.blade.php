@@ -426,7 +426,9 @@ new class extends Component {
         subtitle="Worker PHP-FPM, timeout Apache, slowlog & error Laravel — untuk melacak server yang tidak bisa diakses" />
 
     <div class="w-full h-[calc(100vh-5rem)] flex flex-col bg-surface-soft dark:bg-gray-800">
-        <div class="flex flex-col flex-1 min-h-0 px-6 pt-2 pb-6 overflow-y-auto">
+        {{-- Blok biasa (BUKAN flex-col): sebagai flex item, kartu ber-overflow-hidden (Setup Server,
+             Cara Membaca) menyusut & terpotong alih-alih membuat area ini bisa di-scroll. --}}
+        <div class="flex-1 min-h-0 px-6 pt-2 pb-6 overflow-y-auto">
 
             @php
                 $statusPool = $this->statusPool;
