@@ -589,6 +589,9 @@ Route::middleware(['auth'])->group(function () {
     Route::livewire('/database-monitor/log-bpjs', 'pages::database-monitor.log-bpjs.log-bpjs')
         ->name('database-monitor.log-bpjs');
 
+    Route::livewire('/database-monitor/monitor-server', 'pages::database-monitor.monitor-server.monitor-server')
+        ->name('database-monitor.monitor-server');
+
     Route::livewire('/manajemen/rs/tu/pendapatan-jasa-dokter', 'pages::manajemen.rs.tu.pendapatan-jasa-dokter.pendapatan-jasa-dokter')
         ->name('manajemen.rs.tu.pendapatan-jasa-dokter');
 
