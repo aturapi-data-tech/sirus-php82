@@ -410,11 +410,15 @@ new class extends Component {
                     )
                     ->value('longday');
 
+                // Hari 0 yang disetel manual (kamar transit, tak ditagih) dipertahankan
+                $hariLama = DB::table('rsmst_trfrooms')->where('trfr_no', $maxTrfrNo)->value('day');
+                $hariPulang = ($hariLama !== null && (int) $hariLama === 0) ? 0 : max(1, (int) $longDay);
+
                 DB::table('rsmst_trfrooms')
                     ->where('trfr_no', $maxTrfrNo)
                     ->update([
                         'end_date' => DB::raw("TO_DATE('" . $this->exitDate . "','dd/mm/yyyy hh24:mi:ss')"),
-                        'day'      => max(1, (int) $longDay),
+                        'day'      => $hariPulang,
                     ]);
             });
 

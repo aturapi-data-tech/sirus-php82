@@ -201,15 +201,21 @@ new class extends Component {
                 // Tutup kamar aktif sekarang
                 if ($this->activeRoom) {
                     $longDay = DB::table('rsmst_trfrooms')
-                        ->select(DB::raw("ROUND(TO_DATE('" . $this->formEntry['trfrDate'] . "','dd/mm/yyyy hh24:mi:ss') - start_date) as day"))
+                        ->select(DB::raw("ROUND(TO_DATE('" . $this->formEntry['trfrDate'] . "','dd/mm/yyyy hh24:mi:ss') - start_date) as day"), 'day as hari_lama')
                         ->where('trfr_no', $this->activeRoom['trfr_no'])
                         ->first();
+
+                    // Hari 0 yang disetel manual (kamar transit, tak ditagih) dipertahankan —
+                    // jangan ditimpa jadi minimal 1 saat kamar ditutup.
+                    $hariTutup = ($longDay && $longDay->hari_lama !== null && (int) $longDay->hari_lama === 0)
+                        ? 0
+                        : max(1, (int) ($longDay->day ?? 1));
 
                     DB::table('rsmst_trfrooms')
                         ->where('trfr_no', $this->activeRoom['trfr_no'])
                         ->update([
                             'end_date' => DB::raw("TO_DATE('" . $this->formEntry['trfrDate'] . "','dd/mm/yyyy hh24:mi:ss')"),
-                            'day'      => max(1, (int) ($longDay->day ?? 1)),
+                            'day'      => $hariTutup,
                         ]);
                 }
 

@@ -168,8 +168,8 @@ new class extends Component {
      | Kolom Selesai boleh dikosongkan → baris kembali jadi kamar aktif,
      | tapi hanya bila tidak ada baris aktif lain (satu pasien satu kamar aktif).
      | Kolom `day` DIHITUNG ULANG dari rentang tanggal yang baru (nilai manual
-     | sebelumnya tertimpa, tercatat di audit log) — setelah itu tetap boleh
-     | disetel manual lewat kolom Hari, mis. kamar transit yang tak ditagih.
+     | sebelumnya tertimpa, tercatat di audit log) — KECUALI Hari 0 (kamar transit
+     | tak ditagih) yang tetap 0. Setelah itu tetap boleh disetel manual lewat kolom Hari.
      =============================== */
     public function updateTanggalKamar(int $trfrNo, string $kolom, ?string $nilai): void
     {
@@ -210,6 +210,7 @@ new class extends Component {
             ->select(
                 DB::raw("to_char(start_date, 'dd/mm/yyyy hh24:mi:ss') as start_date"),
                 DB::raw("to_char(end_date,   'dd/mm/yyyy hh24:mi:ss') as end_date"),
+                'day',
             )
             ->where('trfr_no', $trfrNo)
             ->first();
@@ -255,11 +256,14 @@ new class extends Component {
         //
         // max(1, ...) menyamai proses Pindah Kamar (pindah-kamar-ri: ROUND(trfrDate -
         // start_date) lalu max(1, ...)) — pindah kurang dari sehari tetap ditagih 1 hari.
-        // Kalau memang tak ingin ditagih (kamar transit), setel 0 manual di kolom Hari.
+        // Kalau memang tak ingin ditagih (kamar transit), setel 0 manual di kolom Hari —
+        // Hari 0 itu dipertahankan walau tanggalnya diubah lagi.
         // Carbon 3: jangan pakai diffInSeconds(other, false) — tandanya terbalik.
         $hariBaru = null;
         if ($mulai && $selesai) {
-            $hariBaru = max(1, (int) round(($selesai->getTimestamp() - $mulai->getTimestamp()) / 86400));
+            $hariBaru = ($baris->day !== null && (int) $baris->day === 0)
+                ? 0
+                : max(1, (int) round(($selesai->getTimestamp() - $mulai->getTimestamp()) / 86400));
         }
 
         try {
