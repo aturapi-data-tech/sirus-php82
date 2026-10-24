@@ -5,12 +5,20 @@ use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use App\Support\Keuangan\SaldoKas;
+use Carbon\Carbon;
 
 new class extends Component {
+    /** Tanggal internal 'YYYY-MM-DD' — dipakai hitung saldo & dikirim ke modal Riwayat/Edit. */
     public string $tanggal = '';
+    /** Input user, diketik manual 'DD/MM/YYYY' (tiru daftar RJ). */
+    public string $tanggalInput = '';
     public string $searchKeyword = '';
 
-    /** Shift terakhir yang dihitung pada tanggal terpilih ('' = seluruh hari), meniru form 6i. */
+    /** Tampilan: 'shift' (saldo s/d akhir shift terpilih) | 'harian' (saldo seluruh hari).
+     *  Satu-satunya tempat memilih — modal Riwayat mengikuti, tak punya tab sendiri. */
+    public string $mode = 'shift';
+
+    /** Shift terpilih di tampilan Per Shift; saldo dihitung s/d shift ini, meniru form 6i. */
     public string $shift = '';
 
     /** Saat di-embed dalam modal (mis. tombol Cek Saldo Kasir/Apotek): sembunyikan page-title
@@ -20,18 +28,61 @@ new class extends Component {
     public function mount(bool $embedded = false): void
     {
         $this->embedded = $embedded;
-        $this->tanggal = now()->toDateString();
+        $this->setTanggal(now()->toDateString());
         $this->shift   = SaldoKas::shiftSekarang();
     }
 
-    public function updatedTanggal(): void { /* recompute saldo */ }
+    /**
+     * User ketik manual "DD/MM/YYYY" → parse ke internal YYYY-MM-DD.
+     * Format belum lengkap/invalid → biarkan (saldo tetap memakai tanggal valid terakhir).
+     */
+    public function updatedTanggalInput(string $value): void
+    {
+        $value = trim($value);
+        if (!preg_match('#^\d{2}/\d{2}/\d{4}$#', $value)) {
+            return;
+        }
+        try {
+            $tanggalDipilih = Carbon::createFromFormat('d/m/Y', $value)->startOfDay();
+        } catch (\Throwable) {
+            return;
+        }
+        // tolak overflow (mis. 32/01/2026 → Carbon normalisasi jadi 01/02)
+        if ($tanggalDipilih->format('d/m/Y') !== $value) {
+            return;
+        }
+        $this->tanggal = $tanggalDipilih->format('Y-m-d');
+    }
+
+    private function setTanggal(string $tanggal): void
+    {
+        $this->tanggal = $tanggal;
+        $this->tanggalInput = Carbon::parse($tanggal)->format('d/m/Y');
+    }
+
     public function updatedShift(): void { /* recompute saldo */ }
+
+    public function setMode(string $mode): void
+    {
+        if (!in_array($mode, ['shift', 'harian'], true)) return;
+        $this->mode = $mode;
+        if ($mode === 'shift' && $this->shift === '') {
+            $this->shift = SaldoKas::shiftSekarang();
+        }
+    }
+
+    /** Shift yang dipakai menghitung & dikirim ke Riwayat: '' (seluruh hari) di tampilan Harian. */
+    private function shiftEfektif(): string
+    {
+        return $this->mode === 'shift' ? $this->shift : '';
+    }
     public function updatedSearchKeyword(): void { /* refilter */ }
 
     /** Reset filter ke kondisi awal (dipakai tombol Reset toolbar standar). */
     public function resetFilters(): void
     {
-        $this->tanggal = now()->toDateString();
+        $this->mode = 'shift';
+        $this->setTanggal(now()->toDateString());
         $this->shift   = SaldoKas::shiftSekarang();
         $this->searchKeyword = '';
     }
@@ -42,12 +93,12 @@ new class extends Component {
             $this->dispatch('toast', type: 'error', message: 'Hanya Manager ke atas yang bisa mengedit saldo.');
             return;
         }
-        $this->dispatch('keuangan.saldo-kas.openEdit', accId: $accId, tanggal: $this->tanggal, shift: $this->shift);
+        $this->dispatch('keuangan.saldo-kas.openEdit', accId: $accId, tanggal: $this->tanggal, shift: $this->shiftEfektif());
     }
 
     public function openHistory(string $accId): void
     {
-        $this->dispatch('keuangan.saldo-kas.openHistory', accId: $accId, tanggal: $this->tanggal);
+        $this->dispatch('keuangan.saldo-kas.openHistory', accId: $accId, tanggal: $this->tanggal, mode: $this->mode, shift: $this->shiftEfektif());
     }
 
     #[On('keuangan.saldo-kas.saved')]
@@ -65,7 +116,7 @@ new class extends Component {
      */
     private function hitungSaldoTanggal(string $accId, string $dkStatus, string $tanggal): float
     {
-        return SaldoKas::hitung($accId, $dkStatus, $tanggal, $this->shift !== '' ? $this->shift : null);
+        return SaldoKas::hitung($accId, $dkStatus, $tanggal, $this->shiftEfektif() !== '' ? $this->shiftEfektif() : null);
     }
 
     #[Computed]
@@ -115,8 +166,8 @@ new class extends Component {
 <div>
     @unless ($embedded)
         @php
-            $saldoKasSubtitle = 'Posisi saldo kas/bank per tanggal & shift yang dipilih (rumus sama dengan Arus Kas Oracle Forms 6i).'
-                . ($this->canEditSaldo() ? '' : ' Mode tampilan saja — edit saldo hanya untuk Manager ke atas.');
+            // Akhiran "edit saldo hanya Manager" dilepas selama tombol Edit Saldo dinonaktifkan.
+            $saldoKasSubtitle = 'Posisi saldo kas/bank per tanggal & shift yang dipilih (rumus sama dengan Arus Kas Oracle Forms 6i).';
         @endphp
         <x-page-title
             title="Saldo Kas Per Tanggal"
@@ -129,21 +180,41 @@ new class extends Component {
             <div class="sticky z-30 px-4 py-3 bg-surface-soft border-b border-hairline dark:bg-gray-900 dark:border-gray-700 {{ $embedded ? 'top-0' : 'top-20' }}">
                 <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
                     <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">
-                        <div class="w-full sm:w-52">
-                            <x-input-label for="tanggal" value="Saldo Per Tanggal" class="mb-1 text-xs font-medium text-muted dark:text-gray-400" />
-                            <x-text-input id="tanggal" type="date"
-                                wire:model.live="tanggal"
-                                class="block w-full" />
+                        {{-- Per Shift / Harian dipilih DI SINI saja — modal Riwayat mengikuti (tak ada tab kedua) --}}
+                        <div>
+                            <x-input-label value="Tampilan" class="mb-1 text-xs font-medium text-muted dark:text-gray-400" />
+                            <x-tabs>
+                                <x-tab :active="$mode === 'shift'" wire:click="setMode('shift')">Per Shift</x-tab>
+                                <x-tab :active="$mode === 'harian'" wire:click="setMode('harian')">Harian</x-tab>
+                            </x-tabs>
                         </div>
-                        <div class="w-full sm:w-36">
-                            <x-input-label for="shift" value="s/d Shift" class="mb-1 text-xs font-medium text-muted dark:text-gray-400" />
-                            <x-select-input id="shift" wire:model.live="shift" class="block w-full">
-                                <option value="">Seluruh hari</option>
-                                @foreach ($this->daftarShift as $nomorShift)
-                                    <option value="{{ $nomorShift }}">Shift {{ $nomorShift }}</option>
-                                @endforeach
-                            </x-select-input>
+                        <div class="w-full sm:w-44">
+                            <x-input-label for="tanggalInput" value="Saldo Per Tanggal" class="mb-1 text-xs font-medium text-muted dark:text-gray-400" />
+                            {{-- Ketik manual dd/mm/yyyy (tiru daftar RJ) — debounce karena tiap tanggal valid menghitung ulang saldo semua akun --}}
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                                    <svg class="w-4 h-4 text-body" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                    </svg>
+                                </div>
+                                <x-text-input id="tanggalInput" type="text"
+                                    wire:model.live.debounce.500ms="tanggalInput"
+                                    placeholder="dd/mm/yyyy" maxlength="10"
+                                    class="block w-full pl-10 font-mono" />
+                            </div>
                         </div>
+                        @if ($mode === 'shift')
+                            <div class="w-full sm:w-36">
+                                <x-input-label for="shift" value="Shift" class="mb-1 text-xs font-medium text-muted dark:text-gray-400" />
+                                <x-select-input id="shift" wire:model.live="shift" class="block w-full">
+                                    @foreach ($this->daftarShift as $nomorShift)
+                                        <option value="{{ $nomorShift }}">Shift {{ $nomorShift }}</option>
+                                    @endforeach
+                                </x-select-input>
+                            </div>
+                        @endif
                         <div class="w-full sm:w-72">
                             <x-input-label for="searchKeyword" value="Cari" class="mb-1 text-xs font-medium text-muted dark:text-gray-400" />
                             <x-text-input id="searchKeyword" type="text"
@@ -174,13 +245,13 @@ new class extends Component {
                                 <th class="px-4 py-3 font-semibold w-28">ACC ID</th>
                                 <th class="px-4 py-3 font-semibold">AKUN KAS</th>
                                 <th class="px-4 py-3 font-semibold w-24 text-center">D/K</th>
-                                <th class="px-4 py-3 font-semibold w-60 text-right">SALDO PER {{ \Carbon\Carbon::parse($tanggal)->format('d/m/Y') }}{{ $shift !== '' ? ' / SHIFT ' . $shift : '' }}</th>
-                                <th class="px-4 py-3 font-semibold {{ $this->canEditSaldo() ? 'w-56' : 'w-32' }}">AKSI</th>
+                                <th class="px-4 py-3 font-semibold w-60 text-right">SALDO PER {{ \Carbon\Carbon::parse($tanggal)->format('d/m/Y') }}{{ $mode === 'shift' ? ' / AKHIR SHIFT ' . $shift : '' }}</th>
+                                <th class="px-4 py-3 font-semibold w-32">AKSI</th>
                             </tr>
                         </thead>
                         <tbody class="text-body divide-y divide-hairline dark:divide-gray-700 dark:text-gray-200">
                             @forelse ($this->rows as $row)
-                                <tr wire:key="saldo-{{ $row->acc_id }}-{{ $tanggal }}-{{ $shift }}"
+                                <tr wire:key="saldo-{{ $row->acc_id }}-{{ $tanggal }}-{{ $mode }}-{{ $shift }}"
                                     class="hover:bg-surface-soft dark:hover:bg-gray-800/60">
                                     <td class="px-4 py-3 font-mono text-xs align-middle">{{ $row->acc_id }}</td>
                                     <td class="px-4 py-3 align-middle">
@@ -212,11 +283,14 @@ new class extends Component {
                                                 </svg>
                                                 Riwayat
                                             </x-outline-button>
+                                            {{-- Edit Saldo DINONAKTIFKAN sementara (2026-10-24, permintaan user) — belum
+                                                 disesuaikan dengan tampilan Per Shift/Harian. Aktifkan lagi dengan membuka komentar ini.
                                             @if ($this->canEditSaldo())
                                                 <x-action-edit
                                                     wire:click="openEdit('{{ $row->acc_id }}')"
                                                     class="whitespace-nowrap">Edit Saldo</x-action-edit>
                                             @endif
+                                            --}}
                                         </div>
                                     </td>
                                 </tr>
