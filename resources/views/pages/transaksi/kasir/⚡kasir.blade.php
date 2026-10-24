@@ -1,6 +1,7 @@
 <?php
 // resources/views/pages/transaksi/kasir/kasir.blade.php
 // Wrapper 1 halaman untuk Antrian Kasir RJ & UGD dalam tab
+// + Cash In / Cash Out / Piutang Pasien = komponen Keuangan apa adanya
 
 use Livewire\Component;
 
@@ -12,7 +13,7 @@ new class extends Component {
 
     public function setTab(string $tab): void
     {
-        if (!in_array($tab, ['rj', 'ugd', 'ri', 'daftar-ri'])) {
+        if (!in_array($tab, ['rj', 'ugd', 'ri', 'daftar-ri', 'cash-in', 'cash-out', 'piutang-pasien', 'list-piutang'])) {
             return;
         }
         $this->activeTab = $tab;
@@ -45,6 +46,10 @@ new class extends Component {
                 <x-tab :active="$activeTab === 'ugd'" color="rose" wire:click="setTab('ugd')">UGD</x-tab>
                 <x-tab :active="$activeTab === 'ri'" color="blue" wire:click="setTab('ri')">Rawat Inap</x-tab>
                 <x-tab :active="$activeTab === 'daftar-ri'" color="purple" wire:click="setTab('daftar-ri')">Daftar Pasien RI</x-tab>
+                <x-tab :active="$activeTab === 'cash-in'" color="brand" wire:click="setTab('cash-in')">Cash In</x-tab>
+                <x-tab :active="$activeTab === 'cash-out'" color="violet" wire:click="setTab('cash-out')">Cash Out</x-tab>
+                <x-tab :active="$activeTab === 'piutang-pasien'" color="blue" wire:click="setTab('piutang-pasien')">Pembayaran Piutang Pasien</x-tab>
+                <x-tab :active="$activeTab === 'list-piutang'" color="purple" wire:click="setTab('list-piutang')">List Piutang Pasien</x-tab>
             </x-tabs>
 
             <x-outline-button type="button" wire:click="openCekSaldo"
@@ -70,6 +75,18 @@ new class extends Component {
             @elseif ($activeTab === 'daftar-ri')
                 <livewire:pages::transaksi.kasir.daftar-kasir-ri.daftar-kasir-ri
                     wire:key="daftar-kasir-ri-wrapper" />
+            @elseif ($activeTab === 'cash-in')
+                <livewire:pages::transaksi.keuangan.penerimaan-kas-tu.penerimaan-kas-tu
+                    wire:key="penerimaan-kas-tu-wrapper" />
+            @elseif ($activeTab === 'cash-out')
+                <livewire:pages::transaksi.keuangan.pengeluaran-kas-tu.pengeluaran-kas-tu
+                    wire:key="pengeluaran-kas-tu-wrapper" />
+            @elseif ($activeTab === 'piutang-pasien')
+                <livewire:pages::transaksi.keuangan.pembayaran-piutang.pembayaran-piutang-pasien
+                    wire:key="pembayaran-piutang-pasien-wrapper" />
+            @elseif ($activeTab === 'list-piutang')
+                <livewire:pages::manajemen.rs.tu.piutang-pasien.piutang-pasien
+                    wire:key="list-piutang-pasien-wrapper" />
             @endif
         </div>
 
