@@ -74,8 +74,8 @@
                                 @foreach ([
                                     'Tabel header + kolom JSON CLOB dirancang dulu (PK, kolom datadaftar*_json) — sepakati struktur JSON per section',
                                     'Trait jalur dibuat mengikuti EmrRJTrait: findData / lockRow / updateJson / appendAdminLog / checkStatus',
-                                    'Baca CLOB SELALU via OracleLob::read; tulis SELALU transaction + lock (bab 03)',
-                                    'List: baseQuery subquery ter-scope tanggal + paginate DB + transform page aktif; poll hanya di antrian',
+                                    'Baca CLOB SELALU via OracleLob (satu kunjungan: findData*; daftar: bacaJsonKunjungan*); tulis SELALU transaction + lock (bab 03)',
+                                    'List: query besar hanya kolom yang tampil + filter/urut (TANPA CLOB) + paginate DB; JSON & hitungan utk page aktif; poll hanya di antrian',
                                     'EMR host = modal + section child ber-:id + save-events broadcast + silent toast',
                                     'Setiap form dokumen: Draft → TTD-kunci; teks klausul via *Clause versioning',
                                     'Administrasi: satu file per pos + sumAll(); selesai → status utk antrian kasir',
@@ -119,7 +119,8 @@
                                 <tbody>
                                     <tr><td class="ds-td-class">Txn/{Rj,Ugd,Ri}/Emr*Trait</td><td class="ds-body-sm">inti jalur: findData, lockRow, updateJson, appendAdminLog, cek lock</td></tr>
                                     <tr><td class="ds-td-class">Txn/*/EmrCompleteness*Trait</td><td class="ds-body-sm">% kelengkapan EMR (bobot SOAP per jalur) utk progress list</td></tr>
-                                    <tr><td class="ds-td-class">App\Support\OracleLob</td><td class="ds-body-sm">baca CLOB aman (anti ORA-01555 / truncate 32k) — helper statis</td></tr>
+                                    <tr><td class="ds-td-class">App\Support\OracleLob</td><td class="ds-body-sm">baca CLOB aman (anti ORA-01555 / truncate 32k) — helper statis; <span class="ds-code">readMany()</span> utk banyak baris (potongan 500, ambil ulang per baris)</td></tr>
+                                    <tr><td class="ds-td-class">Txn/{Rj,Ugd,Ri}/JsonKunjungan*Trait</td><td class="ds-body-sm">bacaJsonKunjunganRJ/UGD/RI(daftarNo) — JSON kunjungan utk layar DAFTAR; [no =&gt; string], gagal = ''</td></tr>
                                     <tr><td class="ds-td-class">Master/MasterPasien/MasterPasienTrait</td><td class="ds-body-sm">findDataMasterPasien(regNo) — identitas, BPJS, alamat</td></tr>
                                     <tr><td class="ds-td-class">BPJS/{Vclaim,Antrian,Aplicares,iCare}Trait</td><td class="ds-body-sm">SEP/rujukan · antrean+task-id · ketersediaan TT · riwayat i-Care</td></tr>
                                     <tr><td class="ds-td-class">iDRG/iDrgTrait</td><td class="ds-body-sm">grouping casemix iDRG (klaim)</td></tr>

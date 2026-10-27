@@ -8,9 +8,10 @@ use Livewire\Attributes\Session;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
+use App\Http\Traits\Txn\Rj\JsonKunjunganRJTrait;
 
 new class extends Component {
-    use WithPagination, WithRenderVersioningTrait;
+    use WithPagination, WithRenderVersioningTrait, JsonKunjunganRJTrait;
 
     public array $renderVersions = [];
     protected array $renderAreas = ['antrian-apotek-toolbar'];
@@ -144,7 +145,7 @@ new class extends Component {
             ->leftJoin('rsmst_polis as po', 'po.poli_id', '=', 'h.poli_id')
             ->leftJoin('rsmst_doctors as d', 'd.dr_id', '=', 'h.dr_id')
             ->leftJoin('rsmst_klaimtypes as k', 'k.klaim_id', '=', 'h.klaim_id')
-            ->select(['h.rj_no', DB::raw("to_char(h.rj_date,'dd/mm/yyyy hh24:mi') as rj_date_display"), 'h.reg_no', 'p.reg_name', 'p.sex', 'p.address', DB::raw("to_char(p.birth_date,'dd/mm/yyyy') as birth_date"), 'h.no_antrian', 'h.poli_id', 'po.poli_desc', 'h.dr_id', 'd.dr_name', 'h.klaim_id', 'h.shift', 'h.rj_status', 'h.vno_sep', 'h.nobooking', 'h.datadaftarpolirj_json', 'k.klaim_desc', 'k.klaim_status', 'po.spesialis_status', 'h.waktu_masuk_apt', 'h.waktu_selesai_pelayanan', 'h.status_kronis', 'h.status_iter'])
+            ->select(['h.rj_no', DB::raw("to_char(h.rj_date,'dd/mm/yyyy hh24:mi') as rj_date_display"), 'h.reg_no', 'p.reg_name', 'p.sex', 'p.address', DB::raw("to_char(p.birth_date,'dd/mm/yyyy') as birth_date"), 'po.poli_desc', 'd.dr_name', 'h.klaim_id', 'h.shift', 'h.rj_status', 'h.vno_sep', 'k.klaim_desc', 'k.klaim_status', 'h.status_kronis', 'h.status_iter'])
             ->whereBetween('h.rj_date', [$start, $end])
             ->where('h.klaim_id', '!=', 'KR');
 
@@ -180,14 +181,19 @@ new class extends Component {
             });
         }
 
-        // Ambil semua dulu untuk sorting custom (antrian apotek)
+        // Ambil semua dulu untuk sorting custom (antrian apotek). Query besar ini TANPA CLOB:
+        // CLOB di query besar memicu ORA-01555 saat kunjungan lain disimpan (kasus Pelayanan
+        // RJ 2026-10-26). Filter & urutan antrean apotek butuh NILAI JSON tiap pasien
+        // (noAntrian, jam taskId5/6/7), jadi JSON dibaca lewat statement terpisah per
+        // potongan 500 rj_no, di-decode sekali, dan satu baris gagal tak menjatuhkan daftar.
         $all = $query->get();
+        $jsonPerRjNo = array_map(fn($jsonRaw) => json_decode($jsonRaw ?: '{}', true) ?? [], $this->bacaJsonKunjunganRJ($all->pluck('rj_no')->all()));
 
         // Filter task_id7 (sudah serah obat / belum) — nested JSON, harus di PHP
         if ($this->filterTaskId7 !== '') {
             $wantHas = $this->filterTaskId7 === 'Y';
-            $all = $all->filter(function ($row) use ($wantHas) {
-                $json = json_decode($row->datadaftarpolirj_json ?? '{}', true);
+            $all = $all->filter(function ($row) use ($wantHas, $jsonPerRjNo) {
+                $json = $jsonPerRjNo[$row->rj_no] ?? [];
                 $hasT7 = !empty($json['taskIdPelayanan']['taskId7']);
                 return $wantHas ? $hasT7 : !$hasT7;
             });
@@ -201,8 +207,8 @@ new class extends Component {
         //   5. taskId6 asc (earliest first; empty = last) — Menunggu Resep, FIFO
         // taskId5/6 disimpan format "d/m/Y H:i:s" → str_replace '/'→'-' biar strtotime parse benar (DD-MM-YYYY).
         $sorted = $all
-            ->sortBy(function ($row) {
-                $json = json_decode($row->datadaftarpolirj_json ?? '{}', true);
+            ->sortBy(function ($row) use ($jsonPerRjNo) {
+                $json = $jsonPerRjNo[$row->rj_no] ?? [];
                 $noAntrian = $json['noAntrianApotek']['noAntrian'] ?? 0;
                 $hasAntrian = $noAntrian > 0 ? 0 : 1;
 
@@ -227,12 +233,11 @@ new class extends Component {
         $paginator = new \Illuminate\Pagination\LengthAwarePaginator($items, $total, $perPage, $page, ['path' => \Illuminate\Pagination\Paginator::resolveCurrentPath()]);
 
         // Transform rows
-        $paginator->getCollection()->transform(function ($row) {
-            $json = json_decode($row->datadaftarpolirj_json ?? '{}', true);
+        $paginator->getCollection()->transform(function ($row) use ($jsonPerRjNo) {
+            $json = $jsonPerRjNo[$row->rj_no] ?? [];
 
             // Antrian apotek
             $row->no_antrian_apotek = $json['noAntrianApotek']['noAntrian'] ?? 0;
-            $row->jenis_resep = $json['noAntrianApotek']['jenisResep'] ?? '-';
 
             // E-Resep
             $row->has_eresep = isset($json['eresep']) ? 1 : 0;

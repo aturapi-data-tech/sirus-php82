@@ -478,8 +478,11 @@ new class extends Component {
                                                 Edit User
                                             </x-outline-button>
 
-                                            {{-- ✅ Kelola Kas: x-secondary-button (aksi sekunder/manajemen) --}}
+                                            {{-- ✅ Kelola Kas: x-secondary-button (aksi sekunder/manajemen).
+                                                 Mati bila EMP ID kosong & belum punya kas; yang sudah punya kas tetap bisa dibuka untuk mencabut. --}}
                                             <x-secondary-button type="button"
+                                                :disabled="!$row->emp_id && $row->kas_count == 0"
+                                                :title="!$row->emp_id && $row->kas_count == 0 ? 'Isi EMP ID dulu lewat Edit User' : null"
                                                 wire:click="openKasManage({{ $row->id }})">
                                                 Kelola Kas
                                                 @if ($row->kas_count > 0)

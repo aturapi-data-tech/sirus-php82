@@ -492,14 +492,14 @@ new class extends Component {
     #[Computed]
     public function bookingData()
     {
+        // Kolom = yang DITAMPILKAN tabel saja; No HP, nomor kartu, kuota, alamat, dll. tak
+        // ikut dikirim ke browser. Kolom pencarian (nik/nomorkartu) tetap dipakai di where.
         $query = DB::table('referensi_mobilejkn_bpjs as b')
             ->join('rsmst_pasiens as p', DB::raw('UPPER(b.norm)'), '=', 'p.reg_no')
             ->select([
                 'b.nobooking',
                 'b.norm',
-                'b.nomorkartu',
                 'b.nik',
-                'b.nohp',
                 'b.kodepoli',
                 DB::raw('(SELECT poli_desc FROM rsmst_polis WHERE kd_poli_bpjs = b.kodepoli AND ROWNUM = 1) AS poli_desc'),
                 'b.pasienbaru',
@@ -508,21 +508,12 @@ new class extends Component {
                 DB::raw("TO_CHAR(TO_DATE(b.tanggalperiksa,'yyyy-mm-dd'),'dd/mm/yyyy') AS tanggalperiksa"),
                 'b.jampraktek',
                 'b.jeniskunjungan',
-                'b.nomorreferensi',
                 'b.nomorantrean',
                 'b.angkaantrean',
-                'b.estimasidilayani',
-                'b.sisakuotajkn',
-                'b.kuotajkn',
-                'b.sisakuotanonjkn',
-                'b.kuotanonjkn',
                 'b.status',
-                'b.validasi',
                 'b.keterangan_batal',
                 DB::raw("TO_CHAR(TO_DATE(b.tanggalbooking,'yyyy-mm-dd hh24:mi:ss'),'dd/mm/yyyy hh24:mi') AS tanggalbooking"),
-                'b.daftardariapp',
                 'p.reg_name',
-                'p.address',
             ])
             ->whereIn(DB::raw('b.ROWID'), function ($sub) {
                 $sub->from('referensi_mobilejkn_bpjs')->selectRaw('MIN(ROWID)')->groupBy('nobooking');

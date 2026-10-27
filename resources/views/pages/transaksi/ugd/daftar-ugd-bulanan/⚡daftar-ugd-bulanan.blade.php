@@ -6,12 +6,12 @@ use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Session;
 use Illuminate\Support\Facades\DB;
-use App\Support\OracleLob;
 use Carbon\Carbon;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
+use App\Http\Traits\Txn\Ugd\JsonKunjunganUGDTrait;
 
 new class extends Component {
-    use WithPagination, WithRenderVersioningTrait;
+    use WithPagination, WithRenderVersioningTrait, JsonKunjunganUGDTrait;
 
     public array $renderVersions = [];
     protected array $renderAreas = ['daftar-ugd-bulanan-toolbar'];
@@ -174,32 +174,17 @@ new class extends Component {
 
         $statusColumn = DB::raw("NVL(h.rj_status, 'A')");
 
-        // Subquery lab/rad — scope ke UGD yg masuk date range agar tidak full-scan tabel besar.
-        // JOIN ke rstxn_ugdhdrs membatasi baris yg dihitung hanya untuk rj_no di rentang aktif
-        // (seragam dgn pelayanan-rj). Tanpa ini, tiap refresh-after-ugd.saved memicu GROUP BY
-        // seluruh lbtxn_checkuphdrs / rstxn_ugdrads.
-        $labSub = DB::table('lbtxn_checkuphdrs as l')
-            ->join('rstxn_ugdhdrs as hd', 'hd.rj_no', '=', 'l.ref_no')
-            ->select('l.ref_no', DB::raw('COUNT(*) as lab_status'))
-            ->where('l.status_rjri', 'UGD')
-            ->where('l.checkup_status', '!=', 'B')
-            ->whereBetween('hd.rj_date', [$start, $end])
-            ->groupBy('l.ref_no');
-
-        $radSub = DB::table('rstxn_ugdrads as r')
-            ->join('rstxn_ugdhdrs as hd', 'hd.rj_no', '=', 'r.rj_no')
-            ->select('r.rj_no', DB::raw('COUNT(*) as rad_status'))
-            ->whereBetween('hd.rj_date', [$start, $end])
-            ->groupBy('r.rj_no');
-
+        // Kolom di sini = yang DITAMPILKAN daftar + yang dipakai filter/urut, tidak lebih.
+        // Paginate tetap menyortir seluruh kunjungan di rentang itu, jadi yang mahal (CLOB
+        // JSON, hitungan lab/rad) TIDAK di sini — dihitung di rows() hanya untuk baris
+        // halaman aktif. CLOB di query besar memicu ORA-01555 saat kunjungan lain sedang
+        // disimpan (kasus Pelayanan RJ 2026-10-26).
         $query = DB::table('rstxn_ugdhdrs as h')
             ->join('rsmst_pasiens as p', 'p.reg_no', '=', 'h.reg_no')
             ->leftJoin('rsmst_polis as po', 'po.poli_id', '=', 'h.poli_id')
             ->leftJoin('rsmst_doctors as d', 'd.dr_id', '=', 'h.dr_id')
             ->leftJoin('rsmst_klaimtypes as k', 'k.klaim_id', '=', 'h.klaim_id')
-            ->leftJoinSub($labSub, 'lab', fn($j) => $j->on('lab.ref_no', '=', 'h.rj_no'))
-            ->leftJoinSub($radSub, 'rad', fn($j) => $j->on('rad.rj_no', '=', 'h.rj_no'))
-            ->select(['h.rj_no', DB::raw("to_char(h.rj_date,'dd/mm/yyyy hh24:mi:ss') as rj_date_display"), 'h.reg_no', 'p.reg_name', 'p.sex', 'p.address', DB::raw("to_char(p.birth_date,'dd/mm/yyyy') as birth_date"), 'h.no_antrian', 'h.poli_id', 'po.poli_desc', 'h.dr_id', 'd.dr_name', 'h.klaim_id', 'h.shift', 'h.rj_status', 'h.erm_status', 'h.vno_sep', DB::raw('COALESCE(lab.lab_status, 0) as lab_status'), DB::raw('COALESCE(rad.rad_status, 0) as rad_status'), 'h.datadaftarugd_json', 'k.klaim_desc', 'k.klaim_status'])
+            ->select(['h.rj_no', DB::raw("to_char(h.rj_date,'dd/mm/yyyy hh24:mi:ss') as rj_date_display"), 'h.reg_no', 'p.reg_name', 'p.sex', 'p.address', DB::raw("to_char(p.birth_date,'dd/mm/yyyy') as birth_date"), 'po.poli_desc', 'd.dr_name', 'h.klaim_id', 'h.rj_status', 'h.vno_sep', 'k.klaim_desc', 'k.klaim_status'])
             ->whereBetween('h.rj_date', [$start, $end])
             ->orderBy('d.dr_name', 'desc')
             ->orderBy('h.rj_date', 'desc')
@@ -277,8 +262,35 @@ new class extends Component {
         // bukan seluruh record bulan itu.
         $paginator = $this->baseQuery()->paginate($this->itemsPerPage);
 
+        $rjNoHalaman = $paginator->getCollection()->pluck('rj_no')->all();
+
+        // CLOB JSON dibaca terpisah, hanya untuk baris halaman ini. Gagal sekaligus →
+        // transformRow mengambil ulang per baris; satu baris gagal tak menjatuhkan daftar.
+        $jsonPerRjNo = $this->bacaJsonKunjunganUGD($rjNoHalaman);
+
+        $labPerRjNo = DB::table('lbtxn_checkuphdrs')
+            ->whereIn('ref_no', $rjNoHalaman)
+            ->where('status_rjri', 'UGD')
+            ->where('checkup_status', '!=', 'B')
+            ->groupBy('ref_no')
+            ->selectRaw('ref_no, COUNT(*) as jumlah')
+            ->pluck('jumlah', 'ref_no')
+            ->all();
+
+        $radPerRjNo = DB::table('rstxn_ugdrads')
+            ->whereIn('rj_no', $rjNoHalaman)
+            ->groupBy('rj_no')
+            ->selectRaw('rj_no, COUNT(*) as jumlah')
+            ->pluck('jumlah', 'rj_no')
+            ->all();
+
         $paginator->setCollection(
-            $paginator->getCollection()->map(fn($row) => $this->transformRow($row))
+            $paginator->getCollection()->map(function ($row) use ($jsonPerRjNo, $labPerRjNo, $radPerRjNo) {
+                $row->lab_status = (int) ($labPerRjNo[$row->rj_no] ?? 0);
+                $row->rad_status = (int) ($radPerRjNo[$row->rj_no] ?? 0);
+
+                return $this->transformRow($row, $jsonPerRjNo);
+            })
         );
 
         // Status berkas BPJS (semua slot) untuk review — bagian dokumen bulanan.
@@ -299,23 +311,20 @@ new class extends Component {
         return $paginator;
     }
 
-    private function transformRow($row)
+    private function transformRow($row, array $jsonPerRjNo)
     {
-        $jsonRaw = OracleLob::read($row->datadaftarugd_json ?? null, 'rstxn_ugdhdrs', 'rj_no', $row->rj_no, 'datadaftarugd_json');
-        $json = json_decode($jsonRaw ?: '{}', true);
+        // Locator basi (ORA-01555/ORA-22924) → helper mengambil ulang per baris.
+        $jsonRaw = $jsonPerRjNo[$row->rj_no] ?? '';
+        $json = json_decode($jsonRaw ?: '{}', true) ?? [];
         $row->berkas_uploaded = []; // seq_file berkas BPJS yang sudah di-upload (utk review)
 
         $row->admin_user = isset($json['AdministrasiRj']) ? $json['AdministrasiRj']['userLog'] ?? '✔' : '-';
         $row->administrasi_detail = $json['AdministrasiRj'] ?? null;
-        $row->tindak_lanjut = $json['perencanaan']['tindakLanjut']['tindakLanjut'] ?? '-';
-        $row->no_skdp_bpjs = $json['kontrol']['noSKDPBPJS'] ?? '-';
 
         $row->diagnosis = isset($json['diagnosis']) && is_array($json['diagnosis']) ? implode('# ', array_column($json['diagnosis'], 'icdX')) : '-';
         $row->diagnosis_free_text = $json['diagnosisFreeText'] ?? '-';
-        $row->diagnosis_detail = $json['diagnosis'] ?? null;
         $row->procedure = isset($json['procedure']) && is_array($json['procedure']) ? implode('# ', array_column($json['procedure'], 'procedureId')) : '-';
         $row->procedure_free_text = $json['procedureFreeText'] ?? '-';
-        $row->procedure_detail = $json['procedure'] ?? null;
 
         $row->status_text = ['A' => 'Antrian', 'L' => 'Selesai', 'F' => 'Batal', 'I' => 'Transfer Inap'][$row->rj_status] ?? 'Pelayanan';
         $row->status_variant = ['A' => 'warning', 'L' => 'success', 'F' => 'danger', 'I' => 'brand'][$row->rj_status] ?? 'gray';

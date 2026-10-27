@@ -17,9 +17,10 @@ use Livewire\Component;
 use Livewire\WithPagination;
 use Livewire\Attributes\Computed;
 use Illuminate\Support\Facades\DB;
+use App\Http\Traits\Txn\Ri\JsonKunjunganRITrait;
 
 new class extends Component {
-    use WithPagination;
+    use WithPagination, JsonKunjunganRITrait;
 
     public string $search = '';
     public string $filterStatus = 'I'; // '' = Semua, I = Dirawat, P = Pulang
@@ -57,6 +58,9 @@ new class extends Component {
     #[Computed]
     public function pasiens()
     {
+        // Kolom di sini = yang DITAMPILKAN daftar + yang dipakai filter/urut. CLOB JSON
+        // TIDAK di sini — dibaca di bawah hanya untuk baris halaman aktif (CLOB di query
+        // besar memicu ORA-01555 saat kunjungan lain disimpan, kasus Pelayanan RJ 2026-10-26).
         $q = DB::table('rsview_rihdrs as rv')
             ->selectRaw("
                 rv.rihdr_no,
@@ -67,12 +71,10 @@ new class extends Component {
                 rv.dr_name,
                 rv.bangsal_name,
                 rv.room_name,
-                rv.bed_no,
                 to_char(rv.birth_date,'dd/mm/yyyy') as birth_date,
                 to_char(rv.entry_date,'dd/mm/yyyy hh24:mi') as entry_date_display,
                 to_char(rv.exit_date,'dd/mm/yyyy hh24:mi') as exit_date_display,
-                rv.ri_status,
-                rv.datadaftarri_json
+                rv.ri_status
             ");
 
         if ($this->filterStatus !== '') {
@@ -101,21 +103,18 @@ new class extends Component {
 
         $paginator = $q->paginate($this->itemsPerPage);
 
+        // CLOB JSON hanya untuk baris halaman ini. Gagal sekaligus → ambil ulang per baris.
+        $jsonPerRiHdrNo = $this->bacaJsonKunjunganRI($paginator->getCollection()->pluck('rihdr_no')->all());
+
         // Hitung jumlah resep per pasien dari JSON (resep terkirim & draft)
-        $paginator->getCollection()->transform(function ($row) {
+        $paginator->getCollection()->transform(function ($row) use ($jsonPerRiHdrNo) {
             $jumlahResep = 0;
-            $jumlahTerkirim = 0;
             $dpjpList = [];
             try {
-                $data = $row->datadaftarri_json ? json_decode($row->datadaftarri_json, true) : null;
+                $jsonRaw = $jsonPerRiHdrNo[$row->rihdr_no] ?? '';
+                $data = $jsonRaw !== '' ? json_decode($jsonRaw, true) : null;
                 if (is_array($data)) {
-                    $hdrs = $data['eresepHdr'] ?? [];
-                    $jumlahResep = count($hdrs);
-                    foreach ($hdrs as $h) {
-                        if (! empty($h['slsNo'] ?? null)) {
-                            $jumlahTerkirim++;
-                        }
-                    }
+                    $jumlahResep = count($data['eresepHdr'] ?? []);
                     // DPJP + level dokter (sama seperti Daftar RI)
                     foreach ($data['pengkajianAwalPasienRawatInap']['levelingDokter'] ?? [] as $dokterLeveling) {
                         if (! empty($dokterLeveling['drName'])) {
@@ -131,12 +130,10 @@ new class extends Component {
                 // abaikan JSON rusak
             }
             $row->jumlah_resep = $jumlahResep;
-            $row->jumlah_terkirim = $jumlahTerkirim;
             $row->dpjp_list = $dpjpList;
             $st = $row->ri_status ?: 'I';
             $row->status_text = $st === 'P' ? 'Pulang' : 'Dirawat';
             $row->status_variant = $st === 'P' ? 'gray' : 'success';
-            unset($row->datadaftarri_json);
             return $row;
         });
 

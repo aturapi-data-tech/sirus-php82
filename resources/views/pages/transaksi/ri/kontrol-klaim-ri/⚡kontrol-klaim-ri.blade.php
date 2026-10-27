@@ -7,13 +7,13 @@ use Livewire\WithPagination;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
-use App\Support\OracleLob;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Support\IndikatorTarifKlaim;
+use App\Http\Traits\Txn\Ri\JsonKunjunganRITrait;
 
 new class extends Component {
-    use WithPagination, WithRenderVersioningTrait, EmrRITrait;
+    use WithPagination, WithRenderVersioningTrait, EmrRITrait, JsonKunjunganRITrait;
 
     public array $renderVersions = [];
     protected array $renderAreas = ['kontrol-klaim-ri-toolbar'];
@@ -80,6 +80,9 @@ new class extends Component {
     #[Computed]
     public function baseQuery()
     {
+        // Kolom di sini = yang DITAMPILKAN daftar + yang dipakai filter/urut. CLOB JSON
+        // TIDAK di sini — dibaca di rows() hanya untuk baris halaman aktif (CLOB di query
+        // besar memicu ORA-01555 saat kunjungan lain disimpan, kasus Pelayanan RJ 2026-10-26).
         $query = DB::table('rsview_rihdrs as rv')
             ->leftJoin('rsmst_klaimtypes as kt', 'kt.klaim_id', '=', 'rv.klaim_id')
             ->select([
@@ -99,7 +102,6 @@ new class extends Component {
                 'rv.vno_sep',
                 'rv.bangsal_name',
                 'rv.room_name',
-                'rv.datadaftarri_json',
             ])
             ->orderBy('entry_date_sort', 'desc');
 
@@ -112,12 +114,19 @@ new class extends Component {
         }
 
         if ($this->filterDokter !== '') {
-            $ids = DB::table('rsview_rihdrs')
-                ->select('rihdr_no', 'datadaftarri_json')
+            // DPJP rawat gabung hanya ada di levelingDokter (JSON) → CLOB pasien dirawat
+            // tetap dibaca semua, tapi lewat statement terpisah per potongan (bukan ikut
+            // satu fetch besar) dan ambil ulang per baris bila gagal.
+            $riHdrNoDirawat = DB::table('rsview_rihdrs')
                 ->where(DB::raw("NVL(ri_status,'I')"), 'I')
-                ->get()
-                ->filter(function ($item) {
-                    $jsonRaw = OracleLob::read($item->datadaftarri_json ?? null, 'rstxn_rihdrs', 'rihdr_no', $item->rihdr_no, 'datadaftarri_json');
+                ->pluck('rihdr_no')
+                ->all();
+
+            $jsonPerRiHdrNo = $this->bacaJsonKunjunganRI($riHdrNoDirawat);
+
+            $ids = collect($riHdrNoDirawat)
+                ->filter(function ($riHdrNo) use ($jsonPerRiHdrNo) {
+                    $jsonRaw = $jsonPerRiHdrNo[$riHdrNo] ?? '';
                     $json = json_decode($jsonRaw ?: '{}', true) ?? [];
                     foreach ($json['pengkajianAwalPasienRawatInap']['levelingDokter'] ?? [] as $dokterLeveling) {
                         if (($dokterLeveling['drId'] ?? '') === $this->filterDokter) {
@@ -126,7 +135,7 @@ new class extends Component {
                     }
                     return false;
                 })
-                ->pluck('rihdr_no')
+                ->values()
                 ->toArray();
 
             $query->where(function ($q) use ($ids) {
@@ -167,10 +176,12 @@ new class extends Component {
     {
         $paginator = $this->baseQuery()->paginate($this->itemsPerPage);
 
-        $paginator->getCollection()->transform(function ($row) {
-            $jsonRaw = OracleLob::read($row->datadaftarri_json ?? null, 'rstxn_rihdrs', 'rihdr_no', $row->rihdr_no, 'datadaftarri_json');
+        // CLOB JSON hanya untuk baris halaman ini. Gagal sekaligus → ambil ulang per baris.
+        $jsonPerRiHdrNo = $this->bacaJsonKunjunganRI($paginator->getCollection()->pluck('rihdr_no')->all());
+
+        $paginator->getCollection()->transform(function ($row) use ($jsonPerRiHdrNo) {
+            $jsonRaw = $jsonPerRiHdrNo[$row->rihdr_no] ?? '';
             $json = json_decode($jsonRaw ?: '{}', true) ?? [];
-            unset($row->datadaftarri_json);
 
             $row->no_sep = $json['sep']['noSep'] ?? ($row->vno_sep ?? null);
             $row->dpjp_utama = $this->dpjpUtama($json, $row->dr_name);
