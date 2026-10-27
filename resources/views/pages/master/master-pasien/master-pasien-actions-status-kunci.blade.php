@@ -5,9 +5,12 @@
         'UGD' => ['label' => 'Terkunci di UGD', 'variant' => 'danger'],
         'RI' => ['label' => 'Terkunci di Rawat Inap', 'variant' => 'warning'],
     ];
-    $isLocked = array_key_exists($lock, $lockMap);
-    $lockLabel = $isLocked ? $lockMap[$lock]['label'] : 'Bebas / Tidak Terkunci';
-    $lockVariant = $isLocked ? $lockMap[$lock]['variant'] : 'success';
+    // Nilai di luar peta (mis. '1' tulisan Batal Inap/Batal Pulang kasir RI) tetap
+    // dihitung terkunci: transfer RJ→UGD / UGD→RI menolak semua nilai selain jalurnya sendiri.
+    $isLocked = $lock !== '';
+    $isLockDikenal = array_key_exists($lock, $lockMap);
+    $lockLabel = $isLockDikenal ? $lockMap[$lock]['label'] : ($isLocked ? 'Terkunci (kode tidak dikenal)' : 'Bebas / Tidak Terkunci');
+    $lockVariant = $isLockDikenal ? $lockMap[$lock]['variant'] : ($isLocked ? 'danger' : 'success');
 @endphp
 
 <x-border-form :title="__('Status Kunci Pasien')" :align="__('start')" :bgcolor="__('bg-canvas')">
