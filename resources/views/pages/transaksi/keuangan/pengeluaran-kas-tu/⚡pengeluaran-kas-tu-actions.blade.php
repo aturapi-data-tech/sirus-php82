@@ -88,7 +88,6 @@ new class extends Component {
     {
         return DB::table('acmst_accounts as a')
             ->join('acmst_kases as b', 'a.acc_id', '=', 'b.acc_id')
-            ->where('b.co', '1')
             ->whereIn('a.acc_id', function ($q) {
                 $q->select('acc_id')->from('user_kas')->where('user_id', auth()->id());
             })

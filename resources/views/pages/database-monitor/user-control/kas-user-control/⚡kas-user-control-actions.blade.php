@@ -18,14 +18,6 @@ new class extends Component {
     public array $availableKas = [];
     public array $userKasIds = [];
     public string $searchKas = '';
-    public string $filterTipe = '';
-
-    public array $tipeOptions = [
-        '' => 'Semua Tipe',
-        'rj' => 'Rawat Jalan',
-        'ugd' => 'UGD',
-        'ri' => 'Rawat Inap',
-    ];
 
     #[On('kasUserControl.openManage')]
     public function openManage(int $userId): void
@@ -43,7 +35,6 @@ new class extends Component {
         $this->empId = $user->emp_id ? (string) $user->emp_id : null;
         $this->empName = null;
         $this->searchKas = '';
-        $this->filterTipe = '';
 
         if ($this->empId) {
             $emp = DB::table('immst_employers')->select('emp_name')->where('emp_id', $this->empId)->first();
@@ -60,10 +51,6 @@ new class extends Component {
     {
         $this->loadAvailableKas();
     }
-    public function updatedFilterTipe(): void
-    {
-        $this->loadAvailableKas();
-    }
 
     protected function loadUserKas(): void
     {
@@ -77,8 +64,7 @@ new class extends Component {
 
         $rows = DB::table('acmst_accounts as a')
             ->join('acmst_kases as b', 'a.acc_id', '=', 'b.acc_id')
-            ->select('a.acc_id', 'a.acc_name', 'b.rj', 'b.ugd', 'b.ri')
-            ->when($this->filterTipe !== '', fn($q) => $q->where('b.' . $this->filterTipe, '1'))
+            ->select('a.acc_id', 'a.acc_name')
             ->when($keyword !== '', fn($q) => $q->where(fn($q2) => $q2->where('a.acc_id', 'like', "%{$keyword}%")->orWhereRaw('UPPER(a.acc_name) LIKE ?', ["%{$upperKeyword}%"])))
             ->orderBy('a.acc_id')
             ->get();
@@ -88,9 +74,6 @@ new class extends Component {
                 fn($row) => [
                     'acc_id' => (string) $row->acc_id,
                     'acc_name' => (string) ($row->acc_name ?? ''),
-                    'tipe_rj' => ($row->rj ?? '') === '1',
-                    'tipe_ugd' => ($row->ugd ?? '') === '1',
-                    'tipe_ri' => ($row->ri ?? '') === '1',
                     'assigned' => in_array((string) $row->acc_id, $this->userKasIds),
                 ],
             )
@@ -110,6 +93,13 @@ new class extends Component {
 
             $this->dispatch('toast', type: 'info', message: "Kas {$accId} dicabut.");
         } else {
+            // Tanpa EMP ID transaksi kas tak punya nama petugas — kas baru tak boleh diberikan.
+            // Mencabut kas yang sudah terlanjur ada tetap boleh.
+            if (!$this->empId) {
+                $this->dispatch('toast', type: 'error', message: 'Isi EMP ID user ini dulu (Edit User) sebelum memberi akun kas.');
+                return;
+            }
+
             DB::table('user_kas')->insert([
                 'id_user_kas' => DB::raw('(SELECT NVL(MAX(id_user_kas), 0) + 1 FROM user_kas)'),
                 'user_id' => $this->userId,
@@ -213,8 +203,8 @@ new class extends Component {
                                 <p class="text-sm font-semibold text-amber-700 dark:text-amber-300">EMP ID belum diisi
                                 </p>
                                 <p class="mt-0.5 text-xs text-amber-600 dark:text-amber-400">
-                                    EMP ID dibutuhkan agar nama karyawan otomatis muncul saat insert transaksi.
-                                    Tutup modal ini lalu klik <strong>Edit User</strong> → pilih karyawan via kolom
+                                    EMP ID dibutuhkan agar nama karyawan otomatis muncul saat insert transaksi,
+                                    jadi akun kas baru belum bisa diberikan. Tutup modal ini lalu klik <strong>Edit User</strong> → pilih karyawan via kolom
                                     <em>Karyawan (EMP ID)</em>.
                                 </p>
                             </div>
@@ -239,15 +229,15 @@ new class extends Component {
                             @endif
                         </div>
 
-                        {{-- Filter + search --}}
+                        <p class="mb-3 text-xs text-muted dark:text-gray-400">
+                            Kas yang dicentang muncul di <strong>semua</strong> layar pembayaran user ini —
+                            Kasir RJ, UGD, RI, Apotek RI, Cash In/Out, Penerimaan &amp; Hutang PBF, Piutang.
+                        </p>
+
+                        {{-- Search --}}
                         <div class="flex flex-wrap items-center gap-2 mb-4">
                             <x-text-input type="text" wire:model.live.debounce.250ms="searchKas"
                                 placeholder="Cari kode / nama kas..." class="flex-1 min-w-[180px]" />
-                            <x-select-input wire:model.live="filterTipe" class="w-44">
-                                @foreach ($tipeOptions as $val => $label)
-                                    <option value="{{ $val }}">{{ $label }}</option>
-                                @endforeach
-                            </x-select-input>
                         </div>
 
                         {{-- Grid akun kas --}}
@@ -255,9 +245,13 @@ new class extends Component {
                         @if (count($availableKas) > 0)
                             <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
                                 @foreach ($availableKas as $kas)
+                                    @php($kasTerkunci = !$empId && !$kas['assigned'])
                                     <button wire:key="kas-modal-{{ $kas['acc_id'] }}"
                                         wire:click="toggleKas('{{ $kas['acc_id'] }}')" type="button"
+                                        @disabled($kasTerkunci)
+                                        @if ($kasTerkunci) title="Isi EMP ID dulu lewat Edit User" @endif
                                         class="flex items-center justify-between p-3 text-left transition rounded-xl border
+                                            disabled:opacity-50 disabled:cursor-not-allowed
                                             {{ $kas['assigned']
                                                 ? 'border-brand-green bg-brand-green/5 dark:bg-brand-green/10 dark:border-brand-green/50'
                                                 : 'border-hairline bg-canvas hover:border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:hover:border-gray-600' }}">
@@ -269,20 +263,6 @@ new class extends Component {
                                                 {{ $kas['acc_name'] ?: $kas['acc_id'] }}
                                             </p>
                                             <p class="text-xs font-mono text-muted-soft">{{ $kas['acc_id'] }}</p>
-                                            <div class="flex gap-1 mt-1">
-                                                @if ($kas['tipe_rj'])
-                                                    <span
-                                                        class="px-1.5 text-[10px] font-semibold rounded bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">RJ</span>
-                                                @endif
-                                                @if ($kas['tipe_ugd'])
-                                                    <span
-                                                        class="px-1.5 text-[10px] font-semibold rounded bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400">UGD</span>
-                                                @endif
-                                                @if ($kas['tipe_ri'])
-                                                    <span
-                                                        class="px-1.5 text-[10px] font-semibold rounded bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400">RI</span>
-                                                @endif
-                                            </div>
                                         </div>
 
                                         <div class="ml-3 shrink-0">

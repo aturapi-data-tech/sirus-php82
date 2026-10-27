@@ -32,7 +32,10 @@ new class extends Component {
     public string $target = 'default';
 
     /**
-     * Filter tipe kas: 'rj' | 'ugd' | 'ri' | '' (semua)
+     * Tipe kas pemanggil: 'rj' | 'ugd' | 'ri' | ''. TIDAK lagi menyaring —
+     * daftar kas murni dari user_kas. Tanda rj/ugd/ri di acmst_kases tak bisa
+     * diatur dari aplikasi, dan kas yang lupa ditandai membuat kas user hilang
+     * dari kasir seolah program salah (kasus KAS APOTEK di kasir RI, 2026-10-27).
      */
     public string $tipe = 'rj';
 
@@ -138,7 +141,6 @@ new class extends Component {
         return DB::table('acmst_accounts as a')
             ->join('acmst_kases as b', 'a.acc_id', '=', 'b.acc_id')
             ->select('a.acc_id', 'a.acc_name', 'b.rj', 'b.ugd', 'b.ri')
-            ->when($this->tipe !== '', fn($q) => $q->where('b.' . $this->tipe, '1'))
             ->whereIn(
                 'a.acc_id',
                 fn($q) => $q
