@@ -6,13 +6,13 @@ use Livewire\WithPagination;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
-use App\Support\OracleLob;
 use Carbon\Carbon;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 use App\Http\Traits\Txn\Ri\EmrCompletenessRITrait;
+use App\Http\Traits\Txn\Ri\JsonKunjunganRITrait;
 
 new class extends Component {
-    use WithPagination, WithRenderVersioningTrait, EmrCompletenessRITrait;
+    use WithPagination, WithRenderVersioningTrait, EmrCompletenessRITrait, JsonKunjunganRITrait;
 
     public array $renderVersions = [];
     protected array $renderAreas = ['daftar-ri-toolbar'];
@@ -131,26 +131,13 @@ new class extends Component {
     {
         $statusColumn = $this->isDokterOrPerawat() ? DB::raw("NVL(rv.ri_status,'I')") : DB::raw("NVL(rv.ri_status,'I')");
 
-        // Subquery lab/rad — JOIN ke rsview_rihdrs agar agregat hanya dihitung untuk
-        // rihdr_no yang ada di populasi RI yg tampil, bukan GROUP BY seluruh histori
-        // lbtxn_checkuphdrs / rstxn_riradiologs (bertahun). Count tidak berubah: baris
-        // yg tak match rsview_rihdrs juga tak akan ter-leftJoin ke query utama.
-        $labSub = DB::table('lbtxn_checkuphdrs as l')
-            ->join('rsview_rihdrs as rh', 'rh.rihdr_no', '=', 'l.ref_no')
-            ->select('l.ref_no', DB::raw('COUNT(*) as lab_status'))
-            ->where('l.status_rjri', 'RI')
-            ->where('l.checkup_status', '!=', 'B')
-            ->groupBy('l.ref_no');
-
-        $radSub = DB::table('rstxn_riradiologs as r')
-            ->join('rsview_rihdrs as rh', 'rh.rihdr_no', '=', 'r.rihdr_no')
-            ->select('r.rihdr_no', DB::raw('COUNT(*) as rad_status'))
-            ->groupBy('r.rihdr_no');
-
+        // Kolom di sini = yang DITAMPILKAN daftar + yang dipakai filter/urut, tidak lebih.
+        // Query ini mencakup seluruh populasi RI, jadi yang mahal (CLOB JSON, hitungan
+        // lab/rad) TIDAK di sini — dihitung di rows() hanya untuk baris halaman aktif.
+        // CLOB di query besar memicu ORA-01555 saat kunjungan lain sedang disimpan
+        // (kasus Pelayanan RJ 2026-10-26).
         $query = DB::table('rsview_rihdrs as rv')
             ->leftJoin('rsmst_klaimtypes as kt', 'kt.klaim_id', '=', 'rv.klaim_id')
-            ->leftJoinSub($labSub, 'lab', fn($j) => $j->on('lab.ref_no', '=', 'rv.rihdr_no'))
-            ->leftJoinSub($radSub, 'rad', fn($j) => $j->on('rad.rihdr_no', '=', 'rv.rihdr_no'))
             ->select([
                 'rv.rihdr_no',
                 DB::raw("to_char(rv.entry_date,'dd/mm/yyyy hh24:mi:ss') as entry_date_display"),
@@ -161,7 +148,6 @@ new class extends Component {
                 'rv.sex',
                 'rv.address',
                 DB::raw("to_char(rv.birth_date,'dd/mm/yyyy') as birth_date"),
-                'rv.dr_id',
                 'rv.dr_name',
                 'rv.klaim_id',
                 'kt.klaim_desc',
@@ -169,15 +155,8 @@ new class extends Component {
                 'rv.ri_status',
                 'rv.erm_status',
                 'rv.vno_sep',
-                'rv.entry_id',
-                'rv.bangsal_id',
                 'rv.bangsal_name',
-                'rv.room_id',
                 'rv.room_name',
-                'rv.bed_no',
-                DB::raw('COALESCE(lab.lab_status, 0) as lab_status'),
-                DB::raw('COALESCE(rad.rad_status, 0) as rad_status'),
-                'rv.datadaftarri_json',
             ])
             ->orderBy('entry_date_sort', 'desc');
 
@@ -190,12 +169,19 @@ new class extends Component {
         }
 
         if ($this->filterDokter !== '') {
-            $ids = DB::table('rsview_rihdrs')
-                ->select('rihdr_no', 'datadaftarri_json')
+            // DPJP rawat gabung hanya ada di levelingDokter (JSON) → CLOB pasien dirawat
+            // tetap dibaca semua, tapi lewat statement terpisah per potongan (bukan ikut
+            // satu fetch besar) dan ambil ulang per baris bila gagal.
+            $riHdrNoDirawat = DB::table('rsview_rihdrs')
                 ->where(DB::raw("NVL(ri_status,'I')"), 'I')
-                ->get()
-                ->filter(function ($item) {
-                    $jsonRaw = OracleLob::read($item->datadaftarri_json ?? null, 'rstxn_rihdrs', 'rihdr_no', $item->rihdr_no, 'datadaftarri_json');
+                ->pluck('rihdr_no')
+                ->all();
+
+            $jsonPerRiHdrNo = $this->bacaJsonKunjunganRI($riHdrNoDirawat);
+
+            $ids = collect($riHdrNoDirawat)
+                ->filter(function ($riHdrNo) use ($jsonPerRiHdrNo) {
+                    $jsonRaw = $jsonPerRiHdrNo[$riHdrNo] ?? '';
                     $json = json_decode($jsonRaw ?: '{}', true) ?? [];
                     foreach ($json['pengkajianAwalPasienRawatInap']['levelingDokter'] ?? [] as $dokterLeveling) {
                         if (($dokterLeveling['drId'] ?? '') === $this->filterDokter) {
@@ -204,7 +190,7 @@ new class extends Component {
                     }
                     return false;
                 })
-                ->pluck('rihdr_no')
+                ->values()
                 ->toArray();
 
             $query->where(function ($q) use ($ids) {
@@ -308,8 +294,30 @@ new class extends Component {
     {
         $paginator = $this->baseQuery()->paginate($this->itemsPerPage);
 
-        $paginator->getCollection()->transform(function ($row) {
-            $jsonRaw = OracleLob::read($row->datadaftarri_json ?? null, 'rstxn_rihdrs', 'rihdr_no', $row->rihdr_no, 'datadaftarri_json');
+        $riHdrNoHalaman = $paginator->getCollection()->pluck('rihdr_no')->all();
+
+        // CLOB JSON dibaca terpisah, hanya untuk baris halaman ini. Gagal sekaligus →
+        // ambil ulang per baris; satu baris gagal tak menjatuhkan daftar.
+        $jsonPerRiHdrNo = $this->bacaJsonKunjunganRI($riHdrNoHalaman);
+
+        $labPerRiHdrNo = DB::table('lbtxn_checkuphdrs')
+            ->whereIn('ref_no', $riHdrNoHalaman)
+            ->where('status_rjri', 'RI')
+            ->where('checkup_status', '!=', 'B')
+            ->groupBy('ref_no')
+            ->selectRaw('ref_no, COUNT(*) as jumlah')
+            ->pluck('jumlah', 'ref_no')
+            ->all();
+
+        $radPerRiHdrNo = DB::table('rstxn_riradiologs')
+            ->whereIn('rihdr_no', $riHdrNoHalaman)
+            ->groupBy('rihdr_no')
+            ->selectRaw('rihdr_no, COUNT(*) as jumlah')
+            ->pluck('jumlah', 'rihdr_no')
+            ->all();
+
+        $paginator->getCollection()->transform(function ($row) use ($jsonPerRiHdrNo, $labPerRiHdrNo, $radPerRiHdrNo) {
+            $jsonRaw = $jsonPerRiHdrNo[$row->rihdr_no] ?? '';
             $json = json_decode($jsonRaw ?: '{}', true) ?? [];
 
             // EMR completeness — weighted S15/O15/A15/P10/N5/C20/K20.
@@ -317,10 +325,9 @@ new class extends Component {
             // Logic ada di EmrCompletenessRITrait. Field "screening" boleh "Tidak ada".
             $pct = $this->calculateEmrPercentRI($json);
             $row->emr_percent = $pct['emr'];
-            $row->emr_sections = $pct['sections']; // detail per-section untuk modal info
             $row->eresep_percent = isset($json['eresep']) || isset($json['eresepRacikan']) ? 100 : 0;
-            $row->lab_status = (int) ($row->lab_status ?? 0);
-            $row->rad_status = (int) ($row->rad_status ?? 0);
+            $row->lab_status = (int) ($labPerRiHdrNo[$row->rihdr_no] ?? 0);
+            $row->rad_status = (int) ($radPerRiHdrNo[$row->rihdr_no] ?? 0);
             $row->no_sep = $json['sep']['noSep'] ?? ($row->vno_sep ?? null);
             $row->no_spri = $json['spri']['noSPRIBPJS'] ?? null;
 
@@ -335,13 +342,6 @@ new class extends Component {
 
             $row->diagnosis = isset($json['diagnosis']) && is_array($json['diagnosis']) ? implode(' | ', array_column($json['diagnosis'], 'icdX')) : '-';
             $row->diagnosis_free_text = $json['diagnosisFreeText'] ?? '-';
-            $row->no_referensi = $json['noReferensi'] ?? null;
-            $row->tindak_lanjut = $json['perencanaan']['tindakLanjut']['tindakLanjut'] ?? '-';
-            $row->tindak_lanjut_detail = $json['perencanaan']['tindakLanjut'] ?? null;
-            $row->admin_user = isset($json['AdministrasiRI']) ? $json['AdministrasiRI']['userLog'] ?? '✔' : '-';
-            $row->task_id3 = $json['taskIdPelayanan']['taskId3'] ?? null;
-            $row->task_id4 = $json['taskIdPelayanan']['taskId4'] ?? null;
-            $row->task_id5 = $json['taskIdPelayanan']['taskId5'] ?? null;
 
             $row->rihdr_no_json = $json['riHdrNo'] ?? '-';
             $row->is_json_valid = (string) $row->rihdr_no === (string) $row->rihdr_no_json;

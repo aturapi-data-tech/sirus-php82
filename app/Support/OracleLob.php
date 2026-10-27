@@ -59,10 +59,43 @@ class OracleLob
         }
 
         // Snapshot too old → ambil ulang lewat statement segar, baca langsung.
-        try {
-            $fresh = DB::table($table)->where($keyCol, $keyVal)->value($lobCol);
+        return self::readFresh($table, $keyCol, $keyVal, $lobCol);
+    }
 
-            return self::toString($fresh);
+    /**
+     * Baca CLOB banyak baris sekaligus → [kunci => string] (gagal = '').
+     *
+     * Untuk layar DAFTAR: query besar jangan memuat CLOB (ORA-01555 di oci_fetch_array
+     * menjatuhkan seluruh daftar, kasus Pelayanan RJ 2026-10-26); CLOB dibaca lewat
+     * method ini hanya untuk kunci yang dibutuhkan. Dibaca per potongan 500 (batas IN
+     * Oracle 1000); potongan gagal → ambil ulang per baris; satu baris gagal = ''.
+     */
+    public static function readMany(string $table, string $keyCol, array $keyList, string $lobCol): array
+    {
+        $hasil = [];
+
+        foreach (array_chunk(array_values(array_unique($keyList)), 500) as $potonganKunci) {
+            $rawPerKunci = [];
+            try {
+                $rawPerKunci = DB::table($table)->whereIn($keyCol, $potonganKunci)->pluck($lobCol, $keyCol)->all();
+            } catch (\Throwable $e) {
+            }
+
+            foreach ($potonganKunci as $kunci) {
+                $hasil[$kunci] = array_key_exists($kunci, $rawPerKunci)
+                    ? self::read($rawPerKunci[$kunci], $table, $keyCol, $kunci, $lobCol)
+                    : self::readFresh($table, $keyCol, $kunci, $lobCol);
+            }
+        }
+
+        return $hasil;
+    }
+
+    /** Ambil ulang satu baris lewat statement segar; gagal apa pun → ''. */
+    private static function readFresh(string $table, string $keyCol, $keyVal, string $lobCol): string
+    {
+        try {
+            return self::toString(DB::table($table)->where($keyCol, $keyVal)->value($lobCol));
         } catch (\Throwable $e) {
             // Jangan jatuhkan seluruh list hanya karena 1 row LOB gagal dibaca.
             return '';

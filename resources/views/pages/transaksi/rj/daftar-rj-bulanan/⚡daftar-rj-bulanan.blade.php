@@ -7,11 +7,11 @@ use Livewire\Attributes\On;
 use Livewire\Attributes\Session;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
-use App\Support\OracleLob;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
+use App\Http\Traits\Txn\Rj\JsonKunjunganRJTrait;
 
 new class extends Component {
-    use WithPagination, WithRenderVersioningTrait;
+    use WithPagination, WithRenderVersioningTrait, JsonKunjunganRJTrait;
 
     public array $renderVersions = [];
     protected array $renderAreas = ['daftar-rj-bulanan-toolbar'];
@@ -266,14 +266,7 @@ new class extends Component {
 
         // CLOB JSON dibaca terpisah, hanya untuk baris halaman ini. Gagal sekaligus →
         // transformRow mengambil ulang per baris; satu baris gagal tak menjatuhkan daftar.
-        $jsonPerRjNo = [];
-        try {
-            $jsonPerRjNo = DB::table('rstxn_rjhdrs')
-                ->whereIn('rj_no', $rjNoHalaman)
-                ->pluck('datadaftarpolirj_json', 'rj_no')
-                ->all();
-        } catch (\Throwable $e) {
-        }
+        $jsonPerRjNo = $this->bacaJsonKunjunganRJ($rjNoHalaman);
 
         $labPerRjNo = DB::table('lbtxn_checkuphdrs')
             ->whereIn('ref_no', $rjNoHalaman)
@@ -321,9 +314,7 @@ new class extends Component {
     private function transformRow($row, array $jsonPerRjNo)
     {
         // Locator basi (ORA-01555/ORA-22924) → helper mengambil ulang per baris.
-        $jsonRaw = array_key_exists($row->rj_no, $jsonPerRjNo)
-            ? OracleLob::read($jsonPerRjNo[$row->rj_no], 'rstxn_rjhdrs', 'rj_no', $row->rj_no, 'datadaftarpolirj_json')
-            : rescue(fn() => OracleLob::toString(DB::table('rstxn_rjhdrs')->where('rj_no', $row->rj_no)->value('datadaftarpolirj_json')), '', false);
+        $jsonRaw = $jsonPerRjNo[$row->rj_no] ?? '';
         $json = json_decode($jsonRaw ?: '{}', true) ?? [];
         $row->berkas_uploaded = []; // seq_file berkas BPJS yang sudah di-upload (utk review)
 

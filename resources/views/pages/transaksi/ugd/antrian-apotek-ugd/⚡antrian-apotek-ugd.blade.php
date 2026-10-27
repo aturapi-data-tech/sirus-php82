@@ -8,11 +8,11 @@ use Livewire\Attributes\On;
 use Livewire\Attributes\Session;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
-use App\Support\OracleLob;
+use App\Http\Traits\Txn\Ugd\JsonKunjunganUGDTrait;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 
 new class extends Component {
-    use WithPagination, WithRenderVersioningTrait;
+    use WithPagination, WithRenderVersioningTrait, JsonKunjunganUGDTrait;
 
     public array $renderVersions = [];
     protected array $renderAreas = ['antrian-apotek-toolbar'];
@@ -113,11 +113,15 @@ new class extends Component {
     {
         [$start, $end] = $this->dateRange();
 
+        // Kolom di sini = yang DITAMPILKAN daftar + yang dipakai filter/urut, tidak lebih.
+        // CLOB JSON SENGAJA tetap ikut: filter taskId7 dan urutan antrean apotek (CITO,
+        // noAntrian, taskId6) butuh NILAI dari JSON tiap baris, tak bisa disamakan dengan
+        // aman lewat DBMS_LOB.INSTR. Tiap CLOB di-decode sekali saja (cache per rj_no).
         $query = DB::table('rstxn_ugdhdrs as h')
             ->join('rsmst_pasiens as p', 'p.reg_no', '=', 'h.reg_no')
             ->leftJoin('rsmst_doctors as d', 'd.dr_id', '=', 'h.dr_id')
             ->leftJoin('rsmst_klaimtypes as k', 'k.klaim_id', '=', 'h.klaim_id')
-            ->select(['h.rj_no', DB::raw("to_char(h.rj_date,'dd/mm/yyyy hh24:mi') as rj_date_display"), 'h.reg_no', 'p.reg_name', 'p.sex', 'p.address', DB::raw("to_char(p.birth_date,'dd/mm/yyyy') as birth_date"), 'h.no_antrian', 'h.dr_id', 'd.dr_name', 'h.klaim_id', 'h.shift', 'h.rj_status', 'h.vno_sep', 'h.nobooking', 'h.datadaftarugd_json', 'k.klaim_desc', 'k.klaim_status', 'h.waktu_masuk_apt', 'h.waktu_selesai_pelayanan'])
+            ->select(['h.rj_no', DB::raw("to_char(h.rj_date,'dd/mm/yyyy hh24:mi') as rj_date_display"), 'h.reg_no', 'p.reg_name', 'p.sex', 'p.address', DB::raw("to_char(p.birth_date,'dd/mm/yyyy') as birth_date"), 'd.dr_name', 'h.klaim_id', 'h.shift', 'h.rj_status', 'h.vno_sep', 'k.klaim_desc', 'k.klaim_status'])
             ->whereBetween('h.rj_date', [$start, $end])
             ->where('h.klaim_id', '!=', 'KR');
 
@@ -153,13 +157,20 @@ new class extends Component {
             });
         }
 
+        // Query besar TANPA CLOB (ORA-01555 saat kunjungan lain disimpan — kasus Pelayanan
+        // RJ 2026-10-26). Filter & urutan antrean apotek butuh NILAI JSON tiap pasien
+        // (CITO, noAntrian, jam taskId6/7), jadi JSON dibaca lewat statement terpisah per
+        // potongan dan di-decode sekali; satu baris gagal tak menjatuhkan daftar.
         $all = $query->get();
+
+        $jsonPerRjNo = array_map(fn($jsonRaw) => json_decode($jsonRaw ?: '{}', true) ?? [], $this->bacaJsonKunjunganUGD($all->pluck('rj_no')->all()));
+        $jsonBaris = fn($row) => $jsonPerRjNo[$row->rj_no] ?? [];
 
         // Filter task_id7 (sudah serah obat / belum) — nested JSON, harus di PHP
         if ($this->filterTaskId7 !== '') {
             $wantHas = $this->filterTaskId7 === 'Y';
-            $all = $all->filter(function ($row) use ($wantHas) {
-                $json = json_decode(OracleLob::read($row->datadaftarugd_json ?? null, 'rstxn_ugdhdrs', 'rj_no', $row->rj_no, 'datadaftarugd_json') ?: '{}', true);
+            $all = $all->filter(function ($row) use ($wantHas, $jsonBaris) {
+                $json = $jsonBaris($row);
                 $hasT7 = !empty($json['taskIdPelayanan']['taskId7']);
                 return $wantHas ? $hasT7 : !$hasT7;
             });
@@ -172,8 +183,8 @@ new class extends Component {
         //   4. taskId6 asc (timestamp resep dispatch ke apotek, FIFO; empty = last)
         // UGD tidak ada taskId5 (no "Keluar Poli" stage), jadi langsung taskId6.
         $sorted = $all
-            ->sortBy(function ($row) {
-                $json = json_decode(OracleLob::read($row->datadaftarugd_json ?? null, 'rstxn_ugdhdrs', 'rj_no', $row->rj_no, 'datadaftarugd_json') ?: '{}', true);
+            ->sortBy(function ($row) use ($jsonBaris) {
+                $json = $jsonBaris($row);
                 $noAntrian = $json['noAntrianApotek']['noAntrian'] ?? 0;
                 $hasAntrian = $noAntrian > 0 ? 0 : 1;
 
@@ -197,11 +208,10 @@ new class extends Component {
 
         $paginator = new \Illuminate\Pagination\LengthAwarePaginator($items, $total, $perPage, $page, ['path' => \Illuminate\Pagination\Paginator::resolveCurrentPath()]);
 
-        $paginator->getCollection()->transform(function ($row) {
-            $json = json_decode(OracleLob::read($row->datadaftarugd_json ?? null, 'rstxn_ugdhdrs', 'rj_no', $row->rj_no, 'datadaftarugd_json') ?: '{}', true);
+        $paginator->getCollection()->transform(function ($row) use ($jsonBaris) {
+            $json = $jsonBaris($row);
 
             $row->no_antrian_apotek = $json['noAntrianApotek']['noAntrian'] ?? 0;
-            $row->jenis_resep = $json['noAntrianApotek']['jenisResep'] ?? '-';
             $row->has_eresep = isset($json['eresep']) ? 1 : 0;
             $row->has_eresep_racikan = isset($json['eresepRacikan']) ? 1 : 0;
             $row->eresep_count = $row->has_eresep + $row->has_eresep_racikan;

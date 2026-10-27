@@ -20,12 +20,12 @@ use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
-use App\Support\OracleLob;
 use App\Support\Options\GiziOptions;
 use App\Support\Terminologi\AlergiSnomed;
+use App\Http\Traits\Txn\Ri\JsonKunjunganRITrait;
 
 new class extends Component {
-    use WithPagination;
+    use WithPagination, JsonKunjunganRITrait;
 
     public string $searchKeyword = '';
     public string $filterStatus = 'I'; // I = Dirawat (default), P = Pulang, '' = keduanya
@@ -86,6 +86,10 @@ new class extends Component {
 
     private function baseQuery()
     {
+        // Kolom di sini = yang DITAMPILKAN daftar/CSV + yang dipakai filter/urut, tidak
+        // lebih. CLOB JSON TIDAK di sini — dibaca terpisah lewat bacaJsonKunjunganRI()
+        // hanya untuk baris yang diolah. CLOB di query besar memicu ORA-01555 saat
+        // kunjungan lain sedang disimpan (kasus Pelayanan RJ 2026-10-26).
         $query = DB::table('rsview_rihdrs as rv')->selectRaw("
                 rv.rihdr_no,
                 rv.reg_no,
@@ -93,14 +97,12 @@ new class extends Component {
                 rv.sex,
                 rv.address,
                 rv.dr_name,
-                rv.bangsal_id,
                 rv.bangsal_name,
                 rv.room_name,
                 to_char(rv.birth_date,'dd/mm/yyyy') as birth_date,
                 to_char(rv.entry_date,'dd/mm/yyyy hh24:mi') as entry_date_display,
                 to_char(rv.exit_date,'dd/mm/yyyy hh24:mi') as exit_date_display,
-                rv.ri_status,
-                rv.datadaftarri_json
+                rv.ri_status
             ");
 
         if ($this->filterStatus !== '') {
@@ -117,11 +119,16 @@ new class extends Component {
         return $query;
     }
 
-    /** Decode JSON EMR satu baris → ringkasan gizi untuk list & rekap. */
-    private function ringkasGiziRow(object $row): void
+    /** JSON EMR satu baris dari peta bacaJsonKunjunganRI() (gagal dibaca = []). */
+    private function bacaJsonRi($riHdrNo, array $jsonPerRiHdrNo): array
     {
-        $jsonRaw = OracleLob::read($row->datadaftarri_json ?? null, 'rstxn_rihdrs', 'rihdr_no', $row->rihdr_no, 'datadaftarri_json');
-        $json = json_decode($jsonRaw ?: '{}', true) ?? [];
+        return json_decode(($jsonPerRiHdrNo[$riHdrNo] ?? '') ?: '{}', true) ?? [];
+    }
+
+    /** Decode JSON EMR satu baris → ringkasan gizi untuk list & CSV. */
+    private function ringkasGiziRow(object $row, array $jsonPerRiHdrNo): void
+    {
+        $json = $this->bacaJsonRi($row->rihdr_no, $jsonPerRiHdrNo);
         $riwayatGizi = $json['penilaian']['gizi'] ?? [];
 
         $row->diet_terakhir = GiziOptions::entriTerakhirDengan($riwayatGizi, 'programDiet');
@@ -148,8 +155,6 @@ new class extends Component {
         $row->alergi_dokter = AlergiSnomed::untukCetakRi((array) data_get($json, 'pengkajianDokter.anamnesa', []));
         $row->alergi_ada = $row->alergi_dokter !== '' && $row->alergi_dokter !== AlergiSnomed::TIDAK_ADA['alergi'];
         $row->diet_dokter = trim((string) data_get($json, 'pengkajianDokter.rencana.diet', ''));
-
-        unset($row->datadaftarri_json);
     }
 
     /** baseQuery + pencarian + urutan — dipakai list (paginate) & unduh CSV (semua baris). */
@@ -176,8 +181,9 @@ new class extends Component {
     public function rows()
     {
         $paginator = $this->queryTersaring()->paginate($this->itemsPerPage);
-        $paginator->getCollection()->transform(function ($row) {
-            $this->ringkasGiziRow($row);
+        $jsonPerRiHdrNo = $this->bacaJsonKunjunganRI($paginator->getCollection()->pluck('rihdr_no')->all());
+        $paginator->getCollection()->transform(function ($row) use ($jsonPerRiHdrNo) {
+            $this->ringkasGiziRow($row, $jsonPerRiHdrNo);
             // Badge status sama dgn daftar-ri: Dirawat=brand, Pulang=success
             $status = $row->ri_status ?: 'I';
             $row->status_text = $status === 'P' ? 'Pulang' : 'Dirawat';
@@ -201,16 +207,16 @@ new class extends Component {
         $belumAdaDiet = 0;
         $total = 0;
 
-        $rowList = DB::table('rsview_rihdrs as rv')
-            ->selectRaw('rv.rihdr_no, rv.datadaftarri_json')
+        $riHdrNoList = DB::table('rsview_rihdrs as rv')
             ->where(DB::raw("NVL(rv.ri_status,'I')"), 'I')
             ->when($this->filterBangsal !== '', fn($q) => $q->where('rv.bangsal_id', $this->filterBangsal))
-            ->get();
+            ->pluck('rv.rihdr_no')
+            ->all();
+        $jsonPerRiHdrNo = $this->bacaJsonKunjunganRI($riHdrNoList);
 
-        foreach ($rowList as $row) {
+        foreach ($riHdrNoList as $riHdrNo) {
             $total++;
-            $jsonRaw = OracleLob::read($row->datadaftarri_json ?? null, 'rstxn_rihdrs', 'rihdr_no', $row->rihdr_no, 'datadaftarri_json');
-            $json = json_decode($jsonRaw ?: '{}', true) ?? [];
+            $json = $this->bacaJsonRi($riHdrNo, $jsonPerRiHdrNo);
             $dietTerakhir = GiziOptions::entriTerakhirDengan($json['penilaian']['gizi'] ?? [], 'programDiet');
             if ($dietTerakhir === []) {
                 $belumAdaDiet++;
@@ -253,8 +259,9 @@ new class extends Component {
             return null;
         }
 
+        $jsonPerRiHdrNo = $this->bacaJsonKunjunganRI($rowList->pluck('rihdr_no')->all());
         foreach ($rowList as $row) {
-            $this->ringkasGiziRow($row);
+            $this->ringkasGiziRow($row, $jsonPerRiHdrNo);
         }
 
         $tglExport = Carbon::now(config('app.timezone'))->format('d/m/Y H:i');

@@ -8,10 +8,10 @@ use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 use App\Http\Traits\Txn\Rj\EmrCompletenessRJTrait;
-use App\Support\OracleLob;
+use App\Http\Traits\Txn\Rj\JsonKunjunganRJTrait;
 
 new class extends Component {
-    use WithPagination, WithRenderVersioningTrait, EmrCompletenessRJTrait;
+    use WithPagination, WithRenderVersioningTrait, EmrCompletenessRJTrait, JsonKunjunganRJTrait;
 
     public array $renderVersions = [];
     protected array $renderAreas = ['pelayanan-rj-toolbar'];
@@ -254,7 +254,7 @@ new class extends Component {
         // yang sudah checkin (rstxn_rjhdrs). Pending booking ada di daftar-rj (pendaftaran).
         // PERF: ambil header dulu (locator CLOB, body BELUM dibaca via OCI = murah),
         // sort + slice ke halaman aktif, BARU baca CLOB + decode JSON hanya untuk baris
-        // yang benar-benar tampil. Hindari N× OracleLob::read utk seluruh pasien hari
+        // yang benar-benar tampil. Hindari N× baca CLOB utk seluruh pasien hari
         // itu padahal hanya ~itemsPerPage yang dirender. Urutan & count identik dgn
         // sebelumnya (sort dr_name desc lalu no_antrian int asc).
         $all = $this->baseQuery()
@@ -277,15 +277,7 @@ new class extends Component {
         // hari itu, dan bila satu kunjungan sedang di-UPDATE (simpan Surat Kontrol/SKDP)
         // versi LOB lamanya bisa hilang → ORA-01555 di oci_fetch_array, seluruh daftar
         // mati (2026-10-26). Di sini dibaca terpisah, hanya untuk baris halaman aktif.
-        $jsonPerRjNo = [];
-        try {
-            $jsonPerRjNo = DB::table('rstxn_rjhdrs')
-                ->whereIn('rj_no', $pageRows->pluck('rj_no')->all())
-                ->pluck('datadaftarpolirj_json', 'rj_no')
-                ->all();
-        } catch (\Throwable $e) {
-            // Gagal sekaligus → OracleLob::read di bawah mengambil ulang per baris.
-        }
+        $jsonPerRjNo = $this->bacaJsonKunjunganRJ($pageRows->pluck('rj_no')->all());
 
         $rjNoHalaman = $pageRows->pluck('rj_no')->all();
 
@@ -326,9 +318,7 @@ new class extends Component {
 
                 // Locator basi (ORA-01555/ORA-22924) → helper mengambil ulang per baris;
                 // satu baris gagal tidak menjatuhkan daftar.
-                $jsonRaw = array_key_exists($row->rj_no, $jsonPerRjNo)
-                    ? OracleLob::read($jsonPerRjNo[$row->rj_no], 'rstxn_rjhdrs', 'rj_no', $row->rj_no, 'datadaftarpolirj_json')
-                    : rescue(fn() => OracleLob::toString(DB::table('rstxn_rjhdrs')->where('rj_no', $row->rj_no)->value('datadaftarpolirj_json')), '', false);
+                $jsonRaw = $jsonPerRjNo[$row->rj_no] ?? '';
                 $json = json_decode($jsonRaw ?: '{}', true) ?? [];
 
                 // EMR completeness — weighted S15/O25/A25/P25/N10. Logic ada di EmrCompletenessRJTrait.

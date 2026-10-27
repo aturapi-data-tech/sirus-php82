@@ -102,7 +102,7 @@
                             @foreach ([
                                 ['1', 'Toolbar — filter TANGGAL (default hari ini; kunci utama scope query) + cari + tombol Daftar; antrian kasir/apotek menambah wire:poll.30s', ''],
                                 ['2', 'Baris pasien — identitas standar list: No RM · nama (gender) · tgl lahir (umur, dihitung dari birth_date) · alamat; badge status DIHITUNG dari task-id di JSON (3–7, 99 = batal); tombol aksi membuka modal (EMR/SEP/Administrasi)', 'background:var(--info)'],
-                                ['3', 'Pagination DB-level — paginate() di query, decode CLOB hanya utk page aktif via transform()', ''],
+                                ['3', 'Pagination DB-level — query besar TANPA CLOB; JSON & hitungan dibaca utk page aktif lewat bacaJsonKunjungan*()', ''],
                             ] as [$num, $ket, $extra])
                                 <div class="flex items-start gap-2.5">
                                     <span style="{{ $listBadge }}; margin-top:2px; {{ $extra }}">{{ $num }}</span>
@@ -120,17 +120,28 @@
 
                         <div class="grid grid-cols-1 gap-4 mt-6 sm:grid-cols-3">
                             <div class="ds-card" style="padding:20px">
-                                <div class="ds-title-sm mb-1">Scope subquery</div>
-                                <div class="ds-body-sm">Subquery lab/rad JOIN ke header + filter tanggal — jangan biarkan full-scan.</div>
+                                <div class="ds-title-sm mb-1">Select yang tampil saja</div>
+                                <div class="ds-body-sm">Query besar = kolom yang ditampilkan + filter/urut. Hitungan lab/rad dihitung <span class="ds-code">whereIn</span> utk page aktif, bukan subquery seluruh rentang.</div>
                             </div>
                             <div class="ds-card" style="padding:20px">
                                 <div class="ds-title-sm mb-1">Decode per-page</div>
-                                <div class="ds-body-sm">OracleLob + json_decode hanya di <span class="ds-code">transform()</span> page aktif (±10 baris), bukan di query.</div>
+                                <div class="ds-body-sm"><span class="ds-code">bacaJsonKunjunganRJ/UGD/RI()</span> utk page aktif (±10 baris); CLOB TIDAK boleh ikut query besar (ORA-01555 menjatuhkan seluruh daftar).</div>
                             </div>
                             <div class="ds-card" style="padding:20px">
                                 <div class="ds-title-sm mb-1">Poll seperlunya</div>
                                 <div class="ds-body-sm">Antrian (kasir/apotek) <span class="ds-code">wire:poll.30s</span>; halaman pendaftaran TIDAK perlu poll.</div>
                             </div>
+                        </div>
+
+                        <div class="ds-card-outline mt-6" style="padding:16px 20px">
+                            <div class="ds-title-sm mb-2">Batas pola ini — yang BELUM tertutup</div>
+                            <ul class="ds-body-sm space-y-1.5" style="list-style:disc; padding-left:18px">
+                                <li>Baca CLOB tetap bisa kena ORA-01555 bila kunjungan itu sedang disimpan; bedanya kini hanya baris itu yang tampil kosong (EMR 0%, kontrol "-") sampai refresh — daftar tetap jalan.</li>
+                                <li>Layar yang urutan/filternya butuh NILAI JSON semua pasien (Apotek RJ/UGD, filter dokter RI, rekap Gizi) tetap membaca CLOB semua baris — per potongan 500, bukan satu fetch besar.</li>
+                                <li>Penanda <span class="ds-code">DBMS_LOB.INSTR</span> (Kasir RJ/UGD) membaca CLOB di server; peluang ORA-01555 kecil, bukan nol. Ia mencari teks, jadi perubahan bentuk JSON (spasi, ganti nama kunci) wajib diuji ulang.</li>
+                                <li>CLOB yang benar-benar rusak di DB akan SELALU tampil kosong — tanda minta DBA memeriksa. Akar ORA-01555 (retensi LOB/undo) tetap urusan DBA.</li>
+                                <li>Daftar RI / PTO / Gizi status "Semua" tanpa batas tanggal → paginate seluruh <span class="ds-code">rsview_rihdrs</span>.</li>
+                            </ul>
                         </div>
 
                         <div class="ds-card-outline mt-6" style="padding:16px 20px">

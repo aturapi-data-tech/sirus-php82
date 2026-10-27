@@ -12,10 +12,10 @@ use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 use App\Http\Traits\Txn\Rj\EmrCompletenessRJTrait;
 use App\Http\Traits\Txn\Rj\EmrRJTrait;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
-use App\Support\OracleLob;
+use App\Http\Traits\Txn\Rj\JsonKunjunganRJTrait;
 
 new class extends Component {
-    use WithPagination, WithRenderVersioningTrait, EmrCompletenessRJTrait, EmrRJTrait, MasterPasienTrait;
+    use WithPagination, WithRenderVersioningTrait, EmrCompletenessRJTrait, EmrRJTrait, MasterPasienTrait, JsonKunjunganRJTrait;
 
     public array $renderVersions = [];
     protected array $renderAreas = ['daftar-rj-toolbar'];
@@ -469,14 +469,7 @@ new class extends Component {
 
         // CLOB JSON dibaca terpisah, hanya untuk baris halaman ini. Gagal sekaligus →
         // transformRjRow mengambil ulang per baris; satu baris gagal tak menjatuhkan daftar.
-        $jsonPerRjNo = [];
-        try {
-            $jsonPerRjNo = DB::table('rstxn_rjhdrs')
-                ->whereIn('rj_no', $rjNoHalaman)
-                ->pluck('datadaftarpolirj_json', 'rj_no')
-                ->all();
-        } catch (\Throwable $e) {
-        }
+        $jsonPerRjNo = $this->bacaJsonKunjunganRJ($rjNoHalaman);
 
         $labPerRjNo = DB::table('lbtxn_checkuphdrs')
             ->whereIn('ref_no', $rjNoHalaman)
@@ -547,9 +540,7 @@ new class extends Component {
         $row->berkas_uploaded = []; // seq_file berkas BPJS yang sudah di-upload
 
         // Locator basi (ORA-01555/ORA-22924) → helper mengambil ulang per baris.
-        $jsonRaw = array_key_exists($row->rj_no, $jsonPerRjNo)
-            ? OracleLob::read($jsonPerRjNo[$row->rj_no], 'rstxn_rjhdrs', 'rj_no', $row->rj_no, 'datadaftarpolirj_json')
-            : rescue(fn() => OracleLob::toString(DB::table('rstxn_rjhdrs')->where('rj_no', $row->rj_no)->value('datadaftarpolirj_json')), '', false);
+        $jsonRaw = $jsonPerRjNo[$row->rj_no] ?? '';
         $json = json_decode($jsonRaw ?: '{}', true) ?? [];
 
         // EMR completeness — weighted S15/O25/A25/P25/N10. Logic ada di EmrCompletenessRJTrait.

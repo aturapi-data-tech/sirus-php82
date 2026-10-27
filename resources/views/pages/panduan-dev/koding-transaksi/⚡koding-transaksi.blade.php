@@ -23,6 +23,9 @@ $data = $this->findDataRI($riHdrNo);     // EmrRITrait  → rsview_rihdrs
 // → baca locator CLOB dgn aman; kalau kena ORA-01555/ORA-22924 (snapshot too old
 //   setelah save-all), otomatis re-fetch lewat statement segar.
 
+// Layar DAFTAR (banyak baris) TIDAK memakai findData*: pakai trait tipis
+// bacaJsonKunjunganRJ/UGD/RI(daftarNo) → OracleLob::readMany — lihat bab Pendaftaran.
+
 // JANGAN: TO_CHAR(kolom_json) / DBMS_LOB.SUBSTR di query —
 //         JSON > 32.767 byte TERPOTONG diam-diam → data korup saat disimpan balik.
 TXT,
@@ -88,34 +91,56 @@ private function hitungNoAntrian(string $drId, Carbon $tgl): int { ... }
 TXT,
 
 'list-query' => <<<'TXT'
+// ATURAN: query besar daftar (semua pasien di rentang hari/bulan) hanya memuat
+// kolom yang DITAMPILKAN + yang dipakai filter/urut. CLOB JSON dan hitungan
+// (lab/rad/PRMRJ) TIDAK di query ini — dibaca terpisah utk baris halaman aktif.
+// Alasan: CLOB di query besar → ORA-01555 di oci_fetch_array saat kunjungan lain
+// sedang disimpan (kasus Pelayanan RJ + Surat Kontrol, 26/10/26) → SELURUH daftar
+// mati. Bonus: data JSON pasien lain tak ikut terkirim ke browser.
+
+use JsonKunjunganRJTrait;   // RJ · JsonKunjunganUGDTrait · JsonKunjunganRITrait
+
 #[Computed]
 public function baseQuery()
 {
-    // Subquery penunjang (lab/rad) di-SCOPE ke rentang tanggal via JOIN ke header.
-    // Tanpa scope ini Oracle full-scan jutaan baris riwayat → list lemot.
-    $lab = DB::table('lbtxn_checkuphdrs as l')
-        ->join('rstxn_rjhdrs as a', 'a.rj_no', '=', 'l.rj_no')
-        ->whereBetween(DB::raw('trunc(a.rj_date)'), [$start, $end])
-        ->select('l.rj_no', DB::raw('count(*) as jml_lab'))
-        ->groupBy('l.rj_no');
-
-    return DB::table('rstxn_rjhdrs as a')
-        ->leftJoinSub($lab, 'lab', 'lab.rj_no', '=', 'a.rj_no')
-        ->whereBetween(DB::raw('trunc(a.rj_date)'), [$start, $end])
-        ->orderByDesc('a.rj_no');
+    return DB::table('rstxn_rjhdrs as h')
+        ->join('rsmst_pasiens as p', 'p.reg_no', '=', 'h.reg_no')
+        ->select(['h.rj_no', 'h.reg_no', 'p.reg_name', 'h.rj_status', /* yg tampil saja */])
+        ->whereBetween('h.rj_date', [$start, $end])
+        ->orderBy('h.no_antrian');                // kolom urut/filter boleh tanpa di-select
 }
 
 #[Computed]
 public function rows()
 {
-    // Paginate di DB — lalu transform HANYA page aktif (±10 baris).
-    $p = $this->baseQuery()->paginate($this->itemsPerPage);
-    $p->getCollection()->transform(fn ($r) => $this->transformRjRow($r));
-    return $p;
+    $paginator = $this->baseQuery()->paginate($this->itemsPerPage);
+    $rjNoHalaman = $paginator->getCollection()->pluck('rj_no')->all();
+
+    // CLOB hanya utk ±10 baris halaman ini → [rj_no => string JSON], gagal = ''
+    $jsonPerRjNo = $this->bacaJsonKunjunganRJ($rjNoHalaman);
+
+    // Hitungan juga per halaman, bukan subquery GROUP BY seluruh rentang
+    $labPerRjNo = DB::table('lbtxn_checkuphdrs')
+        ->whereIn('ref_no', $rjNoHalaman)->where('status_rjri', 'RJ')
+        ->groupBy('ref_no')->selectRaw('ref_no, COUNT(*) as jumlah')
+        ->pluck('jumlah', 'ref_no')->all();      // alias wajib: pluck(COUNT(*)) rawan di Oracle
+
+    $paginator->getCollection()->transform(function ($row) use ($jsonPerRjNo, $labPerRjNo) {
+        $json = json_decode(($jsonPerRjNo[$row->rj_no] ?? '') ?: '{}', true) ?? [];
+        $row->lab_status = (int) ($labPerRjNo[$row->rj_no] ?? 0);
+        $row->emr_percent = ...;                  // olah HANYA field yg ditampilkan
+        return $row;
+    });
+    return $paginator;
 }
 
-// transformRjRow(): DI SINILAH OracleLob::read + json_decode dilakukan —
-// decode CLOB hanya untuk baris yang tampil, bukan seluruh hasil query.
+// Urutan/filter butuh isi JSON SEMUA baris? Dua jalan:
+// a) penanda 0/1 di SQL — CASE WHEN DBMS_LOB.INSTR(h.datadaftarpolirj_json,
+//    '"AdministrasiRj"') > 0 ... (Kasir RJ/UGD). WAJIB dibuktikan = logika PHP lama
+//    pada ribuan baris sebelum dipakai.
+// b) butuh NILAI (no antrean, jam taskId, CITO, drId) → get() tanpa CLOB, lalu
+//    bacaJsonKunjungan*(semua rj_no) — dibaca per potongan 500 (Apotek RJ/UGD,
+//    filter dokter RI, rekap Gizi).
 TXT,
 
 'emr-host' => <<<'TXT'

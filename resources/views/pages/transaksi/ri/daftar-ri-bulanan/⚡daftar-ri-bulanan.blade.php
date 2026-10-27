@@ -6,13 +6,13 @@ use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Session;
 use Illuminate\Support\Facades\DB;
-use App\Support\OracleLob;
 use Carbon\Carbon;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 use App\Http\Traits\Txn\Ri\EmrCompletenessRITrait;
+use App\Http\Traits\Txn\Ri\JsonKunjunganRITrait;
 
 new class extends Component {
-    use WithPagination, WithRenderVersioningTrait, EmrCompletenessRITrait;
+    use WithPagination, WithRenderVersioningTrait, EmrCompletenessRITrait, JsonKunjunganRITrait;
 
     /*
      | Daftar Pasien Bulanan RI — read-only untuk casemix/admin/tu.
@@ -117,8 +117,35 @@ new class extends Component {
     {
         $paginator = $this->baseQuery()->paginate($this->itemsPerPage);
 
+        $riHdrNoHalaman = $paginator->getCollection()->pluck('rihdr_no')->all();
+
+        // CLOB JSON dibaca terpisah, hanya untuk baris halaman ini. Gagal sekaligus →
+        // transformRow mengambil ulang per baris; satu baris gagal tak menjatuhkan daftar.
+        $jsonPerRiHdrNo = $this->bacaJsonKunjunganRI($riHdrNoHalaman);
+
+        $labPerRiHdrNo = DB::table('lbtxn_checkuphdrs')
+            ->whereIn('ref_no', $riHdrNoHalaman)
+            ->where('status_rjri', 'RI')
+            ->where('checkup_status', '!=', 'B')
+            ->groupBy('ref_no')
+            ->selectRaw('ref_no, COUNT(*) as jumlah')
+            ->pluck('jumlah', 'ref_no')
+            ->all();
+
+        $radPerRiHdrNo = DB::table('rstxn_riradiologs')
+            ->whereIn('rihdr_no', $riHdrNoHalaman)
+            ->groupBy('rihdr_no')
+            ->selectRaw('rihdr_no, COUNT(*) as jumlah')
+            ->pluck('jumlah', 'rihdr_no')
+            ->all();
+
         $paginator->setCollection(
-            $paginator->getCollection()->map(fn($row) => $this->transformRow($row))
+            $paginator->getCollection()->map(function ($row) use ($jsonPerRiHdrNo, $labPerRiHdrNo, $radPerRiHdrNo) {
+                $row->lab_status = (int) ($labPerRiHdrNo[$row->rihdr_no] ?? 0);
+                $row->rad_status = (int) ($radPerRiHdrNo[$row->rihdr_no] ?? 0);
+
+                return $this->transformRow($row, $jsonPerRiHdrNo);
+            })
         );
 
         // Status berkas BPJS (semua slot) untuk review — bagian dokumen bulanan. RI = key rihdr_no.
@@ -144,45 +171,27 @@ new class extends Component {
     {
         [$start, $end] = $this->dateRange();
 
-        // Subquery lab/rad discope ke window bulan (join rstxn_rihdrs + whereBetween exit_date,
-        // seragam dgn filter utama) agar tidak GROUP BY seluruh histori lbtxn_checkuphdrs /
-        // rstxn_riradiologs tiap render. Count tidak berubah: rihdr_no di luar window juga
-        // tak akan ter-leftJoin ke query utama.
-        $labSub = DB::table('lbtxn_checkuphdrs as l')
-            ->join('rstxn_rihdrs as hd', 'hd.rihdr_no', '=', 'l.ref_no')
-            ->select('l.ref_no', DB::raw('COUNT(*) as lab_status'))
-            ->where('l.status_rjri', 'RI')
-            ->where('l.checkup_status', '!=', 'B')
-            ->whereBetween('hd.exit_date', [$start, $end])
-            ->groupBy('l.ref_no');
-
-        $radSub = DB::table('rstxn_riradiologs as r')
-            ->join('rstxn_rihdrs as hd', 'hd.rihdr_no', '=', 'r.rihdr_no')
-            ->select('r.rihdr_no', DB::raw('COUNT(*) as rad_status'))
-            ->whereBetween('hd.exit_date', [$start, $end])
-            ->groupBy('r.rihdr_no');
-
+        // Kolom di sini = yang DITAMPILKAN daftar + yang dipakai filter/urut, tidak lebih.
+        // Paginate tetap menyortir seluruh kunjungan sebulan, jadi yang mahal (CLOB JSON,
+        // hitungan lab/rad) TIDAK di sini — dihitung di rows() hanya untuk baris halaman
+        // aktif. CLOB di query besar memicu ORA-01555 saat kunjungan lain sedang disimpan
+        // (kasus Pelayanan RJ 2026-10-26).
         $query = DB::table('rstxn_rihdrs as h')
             ->leftJoin('rsmst_pasiens as p', 'p.reg_no', '=', 'h.reg_no')
             ->leftJoin('rsmst_doctors as d', 'd.dr_id', '=', 'h.dr_id')
             ->leftJoin('rsmst_klaimtypes as k', 'k.klaim_id', '=', 'h.klaim_id')
             ->leftJoin('rsmst_rooms as r', 'r.room_id', '=', 'h.room_id')
             ->leftJoin('rsmst_bangsals as b', 'b.bangsal_id', '=', 'r.bangsal_id')
-            ->leftJoinSub($labSub, 'lab', fn($j) => $j->on('lab.ref_no', '=', 'h.rihdr_no'))
-            ->leftJoinSub($radSub, 'rad', fn($j) => $j->on('rad.rihdr_no', '=', 'h.rihdr_no'))
             ->select([
                 'h.rihdr_no',
                 DB::raw("to_char(h.entry_date,'dd/mm/yyyy hh24:mi:ss') as entry_date_display"),
                 DB::raw("to_char(h.exit_date,'dd/mm/yyyy hh24:mi:ss') as exit_date_display"),
                 'h.reg_no', 'p.reg_name', 'p.sex', 'p.address',
                 DB::raw("to_char(p.birth_date,'dd/mm/yyyy') as birth_date"),
-                'h.dr_id', 'd.dr_name',
+                'd.dr_name',
                 'h.klaim_id', 'k.klaim_desc', 'k.klaim_status',
                 'h.ri_status', 'h.vno_sep',
-                'r.bangsal_id', 'b.bangsal_name', 'h.room_id', 'r.room_name', 'h.bed_no',
-                DB::raw('COALESCE(lab.lab_status, 0) as lab_status'),
-                DB::raw('COALESCE(rad.rad_status, 0) as rad_status'),
-                'h.datadaftarri_json',
+                'b.bangsal_name', 'h.room_id', 'r.room_name',
             ])
             ->whereBetween('h.exit_date', [$start, $end]);
 
@@ -224,31 +233,22 @@ new class extends Component {
         return $query->orderByDesc('h.exit_date');
     }
 
-    private function transformRow($row)
+    private function transformRow($row, array $jsonPerRiHdrNo)
     {
-        $jsonRaw = OracleLob::read($row->datadaftarri_json ?? null, 'rstxn_rihdrs', 'rihdr_no', $row->rihdr_no, 'datadaftarri_json');
+        // Locator basi (ORA-01555/ORA-22924) → helper mengambil ulang per baris.
+        $jsonRaw = $jsonPerRiHdrNo[$row->rihdr_no] ?? '';
         $json = json_decode($jsonRaw ?: '{}', true) ?? [];
         $row->berkas_uploaded = []; // seq_file berkas BPJS yang sudah di-upload (utk review)
 
-        $row->admin_user = isset($json['AdministrasiRI']) ? $json['AdministrasiRI']['userLog'] ?? '✔' : '-';
-        $row->administrasi_detail = $json['AdministrasiRI'] ?? null;
-        $row->tindak_lanjut = $json['perencanaan']['tindakLanjut']['tindakLanjut'] ?? '-';
-        $row->no_skdp_bpjs = $json['kontrol']['noSKDPBPJS'] ?? '-';
-
         $row->diagnosis = isset($json['diagnosis']) && is_array($json['diagnosis']) ? implode('# ', array_column($json['diagnosis'], 'icdX')) : '-';
         $row->diagnosis_free_text = $json['diagnosisFreeText'] ?? '-';
-        $row->procedure = isset($json['procedure']) && is_array($json['procedure']) ? implode('# ', array_column($json['procedure'], 'procedureId')) : '-';
-        $row->procedure_free_text = $json['procedureFreeText'] ?? '-';
 
         // EMR completeness + meta — disamakan dengan daftar-ri (harian)
         $pct = $this->calculateEmrPercentRI($json);
         $row->emr_percent = $pct['emr'];
-        $row->emr_sections = $pct['sections'];
         $row->eresep_percent = isset($json['eresep']) || isset($json['eresepRacikan']) ? 100 : 0;
         $row->emr_bar_color = $row->emr_percent >= 80 ? 'bg-emerald-500' : ($row->emr_percent >= 50 ? 'bg-amber-400' : 'bg-rose-400');
 
-        $row->lab_status = (int) ($row->lab_status ?? 0);
-        $row->rad_status = (int) ($row->rad_status ?? 0);
         $row->no_sep     = $json['sep']['noSep'] ?? ($row->vno_sep ?? null);
         $row->no_spri    = $json['spri']['noSPRIBPJS'] ?? null;
         $row->leveling_dokter_list = $json['pengkajianAwalPasienRawatInap']['levelingDokter'] ?? [];

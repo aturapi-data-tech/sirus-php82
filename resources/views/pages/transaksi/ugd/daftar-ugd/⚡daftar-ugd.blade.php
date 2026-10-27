@@ -5,13 +5,13 @@ use Livewire\WithPagination;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
-use App\Support\OracleLob;
 use Carbon\Carbon;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 use App\Http\Traits\Txn\Ugd\EmrCompletenessUGDTrait;
+use App\Http\Traits\Txn\Ugd\JsonKunjunganUGDTrait;
 
 new class extends Component {
-    use WithPagination, WithRenderVersioningTrait, EmrCompletenessUGDTrait;
+    use WithPagination, WithRenderVersioningTrait, EmrCompletenessUGDTrait, JsonKunjunganUGDTrait;
 
     public array $renderVersions = [];
     protected array $renderAreas = ['daftar-ugd-toolbar'];
@@ -138,12 +138,16 @@ new class extends Component {
 
         $statusColumn = $this->isDokterOrPerawat() ? DB::raw("NVL(h.erm_status, 'A')") : DB::raw("NVL(h.rj_status, 'A')");
 
+        // Kolom di sini = yang DITAMPILKAN daftar + yang dipakai filter/urut, tidak lebih.
+        // CLOB JSON TIDAK di sini — dibaca di rows() hanya untuk baris halaman aktif
+        // (CLOB di query besar memicu ORA-01555 saat kunjungan lain disimpan — kasus
+        // Pelayanan RJ 2026-10-26).
         $query = DB::table('rstxn_ugdhdrs as h')
             ->join('rsmst_pasiens as p', 'p.reg_no', '=', 'h.reg_no')
             ->leftJoin('rsmst_doctors as d', 'd.dr_id', '=', 'h.dr_id')
             ->leftJoin('rsmst_klaimtypes as k', 'k.klaim_id', '=', 'h.klaim_id')
             ->leftJoin('rsmst_entryugds as e', 'e.entry_id', '=', 'h.entry_id')
-            ->select(['h.rj_no', DB::raw("to_char(h.rj_date,'dd/mm/yyyy hh24:mi:ss') as rj_date_display"), 'h.reg_no', 'p.reg_name', 'p.sex', 'p.address', DB::raw("to_char(p.birth_date,'dd/mm/yyyy') as birth_date"), 'h.no_antrian', 'h.dr_id', 'd.dr_name', 'h.klaim_id', 'k.klaim_desc', 'k.klaim_status', 'h.shift', 'h.rj_status', 'h.erm_status', 'h.vno_sep', 'h.entry_id', 'e.entry_desc', 'h.out_desc', 'h.status_lanjutan', 'h.death_on_igd_status', 'h.datadaftarugd_json'])
+            ->select(['h.rj_no', DB::raw("to_char(h.rj_date,'dd/mm/yyyy hh24:mi:ss') as rj_date_display"), 'h.reg_no', 'p.reg_name', 'p.sex', 'p.address', DB::raw("to_char(p.birth_date,'dd/mm/yyyy') as birth_date"), 'h.no_antrian', 'd.dr_name', 'h.klaim_id', 'k.klaim_desc', 'k.klaim_status', 'h.shift', 'h.rj_status', 'h.erm_status', 'h.vno_sep', 'e.entry_desc', 'h.death_on_igd_status'])
             ->whereBetween('h.rj_date', [$start, $end])
             ->orderBy('h.rj_date', 'desc')
             ->orderBy('d.dr_name', 'asc')
@@ -181,8 +185,12 @@ new class extends Component {
     {
         $paginator = $this->baseQuery()->paginate($this->itemsPerPage);
 
-        $paginator->getCollection()->transform(function ($row) {
-            $jsonRaw = OracleLob::read($row->datadaftarugd_json ?? null, 'rstxn_ugdhdrs', 'rj_no', $row->rj_no, 'datadaftarugd_json');
+        // CLOB JSON dibaca terpisah, hanya untuk baris halaman ini. Gagal sekaligus →
+        // ambil ulang per baris; satu baris gagal tak menjatuhkan daftar.
+        $jsonPerRjNo = $this->bacaJsonKunjunganUGD($paginator->getCollection()->pluck('rj_no')->all());
+
+        $paginator->getCollection()->transform(function ($row) use ($jsonPerRjNo) {
+            $jsonRaw = $jsonPerRjNo[$row->rj_no] ?? '';
             $json = json_decode($jsonRaw ?: '{}', true) ?? [];
             $row->berkas_uploaded = []; // seq_file berkas BPJS yang sudah di-upload
 
@@ -192,7 +200,6 @@ new class extends Component {
                "Tidak ada") — dokter wajib explicit isi negatif, jangan dibiarkan kosong. */
             $pct = $this->calculateEmrPercentUGD($json);
             $row->emr_percent = $pct['emr'];
-            $row->emr_sections = $pct['sections']; // detail per-section untuk tooltip optional
 
             /* E-Resep */
             $row->eresep_percent = isset($json['eresep']) || isset($json['eresepRacikan']) ? 100 : 0;
@@ -245,9 +252,6 @@ new class extends Component {
                 default => '',
             };
 
-            /* No Referensi */
-            $row->no_referensi = $json['noReferensi'] ?? null;
-
             /* Diagnosis & Procedure */
             $row->diagnosis = isset($json['diagnosis']) && is_array($json['diagnosis']) ? implode('# ', array_column($json['diagnosis'], 'icdX')) : '-';
             $row->diagnosis_free_text = $json['diagnosisFreeText'] ?? '-';
@@ -277,7 +281,6 @@ new class extends Component {
             /* Validasi JSON */
             $row->rj_no_json = $json['rjNo'] ?? '-';
             $row->is_json_valid = $row->rj_no == $row->rj_no_json;
-            $row->bg_check_json = $row->is_json_valid ? 'bg-green-100' : 'bg-red-100';
 
             /* Status text berdasarkan role */
             // BATAL HANYA DARI rj_status='F'. taskId99 = laporan batal antrean BPJS,
