@@ -344,30 +344,17 @@ new class extends Component {
 
         $statusColumn = DB::raw("NVL(h.rj_status, 'A')");
 
-        // Subquery lab/rad — scope ke RJ yg masuk date range agar tidak full-scan tabel besar.
-        // JOIN ke rstxn_rjhdrs membatasi baris yg dihitung hanya untuk rj_no di hari aktif.
-        $labSub = DB::table('lbtxn_checkuphdrs as l')
-            ->join('rstxn_rjhdrs as hd', 'hd.rj_no', '=', 'l.ref_no')
-            ->select('l.ref_no', DB::raw('COUNT(*) as lab_status'))
-            ->where('l.status_rjri', 'RJ')
-            ->where('l.checkup_status', '!=', 'B')
-            ->whereBetween('hd.rj_date', [$start, $end])
-            ->groupBy('l.ref_no');
-
-        $radSub = DB::table('rstxn_rjrads as r')
-            ->join('rstxn_rjhdrs as hd', 'hd.rj_no', '=', 'r.rj_no')
-            ->select('r.rj_no', DB::raw('COUNT(*) as rad_status'))
-            ->whereBetween('hd.rj_date', [$start, $end])
-            ->groupBy('r.rj_no');
-
+        // Kolom di sini = yang DITAMPILKAN daftar + yang dipakai filter/urut, tidak lebih.
+        // Paginate tetap menyortir seluruh pasien di tanggal itu, jadi yang mahal (CLOB
+        // JSON, hitungan lab/rad) TIDAK di sini — dihitung di rows() hanya untuk baris
+        // halaman aktif. CLOB di query ini dulu memicu ORA-01555 saat kunjungan lain
+        // sedang disimpan (kasus Pelayanan RJ 2026-10-26).
         $query = DB::table('rstxn_rjhdrs as h')
             ->join('rsmst_pasiens as p', 'p.reg_no', '=', 'h.reg_no')
             ->leftJoin('rsmst_polis as po', 'po.poli_id', '=', 'h.poli_id')
             ->leftJoin('rsmst_doctors as d', 'd.dr_id', '=', 'h.dr_id')
             ->leftJoin('rsmst_klaimtypes as k', 'k.klaim_id', '=', 'h.klaim_id')
-            ->leftJoinSub($labSub, 'lab', fn($j) => $j->on('lab.ref_no', '=', 'h.rj_no'))
-            ->leftJoinSub($radSub, 'rad', fn($j) => $j->on('rad.rj_no', '=', 'h.rj_no'))
-            ->select(['h.rj_no', DB::raw("to_char(h.rj_date,'dd/mm/yyyy hh24:mi:ss') as rj_date_display"), 'h.reg_no', 'p.reg_name', 'p.sex', 'p.address', 'p.nokartu_bpjs', DB::raw("to_char(p.birth_date,'dd/mm/yyyy') as birth_date"), 'h.no_antrian', 'h.poli_id', 'po.poli_desc', 'h.dr_id', 'd.dr_name', 'h.klaim_id', 'h.shift', 'h.rj_status', 'h.erm_status', 'h.vno_sep', DB::raw('COALESCE(lab.lab_status, 0) as lab_status'), DB::raw('COALESCE(rad.rad_status, 0) as rad_status'), 'h.datadaftarpolirj_json', 'k.klaim_desc', 'k.klaim_status'])
+            ->select(['h.rj_no', DB::raw("to_char(h.rj_date,'dd/mm/yyyy hh24:mi:ss') as rj_date_display"), 'h.reg_no', 'p.reg_name', 'p.sex', 'p.address', DB::raw("to_char(p.birth_date,'dd/mm/yyyy') as birth_date"), 'h.no_antrian', 'po.poli_desc', 'd.dr_name', 'h.klaim_id', 'h.shift', 'h.rj_status', 'h.vno_sep', 'k.klaim_desc', 'k.klaim_status'])
             ->whereBetween('h.rj_date', [$start, $end])
             ->orderBy('d.dr_name', 'desc')
             ->orderBy('h.rj_date', 'desc')
@@ -478,7 +465,41 @@ new class extends Component {
         // hanya di page 1 supaya tidak mengganggu page count.
         $paginator = $this->baseQuery()->paginate($this->itemsPerPage);
 
-        $rjRows = $paginator->getCollection()->map(fn($row) => $this->transformRjRow($row));
+        $rjNoHalaman = $paginator->getCollection()->pluck('rj_no')->all();
+
+        // CLOB JSON dibaca terpisah, hanya untuk baris halaman ini. Gagal sekaligus →
+        // transformRjRow mengambil ulang per baris; satu baris gagal tak menjatuhkan daftar.
+        $jsonPerRjNo = [];
+        try {
+            $jsonPerRjNo = DB::table('rstxn_rjhdrs')
+                ->whereIn('rj_no', $rjNoHalaman)
+                ->pluck('datadaftarpolirj_json', 'rj_no')
+                ->all();
+        } catch (\Throwable $e) {
+        }
+
+        $labPerRjNo = DB::table('lbtxn_checkuphdrs')
+            ->whereIn('ref_no', $rjNoHalaman)
+            ->where('status_rjri', 'RJ')
+            ->where('checkup_status', '!=', 'B')
+            ->groupBy('ref_no')
+            ->selectRaw('ref_no, COUNT(*) as jumlah')
+            ->pluck('jumlah', 'ref_no')
+            ->all();
+
+        $radPerRjNo = DB::table('rstxn_rjrads')
+            ->whereIn('rj_no', $rjNoHalaman)
+            ->groupBy('rj_no')
+            ->selectRaw('rj_no, COUNT(*) as jumlah')
+            ->pluck('jumlah', 'rj_no')
+            ->all();
+
+        $rjRows = $paginator->getCollection()->map(function ($row) use ($jsonPerRjNo, $labPerRjNo, $radPerRjNo) {
+            $row->lab_status = (int) ($labPerRjNo[$row->rj_no] ?? 0);
+            $row->rad_status = (int) ($radPerRjNo[$row->rj_no] ?? 0);
+
+            return $this->transformRjRow($row, $jsonPerRjNo);
+        });
 
         // ── FITUR "Menunggu Checkin" (pending booking MJKN) DINONAKTIFKAN SEMENTARA ──
         // Jangan dihapus — method queryPendingBookings()/transformPendingRow() tetap ada.
@@ -520,29 +541,25 @@ new class extends Component {
         return $paginator;
     }
 
-    private function transformRjRow($row)
+    private function transformRjRow($row, array $jsonPerRjNo)
     {
         $row->is_booking_pending = false;
         $row->berkas_uploaded = []; // seq_file berkas BPJS yang sudah di-upload
 
-        // Oracle CLOB di-fetch sebagai OCILob locator lazy; baca via helper
-        // yang tahan ORA-01555/ORA-22924 (locator basi setelah simpan SKDP save-all).
-        $jsonRaw = OracleLob::read(
-            $row->datadaftarpolirj_json ?? null,
-            'rstxn_rjhdrs', 'rj_no', $row->rj_no, 'datadaftarpolirj_json'
-        );
+        // Locator basi (ORA-01555/ORA-22924) → helper mengambil ulang per baris.
+        $jsonRaw = array_key_exists($row->rj_no, $jsonPerRjNo)
+            ? OracleLob::read($jsonPerRjNo[$row->rj_no], 'rstxn_rjhdrs', 'rj_no', $row->rj_no, 'datadaftarpolirj_json')
+            : rescue(fn() => OracleLob::toString(DB::table('rstxn_rjhdrs')->where('rj_no', $row->rj_no)->value('datadaftarpolirj_json')), '', false);
         $json = json_decode($jsonRaw ?: '{}', true) ?? [];
 
         // EMR completeness — weighted S15/O25/A25/P25/N10. Logic ada di EmrCompletenessRJTrait.
         $pct = $this->calculateEmrPercentRJ($json);
         $row->emr_percent = $pct['emr'];
-        $row->emr_sections = $pct['sections'];
         $row->eresep_percent = isset($json['eresep']) || isset($json['eresepRacikan']) ? 100 : 0;
         $row->task_id3 = $json['taskIdPelayanan']['taskId3'] ?? null;
         $row->task_id4 = $json['taskIdPelayanan']['taskId4'] ?? null;
         $row->task_id5 = $json['taskIdPelayanan']['taskId5'] ?? null;
         $row->task_id99 = $json['taskIdPelayanan']['taskId99'] ?? null;
-        $row->no_referensi = $json['noReferensi'] ?? null;
 
         // Keputusan skrining awal RJ — hanya tampilkan jika perlu eskalasi (IGD / Disegerakan).
         $row->screening_keputusan = $json['screening']['keputusan'] ?? null;
@@ -584,10 +601,8 @@ new class extends Component {
 
         $row->diagnosis = isset($json['diagnosis']) && is_array($json['diagnosis']) ? implode('# ', array_column($json['diagnosis'], 'icdX')) : '-';
         $row->diagnosis_free_text = $json['diagnosisFreeText'] ?? '-';
-        $row->diagnosis_detail = $json['diagnosis'] ?? null;
         $row->procedure = isset($json['procedure']) && is_array($json['procedure']) ? implode('# ', array_column($json['procedure'], 'procedureId')) : '-';
         $row->procedure_free_text = $json['procedureFreeText'] ?? '-';
-        $row->procedure_detail = $json['procedure'] ?? null;
 
         $row->status_resep = $json['statusResep']['status'] ?? null;
         $row->status_resep_label = $row->status_resep === 'DITUNGGU' ? 'Ditunggu' : ($row->status_resep === 'DITINGGAL' ? 'Ditinggal' : '-');
@@ -632,13 +647,11 @@ new class extends Component {
         $row->is_booking_pending = true;
         $row->no_antrian = (int) $row->no_antrian;
         $row->emr_percent = 0;
-        $row->emr_sections = ['s' => 0, 'o' => 0, 'a' => 0, 'p' => 0, 'n' => 0];
         $row->eresep_percent = 0;
         $row->task_id3 = null;
         $row->task_id4 = null;
         $row->task_id5 = null;
         $row->task_id99 = null;
-        $row->no_referensi = null;
         $row->masa_rujukan = null;
         $row->admin_user = '-';
         $row->tindak_lanjut = '-';
@@ -648,10 +661,8 @@ new class extends Component {
         $row->kontrol_detail = null;
         $row->diagnosis = '-';
         $row->diagnosis_free_text = '-';
-        $row->diagnosis_detail = null;
         $row->procedure = '-';
         $row->procedure_free_text = '-';
-        $row->procedure_detail = null;
         $row->status_resep = null;
         $row->status_resep_label = '-';
         $row->status_resep_color = 'gray';
@@ -666,7 +677,6 @@ new class extends Component {
         $row->klaim_status = 'BPJS';
         $row->vno_sep = '-';
         $row->rj_status = 'PENDING';
-        $row->erm_status = 'A';
         $row->lab_status = 0;
         $row->rad_status = 0;
         $row->shift = '-';

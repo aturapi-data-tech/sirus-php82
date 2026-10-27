@@ -159,56 +159,16 @@ new class extends Component {
 
         $statusColumn = DB::raw("NVL(h.erm_status, 'A')");
 
-        // Subquery lab/rad — scope ke RJ yg masuk date range agar tidak full-scan tabel besar.
-        // JOIN ke rstxn_rjhdrs membatasi baris yg dihitung hanya untuk rj_no di hari aktif
-        // (seragam dgn daftar-rj). Tanpa ini, tiap refresh-after-rj.saved memicu GROUP BY
-        // seluruh lbtxn_checkuphdrs / rstxn_rjrads.
-        $labSub = DB::table('lbtxn_checkuphdrs as l')
-            ->join('rstxn_rjhdrs as hd', 'hd.rj_no', '=', 'l.ref_no')
-            ->select('l.ref_no', DB::raw('COUNT(*) as lab_status'))
-            ->where('l.status_rjri', 'RJ')
-            ->where('l.checkup_status', '!=', 'B')
-            ->whereBetween('hd.rj_date', [$start, $end])
-            ->groupBy('l.ref_no');
-
-        $radSub = DB::table('rstxn_rjrads as r')
-            ->join('rstxn_rjhdrs as hd', 'hd.rj_no', '=', 'r.rj_no')
-            ->select('r.rj_no', DB::raw('COUNT(*) as rad_status'))
-            ->whereBetween('hd.rj_date', [$start, $end])
-            ->groupBy('r.rj_no');
-
-        // Subquery PRMRJ — sama polanya, tapi dua hal membedakannya:
-        //
-        // 1. Tabel rstxn_prmrjs BISA BELUM TERPASANG di sebagian lingkungan (itu
-        //    sebabnya PrmrjTrait punya checkPrmrjTable). Kalau di-join membabi buta,
-        //    seluruh daftar Pelayanan RJ ikut mati ORA-00942 — bukan cuma badge-nya.
-        //    Maka subquery ini hanya ikut bila tabelnya memang ada.
-        // 2. Tautan ke kunjungan tersimpan DI DALAM CLOB prmrj_json, dan Oracle di
-        //    sini tak mendukung JSON_VALUE. Jadi badge bertumpu pada reg_no —
-        //    "pasien ini punya PRMRJ", bukan "kunjungan ini punya PRMRJ". Itu juga
-        //    lebih berguna: PRMRJ memang profil berjalan milik pasien lintas kunjungan.
-        //
-        // COUNT(DISTINCT) wajib: join ke rstxn_rjhdrs menggandakan baris sebanyak
-        // kunjungan pasien dalam rentang tanggal.
-        $prmrjTabelAda = $this->prmrjTabelAda();
-
-        $prmrjSub = $prmrjTabelAda
-            ? DB::table('rstxn_prmrjs as pr')
-                ->join('rstxn_rjhdrs as hp', 'hp.reg_no', '=', 'pr.reg_no')
-                ->select('pr.reg_no', DB::raw('COUNT(DISTINCT pr.prmrj_no) as prmrj_status'))
-                ->whereBetween('hp.rj_date', [$start, $end])
-                ->groupBy('pr.reg_no')
-            : null;
-
+        // Kolom di sini = yang DITAMPILKAN daftar + yang dipakai filter/urut, tidak lebih.
+        // Query ini mencakup seluruh pasien di tanggal itu, jadi yang mahal (CLOB JSON,
+        // hitungan lab/rad/PRMRJ) TIDAK di sini — dihitung di rows() hanya untuk baris
+        // halaman aktif.
         $query = DB::table('rstxn_rjhdrs as h')
             ->join('rsmst_pasiens as p', 'p.reg_no', '=', 'h.reg_no')
             ->leftJoin('rsmst_polis as po', 'po.poli_id', '=', 'h.poli_id')
             ->leftJoin('rsmst_doctors as d', 'd.dr_id', '=', 'h.dr_id')
             ->leftJoin('rsmst_klaimtypes as k', 'k.klaim_id', '=', 'h.klaim_id')
-            ->leftJoinSub($labSub, 'lab', fn($join) => $join->on('lab.ref_no', '=', 'h.rj_no'))
-            ->leftJoinSub($radSub, 'rad', fn($join) => $join->on('rad.rj_no', '=', 'h.rj_no'))
-            ->when($prmrjTabelAda, fn($queryDaftar) => $queryDaftar->leftJoinSub($prmrjSub, 'prmrj', fn($join) => $join->on('prmrj.reg_no', '=', 'h.reg_no')))
-            ->select(['h.rj_no', DB::raw("to_char(h.rj_date,'dd/mm/yyyy hh24:mi:ss') as rj_date_display"), 'h.reg_no', 'p.reg_name', 'p.sex', 'p.address', DB::raw("to_char(p.birth_date,'dd/mm/yyyy') as birth_date"), 'h.no_antrian', 'h.poli_id', 'po.poli_desc', 'h.dr_id', 'd.dr_name', 'h.klaim_id', 'h.shift', 'h.rj_status', 'h.erm_status', 'h.vno_sep', DB::raw('COALESCE(lab.lab_status, 0) as lab_status'), DB::raw('COALESCE(rad.rad_status, 0) as rad_status'), DB::raw($prmrjTabelAda ? 'COALESCE(prmrj.prmrj_status, 0) as prmrj_status' : '0 as prmrj_status'), 'h.datadaftarpolirj_json', 'k.klaim_desc', 'k.klaim_status'])
+            ->select(['h.rj_no', DB::raw("to_char(h.rj_date,'dd/mm/yyyy hh24:mi:ss') as rj_date_display"), 'h.reg_no', 'p.reg_name', 'p.sex', 'p.address', DB::raw("to_char(p.birth_date,'dd/mm/yyyy') as birth_date"), 'h.no_antrian', 'po.poli_desc', 'd.dr_name', 'h.klaim_id', 'h.shift', 'h.rj_status', 'h.erm_status', 'h.vno_sep', 'k.klaim_desc', 'k.klaim_status'])
             ->whereBetween('h.rj_date', [$start, $end])
             ->where('h.klaim_id', '!=', 'KR') // Kronis (ambil obat) bukan kunjungan pelayanan — seragam dgn apotek/kasir/daftar-rj
             ->orderBy('d.dr_name', 'desc')
@@ -311,16 +271,64 @@ new class extends Component {
         $page = \Illuminate\Pagination\Paginator::resolveCurrentPage();
         $perPage = $this->itemsPerPage;
 
-        $pageRows = $all->slice(($page - 1) * $perPage, $perPage)->values()
-            ->map(function ($row) {
-                $row->is_booking_pending = false;
+        $pageRows = $all->slice(($page - 1) * $perPage, $perPage)->values();
 
-                // Oracle CLOB di-fetch sebagai OCILob locator lazy; baca via helper
-                // yang tahan ORA-01555/ORA-22924 (locator basi setelah simpan SKDP save-all).
-                $jsonRaw = OracleLob::read(
-                    $row->datadaftarpolirj_json ?? null,
-                    'rstxn_rjhdrs', 'rj_no', $row->rj_no, 'datadaftarpolirj_json'
-                );
+        // CLOB JSON SENGAJA tidak ikut query daftar: query itu mencakup seluruh pasien
+        // hari itu, dan bila satu kunjungan sedang di-UPDATE (simpan Surat Kontrol/SKDP)
+        // versi LOB lamanya bisa hilang → ORA-01555 di oci_fetch_array, seluruh daftar
+        // mati (2026-10-26). Di sini dibaca terpisah, hanya untuk baris halaman aktif.
+        $jsonPerRjNo = [];
+        try {
+            $jsonPerRjNo = DB::table('rstxn_rjhdrs')
+                ->whereIn('rj_no', $pageRows->pluck('rj_no')->all())
+                ->pluck('datadaftarpolirj_json', 'rj_no')
+                ->all();
+        } catch (\Throwable $e) {
+            // Gagal sekaligus → OracleLob::read di bawah mengambil ulang per baris.
+        }
+
+        $rjNoHalaman = $pageRows->pluck('rj_no')->all();
+
+        $labPerRjNo = DB::table('lbtxn_checkuphdrs')
+            ->whereIn('ref_no', $rjNoHalaman)
+            ->where('status_rjri', 'RJ')
+            ->where('checkup_status', '!=', 'B')
+            ->groupBy('ref_no')
+            ->selectRaw('ref_no, COUNT(*) as jumlah')
+            ->pluck('jumlah', 'ref_no')
+            ->all();
+
+        $radPerRjNo = DB::table('rstxn_rjrads')
+            ->whereIn('rj_no', $rjNoHalaman)
+            ->groupBy('rj_no')
+            ->selectRaw('rj_no, COUNT(*) as jumlah')
+            ->pluck('jumlah', 'rj_no')
+            ->all();
+
+        // PRMRJ bertumpu pada reg_no — "pasien ini punya PRMRJ" (tautan ke kunjungan ada
+        // di dalam CLOB, Oracle di sini tak punya JSON_VALUE). Tabelnya bisa belum
+        // terpasang di sebagian lingkungan → hanya ditanya bila ada.
+        $prmrjPerRegNo = $this->prmrjTabelAda()
+            ? DB::table('rstxn_prmrjs')
+                ->whereIn('reg_no', $pageRows->pluck('reg_no')->unique()->values()->all())
+                ->groupBy('reg_no')
+                ->selectRaw('reg_no, COUNT(DISTINCT prmrj_no) as jumlah')
+                ->pluck('jumlah', 'reg_no')
+                ->all()
+            : [];
+
+        $pageRows = $pageRows
+            ->map(function ($row) use ($jsonPerRjNo, $labPerRjNo, $radPerRjNo, $prmrjPerRegNo) {
+                $row->is_booking_pending = false;
+                $row->lab_status = (int) ($labPerRjNo[$row->rj_no] ?? 0);
+                $row->rad_status = (int) ($radPerRjNo[$row->rj_no] ?? 0);
+                $row->prmrj_status = (int) ($prmrjPerRegNo[$row->reg_no] ?? 0);
+
+                // Locator basi (ORA-01555/ORA-22924) → helper mengambil ulang per baris;
+                // satu baris gagal tidak menjatuhkan daftar.
+                $jsonRaw = array_key_exists($row->rj_no, $jsonPerRjNo)
+                    ? OracleLob::read($jsonPerRjNo[$row->rj_no], 'rstxn_rjhdrs', 'rj_no', $row->rj_no, 'datadaftarpolirj_json')
+                    : rescue(fn() => OracleLob::toString(DB::table('rstxn_rjhdrs')->where('rj_no', $row->rj_no)->value('datadaftarpolirj_json')), '', false);
                 $json = json_decode($jsonRaw ?: '{}', true) ?? [];
 
                 // EMR completeness — weighted S15/O25/A25/P25/N10. Logic ada di EmrCompletenessRJTrait.
@@ -328,14 +336,11 @@ new class extends Component {
                 // sesuai praktik klinis — dokter wajib explicit isi negatif, jangan dibiarkan kosong.
                 $pct = $this->calculateEmrPercentRJ($json);
                 $row->emr_percent = $pct['emr'];
-                $row->emr_sections = $pct['sections']; // detail per-section (S/O/A/P/N) untuk tooltip optional
                 $row->eresep_percent = isset($json['eresep']) || isset($json['eresepRacikan']) ? 100 : 0;
-                $row->task_id3 = $json['taskIdPelayanan']['taskId3'] ?? null;
                 $row->task_id4 = $json['taskIdPelayanan']['taskId4'] ?? null;
                 $row->task_id5 = $json['taskIdPelayanan']['taskId5'] ?? null;
                 $row->task_id6 = $json['taskIdPelayanan']['taskId6'] ?? null;
                 $row->task_id7 = $json['taskIdPelayanan']['taskId7'] ?? null;
-                $row->no_referensi = $json['noReferensi'] ?? null;
 
                 // Keputusan skrining awal RJ — hanya tampilkan jika perlu eskalasi (IGD / Disegerakan).
                 $row->screening_keputusan = $json['screening']['keputusan'] ?? null;
@@ -362,12 +367,8 @@ new class extends Component {
 
                 $row->diagnosis = isset($json['diagnosis']) && is_array($json['diagnosis']) ? implode('# ', array_column($json['diagnosis'], 'icdX')) : '-';
                 $row->diagnosis_free_text = $json['diagnosisFreeText'] ?? '-';
-                $row->diagnosis_detail = $json['diagnosis'] ?? null;
                 $row->procedure = isset($json['procedure']) && is_array($json['procedure']) ? implode('# ', array_column($json['procedure'], 'procedureId')) : '-';
                 $row->procedure_free_text = $json['procedureFreeText'] ?? '-';
-                $row->procedure_detail = $json['procedure'] ?? null;
-
-                $row->prmrj_status = (int) ($row->prmrj_status ?? 0);
 
                 $row->status_resep = $json['statusResep']['status'] ?? null;
                 $row->status_resep_label = $row->status_resep === 'DITUNGGU' ? 'Ditunggu' : ($row->status_resep === 'DITINGGAL' ? 'Ditinggal' : '-');
