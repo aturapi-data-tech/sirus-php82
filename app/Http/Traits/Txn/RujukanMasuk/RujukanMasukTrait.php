@@ -154,6 +154,7 @@ trait RujukanMasukTrait
                 'permintaan' => $isi['permintaan'] ?? [],
                 'disetujui' => $isi['disetujui'] ?? [],
                 'pendaftaran' => $isi['pendaftaran'] ?? [],
+                'rujukanResmi' => $isi['rujukanResmi'] ?? [],
                 'sudahDidaftarkan' => $sudah,
                 'urut' => $this->stempelWaktuRujukanMasuk((string) ($isi['disetujui']['waktu'] ?? '')),
             ];

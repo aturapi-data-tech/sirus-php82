@@ -14,7 +14,9 @@
 // Hanya jalur Rawat Inap & Rawat Darurat yang lewat sini. Rujukan rawat jalan
 // diorkestrasi BPJS (vclaim-sisrute-rest), tidak pernah muncul di kotak masuk ini.
 //
-// Sumber data MURNI API SATUSEHAT — tidak ada tabel lokal. Tiap panggilan
+// Dua tab: KOTAK MASUK (murni API SATUSEHAT) dan JANJI DISETUJUI (tabel lokal
+// RSTXN_RUJUKANMASUKS, komponen rujukan-masuk-janji — dimuat hanya saat tabnya
+// dibuka). Tab kotak masuk tidak punya tabel lokal; tiap panggilan
 // terekam di web_log_status (payload + response mentah) lewat SatuSehatRujukanTrait.
 // Karena tiap muat = 1 panggilan API (dan kuota staging pernah habis → 429),
 // muat ulang otomatis sengaja DEFAULT MATI.
@@ -45,6 +47,8 @@ new class extends Component {
     public string $filterStatus = ''; // '' (semua) | menunggu | accepted | rejected
     public string $filterJalur = ''; // '' (semua) | ranap | igd
     public string $searchKeyword = '';
+
+    public string $tabAktif = 'kotak-masuk'; // kotak-masuk | janji
 
     public bool $muatOtomatis = false;
     public string $waktuMuat = '';
@@ -145,6 +149,11 @@ new class extends Component {
         $daftarBaris[] = $permintaan;
         usort($daftarBaris, fn($barisPertama, $barisKedua) => strcmp($barisKedua['waktu'], $barisPertama['waktu']));
         $this->daftarPermintaan = $daftarBaris;
+    }
+
+    public function setTab(string $tab): void
+    {
+        $this->tabAktif = in_array($tab, ['kotak-masuk', 'janji'], true) ? $tab : 'kotak-masuk';
     }
 
     /** Reset = filter & pencarian kembali ke awal; data kotak masuk tidak ditarik ulang. */
@@ -265,12 +274,26 @@ new class extends Component {
 
     {{-- Pemicu muat ulang berkala dipisah jadi elemen sendiri: directive di dalam
          atribut adalah jebakan compiler Blade yang sudah pernah menggigit repo ini. --}}
-    @if ($muatOtomatis)
+    @if ($muatOtomatis && $tabAktif === 'kotak-masuk')
         <div wire:poll.60s="muatPermintaan" class="hidden"></div>
     @endif
 
     <div class="w-full h-[calc(100vh-5rem)] flex flex-col bg-surface-soft dark:bg-gray-800">
         <div class="flex flex-col flex-1 min-h-0 px-6 pt-2 pb-6">
+
+            {{-- TAB --}}
+            <x-tabs variant="underline">
+                <x-tab :active="$tabAktif === 'kotak-masuk'" color="blue" wire:click="setTab('kotak-masuk')">
+                    Kotak Masuk (SATUSEHAT)
+                </x-tab>
+                <x-tab :active="$tabAktif === 'janji'" color="emerald" wire:click="setTab('janji')">
+                    Janji Disetujui
+                </x-tab>
+            </x-tabs>
+
+            @if ($tabAktif === 'janji')
+                <livewire:pages::transaksi.rujukan.rujukan-masuk.rujukan-masuk-janji wire:key="rujukan-masuk-janji" />
+            @else
 
             {{-- TOOLBAR --}}
             <div
@@ -529,6 +552,8 @@ new class extends Component {
                     </table>
                 </div>
             </div>
+
+            @endif
 
         </div>
     </div>

@@ -1247,6 +1247,29 @@ trait SatuSehatRujukanTrait
     }
 
     /**
+     * Semua rujukan resmi (ServiceRequest) aktif yang DITUJUKAN ke RS kita.
+     *
+     * Satu panggilan untuk seluruh janji, bukan satu per janji — kuota staging
+     * pernah habis (429). Bentuk parameter ini TERBUKTI dipakai RS lain di grup
+     * resmi (22/05/26, RSIA Masyita: `performer=Organization/<org>&status=active
+     * &_count=100`, isinya muncul lengkap dengan supportingInfo → Task); Postman
+     * V30062026 sendiri hanya mencontohkan cari per nomor rujukan.
+     *
+     * Hasilnya disaring pemanggil lewat rujukanServiceRequestCocok() — performer
+     * kita saja tidak cukup untuk menempelkan rujukan ke janji tertentu.
+     * Batas 100 entri tanpa paging: cukup selama rujukan aktif ke kita masih
+     * puluhan; kalau Bundle membawa link 'next', sisanya belum terbaca.
+     */
+    protected function rujukanServiceRequestMasukAktif(): array
+    {
+        return $this->rujukanRequest(
+            'GET',
+            'ServiceRequest?performer=' . urlencode('Organization/' . $this->rujukanOrgId())
+                . '&status=active&_count=100'
+        );
+    }
+
+    /**
      * ServiceRequest dalam Bundle yang benar-benar milik permintaan ini.
      *
      * Kecocokan diukur pada tautan yang dibuat perujuk sendiri saat mengirim
