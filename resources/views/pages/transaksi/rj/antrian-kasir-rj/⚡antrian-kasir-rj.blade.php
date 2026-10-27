@@ -7,6 +7,7 @@ use Livewire\Attributes\On;
 use Livewire\Attributes\Session;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use App\Support\OracleLob;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 
 new class extends Component {
@@ -127,28 +128,22 @@ new class extends Component {
     {
         [$start, $end] = $this->dateRange();
 
-        // Sub-query lab/rad untuk badge "Laborat" / "Radiologi" (selaras pelayanan-rj)
-        $labSub = DB::table('lbtxn_checkuphdrs as l')
-            ->join('rstxn_rjhdrs as hd', 'hd.rj_no', '=', 'l.ref_no')
-            ->select('l.ref_no', DB::raw('COUNT(*) as lab_status'))
-            ->where('l.status_rjri', 'RJ')
-            ->where('l.checkup_status', '!=', 'B')
-            ->whereBetween('hd.rj_date', [$start, $end])
-            ->groupBy('l.ref_no');
-        $radSub = DB::table('rstxn_rjrads as r')
-            ->join('rstxn_rjhdrs as hd', 'hd.rj_no', '=', 'r.rj_no')
-            ->select('r.rj_no', DB::raw('COUNT(*) as rad_status'))
-            ->whereBetween('hd.rj_date', [$start, $end])
-            ->groupBy('r.rj_no');
+        // Kolom di sini = yang DITAMPILKAN daftar + yang dipakai filter/urut, tidak lebih.
+        // Query ini mencakup seluruh pasien di tanggal itu: CLOB JSON utuh dan hitungan
+        // lab/rad TIDAK diambil di sini (CLOB di query besar memicu ORA-01555 saat
+        // kunjungan lain disimpan — kasus Pelayanan RJ 2026-10-26). Urutan antrean butuh
+        // dua penanda dari JSON → dihitung di server dgn DBMS_LOB.INSTR, CLOB-nya tak ikut
+        // terkirim. taskId5 dibuat '' saat pendaftaran, jadi "terisi" = ada kunci bernilai
+        // string dan bukan string kosong.
+        $urutAdministrasi = DB::raw("CASE WHEN DBMS_LOB.INSTR(h.datadaftarpolirj_json, '\"AdministrasiRj\"') > 0 THEN 0 ELSE 1 END as urut_administrasi");
+        $urutKeluarPoli = DB::raw("CASE WHEN DBMS_LOB.INSTR(h.datadaftarpolirj_json, '\"taskId5\":\"') > 0 AND DBMS_LOB.INSTR(h.datadaftarpolirj_json, '\"taskId5\":\"\"') = 0 THEN 0 ELSE 1 END as urut_keluar_poli");
 
         $query = DB::table('rstxn_rjhdrs as h')
             ->join('rsmst_pasiens as p', 'p.reg_no', '=', 'h.reg_no')
             ->leftJoin('rsmst_polis as po', 'po.poli_id', '=', 'h.poli_id')
             ->leftJoin('rsmst_doctors as d', 'd.dr_id', '=', 'h.dr_id')
             ->leftJoin('rsmst_klaimtypes as k', 'k.klaim_id', '=', 'h.klaim_id')
-            ->leftJoinSub($labSub, 'lab', fn($j) => $j->on('lab.ref_no', '=', 'h.rj_no'))
-            ->leftJoinSub($radSub, 'rad', fn($j) => $j->on('rad.rj_no', '=', 'h.rj_no'))
-            ->select(['h.rj_no', DB::raw("to_char(h.rj_date,'dd/mm/yyyy hh24:mi:ss') as rj_date_display"), 'h.reg_no', 'p.reg_name', 'p.sex', 'p.address', DB::raw("to_char(p.birth_date,'dd/mm/yyyy') as birth_date"), 'h.no_antrian', 'h.poli_id', 'po.poli_desc', 'h.dr_id', 'd.dr_name', 'h.klaim_id', 'h.shift', 'h.rj_status', 'h.vno_sep', 'h.nobooking', 'h.datadaftarpolirj_json', 'k.klaim_desc', 'k.klaim_status', 'po.spesialis_status', 'h.waktu_masuk_apt', 'h.waktu_selesai_pelayanan', 'h.status_kronis', DB::raw('COALESCE(lab.lab_status, 0) as lab_status'), DB::raw('COALESCE(rad.rad_status, 0) as rad_status')])
+            ->select(['h.rj_no', DB::raw("to_char(h.rj_date,'dd/mm/yyyy hh24:mi:ss') as rj_date_display"), 'h.reg_no', 'p.reg_name', 'p.sex', 'p.address', DB::raw("to_char(p.birth_date,'dd/mm/yyyy') as birth_date"), 'h.no_antrian', 'po.poli_desc', 'd.dr_name', 'h.klaim_id', 'h.shift', 'h.rj_status', 'h.vno_sep', 'k.klaim_desc', 'k.klaim_status', 'h.status_kronis', $urutAdministrasi, $urutKeluarPoli])
             ->whereBetween('h.rj_date', [$start, $end])
             ->where(DB::raw("NVL(h.rj_status,'A')"), $this->filterStatus)
             ->where('h.klaim_id', '!=', 'KR');
@@ -191,12 +186,7 @@ new class extends Component {
         // Sort: pasien yang sudah Administrasi paling atas (siap dibayar),
         // lalu yang sudah keluar poli (taskId5), tie-breaker no_antrian poli asc.
         $sorted = $all
-            ->sortBy(function ($row) {
-                $json = json_decode($row->datadaftarpolirj_json ?? '{}', true);
-                $hasAdmin = isset($json['AdministrasiRj']) ? 0 : 1; // 0 = sudah administrasi (atas)
-                $hasTask5 = !empty($json['taskIdPelayanan']['taskId5']) ? 0 : 1; // 0 = sudah keluar poli
-                return [$hasAdmin, $hasTask5, (int) ($row->no_antrian ?? 0)];
-            })
+            ->sortBy(fn($row) => [(int) $row->urut_administrasi, (int) $row->urut_keluar_poli, (int) ($row->no_antrian ?? 0)])
             ->values();
 
         // Manual paginate
@@ -207,18 +197,48 @@ new class extends Component {
 
         $paginator = new \Illuminate\Pagination\LengthAwarePaginator($items, $total, $perPage, $page, ['path' => \Illuminate\Pagination\Paginator::resolveCurrentPath()]);
 
-        // Transform rows
-        $paginator->getCollection()->transform(function ($row) {
-            $json = json_decode($row->datadaftarpolirj_json ?? '{}', true);
+        // CLOB JSON + hitungan lab/rad hanya untuk baris halaman ini. Gagal sekaligus →
+        // ambil ulang per baris; satu baris gagal tak menjatuhkan daftar.
+        $rjNoHalaman = $items->pluck('rj_no')->all();
 
-            // Antrian kasir
-            $row->no_antrian_apotek = $json['noAntrianApotek']['noAntrian'] ?? 0;
-            $row->jenis_resep = $json['noAntrianApotek']['jenisResep'] ?? '-';
+        $jsonPerRjNo = [];
+        try {
+            $jsonPerRjNo = DB::table('rstxn_rjhdrs')
+                ->whereIn('rj_no', $rjNoHalaman)
+                ->pluck('datadaftarpolirj_json', 'rj_no')
+                ->all();
+        } catch (\Throwable $e) {
+        }
+
+        $labPerRjNo = DB::table('lbtxn_checkuphdrs')
+            ->whereIn('ref_no', $rjNoHalaman)
+            ->where('status_rjri', 'RJ')
+            ->where('checkup_status', '!=', 'B')
+            ->groupBy('ref_no')
+            ->selectRaw('ref_no, COUNT(*) as jumlah')
+            ->pluck('jumlah', 'ref_no')
+            ->all();
+
+        $radPerRjNo = DB::table('rstxn_rjrads')
+            ->whereIn('rj_no', $rjNoHalaman)
+            ->groupBy('rj_no')
+            ->selectRaw('rj_no, COUNT(*) as jumlah')
+            ->pluck('jumlah', 'rj_no')
+            ->all();
+
+        // Transform rows
+        $paginator->getCollection()->transform(function ($row) use ($jsonPerRjNo, $labPerRjNo, $radPerRjNo) {
+            $row->lab_status = (int) ($labPerRjNo[$row->rj_no] ?? 0);
+            $row->rad_status = (int) ($radPerRjNo[$row->rj_no] ?? 0);
+
+            $jsonRaw = array_key_exists($row->rj_no, $jsonPerRjNo)
+                ? OracleLob::read($jsonPerRjNo[$row->rj_no], 'rstxn_rjhdrs', 'rj_no', $row->rj_no, 'datadaftarpolirj_json')
+                : rescue(fn() => OracleLob::toString(DB::table('rstxn_rjhdrs')->where('rj_no', $row->rj_no)->value('datadaftarpolirj_json')), '', false);
+            $json = json_decode($jsonRaw ?: '{}', true) ?? [];
 
             // E-Resep
-            $row->has_eresep = isset($json['eresep']) ? 1 : 0;
             $row->has_eresep_racikan = isset($json['eresepRacikan']) ? 1 : 0;
-            $row->eresep_count = $row->has_eresep + $row->has_eresep_racikan;
+            $row->eresep_count = (isset($json['eresep']) ? 1 : 0) + $row->has_eresep_racikan;
 
             // Task IDs
             $row->task_id5 = $json['taskIdPelayanan']['taskId5'] ?? null;
