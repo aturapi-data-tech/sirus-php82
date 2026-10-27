@@ -4,8 +4,11 @@ namespace App\Providers;
 
 use App\Services\AppMenu;
 use App\Support\AksiRole;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
@@ -31,6 +34,12 @@ class AppServiceProvider extends ServiceProvider
             URL::forceScheme('https');
         }
 
+        // Rate limiter API Mobile JKN (route di bootstrap/app.php, middleware throttle:mobile-jkn).
+        // WAJIB di sini, bukan di callback `then:` withRouting: callback itu tidak dijalankan saat
+        // route di-cache (php artisan optimize / route:cache) → "Rate limiter [mobile-jkn] is not
+        // defined" dan SEMUA request Mobile JKN gagal 500 (kejadian 2026-10-24, 582× sehari).
+        RateLimiter::for('mobile-jkn', fn (Request $request) => Limit::perMinute(60)->by($request->ip()));
+
         // Gate aksi yang dibatasi — daftar role dari SATU sumber berklaster
         // (App\Support\AksiRole). Ubah role cukup di file itu; nama Gate di bawah
         // yang dipakai blade (@can) & server (->can()) tidak perlu ikut berubah.
@@ -52,6 +61,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('transaksi.batalPenerimaan', fn ($user) => $user->hasAnyRole(AksiRole::TRANSAKSI_BATAL_PENERIMAAN));
         Gate::define('rj.ubahDataKunjungan', fn ($user) => $user->hasAnyRole(AksiRole::RJ_UBAH_DATA_KUNJUNGAN));
         Gate::define('ugd.ubahDataKunjungan', fn ($user) => $user->hasAnyRole(AksiRole::UGD_UBAH_DATA_KUNJUNGAN));
+        Gate::define('ri.ubahDataKunjungan', fn ($user) => $user->hasAnyRole(AksiRole::RI_UBAH_DATA_KUNJUNGAN));
         Gate::define('ri.pindahKamar', fn ($user) => $user->hasAnyRole(AksiRole::RI_PINDAH_KAMAR));
         Gate::define('ri.resetAdministrasi', fn ($user) => $user->hasAnyRole(AksiRole::RI_RESET_ADMINISTRASI));
 

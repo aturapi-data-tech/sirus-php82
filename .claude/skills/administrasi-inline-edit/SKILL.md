@@ -74,6 +74,12 @@ Maka aksi lain yang menghitung ulang `day` wajib memakai `max(1, ROUND(selesai -
 juga. Memakai `max(0, ...)` membuat koreksi jam pada kamar transit (mis. UGD 7 jam)
 menurunkan Hari 1 → 0 dan **menghapus tagihan satu hari tanpa disadari**.
 
+**Pengecualian: Hari 0 manual dipertahankan.** Hari 0 hanya lahir dari kolom Hari
+(`updateDay`) = keputusan sadar "kamar transit, tak ditagih". Ketiga penulis ulang —
+tutup kamar di Pindah Kamar, Proses Tgl Pulang (kasir-ri), edit tanggal (room-ri) —
+membaca `day` lama dulu: bila 0, tulis 0; selain itu rumus `max(1, ...)` seperti biasa.
+Dulu 0 ditimpa jadi 1 diam-diam (keluhan user 2026-10-24).
+
 Aturannya umum: sebelum menulis kolom turunan, cari dulu proses lain yang menulis
 kolom yang sama dan tiru rumusnya persis. Beda rumus antar-jalur = data tidak konsisten
 tergantung lewat pintu mana user masuk.

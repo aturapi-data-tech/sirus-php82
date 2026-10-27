@@ -1,5 +1,5 @@
 <?php
-// resources/views/pages/transaksi/ugd/administrasi-ugd/ubah-data-kunjungan-ugd-actions.blade.php
+// resources/views/pages/transaksi/ugd/antrian-kasir-ugd/ubah-data-kunjungan-ugd-actions.blade.php
 //
 // Komponen TERSENDIRI untuk kasir: mengoreksi TANGGAL, SHIFT, dan KLAIM kunjungan UGD selama
 // pasien masih dalam pelayanan (rj_status 'A'). Di form Daftar UGD tanggal & shift terkunci di

@@ -3,9 +3,7 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
-use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
@@ -21,7 +19,8 @@ return Application::configure(basePath: dirname(__DIR__))
             if (! $hostMobileJkn) {
                 return;
             }
-            RateLimiter::for('mobile-jkn', fn (Request $request) => Limit::perMinute(60)->by($request->ip()));
+            // Rate limiter 'mobile-jkn' didaftarkan di AppServiceProvider::boot() — callback ini
+            // dilewati saat route di-cache, jadi limiter tak boleh didefinisikan di sini.
             Route::domain($hostMobileJkn)
                 ->middleware(['api', 'throttle:mobile-jkn'])
                 ->name('mobilejkn.')
