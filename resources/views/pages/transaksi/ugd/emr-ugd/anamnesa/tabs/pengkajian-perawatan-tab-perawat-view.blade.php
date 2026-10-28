@@ -140,18 +140,10 @@
             <x-input-error :messages="$errors->get('anamnesa.keluhanUtama.keluhanUtama')" class="mt-1" />
         </div>
 
-        {{-- SNOMED CT — Keluhan Utama (untuk Satu Sehat) --}}
-        <div>
-            <livewire:lov.snomed.lov-snomed
-                target="keluhanUtamaSnomed"
-                label="Kode SNOMED Keluhan Utama (Satu Sehat)"
-                placeholder="Ketik keluhan dalam Bahasa Indonesia / Inggris..."
-                valueSet="condition-code"
-                :initialSnomedCode="$anamnesa['keluhanUtama']['snomedCode'] ?? null"
-                :disabled="$isFormLocked"
-                wire:key="lov-snomed-keluhan-ugd-{{ $rjNo ?? 'new' }}-{{ $renderVersions['modal-anamnesa-ugd'] ?? 0 }}"
-            />
-        </div>
+        <p class="text-xs text-muted dark:text-gray-400">
+            Kode SNOMED keluhan utama untuk Satu Sehat diisi sesudah pelayanan lewat menu
+            <span class="font-semibold">Coding SATUSEHAT</span> (titik-3 Pelayanan / Daftar UGD).
+        </p>
 
     </div>
 </x-border-form>

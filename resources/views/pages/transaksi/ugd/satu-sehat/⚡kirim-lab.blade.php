@@ -273,6 +273,10 @@ new class extends Component {
                             'effectiveDate' => $waktu,
                             'category' => [['coding' => [['system' => 'http://terminology.hl7.org/CodeSystem/observation-category', 'code' => 'laboratory', 'display' => 'Laboratory']]]],
                             'code' => ['system' => 'http://loinc.org', 'code' => $loinc, 'display' => $item->loinc_display ?: $item->clabitem_desc],
+                            // Playbook IGD 12.4: hasil menunjuk order & spesimennya.
+                            'basedOn' => ["ServiceRequest/{$serviceRequestId}"],
+                            'specimen' => $specimenId ? "Specimen/{$specimenId}" : null,
+                            'issued' => $waktu,
                         ];
                         if (is_numeric(str_replace(',', '.', $result))) {
                             $unit = trim((string) ($item->unit_desc ?? '')) ?: '1';
@@ -387,7 +391,7 @@ new class extends Component {
         <div class="flex items-center gap-3">
             <div
                 class="flex items-center justify-center w-8 h-8 rounded-full {{ $count > 0 ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-surface-soft text-muted-soft dark:bg-gray-800 dark:text-gray-500' }}">
-                <span class="text-sm font-bold">7</span>
+                <span class="text-sm font-bold">15</span>
             </div>
             <div>
                 <div class="font-semibold text-ink dark:text-gray-100">Penunjang Lab</div>

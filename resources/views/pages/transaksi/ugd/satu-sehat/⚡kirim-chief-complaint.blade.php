@@ -1,6 +1,6 @@
 <?php
 // resources/views/pages/transaksi/ugd/satu-sehat/kirim-chief-complaint.blade.php
-// Kirim Keluhan Utama (Condition / problem-list-item, SNOMED CT) — UGD.
+// Kirim Keluhan Utama (Condition / kategori kemkes chief-complaint, SNOMED CT) — UGD, Playbook IGD 4a.
 // Port dari RJ. Sumber: anamnesa.keluhanUtama.{keluhanUtama, snomedCode, snomedDisplayEn, snomedDisplayId}.
 
 use Livewire\Component;
@@ -123,7 +123,7 @@ new class extends Component {
             $snomedCode  = trim((string) ($keluhanUtama['snomedCode'] ?? ''));
 
             if ($keluhanText === '') { $this->dispatch('toast', type: 'error', message: 'Keluhan utama belum diisi di anamnesa.'); return; }
-            if ($snomedCode === '') { $this->dispatch('toast', type: 'error', message: 'Kode SNOMED Keluhan Utama belum diisi di anamnesa (wajib utk Satu Sehat).'); return; }
+            if ($snomedCode === '') { $this->dispatch('toast', type: 'error', message: 'Kode SNOMED Keluhan Utama belum diisi — isi lewat menu Coding SATUSEHAT (wajib utk Satu Sehat).'); return; }
 
             $ugdDate = $this->parseDate($dataUGD['rjDate'] ?? '');
 
@@ -134,6 +134,11 @@ new class extends Component {
                 'snomed_display' => $keluhanUtama['snomedDisplayEn'] ?? '',
                 'complaint_text' => $keluhanUtama['snomedDisplayId'] ?? $keluhanText,
                 'recordedDate'   => $ugdDate->toIso8601String(),
+                // Playbook IGD 4a, disamakan dgn alur apikesehatan.com (pola RJ 3a):
+                'kategori'       => 'chief-complaint',
+                'onsetDate'      => $ugdDate->toIso8601String(),
+                'recorderId'     => (string) (DB::table('rsmst_doctors')->where('dr_id', $dataUGD['drId'] ?? '')->value('dr_uuid') ?? ''),
+                'note'           => $keluhanText,
             ]);
 
             if (empty($respons['id'])) { $this->dispatch('toast', type: 'error', message: 'Keluhan utama gagal: respons tanpa id.'); return; }
@@ -178,7 +183,7 @@ new class extends Component {
         <div class="flex items-center gap-3">
             <div
                 class="flex items-center justify-center w-8 h-8 rounded-full {{ $count > 0 ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-surface-soft text-muted-soft dark:bg-gray-800 dark:text-gray-500' }}">
-                <span class="text-sm font-bold">10</span>
+                <span class="text-sm font-bold">7</span>
             </div>
             <div>
                 <div class="font-semibold text-ink dark:text-gray-100">Chief Complaint</div>
@@ -204,5 +209,5 @@ new class extends Component {
 
     <x-satu-sehat.pratinjau :terbuka="$pratinjauTerbuka"
         :baris="$pratinjauTerbuka ? $this->pratinjau : []"
-        kosong="Keluhan utama atau kode SNOMED-nya belum diisi di anamnesa — Kirim akan ditolak." />
+        kosong="Keluhan utama (EMR) atau kode SNOMED-nya (Coding SATUSEHAT) belum diisi — Kirim akan ditolak." />
 </div>

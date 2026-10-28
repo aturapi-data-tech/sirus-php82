@@ -23,6 +23,18 @@
             <x-input-error :messages="$errors->get('perencanaan.tindakLanjut.keteranganTindakLanjut')" class="mt-1" />
         </div>
 
+        {{-- Kondisi Saat Keluar (Playbook IGD bab 25) — dikirim ke Satu Sehat. Buka-tutup seperti
+             Status Psikiatri: tertutup, terbuka sendiri bila sudah dipilih. --}}
+        <x-border-form :title="__('Kondisi Saat Keluar')" :collapsible="true" padding="p-3"
+            :open="filled($perencanaan['kondisiPulang']['kondisiPulang'] ?? null)">
+            <div class="flex flex-wrap gap-x-4 gap-y-1">
+                @foreach (array_keys(\App\Support\Terminologi\KondisiPulang::OPTIONS) as $kondisi)
+                    <x-radio-button :label="$kondisi" :value="$kondisi" name="kondisiPulang-ugd"
+                        wire:model.live="perencanaan.kondisiPulang.kondisiPulang" :disabled="$isFormLocked" />
+                @endforeach
+            </div>
+        </x-border-form>
+
         {{-- Rujukan Antar RS — tampil hanya jika Tindak Lanjut = Rujuk --}}
         @if (($perencanaan['tindakLanjut']['tindakLanjut'] ?? '') === 'Rujuk')
             <div class="pt-2 border-t border-hairline-soft dark:border-gray-700">

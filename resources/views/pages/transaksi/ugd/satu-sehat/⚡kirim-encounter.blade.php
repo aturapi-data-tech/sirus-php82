@@ -11,6 +11,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
 use App\Http\Traits\SATUSEHAT\EncounterTrait;
+use App\Support\Terminologi\DischargeDisposition;
 
 new class extends Component {
     use EmrUGDTrait, EncounterTrait;
@@ -30,6 +31,24 @@ new class extends Component {
      * basis data — kalau kosong, di situlah Kirim akan berhenti, dan pratinjau ini
      * memperlihatkan sebabnya sebelum tombol ditekan.
      */
+    /**
+     * Cara keluar yang akan ikut saat Finish (dari Tindak Lanjut di Perencanaan UGD).
+     * null = belum diisi → kartu memperingatkan SEBELUM tombol Finish ditekan.
+     */
+    #[Computed]
+    public function caraKeluar(): ?string
+    {
+        if (empty($this->rjNo)) {
+            return null;
+        }
+
+        $tindakLanjut = $this->findDataUGD($this->rjNo)['perencanaan']['tindakLanjut'] ?? [];
+
+        return DischargeDisposition::gawatDarurat(
+            $tindakLanjut['tindakLanjut'] ?? null, $tindakLanjut['keteranganTindakLanjut'] ?? null
+        )['text'] ?? null;
+    }
+
     #[Computed]
     public function pratinjau(): array
     {
@@ -218,12 +237,25 @@ new class extends Component {
             $encounterTersimpan = $this->siapkanFinishEncounter(
                 $this->getEncounter($satuSehat['encounterId']), $akhirIso, $conditionIdList
             );
+
+            // Cara keluar (Playbook IGD bab 26–27) dari Tindak Lanjut di Perencanaan.
+            // Kosong/tak dikenal → field TIDAK diisi (jangan menebak), tapi dilaporkan.
+            $tindakLanjut = $dataUGD['perencanaan']['tindakLanjut'] ?? [];
+            $caraKeluar = DischargeDisposition::gawatDarurat(
+                $tindakLanjut['tindakLanjut'] ?? null, $tindakLanjut['keteranganTindakLanjut'] ?? null
+            );
+            if ($caraKeluar !== null) {
+                $encounterTersimpan['hospitalization']['dischargeDisposition'] = $caraKeluar;
+            }
+
             $this->makeRequest('put', "Encounter/{$satuSehat['encounterId']}", $encounterTersimpan);
 
             $satuSehat['encounterFinished'] = true;
 
             $this->saveResult($rjNo, $satuSehat);
-            $this->dispatch('toast', type: 'success', message: 'Encounter finished.');
+            $caraKeluar !== null
+                ? $this->dispatch('toast', type: 'success', message: 'Encounter finished — cara keluar: ' . $caraKeluar['text'] . '.')
+                : $this->dispatch('toast', type: 'warning', message: 'Encounter finished, tapi TANPA cara keluar: Tindak Lanjut di Perencanaan belum diisi.');
             $this->dispatch('ugd-satu-sehat.refresh', rjNo: $rjNo);
         } catch (\Throwable $e) {
             $this->dispatch('toast', type: 'error', message: 'Finish Encounter gagal: ' . $e->getMessage());
@@ -272,6 +304,13 @@ new class extends Component {
                     <div class="mt-1 font-mono text-xs text-success dark:text-success">
                         {{ $encounterFinished ? 'finished' : ($encounterInProgress ? 'in-progress' : 'arrived') }}
                     </div>
+                    @if (!$encounterFinished)
+                        @if ($this->caraKeluar)
+                            <div class="text-xs text-body dark:text-gray-300">Cara keluar: {{ $this->caraKeluar }}</div>
+                        @else
+                            <div class="text-xs text-warning-deep dark:text-amber-200">Cara keluar kosong — isi Tindak Lanjut di Perencanaan EMR dulu.</div>
+                        @endif
+                    @endif
                 @endif
             </div>
         </div>

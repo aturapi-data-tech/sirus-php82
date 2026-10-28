@@ -29,10 +29,11 @@ new class extends Component {
      * Mengubah urutan di sini berarti mengubah perilaku kirim, bukan tata letak.
      */
     private const URUTAN_KIRIM = [
-        'encounter', 'condition', 'observation', 'procedure', 'medication-request',
-        'medication-dispense', 'lab', 'radiologi', 'clinical-impression',
-        'chief-complaint', 'allergy', 'penilaian', 'nyeri-kesadaran', 'telaah-resep',
-        'encounter-selesai', 'resume-medis',
+        'encounter', 'kedatangan', 'condition', 'observation', 'procedure', 'medication-request',
+        'chief-complaint', 'riwayat-penyakit', 'riwayat-keluarga', 'riwayat-pengobatan',
+        'riwayat-perjalanan', 'allergy', 'medication-dispense', 'pemberian-obat', 'lab', 'radiologi',
+        'clinical-impression', 'penilaian', 'nyeri-kesadaran', 'status-psikologis', 'telaah-resep',
+        'rencana-tindak-lanjut', 'kondisi-pulang', 'encounter-selesai', 'resume-medis',
     ];
 
     /** Sisa langkah yang belum dijalankan; kosong = tidak ada rantai berjalan. */
@@ -220,7 +221,7 @@ new class extends Component {
                 @else
                     <x-confirm-button variant="primary" action="kirimSemua()"
                         title="Kirim semua langkah ke SATUSEHAT?"
-                        message="14 langkah dijalankan berurutan mulai dari Encounter. Langkah yang datanya belum lengkap akan ditolak dan dilewati — rantai tetap lanjut. Kiriman yang sudah berangkat TIDAK bisa dibatalkan."
+                        message="Semua langkah dijalankan berurutan mulai dari Encounter. Langkah yang datanya belum lengkap akan ditolak dan dilewati — rantai tetap lanjut. Kiriman yang sudah berangkat TIDAK bisa dibatalkan."
                         confirmText="Ya, Kirim Semua"
                         wire:key="kirim-semua-ugd-{{ $rjNo ?? 'none' }}">
                         <span class="inline-flex items-center gap-1.5">
@@ -253,6 +254,8 @@ new class extends Component {
                 <div class="grid items-start max-w-7xl gap-3 mx-auto grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
                     <livewire:pages::transaksi.ugd.satu-sehat.kirim-encounter :rjNo="$rjNo"
                         wire:key="ss-encounter-ugd-{{ $rjNo ?? 'none' }}" />
+                    <livewire:pages::transaksi.ugd.satu-sehat.kirim-kedatangan :rjNo="$rjNo"
+                        wire:key="ss-kedatangan-ugd-{{ $rjNo ?? 'none' }}" />
                     <livewire:pages::transaksi.ugd.satu-sehat.kirim-condition :rjNo="$rjNo"
                         wire:key="ss-condition-ugd-{{ $rjNo ?? 'none' }}" />
                     <livewire:pages::transaksi.ugd.satu-sehat.kirim-observation :rjNo="$rjNo"
@@ -261,24 +264,40 @@ new class extends Component {
                         wire:key="ss-procedure-ugd-{{ $rjNo ?? 'none' }}" />
                     <livewire:pages::transaksi.ugd.satu-sehat.kirim-medication-request :rjNo="$rjNo"
                         wire:key="ss-medication-request-ugd-{{ $rjNo ?? 'none' }}" />
+                    <livewire:pages::transaksi.ugd.satu-sehat.kirim-chief-complaint :rjNo="$rjNo"
+                        wire:key="ss-chief-complaint-ugd-{{ $rjNo ?? 'none' }}" />
+                    <livewire:pages::transaksi.ugd.satu-sehat.kirim-riwayat-penyakit :rjNo="$rjNo"
+                        wire:key="ss-riwayat-penyakit-ugd-{{ $rjNo ?? 'none' }}" />
+                    <livewire:pages::transaksi.ugd.satu-sehat.kirim-riwayat-keluarga :rjNo="$rjNo"
+                        wire:key="ss-riwayat-keluarga-ugd-{{ $rjNo ?? 'none' }}" />
+                    <livewire:pages::transaksi.ugd.satu-sehat.kirim-riwayat-pengobatan :rjNo="$rjNo"
+                        wire:key="ss-riwayat-pengobatan-ugd-{{ $rjNo ?? 'none' }}" />
+                    <livewire:pages::transaksi.ugd.satu-sehat.kirim-riwayat-perjalanan :rjNo="$rjNo"
+                        wire:key="ss-riwayat-perjalanan-ugd-{{ $rjNo ?? 'none' }}" />
+                    <livewire:pages::transaksi.ugd.satu-sehat.kirim-allergy :rjNo="$rjNo"
+                        wire:key="ss-allergy-ugd-{{ $rjNo ?? 'none' }}" />
                     <livewire:pages::transaksi.ugd.satu-sehat.kirim-medication-dispense :rjNo="$rjNo"
                         wire:key="ss-medication-dispense-ugd-{{ $rjNo ?? 'none' }}" />
+                    <livewire:pages::transaksi.ugd.satu-sehat.kirim-pemberian-obat :rjNo="$rjNo"
+                        wire:key="ss-pemberian-obat-ugd-{{ $rjNo ?? 'none' }}" />
                     <livewire:pages::transaksi.ugd.satu-sehat.kirim-lab :rjNo="$rjNo"
                         wire:key="ss-lab-ugd-{{ $rjNo ?? 'none' }}" />
                     <livewire:pages::transaksi.ugd.satu-sehat.kirim-radiologi :rjNo="$rjNo"
                         wire:key="ss-radiologi-ugd-{{ $rjNo ?? 'none' }}" />
                     <livewire:pages::transaksi.ugd.satu-sehat.kirim-clinical-impression :rjNo="$rjNo"
                         wire:key="ss-clinical-impression-ugd-{{ $rjNo ?? 'none' }}" />
-                    <livewire:pages::transaksi.ugd.satu-sehat.kirim-chief-complaint :rjNo="$rjNo"
-                        wire:key="ss-chief-complaint-ugd-{{ $rjNo ?? 'none' }}" />
-                    <livewire:pages::transaksi.ugd.satu-sehat.kirim-allergy :rjNo="$rjNo"
-                        wire:key="ss-allergy-ugd-{{ $rjNo ?? 'none' }}" />
                     <livewire:pages::transaksi.ugd.satu-sehat.kirim-penilaian :rjNo="$rjNo"
                         wire:key="ss-penilaian-ugd-{{ $rjNo ?? 'none' }}" />
                     <livewire:pages::transaksi.ugd.satu-sehat.kirim-nyeri-kesadaran :rjNo="$rjNo"
                         wire:key="ss-nyeri-kesadaran-ugd-{{ $rjNo ?? 'none' }}" />
+                    <livewire:pages::transaksi.ugd.satu-sehat.kirim-status-psikologis :rjNo="$rjNo"
+                        wire:key="ss-status-psikologis-ugd-{{ $rjNo ?? 'none' }}" />
                     <livewire:pages::transaksi.ugd.satu-sehat.kirim-telaah-resep :rjNo="$rjNo"
                         wire:key="ss-telaah-resep-ugd-{{ $rjNo ?? 'none' }}" />
+                    <livewire:pages::transaksi.ugd.satu-sehat.kirim-rencana-tindak-lanjut :rjNo="$rjNo"
+                        wire:key="ss-rencana-tindak-lanjut-ugd-{{ $rjNo ?? 'none' }}" />
+                    <livewire:pages::transaksi.ugd.satu-sehat.kirim-kondisi-pulang :rjNo="$rjNo"
+                        wire:key="ss-kondisi-pulang-ugd-{{ $rjNo ?? 'none' }}" />
 
                     {{-- Resume medis dikirim SESUDAH encounter finished (playbook IGD),
                          jadi kartunya paling bawah. Susunan section IGD beda dari RJ. --}}

@@ -146,4 +146,39 @@ class DischargeDisposition
             'text' => $teks,
         ];
     }
+
+    /**
+     * Pilihan khusus UGD di luar peta rawat jalan. "Meninggal" = `exp` (alur IGD apikesehatan.com);
+     * KRS & APS = nilai daftar opsi LAMA yang masih tersimpan di record UGD lama (lihat catatan
+     * tindakLanjutOptions di rm-perencanaan-ugd-actions). Kode diverifikasi tx.fhir.org 2026-10-28.
+     */
+    private const GAWAT_DARURAT = [
+        'Meninggal' => ['code' => 'exp',     'display' => 'Expired',             'teks' => 'Meninggal'],
+        'KRS'       => ['code' => 'home',    'display' => 'Home',                'teks' => 'Pulang (KRS)'],
+        'APS'       => ['code' => 'aadvice', 'display' => 'Left against advice', 'teks' => 'Pulang atas permintaan sendiri (APS)'],
+    ];
+
+    /**
+     * Tindak Lanjut UGD (`perencanaan.tindakLanjut.tindakLanjut`) → HL7 discharge-disposition —
+     * Playbook IGD bab 26–27. Pilihan yang sama dengan RJ memakai peta rawat jalan supaya RJ &
+     * UGD tak berbeda diam-diam; sisanya dari GAWAT_DARURAT.
+     */
+    public static function gawatDarurat(?string $tindakLanjut, ?string $keterangan = null): ?array
+    {
+        $peta = self::GAWAT_DARURAT[trim((string) $tindakLanjut)] ?? null;
+        if ($peta === null) {
+            return self::rawatJalan($tindakLanjut, $keterangan);
+        }
+
+        $keterangan = trim((string) $keterangan);
+
+        return [
+            'coding' => [[
+                'system'  => 'http://terminology.hl7.org/CodeSystem/discharge-disposition',
+                'code'    => $peta['code'],
+                'display' => $peta['display'],
+            ]],
+            'text' => $peta['teks'] . ($keterangan !== '' ? ' — ' . $keterangan : ''),
+        ];
+    }
 }

@@ -133,7 +133,12 @@ new class extends Component {
 
             $orgId       = env('SATUSEHAT_ORGANIZATION_ID');
             $patientName = $dataUGD['regName'] ?? '';
-            $nowIso      = Carbon::now()->toIso8601String();
+            // Jam layanan apotek yang sebenarnya (task 6 = resep disiapkan, task 7 = obat diserahkan),
+            // bukan jam petugas mengklik; kosong → jam sekarang (perilaku lama). Pola RJ.
+            $task = $dataUGD['taskIdPelayanan'] ?? [];
+            $nowIso = Carbon::now()->toIso8601String();
+            $jamSiapIso = filled($task['taskId6'] ?? null) ? $this->parseDate((string) $task['taskId6'])->toIso8601String() : $nowIso;
+            $jamSerahIso = filled($task['taskId7'] ?? null) ? $this->parseDate((string) $task['taskId7'])->toIso8601String() : $nowIso;
 
             // Sumber pasangan resep→penyerahan: peta yang dicatat saat MedicationRequest
             // dikirim. Sebelumnya dipasangkan lewat URUTAN daftar — geser satu item saja,
@@ -183,7 +188,7 @@ new class extends Component {
                     'medicationTypeDisplay' => $adalahRacikan ? 'Compound' : 'Non-compound',
                     'patientId' => $patientId, 'patientName' => $patientName, 'encounterId' => $satuSehat['encounterId'],
                     'status' => 'completed', 'category' => 'outpatient',
-                    'whenPrepared' => $nowIso, 'whenHandedOver' => $nowIso,
+                    'whenPrepared' => $jamSiapIso, 'whenHandedOver' => $jamSerahIso,
                     'performer' => [['actor' => ['reference' => "Practitioner/{$performerId}"]]],
                     'dosageInstruction' => [],
                     'authorizingPrescription' => ['reference' => "MedicationRequest/{$item['id']}"],
@@ -191,7 +196,8 @@ new class extends Component {
                     // KirimRawatJalanTrait). CodeSystem kfa-satuan DITOLAK SATUSEHAT:
                     // "Invalid coding system ... kfa-satuan (RuleNumber: 10050)".
                     'quantity' => ['value' => $quantity, 'unit' => 'Tablet', 'system' => 'http://terminology.hl7.org/CodeSystem/v3-orderableDrugForm', 'code' => 'TAB'],
-                    'daysSupply' => ['value' => 1, 'unit' => 'Hari', 'system' => 'http://unitsofmeasure.org', 'code' => 'd'],
+                    // daysSupply TIDAK dikirim — dulu di-hardcode 1 hari (angka karangan). Contoh alur
+                    // apikesehatan.com pun tak mengirimnya.
                     'receiver' => ['reference' => "Patient/{$patientId}", 'display' => $patientName],
                 ]);
                 if (!empty($respons['id'])) $satuSehat['medicationDispenseIds'][] = $respons['id'];
@@ -246,7 +252,7 @@ new class extends Component {
         <div class="flex items-center gap-3">
             <div
                 class="flex items-center justify-center w-8 h-8 rounded-full {{ $count > 0 ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-surface-soft text-muted-soft dark:bg-gray-800 dark:text-gray-500' }}">
-                <span class="text-sm font-bold">6</span>
+                <span class="text-sm font-bold">13</span>
             </div>
             <div>
                 <div class="font-semibold text-ink dark:text-gray-100">Medication Dispense</div>

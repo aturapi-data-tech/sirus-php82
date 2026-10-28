@@ -189,11 +189,9 @@ new class extends Component {
     /**
      * Node satusehat → slot section resume medis.
      *
-     * Yang belum punya sumber di UGD sengaja tidak diisi: Asesmen Awal IGD & Skrining
-     * (data triase belum dikirim sebagai Observation), keluhan penyerta, riwayat
-     * penyakit pribadi/keluarga, riwayat pengobatan (FamilyMemberHistory &
-     * MedicationStatement belum dibangun), obat pulang, kondisi pulang, dan rencana
-     * tindak lanjut. Slot Diet/Edukasi tidak ada di susunan IGD.
+     * Asesmen Awal IGD = Observation kedatangan (transportasi, surat rujukan, triase CTAS).
+     * Yang belum punya sumber di UGD sengaja tidak diisi: Skrining, keluhan penyerta (tak ada
+     * di alur IGD), dan obat pulang. Slot Diet/Edukasi tidak ada di susunan IGD.
      */
     private function petaEntri(array $satuSehat): array
     {
@@ -204,12 +202,23 @@ new class extends Component {
             ->all();
 
         return [
+            'asesmenAwalIgd' => $ref('Observation', $satuSehat['kedatanganIds'] ?? []),
             'keluhanUtama' => $ref('Condition', $satuSehat['chiefComplaintId'] ?? []),
-            'riwayatAlergi' => $ref('AllergyIntolerance', $satuSehat['allergyId'] ?? []),
-            'tandaVital' => $ref('Observation', $satuSehat['observationIds'] ?? []),
+            'riwayatPenyakitSekarang' => $ref('Condition', $satuSehat['riwayatPenyakitSekarangIds'] ?? []),
+            'riwayatPenyakitTerdahulu' => $ref('Condition', $satuSehat['riwayatPenyakitDahuluIds'] ?? []),
+            'riwayatPenyakitKeluarga' => $ref('FamilyMemberHistory', $satuSehat['riwayatPenyakitKeluargaIds'] ?? []),
+            'riwayatPengobatan' => $ref('MedicationStatement', $satuSehat['riwayatPengobatanIds'] ?? []),
+            'riwayatAlergi' => array_merge($ref('AllergyIntolerance', $satuSehat['allergyId'] ?? []), $ref('AllergyIntolerance', $satuSehat['allergyIds'] ?? [])),
+            'tandaVital' => array_merge(
+                $ref('Observation', $satuSehat['observationIds'] ?? []),
+                $ref('Observation', collect($satuSehat['observasiLanjutanIds'] ?? [])->flatten()->all()), // 5e berulang
+            ),
             // Risiko jatuh & skrining gizi = asesmen fungsional berskala; playbook
             // mencontohkan status psikologis, tapi slot LOINC 47420-5 inilah rumahnya.
-            'pemeriksaanFungsional' => $ref('Observation', $satuSehat['penilaianObservationIds'] ?? []),
+            'pemeriksaanFungsional' => array_merge(
+                $ref('Observation', $satuSehat['penilaianObservationIds'] ?? []),
+                $ref('Observation', $satuSehat['statusPsikologisIds'] ?? []), // bab 8a: status psikologis
+            ),
             'hasilLab' => array_merge(
                 $ref('ServiceRequest', $satuSehat['labServiceRequestIds'] ?? []),
                 $ref('Specimen', $satuSehat['labSpecimenIds'] ?? []),
@@ -220,16 +229,19 @@ new class extends Component {
                 $ref('ServiceRequest', $satuSehat['radServiceRequestIds'] ?? []),
                 $ref('DiagnosticReport', $satuSehat['radDiagnosticReportIds'] ?? []),
             ),
-            // RJ tidak memisahkan diagnosis masuk & akhir. Diagnosa yang tercatat dipakai
+            // UGD tidak memisahkan diagnosis masuk & akhir. Diagnosa yang tercatat dipakai
             // sebagai diagnosis akhir — konsisten dengan Encounter.diagnosis use=DD saat finish.
             'diagnosisAkhir' => array_merge(
                 $ref('Condition', $satuSehat['conditionIds'] ?? []),
                 $ref('ClinicalImpression', $satuSehat['clinicalImpressionId'] ?? []),
             ),
             'tindakan' => $ref('Procedure', $satuSehat['procedureIds'] ?? []),
+            'kondisiPulang' => $ref('Condition', $satuSehat['kondisiPulangId'] ?? []),
+            'rencanaTindakLanjut' => $ref('ServiceRequest', $satuSehat['rencanaTindakLanjutId'] ?? []),
             'obatSaatKunjungan' => array_merge(
                 $ref('MedicationRequest', $satuSehat['medicationRequestIds'] ?? []),
                 $ref('MedicationDispense', $satuSehat['medicationDispenseIds'] ?? []),
+                $ref('MedicationAdministration', $satuSehat['pemberianObatIds'] ?? []), // bab 21
             ),
         ];
     }
@@ -301,7 +313,7 @@ new class extends Component {
         <div class="flex items-center gap-3">
             <div
                 class="flex items-center justify-center w-8 h-8 rounded-full {{ $count > 0 ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-teal-100 text-teal-600 dark:bg-teal-900/30 dark:text-teal-400' }}">
-                <span class="text-sm font-bold">15</span>
+                <span class="text-sm font-bold">24</span>
             </div>
             <div>
                 <div class="font-semibold text-ink dark:text-gray-100">Resume Medis IGD</div>

@@ -545,6 +545,36 @@ mengurus perbedaan ini; jalur yang playbook-nya belum dibaca (mis. `ri`) sengaja
 `pages/transaksi/ugd/satu-sehat/` — dipasang paling bawah (RJ: di bawah kartu
 "Selesaikan Encounter") dan menolak jalan sebelum `encounterFinished`.
 
+#### UGD disamakan dengan alur IGD apikesehatan.com (2026-10-28)
+
+Pola sama dengan RJ di atas: EMR UGD hanya teks klinis, kode diisi di layar
+`pages/transaksi/ugd/coding-fhir-ugd/` (titik-3 Daftar & Pelayanan UGD, Gate `emr.codingFhir`).
+Kirim Semua UGD = 23 kartu + selesaikan Encounter + resume.
+
+| Bab IGD | Isi | Sumber UGD | Kartu |
+|---|---|---|---|
+| 3a–3c | Transportasi (74286-6, SNOMED), surat rujukan (OC000034, boolean), triase CTAS (75910-0) | `anamnesa.pengkajianPerawatan`; triase = `tingkatKegawatan` (keputusan perawat), kosong → `screening.triaseSaran` | `kirim-kedatangan` → `kedatanganIds` (masuk section Asesmen Awal IGD) |
+| 4a | Keluhan utama, kategori kemkes `chief-complaint` | `anamnesa.keluhanUtama` | `kirim-chief-complaint` |
+| 4b/4d/4e | Riwayat penyakit, keluarga, pengobatan | `snomedList` / `obatList` (Coding) | port kartu RJ |
+| 4c | Alergi per alergen (KFA/SNOMED) | `anamnesa.alergi.alergenList` | `kirim-allergy` |
+| 5e (berulang) | TTV + BB/TB, lalu tiap entri Observasi Lanjutan dengan jamnya | `pemeriksaan.tandaVital` / `nutrisi` / `observasi.observasiLanjutan.tandaVital[]` | `kirim-observation` → `observationIds` + `observasiLanjutanIds[jam]` |
+| 8a/8b | Status psikologis, riwayat perjalanan | `anamnesa.statusPsikologis` / `riwayatPenyakitSekarangUmum` | port kartu RJ |
+| 21 | Pemberian obat (MedicationAdministration, identifier `UGD-…`, category inpatient, request → resep bila produk sama) | `observasi.obatDanCairan.pemberianObatDanCairan[]` | `kirim-pemberian-obat` → `pemberianObatIds[id entri]` |
+| 23 / 25 | Rencana tindak lanjut (identifier `UGD-…-KONTROL`) / kondisi saat keluar | `kontrol` / `perencanaan.kondisiPulang` | port kartu RJ |
+| 26–27 | Cara keluar | `perencanaan.tindakLanjut` | `DischargeDisposition::gawatDarurat()` |
+
+⚠️ **Kode CTAS apikesehatan salah dua**: level 5 `LA6116-3` tidak ada di LOINC → `LA10137-0`;
+level 2 `LA6113-0` benar tapi display resminya "2 or more" (answer list LL3059-4). Lihat
+`App\Support\Terminologi\KedatanganIgd`. Pemetaan **P1→CTAS 1, P2→3, P3→4 masih usulan**;
+P0 (meninggal saat tiba) tidak dikirim. Cara keluar UGD: Meninggal `exp`, KRS (nilai lama) `home`,
+APS (nilai lama) `aadvice`, sisanya peta rawat jalan.
+
+Tidak dipasang untuk UGD: keluhan penyerta & prognosis (tak ada di alur IGD), pindah ruangan
+triase/tindakan/observasi & peralihan DPJP (Encounter PUT), Goal, puasa, kehamilan/kontras,
+ImagingStudy, RiskAssessment, skrining batuk/gizi/decubitus, fungsional, SBAR (tak ada di alur
+IGD; `Communication` bukan resource SATUSEHAT). Kesadaran tetap dari
+`screening.kesadaran` (teks, tanpa padanan SNOMED).
+
 ---
 
 ### 9.5 ImagingStudy — Radiologi
