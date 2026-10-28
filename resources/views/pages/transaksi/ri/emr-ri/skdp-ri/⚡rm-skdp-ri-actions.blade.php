@@ -231,6 +231,18 @@ new class extends Component {
             return;
         }
 
+        // Surat kontrol untuk SEP ini mungkin SUDAH terbit walau form ini kosong — mis. petugas lain
+        // menyimpannya sesudah form ini dibuka. Dulu form kosong langsung insert ulang → BPJS menolak,
+        // nomor kosong lalu disimpan menimpa nomor yang ada ("nomor tiba-tiba hilang", 2026-10-28).
+        // Urutan: nomor di DB → cek ke BPJS by kartu (SEP asal sama) → baru insert.
+        if (empty($this->formKontrol['noSKDPBPJS'])) {
+            $noTerbit = trim((string) ($this->findDataRI($this->riHdrNo)['kontrol']['noSKDPBPJS'] ?? '')) ?: $this->cariSuratKontrolTerbit();
+            if ($noTerbit !== '') {
+                $this->formKontrol['noSKDPBPJS'] = $noTerbit;
+                $this->dispatch('toast', type: 'info', message: "Surat kontrol untuk SEP ini sudah terbit ({$noTerbit}) — diperbarui, bukan dibuat ulang.");
+            }
+        }
+
         $isNew = empty($this->formKontrol['noSKDPBPJS']);
         $response = $isNew
             ? VclaimTrait::suratkontrol_insert($this->formKontrol)->getOriginalContent()
@@ -248,6 +260,48 @@ new class extends Component {
         } else {
             $this->dispatch('toast', type: 'error', message: "{$label} {$code} {$message}");
         }
+    }
+
+    /**
+     * Nomor surat kontrol yang sudah terbit di BPJS untuk SEP kunjungan ini ('' = belum ada / tak bisa dicek).
+     * Dicari di bulan terbit (hari ini, filter 1) & bulan rencana kontrol (filter 2); dicocokkan lewat
+     * noSepAsalKontrol + jnsKontrol 2 (surat kontrol, bukan SPRI). Gagal / BPJS down → '' (insert jalan
+     * seperti biasa; nomor di DB tetap dilindungi save()).
+     */
+    private function cariSuratKontrolTerbit(): string
+    {
+        $noSep = trim((string) ($this->formKontrol['noSEP'] ?? ''));
+        $data = $this->findDataRI($this->riHdrNo) ?? [];
+        $noKartu = trim((string) (DB::table('rsmst_pasiens')->where('reg_no', $data['regNo'] ?? '')->value('nokartu_bpjs') ?? ''))
+            ?: trim((string) ($data['sep']['reqSep']['request']['t_sep']['noKartu'] ?? ''));
+        if ($noSep === '' || $noKartu === '') {
+            return '';
+        }
+
+        $periode = [[Carbon::now(config('app.timezone')), 1]];
+        try {
+            $periode[] = [Carbon::createFromFormat('d/m/Y', (string) ($this->formKontrol['tglKontrol'] ?? '')), 2];
+        } catch (\Throwable) {
+            // tanggal kontrol tak terbaca — cukup cek bulan terbit
+        }
+
+        foreach ($periode as [$tanggal, $filter]) {
+            try {
+                $response = VclaimTrait::suratkontrol_list_kartu($tanggal->format('m'), $tanggal->format('Y'), $noKartu, $filter)->getOriginalContent();
+            } catch (\Throwable) {
+                continue;
+            }
+            if (($response['metadata']['code'] ?? 0) != 200) {
+                continue;
+            }
+            $cocok = collect($response['response']['list'] ?? [])
+                ->first(fn($surat) => (string) ($surat['noSepAsalKontrol'] ?? '') === $noSep && (string) ($surat['jnsKontrol'] ?? '') === '2');
+            if (filled($cocok['noSuratKontrol'] ?? null)) {
+                return (string) $cocok['noSuratKontrol'];
+            }
+        }
+
+        return '';
     }
 
     /* ═══════════════════════════════════════
@@ -283,6 +337,11 @@ new class extends Component {
                 }
 
                 $isBaru = empty($fresh['kontrol']);
+                // Nomor surat kontrol yang sudah ada di DB TIDAK BOLEH ditimpa kosong (form basi / insert gagal).
+                $noDb = trim((string) ($fresh['kontrol']['noSKDPBPJS'] ?? ''));
+                if (trim((string) ($this->formKontrol['noSKDPBPJS'] ?? '')) === '' && $noDb !== '') {
+                    $this->formKontrol['noSKDPBPJS'] = $noDb;
+                }
                 $fresh['kontrol'] = $this->formKontrol;
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
                 $this->muatDariDokumen($fresh);

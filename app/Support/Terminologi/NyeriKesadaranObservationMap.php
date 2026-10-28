@@ -100,6 +100,44 @@ class NyeriKesadaranObservationMap
         'Acute Confusional States'                      => ['code' => null, 'display' => null],
     ];
 
+    /**
+     * Kesadaran RI — skala klasik Pengkajian Awal Rawat Inap (key App\Support\Options\PengkajianAwalRiOptions
+     * ::TINGKAT_KESADARAN) → SNOMED AVPU, padanan yang dipakai alur Rawat Inap apikesehatan.com
+     * (Composmentis/Somnolens/Sopor/Koma). Apatis & Delirium tak punya padanan AVPU → teks saja.
+     * Diverifikasi aktif di tx.fhir.org 2026-10-28.
+     */
+    private const KESADARAN_RI = [
+        'komposMentis' => ['code' => '248234008', 'display' => 'Mentally alert'],
+        'somnolen'     => ['code' => '300202002', 'display' => 'Responds to voice'],
+        'sopor'        => ['code' => '450847001', 'display' => 'Responds to pain'],
+        'koma'         => ['code' => '422768004', 'display' => 'Unresponsive'],
+        'apatis'       => ['code' => null, 'display' => null],
+        'delirium'     => ['code' => null, 'display' => null],
+    ];
+
+    /** Kesadaran RI (key opsi) + labelnya → 0..1 Observation (category vital-signs). Kosong → []. */
+    public static function kesadaranRi(?string $kunciOpsi, ?string $label = null): array
+    {
+        $kunci = trim((string) $kunciOpsi);
+        if ($kunci === '') {
+            return [];
+        }
+
+        $konsep = ['text' => trim((string) $label) ?: $kunci];
+        $padanan = self::KESADARAN_RI[$kunci] ?? null;
+        if ($padanan && $padanan['code'] !== null) {
+            $konsep['system'] = 'http://snomed.info/sct';
+            $konsep['code'] = $padanan['code'];
+            $konsep['display'] = $padanan['display'];
+        }
+
+        return [[
+            'category' => self::vitalSignsCategory(),
+            'code'     => self::KESADARAN_CODE,
+            'valueCodeableConcept' => $konsep,
+        ]];
+    }
+
     public static function vitalSignsCategory(): array
     {
         return [[

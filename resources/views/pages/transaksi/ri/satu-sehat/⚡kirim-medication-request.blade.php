@@ -179,7 +179,10 @@ new class extends Component {
                     'patientId' => $patientId, 'patientName' => $patientName,
                     'encounterId' => $satuSehat['encounterId'], 'requesterId' => $practitionerId, 'requesterName' => $drDesc,
                     'authoredOn' => $authoredOn, 'category' => 'inpatient',
-                    'dosageInstruction' => [], 'dispenseRequest' => [], 'reasonReference' => [],
+                    // Playbook RI 16b (pola RJ/UGD): resep aktif + aturan pakai sebagai teks signa e-resep.
+                    'status' => 'active',
+                    'dosageInstruction' => $obat['signa'] !== '' ? [['text' => $obat['signa']]] : [],
+                    'dispenseRequest' => [], 'reasonReference' => [],
                 ]);
                 if (!empty($respons['id'])) {
                     $satuSehat['medicationRequestIds'][] = $respons['id'];
@@ -223,6 +226,7 @@ new class extends Component {
                     'patientId' => $patientId, 'patientName' => $patientName,
                     'encounterId' => $satuSehat['encounterId'], 'requesterId' => $practitionerId, 'requesterName' => $drDesc,
                     'authoredOn' => $authoredOn, 'category' => 'inpatient',
+                    'status' => 'active',
                     'dosageInstruction' => [], 'dispenseRequest' => [], 'reasonReference' => [],
                 ]);
                 if (!empty($respons['id'])) {

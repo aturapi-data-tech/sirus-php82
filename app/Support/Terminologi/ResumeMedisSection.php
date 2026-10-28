@@ -32,6 +32,8 @@ class ResumeMedisSection
     private const TIPE_DOKUMEN = [
         'rj' => ['88645-7', 'Outpatient hospital Discharge summary'],
         'ugd' => ['97663-9', 'Emergency medicine Emergency department Discharge summary'],
+        // RI: dari alur Rawat Inap apikesehatan.com (LOINC diverifikasi tx.fhir.org 2026-10-28).
+        'ri' => ['18842-5', 'Discharge summary'],
     ];
 
     /**
@@ -95,6 +97,24 @@ class ResumeMedisSection
      */
     private const SUSUNAN = [
         'rj' => [
+            ['anamnesis' => self::ANAK_ANAMNESIS],
+            ['pemeriksaanFisik' => ['tandaVital', 'headToToe']],
+            'pemeriksaanFungsional',
+            'perencanaanPerawatan',
+            ['pemeriksaanPenunjang' => ['hasilLab', 'hasilRadiologi']],
+            ['diagnosis' => ['diagnosisAwal', 'diagnosisAkhir']],
+            'tindakan',
+            ['farmasi' => ['obatSaatKunjungan', 'obatPulang']],
+            ['diet' => ['rekomendasiDiet', 'dietDiberikan']],
+            'edukasi',
+            'kondisiPulang',
+            'rencanaTindakLanjut',
+            'perjalananKunjungan',
+        ],
+        // RI: susunan section alur Rawat Inap apikesehatan.com = susunan RJ (termasuk Diet & Edukasi,
+        // tanpa section khusus IGD). Diambil dari contoh, belum dari playbook RI resmi — cek bila
+        // ada penolakan validator.
+        'ri' => [
             ['anamnesis' => self::ANAK_ANAMNESIS],
             ['pemeriksaanFisik' => ['tandaVital', 'headToToe']],
             'pemeriksaanFungsional',

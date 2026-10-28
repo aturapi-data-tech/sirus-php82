@@ -181,4 +181,41 @@ class DischargeDisposition
             'text' => $peta['teks'] . ($keterangan !== '' ? ' — ' . $keterangan : ''),
         ];
     }
+
+    /**
+     * Status pulang RI (tindakLanjutKode, kunci internal ber-bentuk SNOMED) → HL7 discharge-disposition,
+     * Playbook RI bab 27–28. Keputusan user 2026-10-28: RI DISAMAKAN dengan RJ/UGD & alur Rawat Inap
+     * apikesehatan.com (HL7), menggantikan SNOMED fromKode() di Encounter. Kode SNOMED di EMR tetap
+     * tersimpan apa adanya (dipakai cetak & status BPJS). Kode lama salah arti ikut dipetakan menurut
+     * MAKSUD labelnya: 266707007 (APS) → aadvice, 371828006 (Pulang Tanpa Perbaikan) → home.
+     */
+    private const RAWAT_INAP = [
+        '371827001' => ['code' => 'home',      'display' => 'Home'],
+        '371828006' => ['code' => 'home',      'display' => 'Home'],
+        '266707007' => ['code' => 'aadvice',   'display' => 'Left against advice'],
+        '225928004' => ['code' => 'aadvice',   'display' => 'Left against advice'],
+        '306206005' => ['code' => 'other-hcf', 'display' => 'Other healthcare facility'],
+        '419099009' => ['code' => 'exp',       'display' => 'Expired'],
+        '74964007'  => ['code' => 'oth',       'display' => 'Other'],
+    ];
+
+    /** @return array|null CodeableConcept HL7; null bila kosong/tak dikenal (jangan menebak) */
+    public static function rawatInap(?string $kode, ?string $keterangan = null): ?array
+    {
+        $kode = trim((string) $kode);
+        $peta = self::RAWAT_INAP[$kode] ?? null;
+        if ($peta === null) {
+            return null;
+        }
+        $keterangan = trim((string) $keterangan);
+
+        return [
+            'coding' => [[
+                'system'  => 'http://terminology.hl7.org/CodeSystem/discharge-disposition',
+                'code'    => $peta['code'],
+                'display' => $peta['display'],
+            ]],
+            'text' => (self::label($kode) ?: $peta['display']) . ($keterangan !== '' ? ' — ' . $keterangan : ''),
+        ];
+    }
 }

@@ -251,27 +251,22 @@ new class extends Component {
                 $this->getEncounter($satuSehat['encounterId']), $akhirIso, $conditionIdList
             );
 
-            // Status pulang → hospitalization.dischargeDisposition (SNOMED, sudah tersimpan di EMR).
-            // Kode tak dikenal → field TIDAK diisi, jangan menebak.
-            $disposisi = DischargeDisposition::fromKode(
-                $dataRI['perencanaan']['tindakLanjut']['tindakLanjutKode'] ?? null
-            );
-            if ($disposisi !== null) {
-                $encounterTersimpan['hospitalization']['dischargeDisposition'] = [
-                    'coding' => [[
-                        'system'  => 'http://snomed.info/sct',
-                        'code'    => $disposisi['code'],
-                        'display' => $disposisi['display'],
-                    ]],
-                    'text' => $disposisi['display'],
-                ];
+            // Status pulang → hospitalization.dischargeDisposition — HL7 discharge-disposition, disamakan
+            // dgn RJ/UGD & alur Rawat Inap apikesehatan.com (keputusan user 2026-10-28; dulu SNOMED).
+            // Kode tak dikenal → field TIDAK diisi (jangan menebak), tapi dilaporkan.
+            $tindakLanjut = $dataRI['perencanaan']['tindakLanjut'] ?? [];
+            $caraKeluar = DischargeDisposition::rawatInap($tindakLanjut['tindakLanjutKode'] ?? null, $tindakLanjut['keteranganTindakLanjut'] ?? null);
+            if ($caraKeluar !== null) {
+                $encounterTersimpan['hospitalization']['dischargeDisposition'] = $caraKeluar;
             }
 
             $this->makeRequest('put', "Encounter/{$satuSehat['encounterId']}", $encounterTersimpan);
             $satuSehat['encounterFinished'] = true;
 
             $this->saveResult($riHdrNo, $satuSehat);
-            $this->dispatch('toast', type: 'success', message: 'Encounter (Rawat Inap) finished.');
+            $caraKeluar !== null
+                ? $this->dispatch('toast', type: 'success', message: 'Encounter (Rawat Inap) finished — cara keluar: ' . $caraKeluar['text'] . '.')
+                : $this->dispatch('toast', type: 'warning', message: 'Encounter (Rawat Inap) finished, tapi TANPA cara keluar: Tindak Lanjut di Perencanaan belum diisi.');
             $this->dispatch('ri-satu-sehat.refresh', riHdrNo: $riHdrNo);
         } catch (\Throwable $e) {
             $this->dispatch('toast', type: 'error', message: 'Finish Encounter gagal: ' . $e->getMessage());

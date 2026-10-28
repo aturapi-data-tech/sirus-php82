@@ -141,7 +141,7 @@ new class extends Component {
             $orders = DB::table('rstxn_riradiologs as a')
                 ->leftJoin('rsmst_radiologis as m', 'a.rad_id', '=', 'm.rad_id')
                 ->where('a.rihdr_no', $riHdrNo)
-                ->select('a.rirad_no', 'a.rad_id', 'm.rad_desc', 'm.loinc_code', 'm.loinc_display', 'a.radnum_no', 'a.rad_upload_pdf_foto', 'a.study_uid')
+                ->select('a.rirad_no', 'a.rad_id', 'm.rad_desc', 'm.loinc_code', 'm.loinc_display', 'a.radnum_no', 'a.rad_upload_pdf_foto', 'a.study_uid', 'a.hasil_bacaan')
                 ->get();
 
             $regNo   = $dataRI['regNo'] ?? '';
@@ -232,7 +232,11 @@ new class extends Component {
                     $this->catatKirim($indeks, $kunciOrder, 'sr', $serviceRequestId);
                 }
 
-                // 2) DiagnosticReport — pelaporan (generik; hasil = PDF terlampir).
+                // Bacaan dokter radiologi (rstxn_riradiologs.hasil_bacaan, HTML) — dipakai bila ada;
+                // kosong → teks pengganti lama (hasil di lampiran PDF).
+                $bacaan = trim(preg_replace('/\s+/', ' ', html_entity_decode(strip_tags(str_replace(['<br>', '<br/>', '<br />', '</p>'], "\n", (string) ($order->hasil_bacaan ?? ''))), ENT_QUOTES | ENT_HTML5)) ?? '');
+
+                // 2) DiagnosticReport — pelaporan (hasil = bacaan bila ada, PDF terlampir).
                 if (empty($this->idKirim($indeks, $kunciOrder, 'dr'))) {
                     // Observation dibuat DI DALAM cabang ini, bukan di luar: DiagnosticReport.result
                     // wajib (RuleNumber 10385), tapi Observation tak punya identifier sehingga tak
@@ -245,7 +249,10 @@ new class extends Component {
                             'effectiveDate' => $waktu,
                             'category' => [['coding' => [['system' => 'http://terminology.hl7.org/CodeSystem/observation-category', 'code' => 'imaging', 'display' => 'Imaging']]]],
                             'code' => ['system' => 'http://loinc.org', 'code' => $loincCode, 'display' => $loincDisplay ?: $deskripsi],
-                            'valueString' => 'Lihat hasil pada lampiran radiologi',
+                            'valueString' => $bacaan !== '' ? $bacaan : 'Lihat hasil pada lampiran radiologi',
+                            // Playbook RI 11.5: bacaan menunjuk order-nya.
+                            'basedOn' => ["ServiceRequest/{$serviceRequestId}"],
+                            'issued' => $waktu,
                         ]);
                         $obsId = $observation['id'] ?? null;
                         if (!empty($obsId)) {
@@ -263,6 +270,7 @@ new class extends Component {
                         'performer' => ["Practitioner/{$practitionerId}"], 'basedOn' => [$serviceRequestId],
                     ];
                     if (!empty($obsId)) { $drPayload['observationIds'] = [$obsId]; }
+                    if ($bacaan !== '') { $drPayload['conclusion'] = $bacaan; } // Playbook RI 11.6: kesan
                     $dokter = $this->createDiagnosticReport($drPayload);
                     if (!empty($dokter['id'])) {
                         $satuSehat['radDiagnosticReportIds'][] = $dokter['id'];
@@ -386,7 +394,7 @@ new class extends Component {
         <div class="flex items-center gap-3">
             <div
                 class="flex items-center justify-center w-8 h-8 rounded-full {{ $count > 0 ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-surface-soft text-muted-soft dark:bg-gray-800 dark:text-gray-500' }}">
-                <span class="text-sm font-bold">9</span>
+                <span class="text-sm font-bold">17</span>
             </div>
             <div>
                 <div class="font-semibold text-ink dark:text-gray-100">Penunjang Radiologi</div>

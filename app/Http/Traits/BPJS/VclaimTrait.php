@@ -661,6 +661,42 @@ trait VclaimTrait
 
 
 
+    /**
+     * Daftar surat kontrol / SPRI milik satu peserta pada satu bulan — VClaim "Data Nomor Surat Kontrol
+     * Berdasarkan No Kartu": RencanaKontrol/ListRencanaKontrol/Bulan/{bulan}/Tahun/{tahun}/Nokartu/{kartu}/filter/{filter}.
+     * filter 1 = berdasarkan tanggal entri (terbit), 2 = berdasarkan tanggal rencana kontrol.
+     * Dipakai SKDP RI untuk mengecek apakah surat kontrol untuk SEP itu SUDAH terbit sebelum insert
+     * (cegah insert ganda & nomor hilang saat dua petugas menyimpan bersamaan).
+     */
+    public static function suratkontrol_list_kartu($bulan, $tahun, $noKartu, $filter = 1)
+    {
+        $r = ['bulan' => (string) $bulan, 'tahun' => (string) $tahun, 'noKartu' => (string) $noKartu, 'filter' => (string) $filter];
+        $validator = Validator::make($r, [
+            'bulan' => 'required|digits:2',
+            'tahun' => 'required|digits:4',
+            'noKartu' => 'required',
+            'filter' => 'required|in:1,2',
+        ], ['required' => ':attribute wajib diisi.'], ['noKartu' => 'Nomor Kartu BPJS']);
+
+        if ($validator->fails()) {
+            return self::sendError($validator->errors()->first(), $validator->errors(), 201, null, null);
+        }
+
+        try {
+            $url = env('VCLAIM_URL') . "RencanaKontrol/ListRencanaKontrol/Bulan/{$r['bulan']}/Tahun/{$r['tahun']}/Nokartu/{$r['noKartu']}/filter/{$r['filter']}";
+
+            $signature = self::signature();
+            $response = Http::timeout(8)->connectTimeout(3)
+                ->withHeaders($signature)
+                ->get($url);
+
+            return self::response_decrypt($response, $signature, $url, $response->transferStats->getTransferTime());
+        } catch (Exception $e) {
+            return self::sendError($e->getMessage(), $validator->errors(), 408, $url ?? null, null);
+        }
+    }
+
+
     // RUJUKAN
     public static function rujukan_peserta($nomorKartu) //fktp dari
     {

@@ -32,4 +32,25 @@ final class StatusPsikologisMap
             return \is_scalar($nilai) && (string) $nilai === '1';
         }, ARRAY_FILTER_USE_BOTH);
     }
+
+    /**
+     * Status emosional RI (Pengkajian Awal — satu pilihan, key PengkajianAwalRiOptions::STATUS_EMOSIONAL)
+     * → SNOMED, diverifikasi tx.fhir.org 2026-10-28. ⚠️ Alur Rawat Inap apikesehatan.com memakai
+     * 276746005 untuk "Emotionally stable" — artinya *Environmental event*, SALAH; Kooperatif memakai
+     * 134417007 Normal mood (sama dgn "Tidak ada kelainan" RJ). Depresi = 366979004 *Depressed mood*
+     * (temuan perawat), BUKAN 35489007 *Depressive disorder* (diagnosis). "Lainnya" tak berkode → tidak dikirim.
+     */
+    private const STATUS_EMOSIONAL_RI = [
+        'kooperatif' => ['label' => 'Kooperatif', 'code' => '134417007', 'display' => 'Normal mood'],
+        'cemas'      => ['label' => 'Cemas',      'code' => '48694002',  'display' => 'Anxiety'],
+        'depresi'    => ['label' => 'Depresi',    'code' => '366979004', 'display' => 'Depressed mood'],
+    ];
+
+    /** @return array<string, array{label: string, code: string, display: string}> 0..1 status, kunci = key opsi */
+    public static function aktifRi(?string $kunciOpsi): array
+    {
+        $kunci = trim((string) $kunciOpsi);
+
+        return isset(self::STATUS_EMOSIONAL_RI[$kunci]) ? [$kunci => self::STATUS_EMOSIONAL_RI[$kunci]] : [];
+    }
 }

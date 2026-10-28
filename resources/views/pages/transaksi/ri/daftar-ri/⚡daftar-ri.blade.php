@@ -99,6 +99,11 @@ new class extends Component {
     {
         $this->dispatch('daftar-ri.idrg.open', riHdrNo: $riHdrNo);
     }
+    /** Coding SATUSEHAT (EMR RI FHIR) — kode SNOMED diisi sesudah pelayanan. */
+    public function openCodingFhir(string $riHdrNo): void
+    {
+        $this->dispatch('coding-fhir-ri.open', riHdrNo: $riHdrNo);
+    }
     public function openSatuSehat(string $riHdrNo): void
     {
         $this->dispatch('daftar-ri.satu-sehat.open', riHdrNo: $riHdrNo);
@@ -877,6 +882,22 @@ new class extends Component {
                                                             </x-dropdown-link>
                                                         @endcan
 
+                                                        @can('emr.codingFhir')
+                                                            <x-dropdown-link href="#"
+                                                                wire:click.prevent="openCodingFhir('{{ $row->rihdr_no }}')"
+                                                                class="px-3 py-2 text-sm rounded-lg h-full bg-brand-green/5 hover:bg-brand-green/10 dark:bg-brand-green/10">
+                                                                <div class="flex items-start gap-2">
+                                                                    <svg class="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                                                                    </svg>
+                                                                    <span class="min-w-0">
+                                                                        <span class="block font-semibold">Coding SATUSEHAT</span>
+                                                                        <span class="block text-xs font-normal text-muted dark:text-gray-400">Kode SNOMED sesudah pelayanan</span>
+                                                                    </span>
+                                                                </div>
+                                                            </x-dropdown-link>
+                                                        @endcan
+
                                                         {{-- Cek Jumlah Record & Reset per tab Administrasi — manager ke atas (AksiRole::RI_RESET_ADMINISTRASI) --}}
                                                         @can('ri.resetAdministrasi')
                                                             <x-dropdown-link href="#"
@@ -963,6 +984,9 @@ new class extends Component {
             {{-- iDRG/INACBG Modal (sibling, listen ke event daftar-ri.idrg.open) --}}
             <livewire:pages::transaksi.ri.daftar-ri.idrg-ri-actions wire:key="idrg-ri-actions" />
             <livewire:pages::transaksi.ri.daftar-ri.satu-sehat-ri-actions wire:key="satu-sehat-ri-actions" />
+            @can('emr.codingFhir')
+                <livewire:pages::transaksi.ri.coding-fhir-ri.coding-fhir-ri wire:key="coding-fhir-ri" />
+            @endcan
             <livewire:pages::transaksi.ri.daftar-ri.cek-jumlah-record-ri-actions wire:key="cek-jumlah-record-ri-actions" />
             <livewire:pages::transaksi.ri.daftar-ri-bulanan.berkas-bpjs-ri-actions wire:key="berkas-bpjs-ri-actions" />
 

@@ -545,6 +545,33 @@ mengurus perbedaan ini; jalur yang playbook-nya belum dibaca (mis. `ri`) sengaja
 `pages/transaksi/ugd/satu-sehat/` — dipasang paling bawah (RJ: di bawah kartu
 "Selesaikan Encounter") dan menolak jalan sebelum `encounterFinished`.
 
+#### RI disamakan dengan alur Rawat Inap apikesehatan.com (2026-10-28)
+
+Teks klinis RI tersebar di dua formulir — Pengkajian Dokter (±1/4 rawat inap terisi) dan Pengkajian
+Awal perawat (±9/10) — jadi dibaca lewat `App\Support\AnamnesaRi` (dokter dulu, cadangan perawat).
+**Kode RI disimpan di node akar `kodingSatuSehat`** (bukan menumpang node form seperti RJ/UGD), diisi
+layar `pages/transaksi/ri/coding-fhir-ri/` (titik-3 Daftar RI). Kirim Semua RI = 26 kartu + finish
+Encounter + finish Episode + Resume Medis.
+
+| Bab RI | Isi | Sumber | Catatan |
+|---|---|---|---|
+| 3a/3c | Keluhan utama, alergi | AnamnesaRi + kodingSatuSehat | kartu dihidupkan lagi; alergi DILEWATI bila Pengkajian Dokter belum mengisinya (bukan "tidak ada alergi") |
+| 3b/3d/3e/3f | Keluhan penyerta, riwayat penyakit/keluarga, pengobatan | kodingSatuSehat | port RJ |
+| 4 | Pemeriksaan fisik | Pengkajian Awal (TTV, BB/TB, kesadaran) → `pemeriksaanAwalIds`; Observasi Lanjutan per entri → `tandaVitalLanjutanIds[jam]` | kesadaran skala klasik → SNOMED AVPU (`kesadaranRi`) |
+| 5b | Psikologis | status emosional Pengkajian Awal | `StatusPsikologisMap::aktifRi` |
+| 19 | Pemberian obat | observasi lanjutan | + identifier `RI-…`, category inpatient, request |
+| 21 | Edukasi (Procedure 409073007 + KPTL 10913) | Edukasi Terintegrasi | `edukasiIds[id]` |
+| 22b | Perencanaan pemulangan (CarePlan 736372004) | Discharge Planning | `CarePlanTrait` |
+| 23/26 | Prognosis, kondisi saat keluar | isian baru di Perencanaan RI | port RJ |
+| 24 | Rencana tindak lanjut | SKDP RI | identifier `RI-…-KONTROL` |
+| 27–28 | Cara keluar | status pulang | **HL7** `DischargeDisposition::rawatInap()` (dulu SNOMED) |
+| 29 | Resume medis (Composition 18842-5) | indeks semua resource | `ResumeMedisSection` jalur `ri`, identifier `RI-…` |
+
+⚠️ Kode apikesehatan RI yang salah: "Emotionally stable" `276746005` = *Environmental event*. Kooperatif
+memakai `134417007` Normal mood; Depresi `366979004` Depressed mood (temuan, bukan diagnosis).
+⚠️ Identifier Composition RJ & UGD sama-sama `rj_no` mentah dengan system yang sama — nomor RJ & UGD
+bisa kembar (urutan berbeda). Belum diubah; RI sudah pakai awalan `RI-`.
+
 #### UGD disamakan dengan alur IGD apikesehatan.com (2026-10-28)
 
 Pola sama dengan RJ di atas: EMR UGD hanya teks klinis, kode diisi di layar

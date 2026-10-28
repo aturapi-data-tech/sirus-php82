@@ -96,6 +96,10 @@ new class extends Component {
                 'noLPManual' => '',
                 'noSep' => '',
             ],
+            // Kondisi saat keluar (bab 26) & prognosis (bab 23) — label pilihan; kode SNOMED tetap
+            // dari App\Support\Terminologi\KondisiPulang / Prognosis.
+            'kondisiPulang' => ['kondisiPulang' => ''],
+            'prognosis' => ['prognosis' => '', 'keteranganPrognosis' => ''],
             'dischargePlanning' => [
                 'pelayananBerkelanjutan' => ['pelayananBerkelanjutan' => 'Tidak Ada', 'ketPelayananBerkelanjutan' => '', 'pelayananBerkelanjutanData' => []],
                 'penggunaanAlatBantu' => ['penggunaanAlatBantu' => 'Tidak Ada', 'ketPenggunaanAlatBantu' => '', 'penggunaanAlatBantuData' => []],
@@ -116,6 +120,16 @@ new class extends Component {
         $this->isFormLocked = $this->checkEmrRIStatus($riHdrNo); // ← trait
 
         $this->incrementVersion('modal-perencanaan-ri');
+    }
+
+    /** Kartu-tombol Tindak Lanjut → set nilai lalu jalankan logika yang sama dengan hook wire:model di bawah. */
+    public function pilihTindakLanjut(string $kode): void
+    {
+        if ($this->isFormLocked || collect($this->tindakLanjutOptions)->firstWhere('tindakLanjutKode', $kode) === null) {
+            return;
+        }
+        $this->perencanaan['tindakLanjut']['tindakLanjut'] = $kode;
+        $this->updatedPerencanaanTindakLanjutTindakLanjut($kode);
     }
 
     /** Hook Livewire untuk wire:model "perencanaan.tindakLanjut.tindakLanjut" — NAMA method wajib mengikuti jalur properti itu. */
@@ -316,6 +330,21 @@ new class extends Component {
             return;
         }
 
+        // Status pulang BPJS WAJIB — dulu tombol ini tetap jalan saat Tindak Lanjut belum dipilih dan
+        // statusPulang terkirim kosong. statusPulang diturunkan ulang dari kode terpilih (sumber tunggal
+        // DischargeDisposition::OPTIONS) supaya tak bergantung pada hook yang mungkin tak terpicu.
+        $opsiTerpilih = collect($this->tindakLanjutOptions)->firstWhere('tindakLanjutKode', (string) ($this->perencanaan['tindakLanjut']['tindakLanjut'] ?? ''));
+        if ($opsiTerpilih === null) {
+            $this->dispatch('toast', type: 'error', message: 'Pilih Tindak Lanjut dulu sebelum Update Pasien Pulang BPJS.');
+            return;
+        }
+        $this->perencanaan['tindakLanjut']['tindakLanjutKode'] = $opsiTerpilih['tindakLanjutKode'];
+        $this->perencanaan['tindakLanjut']['statusPulang'] = $opsiTerpilih['tindakLanjutKodeBpjs'];
+        if (trim((string) ($this->perencanaan['tindakLanjut']['tglPulang'] ?? '')) === '') {
+            $this->dispatch('toast', type: 'error', message: 'Isi Tanggal Pulang dulu sebelum Update Pasien Pulang BPJS.');
+            return;
+        }
+
         // Simpan JSON dulu sebelum kirim ke BPJS
         $this->store('Update Tgl Pulang BPJS — pulang ' . ($this->perencanaan['tindakLanjut']['tglPulang'] ?? '-'));
 
@@ -447,13 +476,29 @@ new class extends Component {
             {{-- Radio tindak lanjut --}}
             <div>
                 <x-input-label value="Tindak Lanjut *" />
+                {{-- Kartu-tombol, BUKAN x-radio-button: radio bersarang di label-nya sendiri double-fire di
+                     dalam modal + morph (klik pertama ter-reset → petugas harus klik pilihan lain lalu balik,
+                     2026-10-28). Pilihan diturunkan dari properti; seluruh kartu bisa diklik. --}}
                 <div class="mt-2 flex flex-wrap gap-3">
                     @foreach ($tindakLanjutOptions as $opt)
-                        <x-radio-button :label="$opt['tindakLanjut']" :value="$opt['tindakLanjutKode']" name="tindakLanjut"
-                            wire:model.live="perencanaan.tindakLanjut.tindakLanjut" :disabled="$isFormLocked" />
-                        {{-- x-radio-button sudah include label --}}
+                        @php $terpilih = (string) ($perencanaan['tindakLanjut']['tindakLanjut'] ?? '') === (string) $opt['tindakLanjutKode']; @endphp
+                        <button type="button" wire:click="pilihTindakLanjut('{{ $opt['tindakLanjutKode'] }}')" @disabled($isFormLocked)
+                            wire:key="tindak-lanjut-ri-{{ $opt['tindakLanjutKode'] }}"
+                            class="flex items-center gap-2 p-3 text-sm border rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed {{ $terpilih
+                                ? 'border-brand-green bg-brand-green/10 text-ink dark:border-brand-green/50 dark:bg-brand-green/10 dark:text-gray-100'
+                                : 'border-hairline bg-canvas text-body hover:bg-surface-soft dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800' }}">
+                            <span class="flex items-center justify-center w-4 h-4 border rounded-full shrink-0 {{ $terpilih ? 'border-brand-green' : 'border-gray-400 dark:border-gray-500' }}">
+                                @if ($terpilih)
+                                    <span class="w-2 h-2 rounded-full bg-brand-green"></span>
+                                @endif
+                            </span>
+                            {{ $opt['tindakLanjut'] }}
+                        </button>
                     @endforeach
                 </div>
+                @if (empty($perencanaan['tindakLanjut']['tindakLanjut']) && !$isFormLocked)
+                    <p class="mt-1 text-xs text-warning-deep dark:text-amber-200">Belum dipilih — wajib sebelum Update Pasien Pulang BPJS.</p>
+                @endif
                 @if (!empty($perencanaan['tindakLanjut']['tindakLanjut']))
                     <p class="mt-1 text-xs text-muted">
                         Kode SNOMED: <span
@@ -555,6 +600,35 @@ new class extends Component {
                 </div>
             @endif
 
+        </div>
+    </x-border-form>
+
+    {{-- ── KONDISI SAAT KELUAR & PROGNOSIS (Playbook RI bab 26 & 23) — dikirim ke Satu Sehat, kode SNOMED
+         tetap dari KondisiPulang / Prognosis (tanpa coding). Buka-tutup seperti RJ: tertutup, terbuka sendiri
+         bila salah satunya sudah dipilih. ── --}}
+    <x-border-form :title="__('Kondisi Saat Keluar & Prognosis')" :collapsible="true" padding="p-3"
+        :open="filled($perencanaan['kondisiPulang']['kondisiPulang'] ?? null) || filled($perencanaan['prognosis']['prognosis'] ?? null)">
+        <div class="space-y-3">
+            <div>
+                <x-input-label value="Kondisi Saat Keluar" />
+                <div class="flex flex-wrap mt-1 gap-x-4 gap-y-1">
+                    @foreach (array_keys(\App\Support\Terminologi\KondisiPulang::OPTIONS) as $kondisi)
+                        <x-radio-button :label="$kondisi" :value="$kondisi" name="kondisiPulang-ri"
+                            wire:model.live="perencanaan.kondisiPulang.kondisiPulang" :disabled="$isFormLocked" />
+                    @endforeach
+                </div>
+            </div>
+            <div>
+                <x-input-label value="Prognosis" />
+                <div class="flex flex-wrap mt-1 gap-x-4 gap-y-1">
+                    @foreach (array_keys(\App\Support\Terminologi\Prognosis::OPTIONS) as $prognosis)
+                        <x-radio-button :label="$prognosis" :value="$prognosis" name="prognosis-ri"
+                            wire:model.live="perencanaan.prognosis.prognosis" :disabled="$isFormLocked" />
+                    @endforeach
+                </div>
+                <x-text-input wire:model.live="perencanaan.prognosis.keteranganPrognosis" :disabled="$isFormLocked"
+                    placeholder="Keterangan prognosis (opsional), mis. baik bila patuh minum obat" class="w-full mt-2" />
+            </div>
         </div>
     </x-border-form>
 

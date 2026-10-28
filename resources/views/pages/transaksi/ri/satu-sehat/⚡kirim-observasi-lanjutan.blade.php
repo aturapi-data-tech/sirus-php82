@@ -230,6 +230,11 @@ new class extends Component {
             }
 
             $idList = [];
+            // Resep non-racikan terkirim, berkunci productId → id MedicationRequest (tautan request MA).
+            $resepPerProduk = collect($satuSehat['medicationRequestItems'] ?? [])
+                ->filter(fn($item) => ($item['jenis'] ?? '') === 'nonRacikan' && filled($item['id'] ?? null))
+                ->mapWithKeys(fn($item) => [(string) ($item['kunci'] ?? '') => (string) $item['id']])
+                ->all();
 
             // 1) Pemberian obat & cairan → MedicationAdministration
             foreach ($obat as $indeks => $entriObat) {
@@ -247,6 +252,10 @@ new class extends Component {
                     'encounterId'       => $satuSehat['encounterId'],
                     'effectiveDate'     => $waktu,
                     'performerId'       => $practitionerId,
+                    // Playbook RI 19 (alur apikesehatan.com): identifier resmi, kategori, tautan resep.
+                    'identifierValue'   => 'RI-' . $riHdrNo . '-' . ($entriObat['id'] ?? $indeks),
+                    'category'          => 'inpatient',
+                    'requestId'         => $resepPerProduk[trim((string) ($entriObat['productId'] ?? ''))] ?? null,
                 ];
                 // mad-1: route hanya ikut bila dose ada (dosage wajib punya dose/rate).
                 if ($dosis !== null) {
@@ -334,7 +343,7 @@ new class extends Component {
         <div class="flex items-center gap-3">
             <div
                 class="flex items-center justify-center w-8 h-8 rounded-full {{ $count > 0 ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-surface-soft text-muted-soft dark:bg-gray-800 dark:text-gray-500' }}">
-                <span class="text-sm font-bold">13</span>
+                <span class="text-sm font-bold">15</span>
             </div>
             <div>
                 <div class="font-semibold text-ink dark:text-gray-100">Observasi Lanjutan</div>
