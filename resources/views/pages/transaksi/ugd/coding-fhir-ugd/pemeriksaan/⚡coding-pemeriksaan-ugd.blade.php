@@ -11,6 +11,7 @@ use Livewire\Component;
 use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
 use App\Support\Terminologi\TandaVitalObservationMap;
 use App\Support\Terminologi\NyeriKesadaranObservationMap;
+use App\Support\Terminologi\TampilanObservasiSatuSehat;
 
 new class extends Component {
     use EmrUGDTrait;
@@ -19,6 +20,10 @@ new class extends Component {
 
     /** [['label', 'isi', 'kode'], ...] siap tampil. */
     public array $baris = [];
+
+    /** Tabel hanya-baca data yang dikirim otomatis kartu SATUSEHAT UGD (TampilanObservasiSatuSehat). */
+    public array $observasiBaris = [];
+    public array $obatBaris = [];
 
     public function mount(?string $rjNo = null): void
     {
@@ -72,9 +77,16 @@ new class extends Component {
         }
 
         $this->baris = $baris;
+
+        // Status terkirim dari catatan yang SAMA dengan kartu: Observation (observasiLanjutanIds[jam]) &
+        // Pemberian Obat (pemberianObatIds[id entri]).
+        $satuSehat = $dataUGD['satusehat'] ?? [];
+        $this->observasiBaris = TampilanObservasiSatuSehat::barisTandaVital((array) ($dataUGD['observasi']['observasiLanjutan']['tandaVital'] ?? []), (array) ($satuSehat['observasiLanjutanIds'] ?? []));
+        $this->obatBaris = TampilanObservasiSatuSehat::barisPemberianObat((array) ($dataUGD['observasi']['obatDanCairan']['pemberianObatDanCairan'] ?? []), (array) ($satuSehat['pemberianObatIds'] ?? []));
     }
 };
 ?>
+<div class="space-y-3">
 
 <x-border-form title="Tanda Vital & Nutrisi">
     <div class="space-y-2.5">
@@ -83,3 +95,9 @@ new class extends Component {
         @endforeach
     </div>
 </x-border-form>
+
+    <x-satu-sehat.tabel-observasi judul="Observasi Lanjutan — tanda vital per waktu ukur" :baris="$observasiBaris"
+        kosong="Belum ada entri Observasi Lanjutan" />
+    <x-satu-sehat.tabel-observasi judul="Pemberian Obat & Cairan (MedicationAdministration)" :baris="$obatBaris"
+        kosong="Belum ada pemberian obat / cairan" />
+</div>
