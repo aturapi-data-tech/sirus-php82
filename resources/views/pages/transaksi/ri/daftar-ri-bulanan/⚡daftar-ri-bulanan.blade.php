@@ -244,7 +244,7 @@ new class extends Component {
         $row->diagnosis_free_text = $json['diagnosisFreeText'] ?? '-';
 
         // EMR completeness + meta — disamakan dengan daftar-ri (harian)
-        $pct = $this->calculateEmrPercentRI($json);
+        $pct = $this->calculateEmrPercentRI($json, $row->exit_date_display ?? null);
         $row->emr_percent = $pct['emr'];
         $row->eresep_percent = isset($json['eresep']) || isset($json['eresepRacikan']) ? 100 : 0;
         $row->emr_bar_color = $row->emr_percent >= 80 ? 'bg-emerald-500' : ($row->emr_percent >= 50 ? 'bg-amber-400' : 'bg-rose-400');

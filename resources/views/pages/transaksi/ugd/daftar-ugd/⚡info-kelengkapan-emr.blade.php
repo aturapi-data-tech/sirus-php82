@@ -2,6 +2,7 @@
 
 use Livewire\Component;
 use Livewire\Attributes\On;
+use App\Support\KelengkapanEmr;
 use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
 use App\Http\Traits\Txn\Ugd\EmrCompletenessUGDTrait;
 
@@ -10,7 +11,7 @@ new class extends Component {
 
     public ?int $rjNo = null;
     public array $data = [];
-    public array $pct = ['emr' => 0, 'sections' => ['s' => 0, 'o' => 0, 'a' => 0, 'p' => 0, 'n' => 0, 't' => 0, 'k' => 0]];
+    public array $pct = ['emr' => 0, 'sections' => ['s' => 0, 'o' => 0, 'a' => 0, 'p' => 0, 'n' => 0, 't' => 0], 'koding' => null];
     public array $checklist = [];
     public array $snomed = [];
 
@@ -25,24 +26,13 @@ new class extends Component {
         $this->dispatch('open-modal', name: 'info-kelengkapan-emr-ugd');
     }
 
+    /**
+     * Kesiapan Coding SATUSEHAT (Keluhan Utama & Alergi, termasuk daftar alergen layar Coding) —
+     * indikator TERPISAH, tidak masuk % EMR. Sumber: App\Support\KelengkapanEmr::kodingSatuSehat().
+     */
     private function collectSnomedStatus(array $json): array
     {
-        $a = $json['anamnesa'] ?? [];
-
-        return [
-            [
-                'label' => 'Keluhan Utama',
-                'value' => $a['keluhanUtama']['keluhanUtama'] ?? '',
-                'code'  => $a['keluhanUtama']['snomedCode'] ?? '',
-                'displayId' => $a['keluhanUtama']['snomedDisplayId'] ?? '',
-            ],
-            [
-                'label' => 'Alergi',
-                'value' => $a['alergi']['alergi'] ?? '',
-                'code'  => $a['alergi']['snomedCode'] ?? '',
-                'displayId' => $a['alergi']['snomedDisplayId'] ?? '',
-            ],
-        ];
+        return KelengkapanEmr::kodingSatuSehat($json['anamnesa'] ?? [])['items'];
     }
 };
 
@@ -77,10 +67,10 @@ new class extends Component {
                                 </span>
                             </div>
                         </div>
-                        <div class="grid grid-cols-7 gap-1 p-3 text-xs text-center">
+                        <div class="grid grid-cols-6 gap-1 p-3 text-xs text-center">
                             @php
-                                $labels = ['s' => 'S', 'o' => 'O', 'a' => 'A', 'p' => 'P', 'n' => 'N', 't' => 'T', 'k' => 'K'];
-                                $names  = ['s' => 'Anamnesa', 'o' => 'Pemeriksaan', 'a' => 'Diagnosa', 'p' => 'Perencanaan', 'n' => 'Penilaian', 't' => 'Triase', 'k' => 'Koding SNOMED'];
+                                $labels = ['s' => 'S', 'o' => 'O', 'a' => 'A', 'p' => 'P', 'n' => 'N', 't' => 'T'];
+                                $names  = ['s' => 'Anamnesa', 'o' => 'Pemeriksaan', 'a' => 'Diagnosa', 'p' => 'Perencanaan', 'n' => 'Penilaian', 't' => 'Triase'];
                             @endphp
                             @foreach ($labels as $key => $letter)
                                 @php $score = $pct['sections'][$key] ?? 0; @endphp
@@ -102,9 +92,12 @@ new class extends Component {
                                 <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
                                 </svg>
-                                <span class="font-semibold text-ink dark:text-gray-200">SNOMED Coding</span>
-                                <span class="text-xs text-muted dark:text-gray-400">(section K — 10% dari %)</span>
+                                <span class="font-semibold text-ink dark:text-gray-200">Coding SATUSEHAT</span>
+                                <span class="text-xs text-muted dark:text-gray-400">(terpisah — tidak masuk % EMR; diisi di layar Coding SATUSEHAT)</span>
                             </div>
+                            @if (($pct['koding'] ?? null) !== null)
+                                <span class="text-sm font-semibold {{ $pct['koding'] >= 100 ? 'text-success dark:text-success' : 'text-amber-600 dark:text-amber-400' }}">{{ $pct['koding'] }}% ter-coding</span>
+                            @endif
                         </div>
                         <table class="w-full text-sm">
                             <tbody class="divide-y divide-hairline-soft dark:divide-gray-700">
@@ -114,7 +107,7 @@ new class extends Component {
                                             <strong>{{ $item['label'] }}</strong>
                                         </td>
                                         <td class="px-4 py-2 text-muted dark:text-gray-400">
-                                            @if (filled($item['code']))
+                                            @if ($item['terkode'] ?? filled($item['code']))
                                                 <div class="flex items-center gap-2">
                                                     <x-badge variant="success">✓ Coded</x-badge>
                                                     <span class="font-mono text-xs">{{ $item['code'] }}</span>
@@ -211,8 +204,9 @@ new class extends Component {
 
                 <div class="p-3 border border-hairline rounded-lg bg-surface-soft dark:bg-gray-900/40 dark:border-gray-700">
                     <p class="text-xs text-muted dark:text-gray-400">
-                        <span class="font-semibold">SNOMED coding</span> (Keluhan Utama &amp; Alergi) kini masuk perhitungan persentase — bobot <strong>10%</strong> (section K).
-                        Field yang KOSONG tidak menyeret skor (dipenalti di Anamnesa); hanya field terisi yang belum di-coding yang menurunkan K. Detail kode ditampilkan terpisah (kesiapan SATUSEHAT).
+                        <span class="font-semibold">Coding SATUSEHAT</span> (Keluhan Utama &amp; Alergi) <strong>tidak</strong> masuk persentase EMR sejak 28/10/2026 —
+                        kode diisi coder di layar Coding SATUSEHAT sesudah pelayanan; ditampilkan terpisah sebagai indikator kesiapan kirim.
+                        Kondisi Saat Keluar (Perencanaan) dinilai untuk kunjungan mulai 28/10/2026.
                         Modul observasi/obat-cairan/rujukan/transfer bersifat opsional. Standar: <strong>Permenkes 24/2022</strong> &amp; <strong>SNARS Ed. 1.1</strong>.
                     </p>
                 </div>

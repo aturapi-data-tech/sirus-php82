@@ -2,6 +2,8 @@
 
 namespace App\Http\Traits\Txn\Ri;
 
+use App\Support\KelengkapanEmr;
+
 /**
  * Hitung persentase kelengkapan EMR Rawat Inap dari JSON datadaftarri_json.
  *
@@ -17,6 +19,10 @@ namespace App\Http\Traits\Txn\Ri;
  *   C   — CPPT                 20%  (min 1 catatan SOAP harian)
  *   K   — Asuhan Keperawatan   20%  (min 1 diagnosis SDKI + intervensi SIKI)
  *
+ * Sejak 2026-10-28 (App\Support\KelengkapanEmr): P menilai Kondisi Saat Pulang (wajib SATUSEHAT) untuk pasien
+ * yang PULANG mulai 28/10/2026; A juga menerima diagnosa awal Pengkajian Dokter (JSON); penilaian format
+ * lama yang hanya berisi daftar pilihan tak lagi dihitung terisi.
+ *
  * Aturan "terisi" — sama dengan RJ/UGD: field screening (alergi, RPD)
  * boleh teks "Tidak ada", asal NON-EMPTY.
  *
@@ -27,12 +33,15 @@ trait EmrCompletenessRITrait
     /**
      * @return array{emr: int, sections: array{s: int, o: int, a: int, p: int, n: int, c: int, k: int}}
      */
-    public function calculateEmrPercentRI(array $json): array
+    public function calculateEmrPercentRI(array $json, ?string $tanggalPulang = null): array
     {
+        // JSON mentah (daftar) tak membawa exitDate — pemanggil mengirim kolom exit_date; findDataRI sudah mengisinya.
+        $wajibKondisiPulang = KelengkapanEmr::wajibKondisiPulang(($json['exitDate'] ?? '') ?: $tanggalPulang);
+
         $s = $this->scorePengkajianAwalRI($json['pengkajianAwalPasienRawatInap'] ?? []);
         $o = $this->scorePemeriksaanRI($json['pengkajianAwalPasienRawatInap']['bagian4PemeriksaanFisik'] ?? []);
         $a = $this->scoreDiagnosaRI($json);
-        $p = $this->scorePerencanaanRI($json['perencanaan'] ?? []);
+        $p = $this->scorePerencanaanRI($json['perencanaan'] ?? [], $wajibKondisiPulang);
         $n = $this->scorePenilaianRI($json['penilaian'] ?? []);
         $c = $this->scoreCpptRI($json['cppt'] ?? []);
         $k = $this->scoreAskepRI($json['asuhanKeperawatan'] ?? []);
@@ -110,30 +119,40 @@ trait EmrCompletenessRITrait
     }
 
     /**
-     * A — Diagnosa: minimal 1 entry (ICD-10 atau free-text).
+     * A — Diagnosa: minimal 1 entry (ICD-10, free-text, atau diagnosa awal Pengkajian Dokter).
      */
     private function scoreDiagnosaRI(array $json): int
     {
-        $hasIcd = !empty($json['diagnosis']) && is_array($json['diagnosis']);
-        $hasFreeText = filled($json['diagnosisFreeText'] ?? null);
+        return $this->adaDiagnosaRI($json) ? 100 : 0;
+    }
 
-        return ($hasIcd || $hasFreeText) ? 100 : 0;
+    private function adaDiagnosaRI(array $json): bool
+    {
+        return (!empty($json['diagnosis']) && is_array($json['diagnosis']))
+            || filled($json['diagnosisFreeText'] ?? null)
+            || filled($json['pengkajianDokter']['diagnosaAssesment']['diagnosaAwal'] ?? null);
     }
 
     /**
-     * P — Perencanaan: tindak lanjut / discharge plan.
+     * P — Perencanaan: tindak lanjut / tanggal pulang / discharge plan (salah satu cukup),
+     * + Kondisi Saat Pulang bila pasien pulang mulai 28/10/2026.
      */
-    private function scorePerencanaanRI(array $p): int
+    private function scorePerencanaanRI(array $p, bool $wajibKondisiPulang = false): int
     {
         if (empty($p)) {
             return 0;
         }
 
-        $hasTindakLanjut = filled($p['tindakLanjut']['tindakLanjut'] ?? null);
-        $hasTglPulang = filled($p['tindakLanjut']['tglPulang'] ?? null);
-        $hasDischarge = filled($p['dischargePlanning']['pelayananBerkelanjutan']['pelayananBerkelanjutan'] ?? null);
+        $checks = [
+            filled($p['tindakLanjut']['tindakLanjut'] ?? null)
+                || filled($p['tindakLanjut']['tglPulang'] ?? null)
+                || filled($p['dischargePlanning']['pelayananBerkelanjutan']['pelayananBerkelanjutan'] ?? null),
+        ];
+        if ($wajibKondisiPulang) {
+            $checks[] = filled($p['kondisiPulang']['kondisiPulang'] ?? null);
+        }
 
-        return ($hasTindakLanjut || $hasTglPulang || $hasDischarge) ? 100 : 0;
+        return (int) round((array_sum($checks) / count($checks)) * 100);
     }
 
     /**
@@ -145,8 +164,8 @@ trait EmrCompletenessRITrait
             return 0;
         }
 
-        $hasNyeri = !empty($p['nyeri']);
-        $hasResikoJatuh = !empty($p['resikoJatuh']);
+        $hasNyeri = KelengkapanEmr::adaEntriPenilaian($p['nyeri'] ?? null);
+        $hasResikoJatuh = KelengkapanEmr::adaEntriPenilaian($p['resikoJatuh'] ?? null);
 
         $score = ($hasNyeri ? 1 : 0) + ($hasResikoJatuh ? 1 : 0);
         return (int) round(($score / 2) * 100);
@@ -177,8 +196,9 @@ trait EmrCompletenessRITrait
      *
      * @return array<string, array{label: string, weight: int, items: array<int, array{label: string, filled: bool}>}>
      */
-    public function collectChecklistRI(array $json): array
+    public function collectChecklistRI(array $json, ?string $tanggalPulang = null): array
     {
+        $wajibKondisiPulang = KelengkapanEmr::wajibKondisiPulang(($json['exitDate'] ?? '') ?: $tanggalPulang);
         $pa = $json['pengkajianAwalPasienRawatInap'] ?? [];
         $b1 = $pa['bagian1DataUmum'] ?? [];
         $b2 = $pa['bagian2RiwayatPasien'] ?? [];
@@ -220,26 +240,28 @@ trait EmrCompletenessRITrait
                 'weight' => 15,
                 'items' => [
                     [
-                        'label' => 'Minimal 1 diagnosa (ICD-10 atau free-text)',
-                        'filled' => (!empty($json['diagnosis']) && is_array($json['diagnosis'])) || filled($json['diagnosisFreeText'] ?? null),
+                        'label' => 'Minimal 1 diagnosa (ICD-10, free-text, atau diagnosa awal Pengkajian Dokter)',
+                        'filled' => $this->adaDiagnosaRI($json),
                     ],
                 ],
             ],
             'p' => [
                 'label' => 'Perencanaan / Discharge',
                 'weight' => 10,
-                'items' => [
+                'items' => array_merge([
                     ['label' => 'Tindak lanjut (cukup salah satu)', 'filled' => filled($p['tindakLanjut']['tindakLanjut'] ?? null)],
                     ['label' => 'Tanggal pulang (cukup salah satu)', 'filled' => filled($p['tindakLanjut']['tglPulang'] ?? null)],
                     ['label' => 'Discharge planning — pelayanan berkelanjutan (cukup salah satu)', 'filled' => filled($p['dischargePlanning']['pelayananBerkelanjutan']['pelayananBerkelanjutan'] ?? null)],
-                ],
+                ], $wajibKondisiPulang
+                    ? [['label' => 'Kondisi saat pulang (wajib SATUSEHAT)', 'filled' => filled($p['kondisiPulang']['kondisiPulang'] ?? null)]]
+                    : []),
             ],
             'n' => [
                 'label' => 'Penilaian',
                 'weight' => 5,
                 'items' => [
-                    ['label' => 'Penilaian nyeri (min 1 entry)', 'filled' => !empty($n['nyeri'])],
-                    ['label' => 'Risiko jatuh (min 1 entry)', 'filled' => !empty($n['resikoJatuh'])],
+                    ['label' => 'Penilaian nyeri (min 1 entry)', 'filled' => KelengkapanEmr::adaEntriPenilaian($n['nyeri'] ?? null)],
+                    ['label' => 'Risiko jatuh (min 1 entry)', 'filled' => KelengkapanEmr::adaEntriPenilaian($n['resikoJatuh'] ?? null)],
                 ],
             ],
             'c' => [

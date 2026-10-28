@@ -328,7 +328,7 @@ new class extends Component {
             // EMR completeness — weighted S15/O15/A15/P10/N5/C20/K20.
             // C (CPPT) & K (Askep) khas RI — bobot besar karena engine monitoring harian.
             // Logic ada di EmrCompletenessRITrait. Field "screening" boleh "Tidak ada".
-            $pct = $this->calculateEmrPercentRI($json);
+            $pct = $this->calculateEmrPercentRI($json, $row->exit_date_display ?? null);
             $row->emr_percent = $pct['emr'];
             $row->eresep_percent = isset($json['eresep']) || isset($json['eresepRacikan']) ? 100 : 0;
             $row->lab_status = (int) ($labPerRiHdrNo[$row->rihdr_no] ?? 0);

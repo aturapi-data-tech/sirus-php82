@@ -2,16 +2,18 @@
 
 namespace App\Http\Traits\Txn\Rj;
 
+use App\Support\KelengkapanEmr;
+
 /**
  * Hitung persentase kelengkapan EMR RJ dari JSON datadaftarpolirj_json.
  *
- * Bobot section (weighted):
+ * Bobot section (weighted) — sejak 2026-10-28 (lihat App\Support\KelengkapanEmr):
  *   S — Anamnesa       15%
  *   O — Pemeriksaan    20%
  *   A — Diagnosa       25%
- *   P — Perencanaan    20%
+ *   P — Perencanaan    30%  (+ Kondisi Saat Pulang untuk kunjungan mulai 28/10/2026)
  *   N — Penilaian      10%
- *   K — Koding SNOMED  10%
+ * Koding SNOMED TIDAK masuk % — indikator terpisah 'koding' (KelengkapanEmr::kodingSatuSehat).
  *
  * Aturan "terisi":
  *   - Field "screening" (alergi, riwayat penyakit dahulu) — boleh berisi
@@ -27,18 +29,17 @@ namespace App\Http\Traits\Txn\Rj;
 trait EmrCompletenessRJTrait
 {
     /**
-     * @return array{emr: int, sections: array{s: int, o: int, a: int, p: int, n: int, k: int}}
+     * @return array{emr: int, sections: array{s: int, o: int, a: int, p: int, n: int}, koding: int|null}
      */
     public function calculateEmrPercentRJ(array $json): array
     {
         $s = $this->scoreAnamnesaRJ($json['anamnesa'] ?? []);
         $o = $this->scorePemeriksaanRJ($json['pemeriksaan'] ?? []);
         $a = $this->scoreDiagnosaRJ($json);
-        $p = $this->scorePerencanaanRJ($json['perencanaan'] ?? []);
+        $p = $this->scorePerencanaanRJ($json['perencanaan'] ?? [], KelengkapanEmr::wajibKondisiPulang($json['rjDate'] ?? null));
         $n = $this->scorePenilaianRJ($json['penilaian'] ?? []);
-        $k = $this->scoreSnomedRJ($json['anamnesa'] ?? []);
 
-        $total = ($s * 0.15) + ($o * 0.20) + ($a * 0.25) + ($p * 0.20) + ($n * 0.10) + ($k * 0.10);
+        $total = ($s * 0.15) + ($o * 0.20) + ($a * 0.25) + ($p * 0.30) + ($n * 0.10);
 
         return [
             'emr' => (int) round($total),
@@ -48,8 +49,9 @@ trait EmrCompletenessRJTrait
                 'a' => (int) round($a),
                 'p' => (int) round($p),
                 'n' => (int) round($n),
-                'k' => (int) round($k),
             ],
+            // Kesiapan Coding SATUSEHAT — terpisah, TIDAK masuk 'emr'. null = belum ada teks yang bisa dikode.
+            'koding' => KelengkapanEmr::kodingSatuSehat($json['anamnesa'] ?? [])['persen'],
         ];
     }
 
@@ -68,7 +70,7 @@ trait EmrCompletenessRJTrait
         $checks = [
             filled($a['keluhanUtama']['keluhanUtama'] ?? null),
             filled($a['riwayatPenyakitSekarangUmum']['riwayatPenyakitSekarangUmum'] ?? null),
-            filled($a['alergi']['alergi'] ?? null),
+            filled($a['alergi']['alergi'] ?? null) || filled($a['alergi']['adaAlergi'] ?? null),
             filled($a['riwayatPenyakitDahulu']['riwayatPenyakitDahulu'] ?? null),
             filled($a['pengkajianPerawatan']['jamDatang'] ?? null),
         ];
@@ -114,24 +116,26 @@ trait EmrCompletenessRJTrait
     }
 
     /**
-     * P — Perencanaan: 2 komponen.
+     * P — Perencanaan: 2 komponen (+1 untuk kunjungan mulai 28/10/2026).
      *   - Treatment plan (terapi ATAU tindakLanjut, salah satu cukup)
      *   - TTD dokter pemeriksa (drPemeriksa)
+     *   - Kondisi Saat Pulang (wajib SATUSEHAT) — hanya bila $wajibKondisiPulang
      */
-    private function scorePerencanaanRJ(array $p): int
+    private function scorePerencanaanRJ(array $p, bool $wajibKondisiPulang = false): int
     {
         if (empty($p)) {
             return 0;
         }
 
-        $hasTerapi = filled($p['terapi']['terapi'] ?? null);
-        $hasTindakLanjut = filled($p['tindakLanjut']['tindakLanjut'] ?? null);
-        $hasTreatmentPlan = $hasTerapi || $hasTindakLanjut;
+        $checks = [
+            filled($p['terapi']['terapi'] ?? null) || filled($p['tindakLanjut']['tindakLanjut'] ?? null),
+            filled($p['pengkajianMedis']['drPemeriksa'] ?? null),
+        ];
+        if ($wajibKondisiPulang) {
+            $checks[] = filled($p['kondisiPulang']['kondisiPulang'] ?? null);
+        }
 
-        $hasDrPemeriksa = filled($p['pengkajianMedis']['drPemeriksa'] ?? null);
-
-        $score = ($hasTreatmentPlan ? 1 : 0) + ($hasDrPemeriksa ? 1 : 0);
-        return (int) round(($score / 2) * 100);
+        return (int) round((array_sum($checks) / count($checks)) * 100);
     }
 
     /**
@@ -143,35 +147,11 @@ trait EmrCompletenessRJTrait
             return 0;
         }
 
-        $hasNyeri = !empty($p['nyeri']);
-        $hasResikoJatuh = !empty($p['resikoJatuh']);
+        $hasNyeri = KelengkapanEmr::adaEntriPenilaian($p['nyeri'] ?? null);
+        $hasResikoJatuh = KelengkapanEmr::adaEntriPenilaian($p['resikoJatuh'] ?? null);
 
         $score = ($hasNyeri ? 1 : 0) + ($hasResikoJatuh ? 1 : 0);
         return (int) round(($score / 2) * 100);
-    }
-
-    /**
-     * K — Koding SNOMED: field anamnesa yang punya slot SNOMED (Keluhan Utama & Alergi)
-     * harus di-coding (snomedCode terisi), bukan sekadar free-text.
-     *
-     * PENTING: hanya field yang KONTENnya terisi yang dinilai — field kosong TIDAK
-     * ikut menyeret skor (sudah dipenalti di section Anamnesa; jangan double-penalti,
-     * dan jangan beri poin gratis untuk EMR kosong → return 0 bila belum ada konten).
-     */
-    private function scoreSnomedRJ(array $a): int
-    {
-        $fieldSnomed = [
-            ['konten' => $a['keluhanUtama']['keluhanUtama'] ?? null, 'snomedCode' => $a['keluhanUtama']['snomedCode'] ?? null],
-            ['konten' => $a['alergi']['alergi'] ?? null, 'snomedCode' => $a['alergi']['snomedCode'] ?? null],
-        ];
-
-        $fieldTerisi = array_filter($fieldSnomed, fn($field) => filled($field['konten']));
-        if (empty($fieldTerisi)) {
-            return 0; // belum ada konten yang bisa di-coding
-        }
-
-        $jumlahTerkode = array_sum(array_map(fn($field) => filled($field['snomedCode']) ? 1 : 0, $fieldTerisi));
-        return (int) round(($jumlahTerkode / count($fieldTerisi)) * 100);
     }
 
     /**
@@ -197,7 +177,7 @@ trait EmrCompletenessRJTrait
                 'items' => [
                     ['label' => 'Keluhan utama', 'filled' => filled($a['keluhanUtama']['keluhanUtama'] ?? null)],
                     ['label' => 'Riwayat penyakit sekarang', 'filled' => filled($a['riwayatPenyakitSekarangUmum']['riwayatPenyakitSekarangUmum'] ?? null)],
-                    ['label' => 'Alergi (boleh "Tidak ada")', 'filled' => filled($a['alergi']['alergi'] ?? null)],
+                    ['label' => 'Alergi (boleh "Tidak ada")', 'filled' => filled($a['alergi']['alergi'] ?? null) || filled($a['alergi']['adaAlergi'] ?? null)],
                     ['label' => 'Riwayat penyakit dahulu (boleh "Tidak ada")', 'filled' => filled($a['riwayatPenyakitDahulu']['riwayatPenyakitDahulu'] ?? null)],
                     ['label' => 'Waktu datang', 'filled' => filled($a['pengkajianPerawatan']['jamDatang'] ?? null)],
                 ],
@@ -228,35 +208,23 @@ trait EmrCompletenessRJTrait
             ],
             'p' => [
                 'label' => 'Perencanaan',
-                'weight' => 20,
-                'items' => [
+                'weight' => 30,
+                'items' => array_merge([
                     [
                         'label' => 'Terapi ATAU tindak lanjut',
                         'filled' => filled($r['terapi']['terapi'] ?? null) || filled($r['tindakLanjut']['tindakLanjut'] ?? null),
                     ],
                     ['label' => 'TTD dokter pemeriksa', 'filled' => filled($r['pengkajianMedis']['drPemeriksa'] ?? null)],
-                ],
+                ], KelengkapanEmr::wajibKondisiPulang($json['rjDate'] ?? null)
+                    ? [['label' => 'Kondisi saat pulang (wajib SATUSEHAT)', 'filled' => filled($r['kondisiPulang']['kondisiPulang'] ?? null)]]
+                    : []),
             ],
             'n' => [
                 'label' => 'Penilaian',
                 'weight' => 10,
                 'items' => [
-                    ['label' => 'Penilaian nyeri (min 1 entry)', 'filled' => !empty($n['nyeri'])],
-                    ['label' => 'Risiko jatuh (min 1 entry)', 'filled' => !empty($n['resikoJatuh'])],
-                ],
-            ],
-            'k' => [
-                'label' => 'Koding SNOMED',
-                'weight' => 10,
-                'items' => [
-                    [
-                        'label' => 'Keluhan Utama ter-coding SNOMED (bila diisi)',
-                        'filled' => blank($a['keluhanUtama']['keluhanUtama'] ?? null) || filled($a['keluhanUtama']['snomedCode'] ?? null),
-                    ],
-                    [
-                        'label' => 'Alergi ter-coding SNOMED (bila diisi)',
-                        'filled' => blank($a['alergi']['alergi'] ?? null) || filled($a['alergi']['snomedCode'] ?? null),
-                    ],
+                    ['label' => 'Penilaian nyeri (min 1 entry)', 'filled' => KelengkapanEmr::adaEntriPenilaian($n['nyeri'] ?? null)],
+                    ['label' => 'Risiko jatuh (min 1 entry)', 'filled' => KelengkapanEmr::adaEntriPenilaian($n['resikoJatuh'] ?? null)],
                 ],
             ],
         ];

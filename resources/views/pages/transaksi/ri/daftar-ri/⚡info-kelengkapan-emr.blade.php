@@ -2,6 +2,7 @@
 
 use Livewire\Component;
 use Livewire\Attributes\On;
+use App\Support\AnamnesaRi;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Http\Traits\Txn\Ri\EmrCompletenessRITrait;
 
@@ -26,32 +27,31 @@ new class extends Component {
     }
 
     /**
-     * SNOMED status — field RI yang punya snomedCode. RI struktur lebih luas,
-     * cek keluhan utama (di pengkajian dokter) dan alergi (di pengkajian dokter).
+     * Kesiapan Coding SATUSEHAT RI — kode di node akar kodingSatuSehat (layar Coding RI), teks dari
+     * App\Support\AnamnesaRi (dokter dulu, cadangan perawat). Info saja, tidak masuk %.
      */
     private function collectSnomedStatus(array $json): array
     {
-        $pd = $json['pengkajianDokter'] ?? [];
-        $pa = $json['pengkajianAwalPasienRawatInap'] ?? [];
+        $kodingKeluhan = AnamnesaRi::koding($json, 'keluhanUtama');
+        $alergi = AnamnesaRi::alergi($json);
+        $alergenList = (array) (AnamnesaRi::koding($json, 'alergi')['alergenList'] ?? []);
+        $kodeAlergen = collect($alergenList)->pluck('kode')->filter()->implode(', ');
+        $kodeAlergi = ($alergi['adaAlergi'] ?? '') === 'Ya' ? $kodeAlergen : (string) ($alergi['snomedCode'] ?? '');
 
         return [
             [
-                'label' => 'Keluhan Utama (Dokter)',
-                'value' => $pd['anamnesa']['keluhanUtama'] ?? '',
-                'code'  => $pd['anamnesa']['keluhanUtamaSnomedCode'] ?? '',
-                'displayId' => $pd['anamnesa']['keluhanUtamaSnomedDisplayId'] ?? '',
+                'label' => 'Keluhan Utama',
+                'value' => AnamnesaRi::keluhanUtama($json),
+                'code' => (string) ($kodingKeluhan['snomedCode'] ?? ''),
+                'displayId' => (string) ($kodingKeluhan['snomedDisplayId'] ?? ''),
+                'terkode' => filled($kodingKeluhan['snomedCode'] ?? null),
             ],
             [
-                'label' => 'Alergi (Dokter)',
-                'value' => $pd['anamnesa']['jenisAlergi'] ?? '',
-                'code'  => $pd['anamnesa']['alergiSnomedCode'] ?? '',
-                'displayId' => $pd['anamnesa']['alergiSnomedDisplayId'] ?? '',
-            ],
-            [
-                'label' => 'Keluhan Utama (Pengkajian Awal)',
-                'value' => $pa['bagian4PemeriksaanFisik']['keluhanUtama'] ?? '',
-                'code'  => $pa['bagian4PemeriksaanFisik']['keluhanUtamaSnomedCode'] ?? '',
-                'displayId' => $pa['bagian4PemeriksaanFisik']['keluhanUtamaSnomedDisplayId'] ?? '',
+                'label' => 'Alergi',
+                'value' => (string) ($alergi['alergi'] ?? ''),
+                'code' => $kodeAlergi,
+                'displayId' => ($alergi['adaAlergi'] ?? '') === 'Ya' ? '' : (string) ($alergi['snomedDisplayId'] ?? ''),
+                'terkode' => $kodeAlergi !== '',
             ],
         ];
     }
@@ -116,8 +116,8 @@ new class extends Component {
                                 <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
                                 </svg>
-                                <span class="font-semibold text-ink dark:text-gray-200">SNOMED Coding</span>
-                                <span class="text-xs text-muted dark:text-gray-400">(info — tidak masuk ke %)</span>
+                                <span class="font-semibold text-ink dark:text-gray-200">Coding SATUSEHAT</span>
+                                <span class="text-xs text-muted dark:text-gray-400">(terpisah — tidak masuk % EMR; diisi di layar Coding SATUSEHAT)</span>
                             </div>
                         </div>
                         <table class="w-full text-sm">
@@ -128,7 +128,7 @@ new class extends Component {
                                             <strong>{{ $item['label'] }}</strong>
                                         </td>
                                         <td class="px-4 py-2 text-muted dark:text-gray-400">
-                                            @if (filled($item['code']))
+                                            @if ($item['terkode'] ?? filled($item['code']))
                                                 <div class="flex items-center gap-2">
                                                     <x-badge variant="success">✓ Coded</x-badge>
                                                     <span class="font-mono text-xs">{{ $item['code'] }}</span>
@@ -226,7 +226,8 @@ new class extends Component {
 
                 <div class="p-3 border border-hairline rounded-lg bg-surface-soft dark:bg-gray-900/40 dark:border-gray-700">
                     <p class="text-xs text-muted dark:text-gray-400">
-                        <span class="font-semibold">SNOMED coding</span> tidak masuk perhitungan persentase, hanya info kesiapan SATUSEHAT.
+                        <span class="font-semibold">Coding SATUSEHAT</span> tidak masuk perhitungan persentase, hanya info kesiapan kirim.
+                        Kondisi Saat Pulang (Perencanaan) dinilai untuk pasien yang pulang mulai 28/10/2026.
                         Modul observasi/SKDP/modul-dokumen bersifat opsional. Standar: <strong>Permenkes 24/2022</strong> & <strong>SNARS Ed. 1.1</strong>.
                     </p>
                 </div>

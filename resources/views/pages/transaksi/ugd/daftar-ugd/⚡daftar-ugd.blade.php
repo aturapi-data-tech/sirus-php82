@@ -200,7 +200,7 @@ new class extends Component {
             $json = json_decode($jsonRaw ?: '{}', true) ?? [];
             $row->berkas_uploaded = []; // seq_file berkas BPJS yang sudah di-upload
 
-            /* EMR completeness — weighted S15/O20/A20/P20/N10/T15.
+            /* EMR completeness — weighted S15/O15/A20/P25/N10/T15 (koding SNOMED terpisah, sejak 2026-10-28).
                Logic ada di EmrCompletenessUGDTrait. T = Triase/Screening, khusus UGD.
                Field "screening" (alergi, RPD) dianggap terisi kalau non-empty (termasuk
                "Tidak ada") — dokter wajib explicit isi negatif, jangan dibiarkan kosong. */

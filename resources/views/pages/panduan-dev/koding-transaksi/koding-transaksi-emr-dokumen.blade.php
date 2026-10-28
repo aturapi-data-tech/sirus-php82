@@ -96,7 +96,7 @@
                             <div class="ds-card-outline" style="padding:20px">
                                 <div class="ds-title-sm mb-2">Kelengkapan EMR</div>
                                 <ul class="ds-body-sm space-y-1.5" style="list-style:disc; padding-left:18px">
-                                    <li><span class="ds-code">EmrCompletenessRJTrait::calculateEmrPercentRJ()</span> — bobot S15/O20/A25/P20/N10/K10 (K = koding SNOMED)</li>
+                                    <li><span class="ds-code">EmrCompletenessRJTrait::calculateEmrPercentRJ()</span> — bobot S15/O20/A25/P30/N10. Sejak 2026-10-28 koding SNOMED <strong>tidak</strong> masuk % (indikator terpisah <span class="ds-code">koding</span>, <span class="ds-code">App\Support\KelengkapanEmr</span>); Kondisi Saat Pulang dinilai untuk kunjungan mulai 28/10/2026</li>
                                     <li>Ditampilkan sebagai progress di list (info-kelengkapan-emr)</li>
                                     <li>RI bobotnya beda (+CPPT &amp; keperawatan) — jangan samakan lintas jalur</li>
                                 </ul>

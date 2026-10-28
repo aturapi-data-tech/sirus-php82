@@ -117,8 +117,8 @@
                                             </tr>
                                             <tr>
                                                 <td class="ds-td-strong">Kelengkapan</td>
-                                                <td class="ds-td-class">EmrCompletenessRJTrait<br><span class="ds-body-sm">S15 / O20 / A25 / P20 / N10 / K10</span></td>
-                                                <td class="ds-td-class">EmrCompletenessUGDTrait<br><span class="ds-body-sm">S15 / O15 / A20 / P15 / N10 / T15 / K10</span></td>
+                                                <td class="ds-td-class">EmrCompletenessRJTrait<br><span class="ds-body-sm">S15 / O20 / A25 / P30 / N10</span></td>
+                                                <td class="ds-td-class">EmrCompletenessUGDTrait<br><span class="ds-body-sm">S15 / O15 / A20 / P25 / N10 / T15</span></td>
                                                 <td class="ds-td-class">EmrCompletenessRITrait <span class="ds-body-sm">(bobot beda: + CPPT &amp; keperawatan)</span></td>
                                             </tr>
                                             <tr>
