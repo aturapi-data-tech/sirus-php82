@@ -9,6 +9,7 @@ use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 use App\Http\Traits\Concerns\WithValidationToastTrait;
 use App\Http\Traits\BPJS\VclaimTrait;
+use App\Support\SuratKontrolBpjs;
 
 new class extends Component {
     use EmrRITrait, WithRenderVersioningTrait, WithValidationToastTrait;
@@ -262,46 +263,14 @@ new class extends Component {
         }
     }
 
-    /**
-     * Nomor surat kontrol yang sudah terbit di BPJS untuk SEP kunjungan ini ('' = belum ada / tak bisa dicek).
-     * Dicari di bulan terbit (hari ini, filter 1) & bulan rencana kontrol (filter 2); dicocokkan lewat
-     * noSepAsalKontrol + jnsKontrol 2 (surat kontrol, bukan SPRI). Gagal / BPJS down → '' (insert jalan
-     * seperti biasa; nomor di DB tetap dilindungi save()).
-     */
+    /** Nomor surat kontrol yang sudah terbit di BPJS untuk SEP kunjungan ini ('' = belum / tak bisa dicek) — App\Support\SuratKontrolBpjs. */
     private function cariSuratKontrolTerbit(): string
     {
-        $noSep = trim((string) ($this->formKontrol['noSEP'] ?? ''));
         $data = $this->findDataRI($this->riHdrNo) ?? [];
         $noKartu = trim((string) (DB::table('rsmst_pasiens')->where('reg_no', $data['regNo'] ?? '')->value('nokartu_bpjs') ?? ''))
             ?: trim((string) ($data['sep']['reqSep']['request']['t_sep']['noKartu'] ?? ''));
-        if ($noSep === '' || $noKartu === '') {
-            return '';
-        }
 
-        $periode = [[Carbon::now(config('app.timezone')), 1]];
-        try {
-            $periode[] = [Carbon::createFromFormat('d/m/Y', (string) ($this->formKontrol['tglKontrol'] ?? '')), 2];
-        } catch (\Throwable) {
-            // tanggal kontrol tak terbaca — cukup cek bulan terbit
-        }
-
-        foreach ($periode as [$tanggal, $filter]) {
-            try {
-                $response = VclaimTrait::suratkontrol_list_kartu($tanggal->format('m'), $tanggal->format('Y'), $noKartu, $filter)->getOriginalContent();
-            } catch (\Throwable) {
-                continue;
-            }
-            if (($response['metadata']['code'] ?? 0) != 200) {
-                continue;
-            }
-            $cocok = collect($response['response']['list'] ?? [])
-                ->first(fn($surat) => (string) ($surat['noSepAsalKontrol'] ?? '') === $noSep && (string) ($surat['jnsKontrol'] ?? '') === '2');
-            if (filled($cocok['noSuratKontrol'] ?? null)) {
-                return (string) $cocok['noSuratKontrol'];
-            }
-        }
-
-        return '';
+        return SuratKontrolBpjs::nomorTerbit((string) ($this->formKontrol['noSEP'] ?? ''), $noKartu, $this->formKontrol['tglKontrol'] ?? null);
     }
 
     /* ═══════════════════════════════════════
