@@ -926,7 +926,8 @@ new class extends Component {
             </div>
 
             {{-- Child components — pelayanan-only: EMR + Modul Dokumen + Administrasi + Cetak Etiket --}}
-            <livewire:pages::transaksi.ugd.emr-ugd.emr-ugd wire:key="emr-ugd-actions" />
+            {{-- EMR UGD + Coding SATUSEHAT UGD: satu modal bertab (mendengar 'emr-ugd.rekam-medis.open' & 'coding-fhir-ugd.open') --}}
+            <livewire:pages::transaksi.ugd.emr-coding-ugd.emr-coding-ugd wire:key="emr-coding-ugd" />
             <livewire:pages::transaksi.ugd.administrasi-ugd.administrasi-ugd wire:key="administrasi-ugd-actions" />
             <livewire:pages::transaksi.ugd.administrasi-ugd.transfer-ugd-ke-ri-actions wire:key="transfer-ugd-ke-ri-actions" />
             <livewire:pages::transaksi.ugd.pelayanan-ugd.cek-peserta-bpjs-ugd-actions wire:key="cek-peserta-bpjs-ugd-actions" />
@@ -934,9 +935,6 @@ new class extends Component {
             {{-- Modal Rekonsiliasi Obat (Farmasi) — listen ke event rekonsiliasi-obat-ugd.open --}}
             <livewire:pages::transaksi.ugd.rekonsiliasi-obat-ugd.rekonsiliasi-obat-ugd wire:key="rekonsiliasi-obat-ugd" />
             <livewire:pages::transaksi.ugd.emr-ugd.modul-dokumen.modul-dokumen-ugd wire:key="modul-dokumen-ugd" />
-            @can('emr.codingFhir')
-                <livewire:pages::transaksi.ugd.coding-fhir-ugd.coding-fhir-ugd wire:key="coding-fhir-ugd" />
-            @endcan
             <livewire:pages::transaksi.ugd.emr-ugd.log-aktivitas.log-aktivitas-ugd wire:key="log-aktivitas-ugd" />
             <livewire:pages::components.rekam-medis.etiket.cetak-etiket wire:key="cetak-etiket-ugd" />
 
