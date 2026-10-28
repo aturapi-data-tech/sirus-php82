@@ -468,8 +468,8 @@ Sub-section ditulis di `section[i].section[j]`:
    menggantikan/merujuk dokumen mana pun. Perlu konfirmasi nilai yang diterima validator.
 
 **Pemetaan ke node `satuSehat` (RJ) — per 2026-10-28.** Teks klinis diisi di EMR; kode SNOMED/KFA
-diisi SESUDAH pelayanan di layar **Coding SATUSEHAT** (`pages/transaksi/rj/coding-fhir-rj/`, menu titik-3
-Pelayanan & Daftar RJ, Gate `emr.codingFhir`). Kode disimpan di key yang sama dengan teksnya, jadi sender
+diisi SESUDAH pelayanan di layar **Coding SATUSEHAT** (`pages/transaksi/rj/coding-fhir-rj/`, Gate
+`emr.codingFhir`; Pelayanan RJ = tab Coding di modal gabungan `emr-coding-rj`, Daftar RJ = modal sendiri). Kode disimpan di key yang sama dengan teksnya, jadi sender
 membaca dari JSON EMR seperti biasa.
 
 | Section | Sumber kode (JSON EMR) | Sender → node `satuSehat` |
@@ -550,7 +550,7 @@ mengurus perbedaan ini; jalur yang playbook-nya belum dibaca (mis. `ri`) sengaja
 Teks klinis RI tersebar di dua formulir — Pengkajian Dokter (±1/4 rawat inap terisi) dan Pengkajian
 Awal perawat (±9/10) — jadi dibaca lewat `App\Support\AnamnesaRi` (dokter dulu, cadangan perawat).
 **Kode RI disimpan di node akar `kodingSatuSehat`** (bukan menumpang node form seperti RJ/UGD), diisi
-layar `pages/transaksi/ri/coding-fhir-ri/` (titik-3 Daftar RI). Kirim Semua RI = 26 kartu + finish
+layar `pages/transaksi/ri/coding-fhir-ri/` (Daftar RI → tab Coding di modal gabungan `emr-coding-ri`). Kirim Semua RI = 26 kartu + finish
 Encounter + finish Episode + Resume Medis.
 
 | Bab RI | Isi | Sumber | Catatan |
@@ -575,7 +575,8 @@ bisa kembar (urutan berbeda). Belum diubah; RI sudah pakai awalan `RI-`.
 #### UGD disamakan dengan alur IGD apikesehatan.com (2026-10-28)
 
 Pola sama dengan RJ di atas: EMR UGD hanya teks klinis, kode diisi di layar
-`pages/transaksi/ugd/coding-fhir-ugd/` (titik-3 Daftar & Pelayanan UGD, Gate `emr.codingFhir`).
+`pages/transaksi/ugd/coding-fhir-ugd/` (Gate `emr.codingFhir`; Pelayanan UGD = tab Coding di modal
+gabungan `emr-coding-ugd`, Daftar UGD = modal sendiri).
 Kirim Semua UGD = 23 kartu + selesaikan Encounter + resume.
 
 | Bab IGD | Isi | Sumber UGD | Kartu |

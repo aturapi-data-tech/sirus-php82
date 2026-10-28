@@ -255,11 +255,49 @@ private function afterSave(): void
 | Modal single sub-page (suket, inform-consent) | `<x-dirty-modal-content>` |
 | EMR RJ / UGD (multi-section tapi global save flow) | `<x-dirty-modal-content>` |
 | EMR RI (multi-tab, tiap tab independent component dengan save handler beda) | `<x-tabbed-dirty-modal-content>` |
+| Modal gabungan EMR + Coding (`emr-coding-{rj,ugd,ri}`) | lihat §3 |
 
 Kalau ragu, default pakai single (`<x-dirty-modal-content>`) — switch ke tabbed kalau:
 - Modal punya 4+ tab dengan save handler independen
 - User butuh tahu tab mana yang dirty (indicator per tab)
 - Save per tab lebih efisien dari save semua sekaligus
+
+## 3. Modal gabungan EMR + Coding SATUSEHAT (`emr-coding-{rj,ugd,ri}`, 2026-10-28)
+
+Satu x-modal bertab (pola halaman Kasir: `<x-tabs>` + `@if` per tab) memasang komponen asli dengan
+`:embedded="true"`. Dipasang di Pelayanan RJ, Pelayanan UGD, Daftar RI menggantikan modal EMR & Coding
+berdiri sendiri; mendengar event open lamanya (`emr-{jalur}.rekam-medis.open`, `coding-fhir-{jalur}.open`).
+
+```
+emr-coding-{jalur}   x-modal · header (tab di slot `tab`) · identitas pasien
+└── @if tab
+    ├── rekamMedis → emr-{jalur} :embedded   (@include emr-{jalur}-isi)
+    └── coding     → coding-fhir-{jalur} :embedded   (@include coding-fhir-{jalur}-isi)
+```
+
+**Mode embedded** — anak tanpa x-modal / header / identitas (milik pembungkus); nomor kunjungan dari
+prop di `mount()`; handler event open diabaikan (`if ($this->embedded) return;`) supaya tak ada modal
+ganda. Tombol Tutup di footer anak memancarkan event browser (`emr-{jalur}-tutup`,
+`coding-fhir-{jalur}-tutup`) → `tryClose()` guard host.
+
+**Dirty guard**
+
+| Jalur | Tab Rekam Medis | Tab Coding |
+|---|---|---|
+| RJ / UGD | `x-dirty-modal-content` di PEMBUNGKUS, `saveEvents` = 4 `save-rm-*` | guard yang sama, `saveEvents` = `['save-coding-fhir-*']` |
+| RI | `x-tabbed-dirty-modal-content` milik EMR RI tetap (di `emr-ri-isi`); `tryClose` → `closeModal()` embedded → event Livewire `emr-coding-ri.tutup` | `x-dirty-modal-content` di pembungkus |
+
+- `wireKey` guard memuat tab aktif → ganti tab = guard di-init ulang dengan daftar event baru.
+- Simpan Coding ikut memancarkan `refresh-after-{jalur}.saved` supaya tanda dirty hilang.
+
+**Pindah tab = simpan otomatis tab yang ditinggalkan** (Alpine di slot tab header):
+- dari EMR RJ/UGD: `Livewire.dispatch(save-rm-*, {silent:true})`, tunggu N× `refresh-after-*.saved`
+  (4 dtk); kurang → tetap di tab + toast "periksa isian yang ditandai merah".
+- dari EMR RI: event browser `emr-ri-pindah` → handler di dalam guard per-tab menyimpan semua tab dirty,
+  tunggu bersih, balas `emr-ri-pindah-hasil` `{berhasil, tabBelumTersimpan}`.
+- dari Coding: `save-coding-fhir-*` `{senyap:true}` (dilewati bila sidik kode tak berubah) → tunggu
+  `coding-fhir-*.tersimpan` `{berhasil}`.
+- Berhasil → `$wire.pilihTab()` → versi naik → isi tab baru di-mount ulang membaca data segar.
 
 ## Gotchas
 

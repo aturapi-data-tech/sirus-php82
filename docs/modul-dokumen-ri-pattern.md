@@ -97,7 +97,10 @@ salah satunya diam-diam.
   Prop: `judul` (karakter asli, bukan entity), `ikon` (atribut `d` path heroicons 24×24), `jalur`
   `RJ|UGD|RI` (badge brand), `jumlah` (badge "N tersimpan" bila > 0 — ekspresi dievaluasi LANGSUNG,
   beri `?? []` bila datanya bisa belum ada), `readOnly`, `tutup` (default `closeModal`). Slot bawaan =
-  deskripsi (> 90 karakter otomatis diringkas + "Selengkapnya"); slot `badge` = badge khusus modul.
+  deskripsi (> 90 karakter otomatis diringkas + "Selengkapnya"); slot `badge` = badge khusus modul;
+  slot `tab` (opsional, 2026-10-28) = navigasi tab tepat di sebelah judul — dipakai modal gabungan
+  `emr-coding-{rj,ugd,ri}` (`<x-tabs variant="pill">`). Bila diisi, baris judul rata tengah vertikal
+  (`items-center`); tanpa slot tetap `items-baseline`.
 - Komponen khusus modul dokumen dikumpulkan di **`resources/views/components/modul-dokumen/`**
   (dipanggil `x-modul-dokumen.<nama>`) — bagian berulang berikutnya (footer, tabel daftar, …) masuk sini.
 - X = **anak terakhir baris flex judul**, `class="ml-auto shrink-0"` (sudah diurus komponen header).
