@@ -61,10 +61,12 @@ trait ProcedureTrait
         ];
 
         if (!empty($data['performerId'])) {
-            $payload['performer'] = [[
-                'actor' => ['reference' => 'Practitioner/' . $data['performerId']],
-                'function'  => ['text'      => $data['performerRole'] ?? ''],
-            ]];
+            $performer = ['actor' => ['reference' => 'Practitioner/' . $data['performerId']]];
+            // function hanya bila ada isinya — {text: ''} = elemen kosong, rawan ditolak validator.
+            if (filled($data['performerRole'] ?? null)) {
+                $performer['function'] = ['text' => $data['performerRole']];
+            }
+            $payload['performer'] = [$performer];
         }
 
         return $this->makeRequest('post', '/Procedure', $payload);

@@ -29,8 +29,8 @@ new class extends Component {
      */
     private const URUTAN_KIRIM = [
         'encounter', 'condition', 'observation', 'procedure', 'medication-request',
-        'chief-complaint', 'allergy', 'medication-dispense', 'lab', 'radiologi',
-        'clinical-impression', 'penilaian', 'nyeri-kesadaran', 'telaah-resep',
+        'chief-complaint', 'keluhan-penyerta', 'riwayat-penyakit', 'riwayat-keluarga', 'riwayat-pengobatan', 'riwayat-perjalanan', 'allergy', 'medication-dispense', 'lab', 'radiologi',
+        'clinical-impression', 'penilaian', 'nyeri-kesadaran', 'status-psikologis', 'telaah-resep', 'prognosis', 'rencana-tindak-lanjut', 'kondisi-pulang',
         'encounter-selesai', 'resume-medis',
     ];
 
@@ -193,7 +193,7 @@ new class extends Component {
                 &mdash; RM: {{ $regNoPasien ?: '-' }}
                 &mdash; RJ: {{ $rjNo ?? '-' }}
             </x-modul-dokumen.header>
-            {{-- KIRIM SEMUA — menjalankan langkah 1..14 berurutan, satu per putaran.
+            {{-- KIRIM SEMUA — menjalankan seluruh langkah URUTAN_KIRIM berurutan, satu per putaran.
                  Sengaja TIDAK memakai orkestrator lama KirimRawatJalanTrait (583 baris,
                  tak dipakai siapa pun): ia salinan logika terpisah yang tidak ikut
                  menerima perbaikan pemulihan duplikat, penyimpanan hasil parsial,
@@ -218,7 +218,7 @@ new class extends Component {
                 @else
                     <x-confirm-button variant="primary" action="kirimSemua()"
                         title="Kirim semua langkah ke SATUSEHAT?"
-                        message="14 langkah dijalankan berurutan mulai dari Encounter. Langkah yang datanya belum lengkap akan ditolak dan dilewati — rantai tetap lanjut. Kiriman yang sudah berangkat TIDAK bisa dibatalkan."
+                        message="Semua langkah dijalankan berurutan mulai dari Encounter. Langkah yang datanya belum lengkap akan ditolak dan dilewati — rantai tetap lanjut. Kiriman yang sudah berangkat TIDAK bisa dibatalkan."
                         confirmText="Ya, Kirim Semua"
                         wire:key="kirim-semua-{{ $rjNo ?? 'none' }}">
                         <span class="inline-flex items-center gap-1.5">
@@ -261,6 +261,16 @@ new class extends Component {
                         wire:key="ss-medication-request-rj-{{ $rjNo ?? 'none' }}" />
                     <livewire:pages::transaksi.rj.satu-sehat.kirim-chief-complaint :rjNo="$rjNo"
                         wire:key="ss-chief-complaint-rj-{{ $rjNo ?? 'none' }}" />
+                    <livewire:pages::transaksi.rj.satu-sehat.kirim-keluhan-penyerta :rjNo="$rjNo"
+                        wire:key="ss-keluhan-penyerta-rj-{{ $rjNo ?? 'none' }}" />
+                    <livewire:pages::transaksi.rj.satu-sehat.kirim-riwayat-penyakit :rjNo="$rjNo"
+                        wire:key="ss-riwayat-penyakit-rj-{{ $rjNo ?? 'none' }}" />
+                    <livewire:pages::transaksi.rj.satu-sehat.kirim-riwayat-keluarga :rjNo="$rjNo"
+                        wire:key="ss-riwayat-keluarga-rj-{{ $rjNo ?? 'none' }}" />
+                    <livewire:pages::transaksi.rj.satu-sehat.kirim-riwayat-pengobatan :rjNo="$rjNo"
+                        wire:key="ss-riwayat-pengobatan-rj-{{ $rjNo ?? 'none' }}" />
+                    <livewire:pages::transaksi.rj.satu-sehat.kirim-riwayat-perjalanan :rjNo="$rjNo"
+                        wire:key="ss-riwayat-perjalanan-rj-{{ $rjNo ?? 'none' }}" />
                     <livewire:pages::transaksi.rj.satu-sehat.kirim-allergy :rjNo="$rjNo"
                         wire:key="ss-allergy-rj-{{ $rjNo ?? 'none' }}" />
                     <livewire:pages::transaksi.rj.satu-sehat.kirim-medication-dispense :rjNo="$rjNo"
@@ -275,8 +285,16 @@ new class extends Component {
                         wire:key="ss-penilaian-rj-{{ $rjNo ?? 'none' }}" />
                     <livewire:pages::transaksi.rj.satu-sehat.kirim-nyeri-kesadaran :rjNo="$rjNo"
                         wire:key="ss-nyeri-kesadaran-rj-{{ $rjNo ?? 'none' }}" />
+                    <livewire:pages::transaksi.rj.satu-sehat.kirim-status-psikologis :rjNo="$rjNo"
+                        wire:key="ss-status-psikologis-rj-{{ $rjNo ?? 'none' }}" />
                     <livewire:pages::transaksi.rj.satu-sehat.kirim-telaah-resep :rjNo="$rjNo"
                         wire:key="ss-telaah-resep-rj-{{ $rjNo ?? 'none' }}" />
+                    <livewire:pages::transaksi.rj.satu-sehat.kirim-prognosis :rjNo="$rjNo"
+                        wire:key="ss-prognosis-rj-{{ $rjNo ?? 'none' }}" />
+                    <livewire:pages::transaksi.rj.satu-sehat.kirim-rencana-tindak-lanjut :rjNo="$rjNo"
+                        wire:key="ss-rencana-tindak-lanjut-rj-{{ $rjNo ?? 'none' }}" />
+                    <livewire:pages::transaksi.rj.satu-sehat.kirim-kondisi-pulang :rjNo="$rjNo"
+                        wire:key="ss-kondisi-pulang-rj-{{ $rjNo ?? 'none' }}" />
 
                     {{-- Dua kartu penutup melebar SATU BARIS PENUH: keduanya langkah akhir
                          yang berurutan (finish dulu, baru resume), jadi menyelipkannya di

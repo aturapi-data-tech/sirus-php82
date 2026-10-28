@@ -106,6 +106,12 @@ new class extends Component {
         $this->dispatch('daftar-rj.satu-sehat.open', rjNo: $rjNo);
     }
 
+    /** Coding SATUSEHAT (EMR RJ FHIR) — kode SNOMED diisi sesudah pelayanan. */
+    public function openCodingFhir(string $rjNo): void
+    {
+        $this->dispatch('coding-fhir-rj.open', rjNo: $rjNo);
+    }
+
     /** Modul Dokumen dari daftar pendaftaran — admisi langsung ke tab General Consent. */
     public function openModulDokumen(int $rjNo): void
     {
@@ -583,7 +589,7 @@ new class extends Component {
             ['label' => 'Procedure',           'full' => 'Procedure (tindakan ICD-9)',       'sent' => $ssFilled($ss['procedureIds'] ?? null)],
             ['label' => 'Medication Request',  'full' => 'Medication Request (resep)',       'sent' => $ssFilled($ss['medicationRequestIds'] ?? null)],
             ['label' => 'Chief Complaint',     'full' => 'Chief Complaint (keluhan utama)',  'sent' => $ssFilled($ss['chiefComplaintId'] ?? null)],
-            ['label' => 'Allergy Intolerance', 'full' => 'Allergy Intolerance',             'sent' => $ssFilled($ss['allergyId'] ?? null)],
+            ['label' => 'Allergy Intolerance', 'full' => 'Allergy Intolerance',             'sent' => $ssFilled($ss['allergyId'] ?? null) || $ssFilled($ss['allergyIds'] ?? null)],
             ['label' => 'Medication Dispense', 'full' => 'Medication Dispense (obat pulang)', 'sent' => $ssFilled($ss['medicationDispenseIds'] ?? null)],
             ['label' => 'Penunjang Lab',       'full' => 'Penunjang Lab',                    'sent' => $ssFilled($ss['labServiceRequestIds'] ?? null) || $ssFilled($ss['labDiagnosticReportIds'] ?? null)],
             ['label' => 'Penunjang Radiologi', 'full' => 'Penunjang Radiologi',             'sent' => $ssFilled($ss['radServiceRequestIds'] ?? null) || $ssFilled($ss['radDiagnosticReportIds'] ?? null)],
@@ -1311,6 +1317,22 @@ new class extends Component {
                                                                     </x-dropdown-link>
                                                                 @endcan
 
+                                                                @can('emr.codingFhir')
+                                                                    <x-dropdown-link href="#"
+                                                                        wire:click.prevent="openCodingFhir('{{ $row->rj_no }}')"
+                                                                        class="px-3 py-2 text-sm rounded-lg h-full bg-brand-green/5 hover:bg-brand-green/10 dark:bg-brand-green/10">
+                                                                        <div class="flex items-start gap-2">
+                                                                            <svg class="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                                                                            </svg>
+                                                                            <span class="min-w-0">
+                                                                                <span class="block font-semibold">Coding SATUSEHAT</span>
+                                                                                <span class="block text-xs font-normal text-muted dark:text-gray-400">Kode SNOMED sesudah pelayanan</span>
+                                                                            </span>
+                                                                        </div>
+                                                                    </x-dropdown-link>
+                                                                @endcan
+
                                                             </div>
 
                                                             {{-- DIVIDER --}}
@@ -1414,6 +1436,9 @@ new class extends Component {
 
             <livewire:pages::transaksi.rj.daftar-rj.daftar-rj-actions wire:key="daftar-rj-actions" />
             <livewire:pages::transaksi.rj.daftar-rj.satu-sehat-rj-actions wire:key="satu-sehat-rj-actions" />
+            @can('emr.codingFhir')
+                <livewire:pages::transaksi.rj.coding-fhir-rj.coding-fhir-rj wire:key="coding-fhir-rj" />
+            @endcan
             <livewire:pages::components.rekam-medis.etiket.cetak-etiket wire:key="cetak-etiket-pasien" />
             <livewire:pages::components.rekam-medis.etiket.cetak-etiket-auto wire:key="cetak-etiket-auto-pasien" />
             <livewire:pages::components.rekam-medis.frista.scan-wajah-frista wire:key="scan-wajah-frista" />

@@ -56,18 +56,22 @@
             <x-input-error :messages="$errors->get('anamnesa.keluhanUtama.keluhanUtama')" class="mt-1" />
         </div>
 
-        {{-- SNOMED CT — Keluhan Utama (untuk Satu Sehat) --}}
-        <div>
-            <livewire:lov.snomed.lov-snomed
-                target="keluhanUtamaSnomed"
-                label="Kode SNOMED Keluhan Utama (Satu Sehat)"
-                placeholder="Ketik keluhan dalam Bahasa Indonesia / Inggris..."
-                valueSet="condition-code"
-                :initialSnomedCode="$anamnesa['keluhanUtama']['snomedCode'] ?? null"
-                :disabled="$isFormLocked"
-                wire:key="lov-snomed-keluhan-{{ $rjNo ?? 'new' }}-{{ $renderVersions['modal-anamnesa-rj'] ?? 0 }}"
-            />
-        </div>
+        {{-- Keluhan Penyerta (Playbook RJ bab 3b) — teks bebas (boleh banyak baris) tampil di
+             cetak & Rekam Medis. Kodenya diisi di layar Coding SATUSEHAT. Buka-tutup seperti Status
+             Psikiatri supaya tak mengganggu alur lama: tertutup, terbuka sendiri bila sudah berisi. --}}
+        <x-border-form :title="__('Keluhan Penyerta')" :collapsible="true" padding="p-3"
+            :open="filled($anamnesa['keluhanPenyerta']['keluhanPenyerta'] ?? null)">
+            <x-textarea id="anamnesa.keluhanPenyerta.keluhanPenyerta"
+                wire:model.live="anamnesa.keluhanPenyerta.keluhanPenyerta" placeholder="Keluhan lain yang menyertai keluhan utama"
+                :error="$errors->has('anamnesa.keluhanPenyerta.keluhanPenyerta')" :disabled="$isFormLocked" :rows="2" class="w-full" />
+
+            <x-input-error :messages="$errors->get('anamnesa.keluhanPenyerta.keluhanPenyerta')" class="mt-1" />
+        </x-border-form>
+
+        <p class="text-xs text-muted dark:text-gray-400">
+            Kode SNOMED keluhan utama &amp; penyerta untuk Satu Sehat diisi sesudah pelayanan lewat menu
+            <span class="font-semibold">Coding SATUSEHAT</span> (titik-3 Pelayanan / Daftar RJ).
+        </p>
 
     </div>
 </x-border-form>

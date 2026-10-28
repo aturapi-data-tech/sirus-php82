@@ -44,7 +44,7 @@ trait ServiceRequestTrait
             ]],
             'code' => [
                 'coding' => [$data['code']],
-                'text' => $data['code']['display'] ?? null,
+                'text' => $data['codeText'] ?? ($data['code']['display'] ?? null),
             ],
             'subject' => ['reference' => $data['subject']],
             'encounter' => ['reference' => $data['encounter']],
@@ -75,6 +75,11 @@ trait ServiceRequestTrait
 
         if (!empty($data['reasonCode'])) {
             $payload['reasonCode'] = $data['reasonCode'];
+        }
+
+        // Opsional (aditif) — instruksi untuk pasien, mis. rencana kontrol (Playbook RJ bab 23).
+        if (filled($data['patientInstruction'] ?? null)) {
+            $payload['patientInstruction'] = $data['patientInstruction'];
         }
 
         return $payload;

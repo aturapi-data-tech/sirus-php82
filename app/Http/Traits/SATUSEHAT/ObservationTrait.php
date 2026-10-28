@@ -58,6 +58,18 @@ trait ObservationTrait
             ]];
         }
 
+        // Opsional (aditif): tautan ke order & spesimen + waktu terbit — Playbook RJ 10.4/11.5,
+        // disamakan dgn alur apikesehatan.com. basedOn = daftar referensi "ServiceRequest/{id}".
+        if (!empty($data['basedOn'])) {
+            $payload['basedOn'] = array_map(fn($referensi) => ['reference' => $referensi], array_values((array) $data['basedOn']));
+        }
+        if (!empty($data['specimen'])) {
+            $payload['specimen'] = ['reference' => $data['specimen']];
+        }
+        if (!empty($data['issued'])) {
+            $payload['issued'] = $data['issued'];
+        }
+
         // Either a single valueQuantity...
         if (!empty($data['valueQuantity']) && is_array($data['valueQuantity'])) {
             $payload['valueQuantity'] = [

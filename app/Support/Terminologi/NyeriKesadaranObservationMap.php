@@ -71,7 +71,7 @@ class NyeriKesadaranObservationMap
     private const KESADARAN = [
         // RJ — 3 pilihan
         'Sadar'                => ['code' => null, 'display' => null],
-        'Mengantuk / Gelisah'  => ['code' => '300202002', 'display' => 'Response to voice'],
+        'Mengantuk / Gelisah'  => ['code' => '300202002', 'display' => 'Responds to voice'],
         'Tidak Sadar'          => ['code' => null, 'display' => null],
 
         // UGD — 5 pilihan, SELURUHNYA berbeda dari RJ (skrining gawat darurat memang
@@ -84,6 +84,59 @@ class NyeriKesadaranObservationMap
         'Bicara Tidak Jelas'   => ['code' => null, 'display' => null],
         'Tidak Ada Respons'    => ['code' => null, 'display' => null],
     ];
+
+    /**
+     * Tingkat kesadaran PEMERIKSAAN RJ (pemeriksaan.tandaVital.tingkatKesadaran, skala AVPU) — sumber
+     * utama kesadaran RJ (925/1.500 kunjungan terisi vs skrining 375). Kode = alur Rawat Jalan
+     * apikesehatan.com bab 4 (Composmentis/Somnolens/Sopor/Koma), diverifikasi aktif & benar arti di
+     * tx.fhir.org 2026-10-28. Dua pilihan tanpa padanan resmi → teks saja (sah di FHIR).
+     */
+    private const KESADARAN_AVPU = [
+        'Sadar Baik / Alert'                            => ['code' => '248234008', 'display' => 'Mentally alert'],
+        'Berespon Dengan Kata-Kata / Voice'             => ['code' => '300202002', 'display' => 'Responds to voice'],
+        'Hanya Beresponse Jika Dirangsang Nyeri / Pain' => ['code' => '450847001', 'display' => 'Responds to pain'],
+        'Pasien Tidak Sadar / Unresponsive'             => ['code' => '422768004', 'display' => 'Unresponsive'],
+        'Gelisah Atau Bingung'                          => ['code' => null, 'display' => null],
+        'Acute Confusional States'                      => ['code' => null, 'display' => null],
+    ];
+
+    public static function vitalSignsCategory(): array
+    {
+        return [[
+            'coding' => [[
+                'system'  => 'http://terminology.hl7.org/CodeSystem/observation-category',
+                'code'    => 'vital-signs',
+                'display' => 'Vital Signs',
+            ]],
+        ]];
+    }
+
+    /**
+     * Kesadaran RJ → 0..1 Observation: tingkat kesadaran pemeriksaan (AVPU, category vital-signs);
+     * bila kosong, jatuh ke skrining awal lewat kesadaran() (perilaku lama). UGD tetap memakai
+     * kesadaran() — pilihannya berbeda.
+     */
+    public static function kesadaranRj(?string $tingkatKesadaran, ?string $kesadaranSkrining): array
+    {
+        $nilai = trim((string) $tingkatKesadaran);
+        if ($nilai === '') {
+            return self::kesadaran($kesadaranSkrining);
+        }
+
+        $konsep = ['text' => $nilai];
+        $padanan = self::KESADARAN_AVPU[$nilai] ?? null;
+        if ($padanan && $padanan['code'] !== null) {
+            $konsep['system'] = 'http://snomed.info/sct';
+            $konsep['code'] = $padanan['code'];
+            $konsep['display'] = $padanan['display'];
+        }
+
+        return [[
+            'category' => self::vitalSignsCategory(),
+            'code'     => self::KESADARAN_CODE,
+            'valueCodeableConcept' => $konsep,
+        ]];
+    }
 
     public static function surveyCategory(): array
     {

@@ -119,6 +119,13 @@ class AksiRole
     /** Membuka panel kirim SATUSEHAT. */
     public const SATUSEHAT_KIRIM = ['Admin', 'Mr'];
 
+    /**
+     * Membuka & menyimpan layar Coding SATUSEHAT (EMR RJ FHIR) — kode SNOMED dkk diisi
+     * SESUDAH pelayanan, terpisah dari form EMR klinis. Dokter, Perawat, MR, manager ke
+     * atas (keputusan user 2026-10-28). Dipisah dari SATUSEHAT_KIRIM: mengisi kode ≠ mengirim.
+     */
+    public const EMR_CODING_FHIR = ['Dokter', 'Perawat', 'Mr', 'Manager Medis', 'Manager Umum', 'Admin'];
+
     /* ────────────────────────────── TRANSAKSI ────────────────────────────── */
 
     /** Membatalkan penerimaan barang dari PBF yang sedang dibuka (medis & non-medis). */

@@ -89,6 +89,12 @@
                 <span class="font-bold">Keluhan Utama :</span>
                 {!! nl2br(e($dataDaftarTxn['anamnesa']['keluhanUtama']['keluhanUtama'] ?? '-')) !!}
                 <br>
+                @php $keluhanPenyertaTeks = trim((string) ($dataDaftarTxn['anamnesa']['keluhanPenyerta']['keluhanPenyerta'] ?? '')); @endphp
+                @if ($keluhanPenyertaTeks !== '')
+                    <span class="font-bold">Keluhan Penyerta :</span>
+                    {!! nl2br(e($keluhanPenyertaTeks)) !!}
+                    <br>
+                @endif
                 <span class="font-bold">Screening Batuk :</span>
                 {{ $dataDaftarTxn['anamnesa']['screeningBatuk'] ?? '-' }}
                 <br>
@@ -152,6 +158,12 @@
                 <br>
                 <span class="font-bold">Riwayat Penyakit Dahulu :</span>
                 {!! nl2br(e($dataDaftarTxn['anamnesa']['riwayatPenyakitDahulu']['riwayatPenyakitDahulu'] ?? '-')) !!}
+                @foreach (['riwayatPenyakitKeluarga' => 'Riwayat Penyakit Keluarga', 'riwayatPengobatan' => 'Riwayat Pengobatan'] as $nodeRiwayat => $judulRiwayat)
+                    @if (filled($dataDaftarTxn['anamnesa'][$nodeRiwayat][$nodeRiwayat] ?? null))
+                        <br><span class="font-bold">{{ $judulRiwayat }} :</span>
+                        {!! nl2br(e($dataDaftarTxn['anamnesa'][$nodeRiwayat][$nodeRiwayat])) !!}
+                    @endif
+                @endforeach
                 <br>
                 <span class="font-bold">Alergi :</span>
                 {!! nl2br(e(\App\Support\Terminologi\AlergiSnomed::untukCetak($dataDaftarTxn['anamnesa']['alergi'] ?? []))) !!}
@@ -433,6 +445,12 @@
                 {{ $dataDaftarTxn['perencanaan']['tindakLanjut']['tindakLanjut'] ?? '-' }}
                 @if (!empty($dataDaftarTxn['perencanaan']['tindakLanjut']['keteranganTindakLanjut']))
                     / {{ $dataDaftarTxn['perencanaan']['tindakLanjut']['keteranganTindakLanjut'] }}
+                @endif
+                @if (!empty($dataDaftarTxn['perencanaan']['kondisiPulang']['kondisiPulang']))
+                    <br><span class="font-bold">Kondisi Saat Pulang :</span> {{ $dataDaftarTxn['perencanaan']['kondisiPulang']['kondisiPulang'] }}
+                @endif
+                @if (!empty($dataDaftarTxn['perencanaan']['prognosis']['prognosis']))
+                    <br><span class="font-bold">Prognosis :</span> {{ $dataDaftarTxn['perencanaan']['prognosis']['prognosis'] }}{{ filled($dataDaftarTxn['perencanaan']['prognosis']['keteranganPrognosis'] ?? null) ? ' — ' . $dataDaftarTxn['perencanaan']['prognosis']['keteranganPrognosis'] : '' }}
                 @endif
             </td>
         </tr>

@@ -7,6 +7,7 @@ use Livewire\Attributes\On;
 use Livewire\Attributes\Computed;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use App\Support\Terminologi\TandaVitalObservationMap;
 use App\Http\Traits\Txn\Rj\EmrRJTrait;
 use App\Http\Traits\SATUSEHAT\ObservationTrait;
 
@@ -143,28 +144,38 @@ new class extends Component {
             // TD — key JSON EMR: sistolik / distolik.
             $sistolik = $tandaVital['sistolik'] ?? null; $distolik = $tandaVital['distolik'] ?? null;
             if (!empty($sistolik) && !empty($distolik)) {
+                $tekananDarah = TandaVitalObservationMap::TEKANAN_DARAH;
                 $respons = $this->createObservation(array_merge($payloadDasar, [
-                    'code' => ['system' => 'http://loinc.org', 'code' => '85354-9', 'display' => 'Blood pressure panel with all children optional'],
+                    'code' => $tekananDarah['panel'],
                     'components' => [
-                        ['code' => ['coding' => [['system' => 'http://loinc.org', 'code' => '8480-6', 'display' => 'Systolic blood pressure']]], 'valueQuantity' => ['value' => (float) $sistolik, 'unit' => 'mm[Hg]', 'system' => 'http://unitsofmeasure.org', 'code' => 'mm[Hg]']],
-                        ['code' => ['coding' => [['system' => 'http://loinc.org', 'code' => '8462-4', 'display' => 'Diastolic blood pressure']]], 'valueQuantity' => ['value' => (float) $distolik, 'unit' => 'mm[Hg]', 'system' => 'http://unitsofmeasure.org', 'code' => 'mm[Hg]']],
+                        ['code' => ['coding' => [$tekananDarah['sistolik']]], 'valueQuantity' => ['value' => (float) $sistolik, 'unit' => $tekananDarah['unit'], 'system' => 'http://unitsofmeasure.org', 'code' => $tekananDarah['unit']]],
+                        ['code' => ['coding' => [$tekananDarah['distolik']]], 'valueQuantity' => ['value' => (float) $distolik, 'unit' => $tekananDarah['unit'], 'system' => 'http://unitsofmeasure.org', 'code' => $tekananDarah['unit']]],
                     ],
                 ]));
                 if (!empty($respons['id'])) $satuSehat['observationIds'][] = $respons['id'];
             }
 
-            // Nadi, Suhu, RR, SpO2 — pemetaan disamakan dengan RM RI (kirim-observation RI).
-            $vitalTunggal = [
-                ['val' => $tandaVital['frekuensiNadi'] ?? null,  'loinc' => '8867-4',  'display' => 'Heart rate',       'unit' => 'beats/minute',   'ucum' => '/min'],
-                ['val' => $tandaVital['suhu'] ?? null,           'loinc' => '8310-5',  'display' => 'Body temperature', 'unit' => 'C',              'ucum' => 'Cel'],
-                ['val' => $tandaVital['frekuensiNafas'] ?? null, 'loinc' => '9279-1',  'display' => 'Respiratory rate', 'unit' => 'breaths/minute', 'ucum' => '/min'],
-                ['val' => $tandaVital['spo2'] ?? null,           'loinc' => '59408-5', 'display' => 'Oxygen saturation in Arterial blood by Pulse oximetry', 'unit' => '%', 'ucum' => '%'],
-            ];
+            // Nadi, Suhu, RR, SpO2 — peta di TandaVitalObservationMap (juga dibaca layar Coding SATUSEHAT).
+            $vitalTunggal = collect(TandaVitalObservationMap::VITAL_TUNGGAL)
+                ->map(fn($peta, $kunci) => [...$peta, 'val' => $tandaVital[$kunci] ?? null])
+                ->values()
+                ->all();
             foreach ($vitalTunggal as $vital) {
                 if (empty($vital['val'])) continue;
                 $respons = $this->createObservation(array_merge($payloadDasar, [
                     'code' => ['system' => 'http://loinc.org', 'code' => $vital['loinc'], 'display' => $vital['display']],
                     'valueQuantity' => ['value' => (float) $vital['val'], 'unit' => $vital['unit'], 'system' => 'http://unitsofmeasure.org', 'code' => $vital['ucum']],
+                ]));
+                if (!empty($respons['id'])) $satuSehat['observationIds'][] = $respons['id'];
+            }
+
+            // Antropometri BB/TB (pemeriksaan.nutrisi) — empty() sekaligus melewati nilai "0".
+            $nutrisi = $dataRJ['pemeriksaan']['nutrisi'] ?? [];
+            foreach (TandaVitalObservationMap::ANTROPOMETRI as $kunci => $peta) {
+                if (empty($nutrisi[$kunci]) || !is_numeric($nutrisi[$kunci])) continue;
+                $respons = $this->createObservation(array_merge($payloadDasar, [
+                    'code' => ['system' => 'http://loinc.org', 'code' => $peta['loinc'], 'display' => $peta['display']],
+                    'valueQuantity' => ['value' => (float) $nutrisi[$kunci], 'unit' => $peta['unit'], 'system' => 'http://unitsofmeasure.org', 'code' => $peta['ucum']],
                 ]));
                 if (!empty($respons['id'])) $satuSehat['observationIds'][] = $respons['id'];
             }

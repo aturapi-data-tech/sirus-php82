@@ -43,6 +43,7 @@ class ObatKfa
                     'productId' => $productId,
                     'productName' => (string) ($obat['productName'] ?? ''),
                     'qty' => (int) ($obat['qty'] ?? 1) ?: 1,
+                    'signa' => self::signa($obat),
                 ];
             }
         }
@@ -69,9 +70,42 @@ class ObatKfa
                 'display' => trim((string) ($master->product_name_satusehat ?? '')) ?: $obat['productName'],
                 'productId' => $obat['productId'],
                 'qty' => $obat['qty'],
+                'signa' => $obat['signa'],
             ];
         }
 
         return $obatKfaList;
+    }
+
+    /**
+     * Teks aturan pakai satu item e-resep — konvensi cetak repo (rakitSigna di cetak RM RI):
+     * signaText bila ada, selain itu "signaX x signaHari"; catatan khusus ditempel. '' bila kosong.
+     * Dikirim apa adanya sebagai dosageInstruction.text — arti angka TIDAK ditafsirkan ke timing.
+     */
+    public static function signa(array $obat): string
+    {
+        $signa = trim((string) ($obat['signaText'] ?? ''));
+        if ($signa === '') {
+            $signaX = trim((string) ($obat['signaX'] ?? ''));
+            $signaHari = trim((string) ($obat['signaHari'] ?? ''));
+            $signa = $signaX !== '' || $signaHari !== '' ? trim($signaX . ' x ' . $signaHari) : '';
+        }
+        $catatan = trim((string) ($obat['catatanKhusus'] ?? ''));
+
+        return trim($signa . ($signa !== '' && $catatan !== '' ? ' — ' : '') . $catatan);
+    }
+
+    /**
+     * KFA satu obat master (dipilih lewat LOV obat) — dipakai Riwayat Pengobatan & Alergi Obat
+     * di layar Coding SATUSEHAT. null = master belum punya KFA (pemanggil wajib menolak).
+     *
+     * @return array{kfaCode: string, kfaDisplay: string}|null
+     */
+    public static function kfaProduk(string $productId): ?array
+    {
+        $master = DB::table('immst_products')->where('product_id', $productId)->first(['product_id_satusehat', 'product_name_satusehat']);
+        $kode = trim((string) ($master->product_id_satusehat ?? ''));
+
+        return $kode !== '' ? ['kfaCode' => $kode, 'kfaDisplay' => trim((string) ($master->product_name_satusehat ?? ''))] : null;
     }
 }

@@ -183,10 +183,7 @@ new class extends Component {
     /**
      * Node satusehat → slot section resume medis.
      *
-     * Yang belum punya sumber di RJ sengaja tidak diisi: keluhan penyerta, riwayat
-     * penyakit pribadi/keluarga, riwayat pengobatan (FamilyMemberHistory &
-     * MedicationStatement belum dibangun), obat pulang, diet, edukasi, kondisi pulang,
-     * dan rencana tindak lanjut.
+     * Yang belum punya sumber di RJ sengaja tidak diisi: obat pulang, diet, edukasi.
      */
     private function petaEntri(array $satuSehat): array
     {
@@ -198,11 +195,19 @@ new class extends Component {
 
         return [
             'keluhanUtama' => $ref('Condition', $satuSehat['chiefComplaintId'] ?? []),
-            'riwayatAlergi' => $ref('AllergyIntolerance', $satuSehat['allergyId'] ?? []),
+            'keluhanPenyerta' => $ref('Condition', $satuSehat['keluhanPenyertaIds'] ?? []),
+            'riwayatPenyakitSekarang' => $ref('Condition', $satuSehat['riwayatPenyakitSekarangIds'] ?? []),
+            'riwayatPenyakitTerdahulu' => $ref('Condition', $satuSehat['riwayatPenyakitDahuluIds'] ?? []),
+            'riwayatPenyakitKeluarga' => $ref('FamilyMemberHistory', $satuSehat['riwayatPenyakitKeluargaIds'] ?? []),
+            'riwayatPengobatan' => $ref('MedicationStatement', $satuSehat['riwayatPengobatanIds'] ?? []),
+            'riwayatAlergi' => array_merge($ref('AllergyIntolerance', $satuSehat['allergyId'] ?? []), $ref('AllergyIntolerance', $satuSehat['allergyIds'] ?? [])),
             'tandaVital' => $ref('Observation', $satuSehat['observationIds'] ?? []),
             // Risiko jatuh & skrining gizi = asesmen fungsional berskala; playbook
             // mencontohkan status psikologis, tapi slot LOINC 47420-5 inilah rumahnya.
-            'pemeriksaanFungsional' => $ref('Observation', $satuSehat['penilaianObservationIds'] ?? []),
+            'pemeriksaanFungsional' => array_merge(
+                $ref('Observation', $satuSehat['penilaianObservationIds'] ?? []),
+                $ref('Observation', $satuSehat['statusPsikologisIds'] ?? []), // bab 5: status psikologis
+            ),
             'hasilLab' => array_merge(
                 $ref('ServiceRequest', $satuSehat['labServiceRequestIds'] ?? []),
                 $ref('Specimen', $satuSehat['labSpecimenIds'] ?? []),
@@ -220,6 +225,8 @@ new class extends Component {
                 $ref('ClinicalImpression', $satuSehat['clinicalImpressionId'] ?? []),
             ),
             'tindakan' => $ref('Procedure', $satuSehat['procedureIds'] ?? []),
+            'kondisiPulang' => $ref('Condition', $satuSehat['kondisiPulangId'] ?? []),
+            'rencanaTindakLanjut' => $ref('ServiceRequest', $satuSehat['rencanaTindakLanjutId'] ?? []),
             'obatSaatKunjungan' => array_merge(
                 $ref('MedicationRequest', $satuSehat['medicationRequestIds'] ?? []),
                 $ref('MedicationDispense', $satuSehat['medicationDispenseIds'] ?? []),
@@ -235,6 +242,11 @@ new class extends Component {
         $keluhan = trim((string) ($dataRJ['anamnesa']['keluhanUtama']['keluhanUtama'] ?? ''));
         if ($keluhan !== '') {
             $bagian[] = 'Keluhan utama: ' . $keluhan . '.';
+        }
+
+        $keluhanPenyerta = trim((string) ($dataRJ['anamnesa']['keluhanPenyerta']['keluhanPenyerta'] ?? ''));
+        if ($keluhanPenyerta !== '') {
+            $bagian[] = 'Keluhan penyerta: ' . $keluhanPenyerta . '.';
         }
 
         $diagnosaList = [];

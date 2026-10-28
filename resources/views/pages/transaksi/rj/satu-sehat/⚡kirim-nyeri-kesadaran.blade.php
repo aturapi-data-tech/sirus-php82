@@ -72,7 +72,8 @@ new class extends Component {
             ];
         }
 
-        $kesadaran = trim((string) ($data['screening']['kesadaran'] ?? ''));
+        // Sama dengan kirim(): kesadaran pemeriksaan (AVPU) dulu, skrining sebagai cadangan.
+        $kesadaran = trim((string) ($data['pemeriksaan']['tandaVital']['tingkatKesadaran'] ?? '')) ?: trim((string) ($data['screening']['kesadaran'] ?? ''));
         if ($kesadaran !== '') {
             $baris[] = ['label' => 'Tingkat kesadaran', 'nilai' => $kesadaran, 'ket' => ''];
         }
@@ -125,7 +126,8 @@ new class extends Component {
         }
         $this->nyeriSiap = $siap;
         $this->nyeriDilewati = $lewat;
-        $this->adaKesadaran = trim((string) ($data['screening']['kesadaran'] ?? '')) !== '';
+        $this->adaKesadaran = trim((string) ($data['pemeriksaan']['tandaVital']['tingkatKesadaran'] ?? '')) !== ''
+            || trim((string) ($data['screening']['kesadaran'] ?? '')) !== '';
     }
 
     public function kirimForCurrent(): void
@@ -162,8 +164,10 @@ new class extends Component {
             $practitionerId = (string) (DB::table('rsmst_doctors')->where('dr_id', $dataRJ['drId'] ?? '')->value('dr_uuid') ?? '');
 
             $entriNyeri = NyeriOptions::daftarEntri($dataRJ['penilaian']['nyeri'] ?? []);
+            // Kesadaran: tingkat kesadaran PEMERIKSAAN (AVPU) dulu, skrining awal sebagai cadangan.
+            $tingkatKesadaran = trim((string) ($dataRJ['pemeriksaan']['tandaVital']['tingkatKesadaran'] ?? ''));
             $kesadaran = trim((string) ($dataRJ['screening']['kesadaran'] ?? ''));
-            if (empty($entriNyeri) && $kesadaran === '') {
+            if (empty($entriNyeri) && $kesadaran === '' && $tingkatKesadaran === '') {
                 $this->dispatch('toast', type: 'error', message: 'Tidak ada data Skala Nyeri maupun Tingkat Kesadaran.');
                 return;
             }
@@ -187,8 +191,8 @@ new class extends Component {
                 }
             }
 
-            // Kesadaran diambil dari skrining awal, jadi waktunya mengikuti kunjungan.
-            foreach (NyeriKesadaranObservationMap::kesadaran($kesadaran) as $observation) {
+            // Waktu kesadaran mengikuti kunjungan.
+            foreach (NyeriKesadaranObservationMap::kesadaranRj($tingkatKesadaran, $kesadaran) as $observation) {
                 $payloadDasar = $this->baseFor('', $dataRJ, $patientId, $satuSehat['encounterId'], $practitionerId);
                 $respons = $this->createObservation(array_merge($payloadDasar, $observation));
                 if (!empty($respons['id'])) { $idList[] = $respons['id']; }

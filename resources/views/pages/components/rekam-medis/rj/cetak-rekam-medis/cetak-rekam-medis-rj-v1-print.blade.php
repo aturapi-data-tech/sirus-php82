@@ -43,6 +43,7 @@
         $mentalKet = $sm['sebutstatusPsikologis'] ?? ($sm['keteranganStatusMental'] ?? '');
 
         $keluhan = $dataDaftarTxn['anamnesa']['keluhanUtama']['keluhanUtama'] ?? '-';
+        $keluhanPenyertaTeks = trim((string) ($dataDaftarTxn['anamnesa']['keluhanPenyerta']['keluhanPenyerta'] ?? ''));
 
         // Prioritas freetext dari dokter; fallback ke keterangan ICD-10 (kode disembunyikan).
         $diagnosis = trim((string) ($dataDaftarTxn['diagnosisFreeText'] ?? ''));
@@ -105,6 +106,10 @@
                 <td class="border border-black px-1.5 py-1 align-top text-center" colspan="2">
                     <span class="font-bold">Keluhan Utama :</span><br>
                     {!! nl2br(e($keluhan)) !!}
+                    @if ($keluhanPenyertaTeks !== '')
+                        <br><span class="font-bold">Keluhan Penyerta :</span><br>
+                        {!! nl2br(e($keluhanPenyertaTeks)) !!}
+                    @endif
                 </td>
             </tr>
 

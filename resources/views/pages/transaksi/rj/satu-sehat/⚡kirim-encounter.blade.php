@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Rj\EmrRJTrait;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
 use App\Http\Traits\SATUSEHAT\EncounterTrait;
+use App\Support\Terminologi\DischargeDisposition;
 
 new class extends Component {
     use EmrRJTrait, MasterPasienTrait, EncounterTrait;
@@ -39,6 +40,24 @@ new class extends Component {
      * basis data — kalau kosong, di situlah Kirim akan berhenti, dan pratinjau ini
      * memperlihatkan sebabnya sebelum tombol ditekan.
      */
+    /**
+     * Cara keluar yang akan ikut saat Finish (dari Tindak Lanjut di Perencanaan).
+     * null = belum diisi → kartu memperingatkan SEBELUM tombol ditekan.
+     */
+    #[Computed]
+    public function caraKeluar(): ?string
+    {
+        if (empty($this->rjNo) || $this->bagian !== 'selesai') {
+            return null;
+        }
+
+        $tindakLanjut = $this->findDataRJ($this->rjNo)['perencanaan']['tindakLanjut'] ?? [];
+
+        return DischargeDisposition::rawatJalan(
+            $tindakLanjut['tindakLanjut'] ?? null, $tindakLanjut['keteranganTindakLanjut'] ?? null
+        )['text'] ?? null;
+    }
+
     #[Computed]
     public function pratinjau(): array
     {
@@ -245,12 +264,25 @@ new class extends Component {
             $encounterTersimpan = $this->siapkanFinishEncounter(
                 $this->getEncounter($satuSehat['encounterId']), $akhirIso, $conditionIdList
             );
+
+            // Cara keluar (Playbook RJ bab 26–27) dari Tindak Lanjut di Perencanaan.
+            // Kosong/tak dikenal → field TIDAK diisi (jangan menebak), tapi dilaporkan.
+            $tindakLanjut = $dataRJ['perencanaan']['tindakLanjut'] ?? [];
+            $caraKeluar = DischargeDisposition::rawatJalan(
+                $tindakLanjut['tindakLanjut'] ?? null, $tindakLanjut['keteranganTindakLanjut'] ?? null
+            );
+            if ($caraKeluar !== null) {
+                $encounterTersimpan['hospitalization']['dischargeDisposition'] = $caraKeluar;
+            }
+
             $this->makeRequest('put', "Encounter/{$satuSehat['encounterId']}", $encounterTersimpan);
 
             $satuSehat['encounterFinished'] = true;
 
             $this->saveResult($rjNo, $dataRJ, $satuSehat);
-            $this->dispatch('toast', type: 'success', message: 'Encounter finished.');
+            $caraKeluar !== null
+                ? $this->dispatch('toast', type: 'success', message: 'Encounter finished — cara keluar: ' . $caraKeluar['text'] . '.')
+                : $this->dispatch('toast', type: 'warning', message: 'Encounter finished, tapi TANPA cara keluar: Tindak Lanjut di Perencanaan belum diisi.');
             $this->dispatch('rj-satu-sehat.refresh', rjNo: $rjNo);
         } catch (\Throwable $e) {
             $this->dispatch('toast', type: 'error', message: 'Finish Encounter gagal: ' . $e->getMessage());
@@ -362,6 +394,11 @@ new class extends Component {
                 <div>
                     <div class="font-semibold text-ink dark:text-gray-100">Selesaikan Encounter</div>
                     <div class="text-xs text-muted dark:text-gray-400">Update status encounter menjadi finished.</div>
+                    @if ($this->caraKeluar)
+                        <div class="text-xs text-body dark:text-gray-300">Cara keluar: {{ $this->caraKeluar }}</div>
+                    @else
+                        <div class="text-xs text-warning-deep dark:text-amber-200">Cara keluar kosong — isi Tindak Lanjut di Perencanaan EMR dulu.</div>
+                    @endif
                 </div>
             </div>
             <x-primary-button type="button" wire:click="finishForCurrent" wire:loading.attr="disabled"

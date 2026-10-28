@@ -92,4 +92,58 @@ class DischargeDisposition
 
         return ['code' => $k, 'display' => self::SNOMED[$k]];
     }
+
+    /**
+     * Tindak Lanjut RAWAT JALAN (`perencanaan.tindakLanjut.tindakLanjut`) → CodeSystem HL7
+     * discharge-disposition — Playbook RJ bab 26–27 (Cara Keluar & Pembaharuan Kunjungan).
+     *
+     * Beda sistem dengan RI (SNOMED, fromKode()) DISENGAJA: RJ menyamakan dengan alur
+     * Rawat Jalan apikesehatan.com, yang memakai HL7 dan memberi contoh "oth" untuk
+     * pasien yang dirawat inap. Kode diverifikasi di tx.fhir.org (2026-10-28).
+     * MRS & Lain-lain tak punya padanan khusus → `oth`, maknanya dibawa `text`.
+     */
+    private const RAWAT_JALAN = [
+        'Kontrol'           => ['code' => 'home',      'display' => 'Home'],
+        'Perawatan Selesai' => ['code' => 'home',      'display' => 'Home'],
+        'PRB'               => ['code' => 'home',      'display' => 'Home'],
+        'Rujuk'             => ['code' => 'other-hcf', 'display' => 'Other healthcare facility'],
+        'MRS'               => ['code' => 'oth',       'display' => 'Other'],
+        'Lain-lain'         => ['code' => 'oth',       'display' => 'Other'],
+    ];
+
+    private const LABEL_RAWAT_JALAN = [
+        'Kontrol'           => 'Pulang, kontrol kembali',
+        'Perawatan Selesai' => 'Pulang, perawatan selesai',
+        'PRB'               => 'Pulang, program rujuk balik (PRB)',
+        'Rujuk'             => 'Dirujuk ke fasyankes lain',
+        'MRS'               => 'Dirawat inap (MRS)',
+        'Lain-lain'         => 'Lain-lain',
+    ];
+
+    /**
+     * @return array|null CodeableConcept siap pakai; null bila tindak lanjut kosong/tak dikenal
+     *                    (jangan menebak — lebih baik tanpa dischargeDisposition)
+     */
+    public static function rawatJalan(?string $tindakLanjut, ?string $keterangan = null): ?array
+    {
+        $tindakLanjut = trim((string) $tindakLanjut);
+        if (!isset(self::RAWAT_JALAN[$tindakLanjut])) {
+            return null;
+        }
+
+        $teks = self::LABEL_RAWAT_JALAN[$tindakLanjut];
+        $keterangan = trim((string) $keterangan);
+        if ($keterangan !== '') {
+            $teks .= ' — ' . $keterangan;
+        }
+
+        return [
+            'coding' => [[
+                'system'  => 'http://terminology.hl7.org/CodeSystem/discharge-disposition',
+                'code'    => self::RAWAT_JALAN[$tindakLanjut]['code'],
+                'display' => self::RAWAT_JALAN[$tindakLanjut]['display'],
+            ]],
+            'text' => $teks,
+        ];
+    }
 }

@@ -43,13 +43,15 @@ trait AllergyIntoleranceTrait
                     "code"   => "confirmed"
                 ]]
             ],
+            // 'codeSystem' opsional: KFA untuk alergi OBAT (RJ, disamakan dgn alur apikesehatan.com
+            // bab 3c); default SNOMED — UGD/RI yang tak mengirimnya tidak berubah.
             "code"               => [
                 "coding" => [[
-                    "system"  => "http://snomed.info/sct",
+                    "system"  => $data['codeSystem'] ?? "http://snomed.info/sct",
                     "code"    => $data['code'],
                     "display" => $data['display']
                 ]],
-                "text"   => $data['display']
+                "text"   => $data['text'] ?? $data['display']
             ],
             "patient"            => [
                 "reference" => "Patient/{$data['patientId']}"

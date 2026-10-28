@@ -30,6 +30,7 @@
 
     @php
         $keluhan = $dataDaftarTxn['anamnesa']['keluhanUtama']['keluhanUtama'] ?? '-';
+        $keluhanPenyertaTeks = trim((string) ($dataDaftarTxn['anamnesa']['keluhanPenyerta']['keluhanPenyerta'] ?? ''));
         $ujiFungsi = $dataDaftarTxn['pemeriksaan']['FisikujiFungsi']['FisikujiFungsi'] ?? '-';
         $diagnosis = $dataDaftarTxn['diagnosisFreeText'] ?? '-';
         $penunjang = $dataDaftarTxn['pemeriksaan']['penunjang'] ?? '-';
@@ -53,6 +54,10 @@
                 </td>
                 <td class="border border-black px-1.5 py-1 align-top">
                     {!! nl2br(e($keluhan)) !!}
+                    @if ($keluhanPenyertaTeks !== '')
+                        <br><span class="font-bold">Keluhan Penyerta :</span>
+                        {!! nl2br(e($keluhanPenyertaTeks)) !!}
+                    @endif
                 </td>
             </tr>
 

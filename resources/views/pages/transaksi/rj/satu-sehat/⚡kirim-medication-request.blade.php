@@ -177,7 +177,11 @@ new class extends Component {
                     'patientId' => $patientId, 'patientName' => $patientName,
                     'encounterId' => $satuSehat['encounterId'], 'requesterId' => $practitionerId, 'requesterName' => $drDesc,
                     'authoredOn' => $rjDate->toIso8601String(), 'category' => 'outpatient',
-                    'dosageInstruction' => [], 'dispenseRequest' => [], 'reasonReference' => [],
+                    // Playbook RJ 16b: resep aktif (default trait 'completed' keliru untuk resep baru);
+                    // aturan pakai sebagai teks signa e-resep (tanpa menafsir ke timing terstruktur).
+                    'status' => 'active',
+                    'dosageInstruction' => $obat['signa'] !== '' ? [['text' => $obat['signa']]] : [],
+                    'dispenseRequest' => [], 'reasonReference' => [],
                 ]);
                 if (!empty($respons['id'])) {
                     $satuSehat['medicationRequestIds'][] = $respons['id'];
@@ -221,6 +225,7 @@ new class extends Component {
                     'patientId' => $patientId, 'patientName' => $patientName,
                     'encounterId' => $satuSehat['encounterId'], 'requesterId' => $practitionerId, 'requesterName' => $drDesc,
                     'authoredOn' => $rjDate->toIso8601String(), 'category' => 'outpatient',
+                    'status' => 'active',
                     'dosageInstruction' => [], 'dispenseRequest' => [], 'reasonReference' => [],
                 ]);
                 if (!empty($respons['id'])) {

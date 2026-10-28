@@ -150,6 +150,7 @@ new class extends Component {
                         'icd10_code' => $kode, 'icd10_display' => $display,
                         'diagnosis_text' => "{$kode} - {$display}",
                         'recordedDate' => $rjDate->toIso8601String(),
+                        'onsetDateTime' => $rjDate->toIso8601String(), // Playbook RJ 13: onset = waktu kunjungan
                     ]);
                     if (!empty($respons['id'])) { $terkumpul[] = $respons['id']; $baru++; }
                 } catch (\Throwable $e) {

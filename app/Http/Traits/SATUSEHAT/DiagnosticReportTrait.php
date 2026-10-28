@@ -89,6 +89,11 @@ trait DiagnosticReportTrait
         }
 
         // Conclusion Code (optional)
+        // Kesimpulan teks (opsional, aditif) — Playbook RJ 10.5/11.6.
+        if (filled($data['conclusion'] ?? null)) {
+            $payload['conclusion'] = $data['conclusion'];
+        }
+
         if (!empty($data['conclusionCode']) && is_array($data['conclusionCode'])) {
             $payload['conclusionCode'] = $data['conclusionCode'];
         }
