@@ -17,6 +17,9 @@ new class extends Component {
     use EmrRJTrait, ConditionTrait;
 
     public ?string $rjNo = null;
+
+    /** Mode pratinjau saja (layar Coding SATUSEHAT): tombol Kirim disembunyikan, kirim ditolak. */
+    public bool $hanyaPratinjau = false;
     public bool $hasEncounter = false;
     public int $count = 0;
 
@@ -45,8 +48,10 @@ new class extends Component {
         ];
     }
 
-    public function mount(?string $rjNo = null): void
+    public function mount(?string $rjNo = null, bool $hanyaPratinjau = false): void
     {
+        $this->hanyaPratinjau = $hanyaPratinjau;
+        $this->pratinjauTerbuka = $hanyaPratinjau;
         $this->rjNo = $rjNo;
         $this->reloadState();
     }
@@ -76,6 +81,9 @@ new class extends Component {
 
     public function kirimForCurrent(): void
     {
+        if ($this->hanyaPratinjau) {
+            return;
+        }
         if (empty($this->rjNo)) {
             return;
         }
@@ -92,6 +100,9 @@ new class extends Component {
     #[On('ss-kondisi-pulang-rj.kirim')]
     public function kirim(string $rjNo): void
     {
+        if ($this->hanyaPratinjau) {
+            return;
+        }
         $this->kirimInti($rjNo);
         $this->dispatch('rj-satu-sehat.langkah-selesai', langkah: 'kondisi-pulang');
     }
@@ -165,15 +176,19 @@ new class extends Component {
 };
 ?>
 
-<div class="p-4 bg-canvas border border-hairline shadow-sm rounded-xl dark:bg-gray-900 dark:border-gray-700">
+<div class="{{ $hanyaPratinjau
+    ? 'p-3 border border-brand-green/30 rounded-xl bg-brand-green/5 dark:bg-brand-green/10 dark:border-brand-green/50'
+    : 'p-4 bg-canvas border border-hairline shadow-sm rounded-xl dark:bg-gray-900 dark:border-gray-700' }}">
     <div class="flex items-center justify-between">
         <div class="flex items-center gap-3">
+            @unless ($hanyaPratinjau)
             <div
                 class="flex items-center justify-center w-8 h-8 rounded-full {{ $count > 0 ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-surface-soft text-muted-soft dark:bg-gray-800 dark:text-gray-500' }}">
                 <span class="text-sm font-bold">24</span>
             </div>
+            @endunless
             <div>
-                <div class="font-semibold text-ink dark:text-gray-100">Kondisi Pulang</div>
+                <div class="{{ $hanyaPratinjau ? 'text-xs font-semibold tracking-wide uppercase text-brand-green dark:text-brand-lime' : 'font-semibold text-ink dark:text-gray-100' }}">Kondisi Pulang</div>
                 <div class="text-xs text-muted dark:text-gray-400">Kondisi saat meninggalkan fasyankes (SNOMED CT), wajib.</div>
                 @if ($count > 0)
                     <div class="mt-1 font-mono text-xs text-success dark:text-success">
@@ -182,6 +197,7 @@ new class extends Component {
                 @endif
             </div>
         </div>
+        @unless ($hanyaPratinjau)
         <x-primary-button type="button" wire:click="kirimForCurrent" wire:loading.attr="disabled" :disabled="!$hasEncounter"
             class="!bg-teal-600 hover:!bg-teal-700 {{ $count > 0 ? '!bg-emerald-600' : '' }}">
             <span wire:loading.remove wire:target="kirimForCurrent,kirim">
@@ -192,9 +208,10 @@ new class extends Component {
                 </span>
             <span wire:loading wire:target="kirimForCurrent,kirim"><x-loading />...</span>
         </x-primary-button>
+        @endunless
     </div>
 
-    <x-satu-sehat.pratinjau :terbuka="$pratinjauTerbuka"
+    <x-satu-sehat.pratinjau :terbuka="$pratinjauTerbuka" :ringkas="$hanyaPratinjau"
         :baris="$pratinjauTerbuka ? $this->pratinjau : []"
         kosong="Kondisi Saat Pulang belum diisi di Perencanaan EMR — Kirim akan ditolak." />
 </div>
