@@ -201,7 +201,8 @@ new class extends Component {
                     // KirimRawatJalanTrait). CodeSystem kfa-satuan DITOLAK SATUSEHAT:
                     // "Invalid coding system ... kfa-satuan (RuleNumber: 10050)".
                     'quantity' => ['value' => max(1, $obat['qty']), 'unit' => 'Tablet', 'system' => 'http://terminology.hl7.org/CodeSystem/v3-orderableDrugForm', 'code' => 'TAB'],
-                    'daysSupply' => ['value' => 1, 'unit' => 'Hari', 'system' => 'http://unitsofmeasure.org', 'code' => 'd'],
+                    // daysSupply TIDAK dikirim — dulu di-hardcode 1 hari (angka karangan). Contoh alur
+                    // apikesehatan.com pun tak mengirimnya.
                     'receiver' => ['reference' => "Patient/{$patientId}", 'display' => $patientName],
                 ]);
                 if (!empty($respons['id'])) $satuSehat['medicationDispenseIds'][] = $respons['id'];
@@ -247,7 +248,7 @@ new class extends Component {
         <div class="flex items-center gap-3">
             <div
                 class="flex items-center justify-center w-8 h-8 rounded-full {{ $count > 0 ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-surface-soft text-muted-soft dark:bg-gray-800 dark:text-gray-500' }}">
-                <span class="text-sm font-bold">7</span>
+                <span class="text-sm font-bold">14</span>
             </div>
             <div>
                 <div class="font-semibold text-ink dark:text-gray-100">MedicationDispense</div>

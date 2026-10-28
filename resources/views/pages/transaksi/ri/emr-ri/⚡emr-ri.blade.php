@@ -233,9 +233,12 @@ new class extends Component {
                             ],
                         ];
 
-                        // Tab Surat Kontrol hanya untuk BPJS
+                        // Tab Surat Kontrol hanya untuk BPJS — tepat SESUDAH Perencanaan. Posisinya dicari, bukan
+                        // indeks tetap: dulu splice di indeks 9, lalu tab ASO & SBAR menyusul dan Surat Kontrol
+                        // bergeser ke depan Diagnosis.
                         if ($isBPJSRi) {
-                            array_splice($tabs, 9, 0, [
+                            $posisiPerencanaan = array_search('perencanaan', array_column($tabs, 'key'), true);
+                            array_splice($tabs, $posisiPerencanaan === false ? count($tabs) : $posisiPerencanaan + 1, 0, [
                                 [
                                     'key' => 'skdp',
                                     'label' => 'Surat Kontrol',

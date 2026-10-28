@@ -25,20 +25,19 @@ new class extends Component {
      *   - encounter-selesai butuh condition (SATUSEHAT mewajibkan
      *     Encounter.diagnosis saat finish, RuleNumber 10457);
      *   - episode-selesai PALING AKHIR: episode membungkus seluruh masa rawat,
-     *     jadi ia baru ditutup setelah encounter-nya sendiri ditutup.
-     *
-     * chief-complaint & allergy SENGAJA TIDAK ADA di sini. Kedua kartunya masih
-     * dimatikan `@if (false)` di bawah (menunggu LOV SNOMED di Pengkajian Dokter),
-     * sehingga komponennya TIDAK dirender. Memasukkannya ke antrean berarti
-     * menembakkan event yang tak ada pendengarnya — tak ada kabar selesai, dan
-     * rantai menggantung selamanya di langkah itu. Kalau kelak kedua kartu itu
-     * dihidupkan, tambahkan namanya di sini juga.
+     *     jadi ia baru ditutup setelah encounter-nya sendiri ditutup;
+     *   - resume-medis sesudah keduanya: Composition merangkum resource yang sudah terkirim dan
+     *     dikirim sesudah kunjungan ditutup.
+     * chief-complaint & allergy kini aktif (kodenya diisi di layar Coding SATUSEHAT RI, node
+     * kodingSatuSehat) — dulu dimatikan menunggu LOV SNOMED di Pengkajian Dokter.
      */
     private const URUTAN_KIRIM = [
-        'encounter', 'episode', 'condition', 'procedure', 'observation',
-        'medication-request', 'medication-dispense', 'lab', 'radiologi',
-        'cppt', 'diet', 'penilaian', 'observasi-lanjutan',
-        'encounter-selesai', 'episode-selesai',
+        'encounter', 'episode', 'condition', 'procedure', 'observation', 'medication-request',
+        'chief-complaint', 'keluhan-penyerta', 'riwayat-penyakit', 'riwayat-keluarga',
+        'riwayat-pengobatan', 'riwayat-perjalanan', 'allergy', 'medication-dispense',
+        'observasi-lanjutan', 'lab', 'radiologi', 'cppt', 'penilaian', 'status-psikologis', 'diet',
+        'edukasi', 'perencanaan-pulang', 'prognosis', 'rencana-tindak-lanjut', 'kondisi-pulang',
+        'encounter-selesai', 'episode-selesai', 'resume-medis',
     ];
 
     /** Sisa langkah yang belum dijalankan; kosong = tidak ada rantai berjalan. */
@@ -230,7 +229,7 @@ new class extends Component {
                 @else
                     <x-confirm-button variant="primary" action="kirimSemua()"
                         title="Kirim semua langkah ke SATUSEHAT?"
-                        message="15 langkah dijalankan berurutan mulai dari Encounter, ditutup Finish Encounter lalu Finish Episode. Langkah yang datanya belum lengkap akan ditolak dan dilewati — rantai tetap lanjut. Kiriman yang sudah berangkat TIDAK bisa dibatalkan."
+                        message="Semua langkah dijalankan berurutan mulai dari Encounter, ditutup Finish Encounter, Finish Episode, lalu Resume Medis. Langkah yang datanya belum lengkap akan ditolak dan dilewati — rantai tetap lanjut. Kiriman yang sudah berangkat TIDAK bisa dibatalkan."
                         confirmText="Ya, Kirim Semua"
                         wire:key="kirim-semua-ri-{{ $riHdrNo ?? 'none' }}">
                         <span class="inline-flex items-center gap-1.5">
@@ -273,30 +272,52 @@ new class extends Component {
                         wire:key="ss-observation-ri-{{ $riHdrNo ?? 'none' }}" />
                     <livewire:pages::transaksi.ri.satu-sehat.kirim-medication-request :riHdrNo="$riHdrNo"
                         wire:key="ss-medication-request-ri-{{ $riHdrNo ?? 'none' }}" />
+                    <livewire:pages::transaksi.ri.satu-sehat.kirim-chief-complaint :riHdrNo="$riHdrNo"
+                        wire:key="ss-chief-complaint-ri-{{ $riHdrNo ?? 'none' }}" />
+                    <livewire:pages::transaksi.ri.satu-sehat.kirim-keluhan-penyerta :riHdrNo="$riHdrNo"
+                        wire:key="ss-keluhan-penyerta-ri-{{ $riHdrNo ?? 'none' }}" />
+                    <livewire:pages::transaksi.ri.satu-sehat.kirim-riwayat-penyakit :riHdrNo="$riHdrNo"
+                        wire:key="ss-riwayat-penyakit-ri-{{ $riHdrNo ?? 'none' }}" />
+                    <livewire:pages::transaksi.ri.satu-sehat.kirim-riwayat-keluarga :riHdrNo="$riHdrNo"
+                        wire:key="ss-riwayat-keluarga-ri-{{ $riHdrNo ?? 'none' }}" />
+                    <livewire:pages::transaksi.ri.satu-sehat.kirim-riwayat-pengobatan :riHdrNo="$riHdrNo"
+                        wire:key="ss-riwayat-pengobatan-ri-{{ $riHdrNo ?? 'none' }}" />
+                    <livewire:pages::transaksi.ri.satu-sehat.kirim-riwayat-perjalanan :riHdrNo="$riHdrNo"
+                        wire:key="ss-riwayat-perjalanan-ri-{{ $riHdrNo ?? 'none' }}" />
+                    <livewire:pages::transaksi.ri.satu-sehat.kirim-allergy :riHdrNo="$riHdrNo"
+                        wire:key="ss-allergy-ri-{{ $riHdrNo ?? 'none' }}" />
                     <livewire:pages::transaksi.ri.satu-sehat.kirim-medication-dispense :riHdrNo="$riHdrNo"
                         wire:key="ss-medication-dispense-ri-{{ $riHdrNo ?? 'none' }}" />
+                    <livewire:pages::transaksi.ri.satu-sehat.kirim-observasi-lanjutan :riHdrNo="$riHdrNo"
+                        wire:key="ss-observasi-lanjutan-ri-{{ $riHdrNo ?? 'none' }}" />
                     <livewire:pages::transaksi.ri.satu-sehat.kirim-lab :riHdrNo="$riHdrNo"
                         wire:key="ss-lab-ri-{{ $riHdrNo ?? 'none' }}" />
                     <livewire:pages::transaksi.ri.satu-sehat.kirim-radiologi :riHdrNo="$riHdrNo"
                         wire:key="ss-radiologi-ri-{{ $riHdrNo ?? 'none' }}" />
                     <livewire:pages::transaksi.ri.satu-sehat.kirim-cppt :riHdrNo="$riHdrNo"
                         wire:key="ss-cppt-ri-{{ $riHdrNo ?? 'none' }}" />
-                    <livewire:pages::transaksi.ri.satu-sehat.kirim-diet :riHdrNo="$riHdrNo"
-                        wire:key="ss-diet-ri-{{ $riHdrNo ?? 'none' }}" />
                     <livewire:pages::transaksi.ri.satu-sehat.kirim-penilaian :riHdrNo="$riHdrNo"
                         wire:key="ss-penilaian-ri-{{ $riHdrNo ?? 'none' }}" />
-                    <livewire:pages::transaksi.ri.satu-sehat.kirim-observasi-lanjutan :riHdrNo="$riHdrNo"
-                        wire:key="ss-observasi-lanjutan-ri-{{ $riHdrNo ?? 'none' }}" />
-                    {{-- ChiefComplaint & Allergy RI butuh SNOMED (dinonaktifkan sementara).
-                         Aktifkan bersama LOV SNOMED di rm-pengkajian-dokter-ri-actions (false → true). --}}
-                    @if (false)
-                    <livewire:pages::transaksi.ri.satu-sehat.kirim-chief-complaint :riHdrNo="$riHdrNo"
-                        wire:key="ss-chief-complaint-ri-{{ $riHdrNo ?? 'none' }}" />
-                    <livewire:pages::transaksi.ri.satu-sehat.kirim-allergy :riHdrNo="$riHdrNo"
-                        wire:key="ss-allergy-ri-{{ $riHdrNo ?? 'none' }}" />
-                    @endif
+                    <livewire:pages::transaksi.ri.satu-sehat.kirim-status-psikologis :riHdrNo="$riHdrNo"
+                        wire:key="ss-status-psikologis-ri-{{ $riHdrNo ?? 'none' }}" />
+                    <livewire:pages::transaksi.ri.satu-sehat.kirim-diet :riHdrNo="$riHdrNo"
+                        wire:key="ss-diet-ri-{{ $riHdrNo ?? 'none' }}" />
+                    <livewire:pages::transaksi.ri.satu-sehat.kirim-edukasi :riHdrNo="$riHdrNo"
+                        wire:key="ss-edukasi-ri-{{ $riHdrNo ?? 'none' }}" />
+                    <livewire:pages::transaksi.ri.satu-sehat.kirim-perencanaan-pulang :riHdrNo="$riHdrNo"
+                        wire:key="ss-perencanaan-pulang-ri-{{ $riHdrNo ?? 'none' }}" />
+                    <livewire:pages::transaksi.ri.satu-sehat.kirim-prognosis :riHdrNo="$riHdrNo"
+                        wire:key="ss-prognosis-ri-{{ $riHdrNo ?? 'none' }}" />
+                    <livewire:pages::transaksi.ri.satu-sehat.kirim-rencana-tindak-lanjut :riHdrNo="$riHdrNo"
+                        wire:key="ss-rencana-tindak-lanjut-ri-{{ $riHdrNo ?? 'none' }}" />
+                    <livewire:pages::transaksi.ri.satu-sehat.kirim-kondisi-pulang :riHdrNo="$riHdrNo"
+                        wire:key="ss-kondisi-pulang-ri-{{ $riHdrNo ?? 'none' }}" />
 
-                    {{-- Lab & Radiologi (cabang status_rjri='RI') menyusul. --}}
+                    {{-- Resume medis dikirim SESUDAH encounter & episode ditutup — kartunya paling bawah. --}}
+                    <div class="md:col-span-2 xl:col-span-3">
+                        <livewire:pages::transaksi.ri.satu-sehat.kirim-resume-medis :riHdrNo="$riHdrNo"
+                            wire:key="ss-resume-medis-ri-{{ $riHdrNo ?? 'none' }}" />
+                    </div>
                 </div>
             </div>
         </div>

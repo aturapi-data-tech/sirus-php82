@@ -163,32 +163,31 @@ new class extends Component {
     }
 };
 ?>
-
 <div>
     <x-modal name="rekam-medis-nasional" size="2xl" focusable>
-        <div class="p-6 space-y-4">
-            <div>
-                <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Rekam Medis Nasional (SATUSEHAT)</h2>
-                <p class="text-sm text-gray-600 dark:text-gray-400">
-                    Riwayat pasien dari faskes lain yang tercatat di SATUSEHAT. Rekam medis RS sendiri tetap dibuka di siRUS.
-                </p>
-            </div>
+        <x-modul-dokumen.header judul="Rekam Medis Nasional" :jalur="$jalur ?: null"
+            ikon="M21 12a9 9 0 11-18 0 9 9 0 0118 0zM3.6 9h16.8M3.6 15h16.8M12 3a15 15 0 010 18M12 3a15 15 0 000 18">
+            Riwayat pasien dari faskes lain di SATUSEHAT
+        </x-modul-dokumen.header>
 
-            <dl class="grid grid-cols-1 gap-2 p-3 text-sm border rounded-lg sm:grid-cols-2 border-gray-200 dark:border-gray-700">
+        <div class="p-6 space-y-4">
+            <p class="text-sm text-muted dark:text-gray-400">Rekam medis RS sendiri tetap dibuka di siRUS.</p>
+
+            <dl class="grid grid-cols-1 gap-3 p-3 text-sm border rounded-lg sm:grid-cols-2 bg-surface-soft border-hairline dark:bg-gray-800/40 dark:border-gray-700">
                 <div>
-                    <dt class="text-gray-500 dark:text-gray-400">Pasien</dt>
-                    <dd class="font-medium text-gray-900 dark:text-gray-100">{{ $namaPasien ?: '-' }} <span class="text-gray-500 dark:text-gray-400">({{ $regNo }})</span></dd>
-                    <dd class="text-xs {{ $pasienIhs ? 'text-gray-600 dark:text-gray-400' : 'text-red-700 dark:text-red-400' }}">IHS: {{ $pasienIhs ?: 'belum ada' }}</dd>
+                    <dt class="text-xs text-muted dark:text-gray-400">Pasien</dt>
+                    <dd class="font-medium text-ink dark:text-gray-100">{{ $namaPasien ?: '-' }} <span class="font-normal text-muted dark:text-gray-400">({{ $regNo }})</span></dd>
+                    <dd class="text-xs {{ $pasienIhs ? 'text-body dark:text-gray-300' : 'text-error-deep dark:text-red-300' }}">IHS: <span class="font-mono">{{ $pasienIhs ?: 'belum ada' }}</span></dd>
                 </div>
                 <div>
-                    <dt class="text-gray-500 dark:text-gray-400">Dokter (DPJP)</dt>
-                    <dd class="font-medium text-gray-900 dark:text-gray-100">{{ $namaDokter ?: '-' }}</dd>
-                    <dd class="text-xs {{ $dokterIhs ? 'text-gray-600 dark:text-gray-400' : 'text-red-700 dark:text-red-400' }}">IHS: {{ $dokterIhs ?: 'belum ada' }}</dd>
+                    <dt class="text-xs text-muted dark:text-gray-400">Dokter (DPJP)</dt>
+                    <dd class="font-medium text-ink dark:text-gray-100">{{ $namaDokter ?: '-' }}</dd>
+                    <dd class="text-xs {{ $dokterIhs ? 'text-body dark:text-gray-300' : 'text-error-deep dark:text-red-300' }}">IHS: <span class="font-mono">{{ $dokterIhs ?: 'belum ada' }}</span></dd>
                 </div>
             </dl>
 
             @if (!empty($this->prasyaratKurang()))
-                <div class="p-3 text-sm text-red-800 border border-red-200 rounded-lg bg-red-50 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800">
+                <div class="p-3 text-sm border rounded-lg bg-error-tint text-error-deep border-error/30 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800">
                     <p class="font-medium">Belum bisa dibuka:</p>
                     <ul class="ml-5 list-disc">
                         @foreach ($this->prasyaratKurang() as $kekurangan)
@@ -199,13 +198,13 @@ new class extends Component {
             @endif
 
             @if ($pesan !== '')
-                <div class="p-3 text-sm text-amber-900 border border-amber-200 rounded-lg bg-amber-50 dark:bg-amber-900/20 dark:text-amber-200 dark:border-amber-800">
+                <div class="p-3 text-sm border rounded-lg bg-warning-tint text-warning-deep border-warning/30 dark:bg-amber-900/20 dark:text-amber-200 dark:border-amber-800">
                     {{ $pesan }}
                 </div>
             @endif
 
             {{-- Langkah 1 — buka --}}
-            <div class="flex flex-wrap items-center gap-2">
+            <div class="flex flex-wrap items-center gap-3">
                 <x-primary-button type="button" wire:click="bukaRekamMedis" wire:loading.attr="disabled" wire:target="bukaRekamMedis"
                     :disabled="!empty($this->prasyaratKurang())">
                     <span wire:loading.remove wire:target="bukaRekamMedis">Buka Rekam Medis Nasional</span>
@@ -213,15 +212,15 @@ new class extends Component {
                 </x-primary-button>
                 @if ($tautanRekamMedis !== '')
                     <a href="{{ $tautanRekamMedis }}" target="_blank" rel="noopener noreferrer"
-                        class="text-sm font-medium text-blue-700 underline dark:text-blue-400">Tab tidak terbuka? Klik di sini</a>
+                        class="text-sm font-medium text-brand-green hover:underline dark:text-brand-lime">Tab tidak terbuka? Klik di sini</a>
                 @endif
             </div>
 
             {{-- Langkah 2 — persetujuan (muncul bila SATUSEHAT meminta) --}}
             @if ($perluPersetujuan)
-                <div class="p-4 space-y-3 border rounded-lg border-gray-200 dark:border-gray-700">
-                    <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Persetujuan akses</p>
-                    <ol class="ml-5 text-sm text-gray-700 list-decimal dark:text-gray-300">
+                <div class="p-4 space-y-3 border rounded-lg border-hairline dark:border-gray-700">
+                    <p class="text-sm font-semibold text-ink dark:text-gray-100">Persetujuan akses</p>
+                    <ol class="ml-5 space-y-1 text-sm list-decimal text-body dark:text-gray-300">
                         <li><b>Biasa:</b> minta pasien membuat kode akses di aplikasi SATUSEHAT Mobile, lalu masukkan kode itu di halaman persetujuan.</li>
                         <li><b>Darurat:</b> hanya bila kondisi pasien darurat — isi alasan dan data pengantar/wali di halaman persetujuan, tanpa kode akses pasien.</li>
                         <li>Setelah persetujuan tercatat, tekan lagi <b>Buka Rekam Medis Nasional</b>.</li>
@@ -238,16 +237,16 @@ new class extends Component {
                     </div>
                     @if ($tautanPersetujuan !== '')
                         <a href="{{ $tautanPersetujuan }}" target="_blank" rel="noopener noreferrer"
-                            class="text-sm font-medium text-blue-700 underline dark:text-blue-400">
+                            class="inline-block text-sm font-medium text-brand-green hover:underline dark:text-brand-lime">
                             Buka halaman {{ $persetujuanDarurat ? 'akses darurat' : 'persetujuan pasien' }}
                         </a>
                     @endif
                 </div>
             @endif
+        </div>
 
-            <div class="flex justify-end">
-                <x-secondary-button type="button" wire:click="closeModal">Tutup</x-secondary-button>
-            </div>
+        <div class="flex justify-end gap-2 px-6 py-3 border-t bg-canvas border-hairline dark:bg-gray-900 dark:border-gray-700">
+            <x-secondary-button type="button" wire:click="closeModal">Tutup</x-secondary-button>
         </div>
     </x-modal>
 </div>

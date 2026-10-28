@@ -58,6 +58,22 @@ trait ObservationTrait
             ]];
         }
 
+        // Opsional (aditif): tautan ke order & spesimen + waktu terbit — Playbook RJ 10.4/11.5,
+        // disamakan dgn alur apikesehatan.com. basedOn = daftar referensi "ServiceRequest/{id}".
+        if (!empty($data['basedOn'])) {
+            $payload['basedOn'] = array_map(fn($referensi) => ['reference' => $referensi], array_values((array) $data['basedOn']));
+        }
+        if (!empty($data['specimen'])) {
+            $payload['specimen'] = ['reference' => $data['specimen']];
+        }
+        if (!empty($data['issued'])) {
+            $payload['issued'] = $data['issued'];
+        }
+        // Opsional (aditif): catatan bebas — mis. asal surat rujukan (Playbook IGD 3b).
+        if (filled($data['note'] ?? null)) {
+            $payload['note'] = [['text' => (string) $data['note']]];
+        }
+
         // Either a single valueQuantity...
         if (!empty($data['valueQuantity']) && is_array($data['valueQuantity'])) {
             $payload['valueQuantity'] = [
@@ -75,6 +91,11 @@ trait ObservationTrait
         // memakai valueInteger, bukan valueQuantity; jangan "dirapikan" jadi seragam)
         elseif (isset($data['valueInteger'])) {
             $payload['valueInteger'] = (int) $data['valueInteger'];
+        }
+        // ...or a yes/no answer (aditif) — mis. "membawa surat pengantar rujukan?" (Playbook IGD 3b).
+        // is_bool, bukan isset: false juga jawaban yang sah dan wajib terkirim.
+        elseif (is_bool($data['valueBoolean'] ?? null)) {
+            $payload['valueBoolean'] = $data['valueBoolean'];
         }
         // ...or a coded answer (mis. LOINC answer list LA* untuk skala survey)
         elseif (!empty($data['valueCodeableConcept']) && is_array($data['valueCodeableConcept'])) {

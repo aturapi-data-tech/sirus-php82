@@ -467,25 +467,56 @@ Sub-section ditulis di `section[i].section[j]`:
 2. `relatesTo[i].code` + `.target` ditandai **wajib**, padahal resume pertama tidak
    menggantikan/merujuk dokumen mana pun. Perlu konfirmasi nilai yang diterima validator.
 
-**Pemetaan ke node `satuSehat` (RJ) — apa yang SUDAH bisa diisi hari ini:**
+**Pemetaan ke node `satuSehat` (RJ) — per 2026-10-28.** Teks klinis diisi di EMR; kode SNOMED/KFA
+diisi SESUDAH pelayanan di layar **Coding SATUSEHAT** (`pages/transaksi/rj/coding-fhir-rj/`, menu titik-3
+Pelayanan & Daftar RJ, Gate `emr.codingFhir`). Kode disimpan di key yang sama dengan teksnya, jadi sender
+membaca dari JSON EMR seperti biasa.
 
-| Section | Sumber di node |
-|---|---|
-| 1a Keluhan Utama | `chiefComplaintId` |
-| 1c Riwayat Alergi | `allergyId` |
-| 2a Tanda Vital | `observationIds` |
-| 3 Pemeriksaan Fungsional | `penilaianObservationIds` (perlu dipilah: playbook memaksudkan status psikologis) |
-| 4 Perencanaan Perawatan | `clinicalImpressionId` |
-| 5a Lab | `labServiceRequestIds`, `labSpecimenIds`, `labObservationIds`, `labDiagnosticReportIds` |
-| 5b Radiologi | `radServiceRequestIds`, `radDiagnosticReportIds` |
-| 6a/6b Diagnosis | `conditionIds` (+ `clinicalImpressionId` di 6b) |
-| 7 Tindakan | `procedureIds` |
-| 8a Obat Saat Kunjungan | `medicationRequestIds`, `medicationDispenseIds` |
-| 13 Perjalanan Kunjungan | narasi dirakit dari EMR |
+| Section | Sumber kode (JSON EMR) | Sender → node `satuSehat` |
+|---|---|---|
+| 1a Keluhan Utama | `anamnesa.keluhanUtama.snomedCode` (kategori kemkes `chief-complaint`, + onset/recorder/note) | kirim-chief-complaint → `chiefComplaintId` |
+| 1b Keluhan Penyerta | `anamnesa.keluhanPenyerta.snomedList[]` | kirim-keluhan-penyerta → `keluhanPenyertaIds` |
+| 1c Riwayat Alergi | "Tidak": `anamnesa.alergi.snomedCode` 716186003 · "Ya": `anamnesa.alergi.alergenList[]` (Obat = KFA master, Makanan/Lingkungan = SNOMED, + criticality); kode tunggal lama tetap dibaca | kirim-allergy → `allergyId` / `allergyIds[jenis:kode]` |
+| 1d Riw. Penyakit Terdahulu | `anamnesa.riwayatPenyakitDahulu.snomedList[]` (usiaTahun) | kirim-riwayat-penyakit → `riwayatPenyakitDahuluIds` |
+| 1e Riw. Penyakit Sekarang | `anamnesa.riwayatPenyakitSekarangUmum.snomedList[]` (tglMulai) | kirim-riwayat-penyakit → `riwayatPenyakitSekarangIds` |
+| 1f Riw. Penyakit Keluarga | `anamnesa.riwayatPenyakitKeluarga.snomedList[]` | kirim-riwayat-keluarga (FamilyMemberHistory) → `riwayatPenyakitKeluargaIds` |
+| 1g Riwayat Pengobatan | `anamnesa.riwayatPengobatan.obatList[]` (KFA dari master obat) | kirim-riwayat-pengobatan (MedicationStatement) → `riwayatPengobatanIds` |
+| 2a Tanda Vital | `pemeriksaan.tandaVital` + antropometri BB/TB `pemeriksaan.nutrisi` (LOINC: `TandaVitalObservationMap`); kesadaran = `tandaVital.tingkatKesadaran` AVPU (`NyeriKesadaranObservationMap::kesadaranRj`, cadangan skrining) | kirim-observation → `observationIds`; kirim-nyeri-kesadaran |
+| 3 Pemeriksaan Fungsional | `penilaianObservationIds` + status psikologis `anamnesa.statusPsikologis` (`StatusPsikologisMap`, LOINC 8693-4) | kirim-status-psikologis → `statusPsikologisIds` |
+| 4 Perencanaan Perawatan | `clinicalImpressionId` | |
+| 5a/5b Lab / Radiologi | `lab*Ids`, `rad*Ids` | |
+| 6 Diagnosis | `conditionIds` (+ `clinicalImpressionId`) | |
+| 7 Tindakan | `procedureIds` | |
+| 8a Obat Saat Kunjungan | `medicationRequestIds`, `medicationDispenseIds` | |
+| 11 Kondisi Pulang | `perencanaan.kondisiPulang.kondisiPulang` (kode tetap `KondisiPulang`) | kirim-kondisi-pulang → `kondisiPulangId` |
+| 12 Rencana Tindak Lanjut | node `kontrol` (SKDP: tglKontrol, drKontrol, poli, catatan) | kirim-rencana-tindak-lanjut (ServiceRequest 3457005/185389009) → `rencanaTindakLanjutId` |
+| 13 Perjalanan Kunjungan | narasi dari EMR | |
 
-Belum punya sumbernya: 1b, 1d, 1e, 1f (FamilyMemberHistory), 1g (MedicationStatement),
-2b head-to-toe (kalau tak dikirim), 8b obat pulang (RJ tidak membedakan), 9 Diet,
-10 Edukasi, 11 Kondisi pulang, 12 Rencana tindak lanjut.
+Cara keluar (bab 26–27) ikut `PUT Encounter` saat finish: `DischargeDisposition::rawatJalan()` dari
+`perencanaan.tindakLanjut` (HL7 discharge-disposition).
+
+⚠️ **Jangan menyalin kode bab 25 dari apikesehatan.com** — 3 dari 4 salah arti (Membaik 271299001 =
+*worsened*, Memburuk 271593001 = *Moribund*, Tidak Berubah 162467007 = *Free of symptoms*). Kode benar di
+`App\Support\Terminologi\KondisiPulang` (diverifikasi tx.fhir.org).
+
+Tambahan di luar section resume: bab 6 riwayat perjalanan penyakit (ClinicalImpression 312850006, narasi
+= Riwayat Penyakit Sekarang) → `riwayatPerjalananId`; bab 22 prognosis (ClinicalImpression 20481000 +
+`Prognosis`, pilihan dokter di Perencanaan) → `prognosisId`.
+
+Penyesuaian payload lama (2026-10-28): Condition diagnosis + `onsetDateTime`; ClinicalImpression `date` =
+waktu kunjungan + `problem` keluhan utama; Procedure tanpa `performer.function` kosong; MedicationRequest
+`status: active` + `dosageInstruction.text` dari signa e-resep (`ObatKfa::signa`); MedicationDispense tanpa
+`daysSupply` karangan, jam dari taskId6/7; Observation lab/radiologi `basedOn` (+`specimen`, `issued`);
+radiologi bacaan & DR `conclusion` dari `hasil_bacaan`.
+
+⚠️ Kode **prognosis** apikesehatan juga salah arti (Cukup 170969009 = *bad*, Buruk 170970005 = *uncertain*,
+65872001 tak ada) — pakai `App\Support\Terminologi\Prognosis`.
+
+Sengaja TIDAK dipasang untuk RJ: Goal (7/7b), status puasa (10.1), kehamilan & alergi kontras (11.1/11.2),
+RiskAssessment (14), permintaan/hasil tindakan (15a/15c), MedicationAdministration (19), diet (20),
+edukasi (21), rujukan (24, lewat BPJS SISRUTE), klaim, head-to-toe (data tak pernah diisi).
+Belum diputuskan: timing signa terstruktur, ACSN radiologi, kode order lab spesifik, bentuk sediaan selain
+tablet, Q0007 3.2–3.5 boolean vs coding, pembagian section riwayat di resume, `conclusion` lab.
 **Section yang sumbernya kosong tidak dibuat** — jangan kirim `entry: []`
 (validator menolak elemen objek kosong, lihat §3 skill `satusehat-kirim`).
 
@@ -513,6 +544,63 @@ mengurus perbedaan ini; jalur yang playbook-nya belum dibaca (mis. `ri`) sengaja
 `⚡kirim-resume-medis` di `pages/transaksi/rj/satu-sehat/` **dan**
 `pages/transaksi/ugd/satu-sehat/` — dipasang paling bawah (RJ: di bawah kartu
 "Selesaikan Encounter") dan menolak jalan sebelum `encounterFinished`.
+
+#### RI disamakan dengan alur Rawat Inap apikesehatan.com (2026-10-28)
+
+Teks klinis RI tersebar di dua formulir — Pengkajian Dokter (±1/4 rawat inap terisi) dan Pengkajian
+Awal perawat (±9/10) — jadi dibaca lewat `App\Support\AnamnesaRi` (dokter dulu, cadangan perawat).
+**Kode RI disimpan di node akar `kodingSatuSehat`** (bukan menumpang node form seperti RJ/UGD), diisi
+layar `pages/transaksi/ri/coding-fhir-ri/` (titik-3 Daftar RI). Kirim Semua RI = 26 kartu + finish
+Encounter + finish Episode + Resume Medis.
+
+| Bab RI | Isi | Sumber | Catatan |
+|---|---|---|---|
+| 3a/3c | Keluhan utama, alergi | AnamnesaRi + kodingSatuSehat | kartu dihidupkan lagi; alergi DILEWATI bila Pengkajian Dokter belum mengisinya (bukan "tidak ada alergi") |
+| 3b/3d/3e/3f | Keluhan penyerta, riwayat penyakit/keluarga, pengobatan | kodingSatuSehat | port RJ |
+| 4 | Pemeriksaan fisik | Pengkajian Awal (TTV, BB/TB, kesadaran) → `pemeriksaanAwalIds`; Observasi Lanjutan per entri → `tandaVitalLanjutanIds[jam]` | kesadaran skala klasik → SNOMED AVPU (`kesadaranRi`) |
+| 5b | Psikologis | status emosional Pengkajian Awal | `StatusPsikologisMap::aktifRi` |
+| 19 | Pemberian obat | observasi lanjutan | + identifier `RI-…`, category inpatient, request |
+| 21 | Edukasi (Procedure 409073007 + KPTL 10913) | Edukasi Terintegrasi | `edukasiIds[id]` |
+| 22b | Perencanaan pemulangan (CarePlan 736372004) | Discharge Planning | `CarePlanTrait` |
+| 23/26 | Prognosis, kondisi saat keluar | isian baru di Perencanaan RI | port RJ |
+| 24 | Rencana tindak lanjut | SKDP RI | identifier `RI-…-KONTROL` |
+| 27–28 | Cara keluar | status pulang | **HL7** `DischargeDisposition::rawatInap()` (dulu SNOMED) |
+| 29 | Resume medis (Composition 18842-5) | indeks semua resource | `ResumeMedisSection` jalur `ri`, identifier `RI-…` |
+
+⚠️ Kode apikesehatan RI yang salah: "Emotionally stable" `276746005` = *Environmental event*. Kooperatif
+memakai `134417007` Normal mood; Depresi `366979004` Depressed mood (temuan, bukan diagnosis).
+⚠️ Identifier Composition RJ & UGD sama-sama `rj_no` mentah dengan system yang sama — nomor RJ & UGD
+bisa kembar (urutan berbeda). Belum diubah; RI sudah pakai awalan `RI-`.
+
+#### UGD disamakan dengan alur IGD apikesehatan.com (2026-10-28)
+
+Pola sama dengan RJ di atas: EMR UGD hanya teks klinis, kode diisi di layar
+`pages/transaksi/ugd/coding-fhir-ugd/` (titik-3 Daftar & Pelayanan UGD, Gate `emr.codingFhir`).
+Kirim Semua UGD = 23 kartu + selesaikan Encounter + resume.
+
+| Bab IGD | Isi | Sumber UGD | Kartu |
+|---|---|---|---|
+| 3a–3c | Transportasi (74286-6, SNOMED), surat rujukan (OC000034, boolean), triase CTAS (75910-0) | `anamnesa.pengkajianPerawatan`; triase = `tingkatKegawatan` (keputusan perawat), kosong → `screening.triaseSaran` | `kirim-kedatangan` → `kedatanganIds` (masuk section Asesmen Awal IGD) |
+| 4a | Keluhan utama, kategori kemkes `chief-complaint` | `anamnesa.keluhanUtama` | `kirim-chief-complaint` |
+| 4b/4d/4e | Riwayat penyakit, keluarga, pengobatan | `snomedList` / `obatList` (Coding) | port kartu RJ |
+| 4c | Alergi per alergen (KFA/SNOMED) | `anamnesa.alergi.alergenList` | `kirim-allergy` |
+| 5e (berulang) | TTV + BB/TB, lalu tiap entri Observasi Lanjutan dengan jamnya | `pemeriksaan.tandaVital` / `nutrisi` / `observasi.observasiLanjutan.tandaVital[]` | `kirim-observation` → `observationIds` + `observasiLanjutanIds[jam]` |
+| 8a/8b | Status psikologis, riwayat perjalanan | `anamnesa.statusPsikologis` / `riwayatPenyakitSekarangUmum` | port kartu RJ |
+| 21 | Pemberian obat (MedicationAdministration, identifier `UGD-…`, category inpatient, request → resep bila produk sama) | `observasi.obatDanCairan.pemberianObatDanCairan[]` | `kirim-pemberian-obat` → `pemberianObatIds[id entri]` |
+| 23 / 25 | Rencana tindak lanjut (identifier `UGD-…-KONTROL`) / kondisi saat keluar | `kontrol` / `perencanaan.kondisiPulang` | port kartu RJ |
+| 26–27 | Cara keluar | `perencanaan.tindakLanjut` | `DischargeDisposition::gawatDarurat()` |
+
+⚠️ **Kode CTAS apikesehatan salah dua**: level 5 `LA6116-3` tidak ada di LOINC → `LA10137-0`;
+level 2 `LA6113-0` benar tapi display resminya "2 or more" (answer list LL3059-4). Lihat
+`App\Support\Terminologi\KedatanganIgd`. Pemetaan **P1→CTAS 1, P2→3, P3→4 masih usulan**;
+P0 (meninggal saat tiba) tidak dikirim. Cara keluar UGD: Meninggal `exp`, KRS (nilai lama) `home`,
+APS (nilai lama) `aadvice`, sisanya peta rawat jalan.
+
+Tidak dipasang untuk UGD: keluhan penyerta & prognosis (tak ada di alur IGD), pindah ruangan
+triase/tindakan/observasi & peralihan DPJP (Encounter PUT), Goal, puasa, kehamilan/kontras,
+ImagingStudy, RiskAssessment, skrining batuk/gizi/decubitus, fungsional, SBAR (tak ada di alur
+IGD; `Communication` bukan resource SATUSEHAT). Kesadaran tetap dari
+`screening.kesadaran` (teks, tanpa padanan SNOMED).
 
 ---
 

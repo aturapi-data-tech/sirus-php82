@@ -163,6 +163,7 @@ new class extends Component {
                         'icd10_code' => $kode, 'icd10_display' => $display,
                         'diagnosis_text' => "{$kode} - {$display}",
                         'recordedDate' => $recordedDate->toIso8601String(),
+                        'onsetDateTime' => $recordedDate->toIso8601String(), // Playbook RI: onset = waktu masuk (pola RJ/UGD)
                     ]);
                     if (!empty($respons['id'])) { $terkumpul[] = $respons['id']; $baru++; }
                 } catch (\Throwable $e) {

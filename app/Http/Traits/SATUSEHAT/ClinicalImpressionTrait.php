@@ -35,10 +35,37 @@ trait ClinicalImpressionTrait
             'subject'           => ['reference' => 'Patient/' . $data['patientId']],
             'encounter'         => ['reference' => 'Encounter/' . $data['encounterId']],
             'effectiveDateTime' => $data['effective'] ?? now()->toIso8601String(),
-            'date'              => now()->toIso8601String(),
+            'date'              => $data['date'] ?? now()->toIso8601String(),
             'assessor'          => ['reference' => 'Practitioner/' . $data['assessorId']],
             'summary'           => $data['summary'],
         ];
+
+        // Opsional (aditif, pemanggil lama tak berubah) — dipakai RJ bab 6 & 22:
+        //   code       → ['system','code','display'] jenis impresi (mis. 312850006 / 20481000)
+        //   prognosis  → ['code','display'] SNOMED → prognosisCodeableConcept
+        //   problemIds → Condition yang dinilai (problem[])
+        if (!empty($data['code'])) {
+            $payload['code'] = ['coding' => [[
+                'system'  => $data['code']['system'],
+                'code'    => $data['code']['code'],
+                'display' => $data['code']['display'],
+            ]]];
+        }
+        if (!empty($data['prognosis'])) {
+            $payload['prognosisCodeableConcept'] = [[
+                'coding' => [[
+                    'system'  => 'http://snomed.info/sct',
+                    'code'    => $data['prognosis']['code'],
+                    'display' => $data['prognosis']['display'],
+                ]],
+            ]];
+        }
+        if (!empty($data['problemIds'])) {
+            $payload['problem'] = array_map(fn($id) => ['reference' => 'Condition/' . $id], array_values($data['problemIds']));
+        }
+        if ($payload['description'] === null) {
+            unset($payload['description']); // jangan kirim "description": null
+        }
 
         if (!empty($data['findings']) && is_array($data['findings'])) {
             $payload['finding'] = array_map(function ($f) {

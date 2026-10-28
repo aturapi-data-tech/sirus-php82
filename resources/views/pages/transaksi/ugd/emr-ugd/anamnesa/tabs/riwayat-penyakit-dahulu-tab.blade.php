@@ -11,6 +11,17 @@
             <x-input-error :messages="$errors->get('anamnesa.riwayatPenyakitDahulu.riwayatPenyakitDahulu')" class="mt-1" />
         </div>
 
+        {{-- Riwayat Penyakit Keluarga (teks klinis) — kodenya diisi di Coding SATUSEHAT. Buka-tutup
+             seperti Status Psikiatri: tertutup, terbuka sendiri bila sudah berisi. --}}
+        <x-border-form :title="__('Riwayat Penyakit Keluarga')" :collapsible="true" padding="p-3"
+            :open="filled($anamnesa['riwayatPenyakitKeluarga']['riwayatPenyakitKeluarga'] ?? null)">
+            <x-textarea wire:model.live="anamnesa.riwayatPenyakitKeluarga.riwayatPenyakitKeluarga"
+                placeholder="Mis. Ibu menderita diabetes, ayah hipertensi" :disabled="$isFormLocked" :rows="2" class="w-full" />
+            @if (in_array('riwayatPenyakitKeluarga', $dariKunjunganSebelumnya ?? [], true))
+                <p class="mt-1 text-xs text-warning-deep dark:text-amber-200">Terisi dari kunjungan sebelumnya — periksa dan ubah bila sudah berbeda.</p>
+            @endif
+        </x-border-form>
+
         {{-- Ada alergi? — default "Tidak" (SNOMED 716186003 diisi di server, bukan lewat LOV
              zat: 716186003 itu konsep *situation*, bukan zat, jadi ditolak substance-code). --}}
         <div>
@@ -35,14 +46,10 @@
                 <x-input-error :messages="$errors->get('anamnesa.alergi.alergi')" class="mt-1" />
             </div>
 
-            {{-- SNOMED CT — ZAT penyebab alergi (untuk Satu Sehat). Hanya relevan saat "Ya". --}}
-            <div>
-                <livewire:lov.snomed.lov-snomed target="alergiSnomed"
-                    label="Kode SNOMED Zat Penyebab Alergi (Satu Sehat)"
-                    placeholder="Ketik nama zat / obat penyebab..." valueSet="substance-code"
-                    :initialSnomedCode="$anamnesa['alergi']['snomedCode'] ?? null" :disabled="$isFormLocked"
-                    wire:key="lov-snomed-alergi-ugd-{{ $rjNo ?? 'new' }}-{{ $renderVersions['modal-anamnesa-ugd'] ?? 0 }}" />
-            </div>
+            <p class="text-xs text-muted dark:text-gray-400">
+                Kode zat penyebab alergi (KFA / SNOMED) diisi sesudah pelayanan lewat menu
+                <span class="font-semibold">Coding SATUSEHAT</span>.
+            </p>
         @else
             <div class="text-xs text-muted dark:text-gray-400">
                 Terekam sebagai <span class="font-semibold text-ink dark:text-gray-100">Tidak ada alergi</span>

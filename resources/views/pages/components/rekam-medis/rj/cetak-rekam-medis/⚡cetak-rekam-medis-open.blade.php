@@ -300,6 +300,14 @@ new class extends Component {
                                         <span
                                             class="text-body dark:text-gray-300">{{ $dataDaftarTxn['anamnesa']['keluhanUtama']['keluhanUtama'] ?? '-' }}</span>
                                     </p>
+                                    @php $keluhanPenyertaTeks = trim((string) ($dataDaftarTxn['anamnesa']['keluhanPenyerta']['keluhanPenyerta'] ?? '')); @endphp
+                                    @if ($keluhanPenyertaTeks !== '')
+                                        <p
+                                            class="flex gap-3 text-base leading-relaxed pb-1.5 border-b border-hairline-soft dark:border-gray-800 last:border-0">
+                                            <span class="w-56 shrink-0 text-right text-muted">Keluhan Penyerta :</span>
+                                            <span class="text-body dark:text-gray-300 whitespace-pre-line">{{ $keluhanPenyertaTeks }}</span>
+                                        </p>
+                                    @endif
                                     <p
                                         class="flex gap-3 text-base leading-relaxed pb-1.5 border-b border-hairline-soft dark:border-gray-800 last:border-0">
                                         <span class="w-56 shrink-0 text-right text-muted">Screening Batuk :</span>
@@ -415,6 +423,15 @@ new class extends Component {
                                         <span
                                             class="text-body dark:text-gray-300">{{ $dataDaftarTxn['anamnesa']['riwayatPenyakitDahulu']['riwayatPenyakitDahulu'] ?? '-' }}</span>
                                     </p>
+                                    @foreach (['riwayatPenyakitKeluarga' => 'Riwayat Penyakit Keluarga', 'riwayatPengobatan' => 'Riwayat Pengobatan'] as $nodeRiwayat => $judulRiwayat)
+                                        @if (filled($dataDaftarTxn['anamnesa'][$nodeRiwayat][$nodeRiwayat] ?? null))
+                                            <p
+                                                class="flex gap-3 text-base leading-relaxed pb-1.5 border-b border-hairline-soft dark:border-gray-800 last:border-0">
+                                                <span class="w-56 shrink-0 text-right text-muted">{{ $judulRiwayat }} :</span>
+                                                <span class="text-body dark:text-gray-300 whitespace-pre-line">{{ $dataDaftarTxn['anamnesa'][$nodeRiwayat][$nodeRiwayat] }}</span>
+                                            </p>
+                                        @endif
+                                    @endforeach
                                     <p
                                         class="flex gap-3 text-base leading-relaxed pb-1.5 border-b border-hairline-soft dark:border-gray-800 last:border-0">
                                         <span class="w-56 shrink-0 text-right text-muted">Alergi :</span>
@@ -768,6 +785,16 @@ new class extends Component {
                                         / {{ $dataDaftarTxn['perencanaan']['tindakLanjut']['keteranganTindakLanjut'] }}
                                     @endif
                                 </p>
+                                @if (!empty($dataDaftarTxn['perencanaan']['kondisiPulang']['kondisiPulang']))
+                                    <p class="mt-1 text-base text-ink dark:text-gray-200">
+                                        <span class="text-muted">Kondisi Saat Pulang :</span> {{ $dataDaftarTxn['perencanaan']['kondisiPulang']['kondisiPulang'] }}
+                                    </p>
+                                @endif
+                                @if (!empty($dataDaftarTxn['perencanaan']['prognosis']['prognosis']))
+                                    <p class="mt-1 text-base text-ink dark:text-gray-200">
+                                        <span class="text-muted">Prognosis :</span> {{ $dataDaftarTxn['perencanaan']['prognosis']['prognosis'] }}{{ filled($dataDaftarTxn['perencanaan']['prognosis']['keteranganPrognosis'] ?? null) ? ' — ' . $dataDaftarTxn['perencanaan']['prognosis']['keteranganPrognosis'] : '' }}
+                                    </p>
+                                @endif
                             </x-border-form>
 
                             <x-border-form title="Terapi">

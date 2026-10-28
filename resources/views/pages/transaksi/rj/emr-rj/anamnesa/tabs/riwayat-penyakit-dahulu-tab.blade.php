@@ -14,6 +14,30 @@
             <x-input-error :messages="$errors->get('anamnesa.riwayatPenyakitDahulu.riwayatPenyakitDahulu')" class="mt-1" />
         </div>
 
+        {{-- Riwayat Penyakit Keluarga & Riwayat Pengobatan (teks klinis) — kodenya diisi di Coding SATUSEHAT.
+             Buka-tutup seperti Status Psikiatri: tertutup, terbuka sendiri bila salah satunya berisi. --}}
+        <x-border-form :title="__('Riwayat Keluarga & Pengobatan')" :collapsible="true" padding="p-3"
+            :open="filled($anamnesa['riwayatPenyakitKeluarga']['riwayatPenyakitKeluarga'] ?? null) || filled($anamnesa['riwayatPengobatan']['riwayatPengobatan'] ?? null)">
+        <div class="space-y-3">
+        <div>
+            <x-input-label for="anamnesa.riwayatPenyakitKeluarga.riwayatPenyakitKeluarga" value="Riwayat Penyakit Keluarga" />
+            <x-textarea id="anamnesa.riwayatPenyakitKeluarga.riwayatPenyakitKeluarga"
+                wire:model.live="anamnesa.riwayatPenyakitKeluarga.riwayatPenyakitKeluarga"
+                placeholder="Mis. Ibu menderita diabetes, ayah hipertensi" :disabled="$isFormLocked" :rows="2" class="w-full mt-1" />
+            @if (in_array('riwayatPenyakitKeluarga', $dariKunjunganSebelumnya ?? [], true))
+                <p class="mt-1 text-xs text-warning-deep dark:text-amber-200">Terisi dari kunjungan sebelumnya — periksa dan ubah bila sudah berbeda.</p>
+            @endif
+        </div>
+
+        <div>
+            <x-input-label for="anamnesa.riwayatPengobatan.riwayatPengobatan" value="Riwayat Pengobatan" />
+            <x-textarea id="anamnesa.riwayatPengobatan.riwayatPengobatan"
+                wire:model.live="anamnesa.riwayatPengobatan.riwayatPengobatan"
+                placeholder="Obat yang sedang / pernah dikonsumsi, termasuk dari luar" :disabled="$isFormLocked" :rows="2" class="w-full mt-1" />
+        </div>
+        </div>
+        </x-border-form>
+
         {{-- Ada alergi? — default "Tidak" (SNOMED 716186003 diisi di server, bukan lewat LOV
              zat: 716186003 itu konsep *situation*, bukan zat, jadi ditolak substance-code). --}}
         <div>
@@ -41,14 +65,10 @@
                 <x-input-error :messages="$errors->get('anamnesa.alergi.alergi')" class="mt-1" />
             </div>
 
-            {{-- SNOMED CT — ZAT penyebab alergi (untuk Satu Sehat). Hanya relevan saat "Ya". --}}
-            <div>
-                <livewire:lov.snomed.lov-snomed target="alergiSnomed"
-                    label="Kode SNOMED Zat Penyebab Alergi (Satu Sehat)"
-                    placeholder="Ketik nama zat / obat penyebab..." valueSet="substance-code"
-                    :initialSnomedCode="$anamnesa['alergi']['snomedCode'] ?? null" :disabled="$isFormLocked"
-                    wire:key="lov-snomed-alergi-{{ $rjNo ?? 'new' }}-{{ $renderVersions['modal-anamnesa-rj'] ?? 0 }}" />
-            </div>
+            <p class="text-xs text-muted dark:text-gray-400">
+                Kode SNOMED zat penyebab alergi diisi sesudah pelayanan lewat menu
+                <span class="font-semibold">Coding SATUSEHAT</span>.
+            </p>
         @else
             <div class="text-xs text-muted dark:text-gray-400">
                 Terekam sebagai <span class="font-semibold text-ink dark:text-gray-100">Tidak ada alergi</span>

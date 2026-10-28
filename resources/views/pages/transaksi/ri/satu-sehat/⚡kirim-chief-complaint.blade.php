@@ -1,7 +1,8 @@
 <?php
 // resources/views/pages/transaksi/ri/satu-sehat/kirim-chief-complaint.blade.php
-// Kirim Keluhan Utama (Condition / problem-list-item, SNOMED CT) — RI.
-// Sumber: pengkajianDokter.anamnesa.{keluhanUtama, keluhanUtamaSnomedCode, ...DisplayEn/Id}.
+// Kirim Keluhan Utama (Condition / kategori kemkes chief-complaint, SNOMED CT) — RI, Playbook RI 3a (port RJ).
+// Teks: AnamnesaRi::keluhanUtama() — Pengkajian Dokter, cadangan Pengkajian Awal perawat.
+// Kode: kodingSatuSehat.keluhanUtama.{snomedCode, snomedDisplayEn, snomedDisplayId} (layar Coding SATUSEHAT RI).
 
 use Livewire\Component;
 use Livewire\Attributes\On;
@@ -9,6 +10,7 @@ use Livewire\Attributes\Computed;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
+use App\Support\AnamnesaRi;
 use App\Http\Traits\SATUSEHAT\ConditionTrait;
 
 new class extends Component {
@@ -26,7 +28,11 @@ new class extends Component {
         $this->pratinjauTerbuka = !$this->pratinjauTerbuka;
     }
 
-    /** Isi yang AKAN dikirim, dari pengkajianDokter.anamnesa — sumber yang SAMA dengan kirim(). */
+    /**
+     * Isi yang AKAN dikirim, dari sumber yang SAMA dengan kirim() —
+     * anamnesa.keluhanUtama. Kode SNOMED ditampilkan karena kirim() MENOLAK
+     * bila kosong, jadi petugas bisa melihat sebabnya sebelum menekan tombol.
+     */
     #[Computed]
     public function pratinjau(): array
     {
@@ -34,9 +40,9 @@ new class extends Component {
             return [];
         }
 
-        $anamnesa = $this->findDataRI($this->riHdrNo)['pengkajianDokter']['anamnesa'] ?? [];
-        $teks = trim((string) ($anamnesa['keluhanUtama'] ?? ''));
-        $kode = trim((string) ($anamnesa['keluhanUtamaSnomedCode'] ?? ''));
+        $keluhan = $this->keluhanUtama($this->findDataRI($this->riHdrNo));
+        $teks = trim((string) ($keluhan['keluhanUtama'] ?? ''));
+        $kode = trim((string) ($keluhan['snomedCode'] ?? ''));
         if ($teks === '' && $kode === '') {
             return [];
         }
@@ -44,7 +50,7 @@ new class extends Component {
         return [
             ['label' => 'Keluhan utama', 'nilai' => $teks ?: '(kosong)'],
             ['label' => 'Kode SNOMED', 'nilai' => $kode ?: '(belum diisi — Kirim akan ditolak)',
-             'ket' => trim((string) ($anamnesa['keluhanUtamaSnomedDisplayEn'] ?? ($anamnesa['keluhanUtamaSnomedDisplayId'] ?? '')))],
+             'ket' => trim((string) ($keluhan['snomedDisplayEn'] ?? ($keluhan['snomedDisplayId'] ?? '')))],
         ];
     }
 
@@ -114,22 +120,28 @@ new class extends Component {
             $patientId = $this->getPatientIHS($dataRI['regNo'] ?? '');
             if (empty($patientId)) { $this->dispatch('toast', type: 'error', message: 'Patient IHS Number kosong.'); return; }
 
-            $anamnesa = $dataRI['pengkajianDokter']['anamnesa'] ?? [];
-            $keluhanText = trim((string) ($anamnesa['keluhanUtama'] ?? ''));
-            $snomedCode  = trim((string) ($anamnesa['keluhanUtamaSnomedCode'] ?? ''));
+            $keluhanUtama = $this->keluhanUtama($dataRI);
+            $keluhanText = trim((string) ($keluhanUtama['keluhanUtama'] ?? ''));
+            $snomedCode  = trim((string) ($keluhanUtama['snomedCode'] ?? ''));
 
-            if ($keluhanText === '') { $this->dispatch('toast', type: 'error', message: 'Keluhan utama belum diisi di Pengkajian Dokter.'); return; }
-            if ($snomedCode === '') { $this->dispatch('toast', type: 'error', message: 'Kode SNOMED Keluhan Utama belum diisi di Pengkajian Dokter (wajib utk Satu Sehat).'); return; }
+            if ($keluhanText === '') { $this->dispatch('toast', type: 'error', message: 'Keluhan utama belum diisi di Pengkajian Dokter maupun Pengkajian Awal.'); return; }
+            // createChiefComplaint WAJIB snomed_code (throw bila kosong) → guard ramah dulu.
+            if ($snomedCode === '') { $this->dispatch('toast', type: 'error', message: 'Kode SNOMED Keluhan Utama belum diisi — isi lewat menu Coding SATUSEHAT (wajib utk Satu Sehat).'); return; }
 
-            $recordedDate = $this->parseDate($dataRI['entryDate'] ?? '');
+            $tanggalMasuk = $this->parseDate($dataRI['entryDate'] ?? '');
 
             $respons = $this->createChiefComplaint([
                 'patientId'      => $patientId,
                 'encounterId'    => $satuSehat['encounterId'],
                 'snomed_code'    => $snomedCode,
-                'snomed_display' => $anamnesa['keluhanUtamaSnomedDisplayEn'] ?? '',
-                'complaint_text' => $anamnesa['keluhanUtamaSnomedDisplayId'] ?? $keluhanText,
-                'recordedDate'   => $recordedDate->toIso8601String(),
+                'snomed_display' => $keluhanUtama['snomedDisplayEn'] ?? '',
+                'complaint_text' => $keluhanUtama['snomedDisplayId'] ?? $keluhanText,
+                'recordedDate'   => $tanggalMasuk->toIso8601String(),
+                // Playbook RI 3a, disamakan dgn alur apikesehatan.com:
+                'kategori'       => 'chief-complaint',
+                'onsetDate'      => $tanggalMasuk->toIso8601String(),
+                'recorderId'     => (string) (DB::table('rsmst_doctors')->where('dr_id', $dataRI['drId'] ?? '')->value('dr_uuid') ?? ''),
+                'note'           => $keluhanText,
             ]);
 
             if (empty($respons['id'])) { $this->dispatch('toast', type: 'error', message: 'Keluhan utama gagal: respons tanpa id.'); return; }
@@ -141,6 +153,12 @@ new class extends Component {
         } catch (\Throwable $e) {
             $this->dispatch('toast', type: 'error', message: 'Keluhan utama gagal: ' . $e->getMessage());
         }
+    }
+
+    /** Teks keluhan (EMR) + kodenya (Coding) dalam satu bentuk — sumber sama untuk pratinjau & kirim. */
+    private function keluhanUtama(array $dataRI): array
+    {
+        return [...AnamnesaRi::koding($dataRI, 'keluhanUtama'), 'keluhanUtama' => AnamnesaRi::keluhanUtama($dataRI)];
     }
 
     private function getPatientIHS(string $regNo): string
@@ -174,7 +192,7 @@ new class extends Component {
         <div class="flex items-center gap-3">
             <div
                 class="flex items-center justify-center w-8 h-8 rounded-full {{ $count > 0 ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-surface-soft text-muted-soft dark:bg-gray-800 dark:text-gray-500' }}">
-                <span class="text-sm font-bold">14</span>
+                <span class="text-sm font-bold">7</span>
             </div>
             <div>
                 <div class="font-semibold text-ink dark:text-gray-100">Chief Complaint</div>
@@ -200,5 +218,5 @@ new class extends Component {
 
     <x-satu-sehat.pratinjau :terbuka="$pratinjauTerbuka"
         :baris="$pratinjauTerbuka ? $this->pratinjau : []"
-        kosong="Keluhan utama atau kode SNOMED-nya belum diisi di Pengkajian Dokter — Kirim akan ditolak." />
+        kosong="Keluhan utama (EMR) atau kode SNOMED-nya (Coding SATUSEHAT) belum diisi — Kirim akan ditolak." />
 </div>

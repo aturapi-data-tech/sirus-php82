@@ -31,6 +31,9 @@ trait ProcedureTrait
      *  - reasonCodes         (array) list of ['system'=>...,'code'=>...,'display'=>...] (optional)
      *  - bodySite            (array) list of ['system'=>...,'code'=>...,'display'=>...] (optional)
      *  - note                (string) catatan klinis (optional)
+     *  - kategori            (array) ['system','code','display'] (optional, aditif) — menggantikan kategori
+     *                        default 71388002, mis. 409073007 Education (Playbook RI 21)
+     *  - codingTambahan      (array) list coding tambahan di code.coding (optional, aditif), mis. KPTL
      *
      * @return array
      */
@@ -60,11 +63,26 @@ trait ProcedureTrait
             'performedDateTime' => $data['performedDateTime'] ?? now()->toIso8601String(),
         ];
 
+        // Opsional (aditif) — kategori, coding tambahan, catatan. Tidak diisi = payload lama tak berubah.
+        if (!empty($data['kategori']['code'])) {
+            $payload['category'] = ['coding' => [array_intersect_key($data['kategori'], array_flip(['system', 'code', 'display']))], 'text' => $data['kategori']['display'] ?? ''];
+        }
+        foreach ((array) ($data['codingTambahan'] ?? []) as $coding) {
+            if (!empty($coding['code'])) {
+                $payload['code']['coding'][] = array_intersect_key($coding, array_flip(['system', 'code', 'display']));
+            }
+        }
+        if (filled($data['note'] ?? null)) {
+            $payload['note'] = [['text' => (string) $data['note']]];
+        }
+
         if (!empty($data['performerId'])) {
-            $payload['performer'] = [[
-                'actor' => ['reference' => 'Practitioner/' . $data['performerId']],
-                'function'  => ['text'      => $data['performerRole'] ?? ''],
-            ]];
+            $performer = ['actor' => ['reference' => 'Practitioner/' . $data['performerId']]];
+            // function hanya bila ada isinya — {text: ''} = elemen kosong, rawan ditolak validator.
+            if (filled($data['performerRole'] ?? null)) {
+                $performer['function'] = ['text' => $data['performerRole']];
+            }
+            $payload['performer'] = [$performer];
         }
 
         return $this->makeRequest('post', '/Procedure', $payload);

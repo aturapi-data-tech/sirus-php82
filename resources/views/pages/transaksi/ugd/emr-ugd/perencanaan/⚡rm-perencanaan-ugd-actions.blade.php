@@ -518,6 +518,12 @@ new class extends Component {
                 'tindakLanjutOptions' => [['tindakLanjut' => 'MRS'], ['tindakLanjut' => 'Kontrol'], ['tindakLanjut' => 'Rujuk'], ['tindakLanjut' => 'Perawatan Selesai'], ['tindakLanjut' => 'Meninggal'], ['tindakLanjut' => 'Lain-lain']],
             ],
 
+            // Kondisi Saat Meninggalkan Rumah Sakit (Playbook IGD bab 25) — label pilihan; kode
+            // SNOMED-nya tetap dari App\Support\Terminologi\KondisiPulang (tak perlu coding).
+            'kondisiPulang' => [
+                'kondisiPulang' => '',
+            ],
+
             'terapiTab' => 'Terapi',
             'terapi' => ['terapi' => ''],
         ];

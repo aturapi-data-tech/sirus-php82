@@ -73,6 +73,12 @@ new class extends Component {
         $this->dispatch('emr-ugd.rekam-medis.open', rjNo: $rjNo);
     }
 
+    /** Coding SATUSEHAT (EMR UGD FHIR) — kode SNOMED diisi sesudah pelayanan. */
+    public function openCodingFhir(string $rjNo): void
+    {
+        $this->dispatch('coding-fhir-ugd.open', rjNo: $rjNo);
+    }
+
     public function openModulDokumen(int $rjNo): void
     {
         $this->dispatch('emr-ugd.modul-dokumen.open', rjNo: $rjNo);
@@ -806,6 +812,22 @@ new class extends Component {
                                                                 </x-dropdown-link>
                                                             @endhasanyrole
 
+                                                            @can('emr.codingFhir')
+                                                                <x-dropdown-link href="#"
+                                                                    wire:click.prevent="openCodingFhir('{{ $row->rj_no }}')"
+                                                                    class="px-3 py-2 text-sm rounded-lg h-full bg-brand-green/5 hover:bg-brand-green/10 dark:bg-brand-green/10">
+                                                                    <div class="flex items-start gap-2">
+                                                                        <svg class="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                                            <path stroke-linecap="round" stroke-linejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                                                                        </svg>
+                                                                        <span class="min-w-0">
+                                                                            <span class="block font-semibold">Coding SATUSEHAT</span>
+                                                                            <span class="block text-xs font-normal text-muted dark:text-gray-400">Kode SNOMED sesudah pelayanan</span>
+                                                                        </span>
+                                                                    </div>
+                                                                </x-dropdown-link>
+                                                            @endcan
+
                                                             @hasanyrole('Admin|Perawat|Casemix|Tu')
                                                                 <x-dropdown-link href="#"
                                                                     wire:click.prevent="openAdministrasiPasien('{{ $row->rj_no }}')"
@@ -912,6 +934,9 @@ new class extends Component {
             {{-- Modal Rekonsiliasi Obat (Farmasi) — listen ke event rekonsiliasi-obat-ugd.open --}}
             <livewire:pages::transaksi.ugd.rekonsiliasi-obat-ugd.rekonsiliasi-obat-ugd wire:key="rekonsiliasi-obat-ugd" />
             <livewire:pages::transaksi.ugd.emr-ugd.modul-dokumen.modul-dokumen-ugd wire:key="modul-dokumen-ugd" />
+            @can('emr.codingFhir')
+                <livewire:pages::transaksi.ugd.coding-fhir-ugd.coding-fhir-ugd wire:key="coding-fhir-ugd" />
+            @endcan
             <livewire:pages::transaksi.ugd.emr-ugd.log-aktivitas.log-aktivitas-ugd wire:key="log-aktivitas-ugd" />
             <livewire:pages::components.rekam-medis.etiket.cetak-etiket wire:key="cetak-etiket-ugd" />
 

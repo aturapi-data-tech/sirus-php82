@@ -394,6 +394,11 @@ new class extends Component {
                             <p class="flex gap-3 text-base leading-relaxed pb-1.5 border-b border-hairline-soft dark:border-gray-800 last:border-0"><span class="w-56 shrink-0 text-right text-muted">Riwayat Penyakit Dahulu :</span><span
                                     class="text-body dark:text-gray-300">{{ $dataDaftarTxn['anamnesa']['riwayatPenyakitDahulu']['riwayatPenyakitDahulu'] ?? '-' }}</span>
                             </p>
+                            @if (filled($dataDaftarTxn['anamnesa']['riwayatPenyakitKeluarga']['riwayatPenyakitKeluarga'] ?? null))
+                                <p class="flex gap-3 text-base leading-relaxed pb-1.5 border-b border-hairline-soft dark:border-gray-800 last:border-0"><span class="w-56 shrink-0 text-right text-muted">Riwayat Penyakit Keluarga :</span><span
+                                        class="text-body dark:text-gray-300 whitespace-pre-line">{{ $dataDaftarTxn['anamnesa']['riwayatPenyakitKeluarga']['riwayatPenyakitKeluarga'] }}</span>
+                                </p>
+                            @endif
                             <p class="flex gap-3 text-base leading-relaxed pb-1.5 border-b border-hairline-soft dark:border-gray-800 last:border-0"><span class="w-56 shrink-0 text-right text-muted">Alergi :</span><span
                                     class="text-body dark:text-gray-300">{{ \App\Support\Terminologi\AlergiSnomed::untukCetak($dataDaftarTxn['anamnesa']['alergi'] ?? []) }}</span>
                             </p>
@@ -647,6 +652,11 @@ new class extends Component {
                                 / {{ $dataDaftarTxn['perencanaan']['tindakLanjut']['keteranganTindakLanjut'] }}
                             @endif
                         </p>
+                        @if (!empty($dataDaftarTxn['perencanaan']['kondisiPulang']['kondisiPulang']))
+                            <p class="mt-1 text-base text-ink dark:text-gray-200">
+                                <span class="text-muted">Kondisi Saat Keluar :</span> {{ $dataDaftarTxn['perencanaan']['kondisiPulang']['kondisiPulang'] }}
+                            </p>
+                        @endif
                     </x-border-form>
                     <x-border-form title="Terapi">
                         <p class="text-base text-ink whitespace-pre-line dark:text-gray-200">

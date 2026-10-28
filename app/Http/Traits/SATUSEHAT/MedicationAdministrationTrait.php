@@ -36,6 +36,10 @@ trait MedicationAdministrationTrait
      *   - routeDisplay      (string)  optional
      *   - dosageText        (string)  optional — teks dosis asli dari EMR
      *   - note             (string)  optional
+     *   - identifierValue   (string)  optional (aditif) — identifier resmi, system
+     *                                 http://sys-ids.kemkes.go.id/medicationadministration/{orgId}
+     *   - category          (string)  optional (aditif) — kode medication-admin-category, mis. 'inpatient'
+     *   - requestId         (string)  optional (aditif) — MedicationRequest asal (resep)
      */
     public function createMedicationAdministration(array $data): array
     {
@@ -83,6 +87,27 @@ trait MedicationAdministrationTrait
 
         if (!empty($data['encounterId'])) {
             $payload['context'] = ['reference' => 'Encounter/' . $data['encounterId']];
+        }
+
+        // Opsional (aditif, Playbook IGD 21 — disamakan dgn alur apikesehatan.com): identifier resmi,
+        // kategori, dan tautan ke resep. Tidak diisi pemanggil = payload lama (RI) tak berubah.
+        if (filled($data['identifierValue'] ?? null) && filled($data['orgId'] ?? null)) {
+            $payload['identifier'] = [[
+                'use'    => 'official',
+                'system' => 'http://sys-ids.kemkes.go.id/medicationadministration/' . $data['orgId'],
+                'value'  => (string) $data['identifierValue'],
+            ]];
+        }
+        if (filled($data['category'] ?? null)) {
+            $kategori = (string) $data['category'];
+            $payload['category'] = ['coding' => [[
+                'system'  => 'http://terminology.hl7.org/CodeSystem/medication-admin-category',
+                'code'    => $kategori,
+                'display' => ucfirst($kategori),
+            ]]];
+        }
+        if (filled($data['requestId'] ?? null)) {
+            $payload['request'] = ['reference' => 'MedicationRequest/' . $data['requestId']];
         }
 
         if (!empty($data['performerId'])) {

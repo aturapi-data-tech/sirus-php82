@@ -179,7 +179,11 @@ new class extends Component {
                     // Encounter UGD kelasnya EMER (rawat jalan darurat), bukan rawat inap —
                     // kategorinya ikut 'outpatient' seperti RJ, bukan 'inpatient'.
                     'authoredOn' => $ugdDate->toIso8601String(), 'category' => 'outpatient',
-                    'dosageInstruction' => [], 'dispenseRequest' => [], 'reasonReference' => [],
+                    // Playbook IGD 18b (pola RJ): resep aktif (default trait 'completed' keliru untuk resep baru);
+                    // aturan pakai sebagai teks signa e-resep (tanpa menafsir ke timing terstruktur).
+                    'status' => 'active',
+                    'dosageInstruction' => $obat['signa'] !== '' ? [['text' => $obat['signa']]] : [],
+                    'dispenseRequest' => [], 'reasonReference' => [],
                 ]);
                 if (!empty($respons['id'])) {
                     $satuSehat['medicationRequestIds'][] = $respons['id'];
@@ -223,6 +227,7 @@ new class extends Component {
                     'patientId' => $patientId, 'patientName' => $patientName,
                     'encounterId' => $satuSehat['encounterId'], 'requesterId' => $practitionerId, 'requesterName' => $drDesc,
                     'authoredOn' => $ugdDate->toIso8601String(), 'category' => 'outpatient',
+                    'status' => 'active',
                     'dosageInstruction' => [], 'dispenseRequest' => [], 'reasonReference' => [],
                 ]);
                 if (!empty($respons['id'])) {
@@ -296,7 +301,7 @@ new class extends Component {
         <div class="flex items-center gap-3">
             <div
                 class="flex items-center justify-center w-8 h-8 rounded-full {{ $count > 0 ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-surface-soft text-muted-soft dark:bg-gray-800 dark:text-gray-500' }}">
-                <span class="text-sm font-bold">5</span>
+                <span class="text-sm font-bold">6</span>
             </div>
             <div>
                 <div class="font-semibold text-ink dark:text-gray-100">Medication Request</div>

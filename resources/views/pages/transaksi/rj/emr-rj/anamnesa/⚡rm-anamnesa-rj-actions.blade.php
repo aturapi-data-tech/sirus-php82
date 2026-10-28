@@ -32,6 +32,9 @@ new class extends Component {
     /** Penanda kunjungan sudah dimuat lewat open(). */
     public bool $dokumenTermuat = false;
 
+    /** Node teks yang terisi otomatis dari master pasien saat form dibuka — untuk tanda di form. */
+    public array $dariKunjunganSebelumnya = [];
+
     // renderVersions
     public array $renderVersions = [];
     protected array $renderAreas = ['modal-anamnesa-rj'];
@@ -98,6 +101,12 @@ new class extends Component {
             $this->anamnesa['riwayatPenyakitDahulu']['riwayatPenyakitDahulu'] = $pasienData['pasien']['riwayatPenyakitDahulu'];
         }
 
+        // ✅ Riwayat penyakit keluarga dari master pasien — HANYA bila kunjungan ini belum mengisinya
+        // (riwayat yang ditulis untuk kunjungan ini tak boleh tertimpa). Ditandai di form supaya petugas
+        // memeriksa, bukan diterima diam-diam. Riwayat pengobatan SENGAJA tidak: obat berbeda antar
+        // poli/kunjungan (kemarin poli dalam, hari ini poli paru) — diisi manual (keputusan user 2026-10-28).
+        [$this->anamnesa, $this->dariKunjunganSebelumnya] = $this->isiTeksRiwayatDariMaster($this->anamnesa, $pasienData['pasien'] ?? []);
+
         // ✅ Seragamkan node alergi + turunkan radio "Ada alergi?" (default Tidak -> SNOMED
         // 716186003). Record lama tak punya key adaAlergi -> diturunkan dari teksnya, jadi
         // tak perlu migrasi data. Lihat App\Support\Terminologi\AlergiSnomed.
@@ -147,6 +156,13 @@ new class extends Component {
                 'snomedDisplayId' => '',
             ],
 
+            // Keluhan penyerta (Playbook RJ bab 3b) — teks bebas (tampil di cetak & Rekam
+            // Medis). Daftar kode SNOMED-nya diisi di layar Coding SATUSEHAT (coding-fhir-rj).
+            'keluhanPenyerta' => [
+                'keluhanPenyerta' => '',
+                'snomedList' => [],
+            ],
+
             'anamnesaDiperolehTab' => 'Anamnesa Diperoleh',
             'anamnesaDiperoleh' => [
                 'autoanamnesa' => [],
@@ -162,6 +178,16 @@ new class extends Component {
             'riwayatPenyakitDahuluTab' => 'Riwayat Penyakit (Dahulu)',
             'riwayatPenyakitDahulu' => [
                 'riwayatPenyakitDahulu' => '',
+            ],
+
+            // Teks klinis untuk Playbook RJ bab 3e (FamilyMemberHistory) & 3f (MedicationStatement).
+            // Kodenya diisi di layar Coding SATUSEHAT (snomedList / obatList di node yang sama).
+            // Nama key sengaja baru — 'penyakitKeluarga'/'rekonsiliasiObat' sisa template lama.
+            'riwayatPenyakitKeluarga' => [
+                'riwayatPenyakitKeluarga' => '',
+            ],
+            'riwayatPengobatan' => [
+                'riwayatPengobatan' => '',
             ],
 
             'alergiTab' => 'Alergi',
@@ -396,8 +422,9 @@ new class extends Component {
                 // Tangkap status baru/lama sebelum overwrite (key anamnesa belum ada saat pertama disimpan)
                 $isBaru = empty($data['anamnesa']);
 
-                // 7. Set hanya key 'anamnesa' — key lain tidak tersentuh
-                $data['anamnesa'] = $this->anamnesa;
+                // 7. Set hanya key 'anamnesa' — key lain tidak tersentuh. Key KODE SATUSEHAT
+                //    diambil dari DB (milik layar Coding), bukan dari isi form yang mungkin basi.
+                $data['anamnesa'] = $this->pertahankanKodeCoding($data['anamnesa'] ?? [], $this->anamnesa);
 
                 // 8. Persist + sync properti lokal
                 $this->updateJsonRJ($this->rjNo, $data);
@@ -443,6 +470,15 @@ new class extends Component {
         if (!empty(($riwayat = $this->anamnesa['riwayatPenyakitDahulu']['riwayatPenyakitDahulu'] ?? ''))) {
             $pasienData['pasien']['riwayatPenyakitDahulu'] = $riwayat;
             $updated = true;
+        }
+
+        // ✅ Riwayat penyakit keluarga (teks) — dipakai ulang kunjungan berikutnya. Daftar kodenya disinkron
+        // layar Coding SATUSEHAT, hanya bila teksnya sama. Riwayat pengobatan TIDAK (diisi manual per kunjungan).
+        foreach (['riwayatPenyakitKeluarga'] as $node) {
+            if (!empty(($teks = trim((string) ($this->anamnesa[$node][$node] ?? ''))))) {
+                $pasienData['pasien'][$node] = $teks;
+                $updated = true;
+            }
         }
 
         // ✅ Update jika ada perubahan
@@ -569,41 +605,64 @@ new class extends Component {
     }
 
     /* ===============================
-     | LOV SNOMED — Keluhan Utama
+     | KODE SATUSEHAT — milik layar Coding SATUSEHAT (coding-fhir-rj), BUKAN form ini.
+     | Form EMR hanya berisi teks klinis. Saat simpan, key kode diambil dari DB supaya
+     | kode yang diisi coder sesudah form ini dibuka tidak tertimpa versi lama.
      =============================== */
-    #[On('lov.selected.keluhanUtamaSnomed')]
-    public function onKeluhanUtamaSnomedSelected(string $target, array $payload): void
+    /** Teks riwayat keluarga dari master bila kunjungan ini masih kosong. Murni. @return array{0: array, 1: array} */
+    private function isiTeksRiwayatDariMaster(array $anamnesa, array $pasien): array
     {
-        $this->anamnesa['keluhanUtama']['snomedCode'] = $payload['snomed_code'] ?? '';
-        $this->anamnesa['keluhanUtama']['snomedDisplayEn'] = $payload['display_en'] ?? '';
-        $this->anamnesa['keluhanUtama']['snomedDisplayId'] = $payload['display_id'] ?? '';
+        $terisi = [];
+        foreach (['riwayatPenyakitKeluarga'] as $node) {
+            $teksMaster = trim((string) ($pasien[$node] ?? ''));
+            if ($teksMaster !== '' && trim((string) ($anamnesa[$node][$node] ?? '')) === '') {
+                $anamnesa[$node][$node] = $teksMaster;
+                $terisi[] = $node;
+            }
+        }
+
+        return [$anamnesa, $terisi];
     }
 
-    #[On('lov.cleared.keluhanUtamaSnomed')]
-    public function onKeluhanUtamaSnomedCleared(string $target): void
+    private function pertahankanKodeCoding(array $anamnesaDb, array $anamnesaForm): array
     {
-        $this->anamnesa['keluhanUtama']['snomedCode'] = '';
-        $this->anamnesa['keluhanUtama']['snomedDisplayEn'] = '';
-        $this->anamnesa['keluhanUtama']['snomedDisplayId'] = '';
-    }
+        foreach (['snomedCode', 'snomedDisplayEn', 'snomedDisplayId'] as $kunci) {
+            if (array_key_exists($kunci, $anamnesaDb['keluhanUtama'] ?? [])) {
+                $anamnesaForm['keluhanUtama'][$kunci] = $anamnesaDb['keluhanUtama'][$kunci];
+            }
+        }
 
-    /* ===============================
-     | LOV SNOMED — Alergi
-     =============================== */
-    #[On('lov.selected.alergiSnomed')]
-    public function onAlergiSnomedSelected(string $target, array $payload): void
-    {
-        $this->anamnesa['alergi']['snomedCode'] = $payload['snomed_code'] ?? '';
-        $this->anamnesa['alergi']['snomedDisplayEn'] = $payload['display_en'] ?? '';
-        $this->anamnesa['alergi']['snomedDisplayId'] = $payload['display_id'] ?? '';
-    }
+        $anamnesaForm['keluhanPenyerta']['snomedList'] = array_values((array) ($anamnesaDb['keluhanPenyerta']['snomedList'] ?? []));
+        foreach (['riwayatPenyakitSekarangUmum', 'riwayatPenyakitDahulu', 'riwayatPenyakitKeluarga'] as $node) {
+            $anamnesaForm[$node]['snomedList'] = array_values((array) ($anamnesaDb[$node]['snomedList'] ?? []));
+        }
+        $anamnesaForm['riwayatPengobatan']['obatList'] = array_values((array) ($anamnesaDb['riwayatPengobatan']['obatList'] ?? []));
 
-    #[On('lov.cleared.alergiSnomed')]
-    public function onAlergiSnomedCleared(string $target): void
-    {
-        $this->anamnesa['alergi']['snomedCode'] = '';
-        $this->anamnesa['alergi']['snomedDisplayEn'] = '';
-        $this->anamnesa['alergi']['snomedDisplayId'] = '';
+        // Alergi: "Tidak ada alergi" (716186003) ditentukan EMR — kode form dipakai apa adanya.
+        // "Ya": kode zat milik Coding, TAPI menempel pada teksnya — teks diganti perawat =
+        // kode lama tak berlaku lagi (kecuali teks baru itu prefill dari master pasien, yang
+        // kodenya ikut terbawa saat form dibuka).
+        $alergiForm = $anamnesaForm['alergi'] ?? [];
+        if (($alergiForm['adaAlergi'] ?? '') === 'Ya') {
+            $alergiDb = AlergiSnomed::normalisasi($anamnesaDb['alergi'] ?? []);
+            $teksForm = trim((string) ($alergiForm['alergi'] ?? ''));
+            $teksSama = ($alergiDb['adaAlergi'] ?? '') === 'Ya' && trim((string) ($alergiDb['alergi'] ?? '')) === $teksForm;
+            $teksMaster = trim((string) ($this->findDataMasterPasien($this->regNoPasien)['pasien']['alergi'] ?? ''));
+
+            $sumberKode = match (true) {
+                $teksSama && filled($alergiDb['snomedCode'] ?? '') => $alergiDb,
+                $teksSama, $teksForm !== '' && $teksForm === $teksMaster => $alergiForm,
+                default => [],
+            };
+            foreach (['snomedCode', 'snomedDisplayEn', 'snomedDisplayId'] as $kunci) {
+                $alergiForm[$kunci] = (string) ($sumberKode[$kunci] ?? '');
+            }
+            // Daftar alergen (Coding SATUSEHAT) — aturan sama: berlaku selama teksnya sama.
+            $alergiForm['alergenList'] = $teksSama ? array_values((array) ($alergiDb['alergenList'] ?? [])) : [];
+            $anamnesaForm['alergi'] = $alergiForm;
+        }
+
+        return $anamnesaForm;
     }
 
     protected function resetForm(): void

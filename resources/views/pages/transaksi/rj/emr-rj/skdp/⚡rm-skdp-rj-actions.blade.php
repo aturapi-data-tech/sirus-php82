@@ -8,6 +8,7 @@ use App\Http\Traits\Txn\Rj\EmrRJTrait;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 use App\Http\Traits\Concerns\WithValidationToastTrait;
 use App\Http\Traits\BPJS\VclaimTrait;
+use App\Support\SuratKontrolBpjs;
 
 new class extends Component {
     use EmrRJTrait, WithRenderVersioningTrait, WithValidationToastTrait;
@@ -207,6 +208,18 @@ new class extends Component {
             return;
         }
 
+        // Surat kontrol untuk SEP ini mungkin SUDAH terbit walau form ini kosong — mis. petugas lain
+        // menyimpannya sesudah form ini dibuka. Dulu form kosong langsung insert ulang → BPJS menolak,
+        // nomor kosong lalu disimpan menimpa nomor yang ada (kasus RI 2026-10-28, pola sama).
+        // Urutan: nomor di DB → cek ke BPJS by kartu (SEP asal sama) → baru insert.
+        if (empty($this->formKontrol['noSKDPBPJS'])) {
+            $noTerbit = trim((string) ($this->findDataRJ($this->rjNo)['kontrol']['noSKDPBPJS'] ?? '')) ?: $this->cariSuratKontrolTerbit();
+            if ($noTerbit !== '') {
+                $this->formKontrol['noSKDPBPJS'] = $noTerbit;
+                $this->dispatch('toast', type: 'info', message: "Surat kontrol untuk SEP ini sudah terbit ({$noTerbit}) — diperbarui, bukan dibuat ulang.");
+            }
+        }
+
         $isNew = empty($this->formKontrol['noSKDPBPJS']);
         $response = $isNew ? VclaimTrait::suratkontrol_insert($this->formKontrol)->getOriginalContent() : VclaimTrait::suratkontrol_update($this->formKontrol)->getOriginalContent();
 
@@ -223,6 +236,16 @@ new class extends Component {
         } else {
             $this->dispatch('toast', type: 'error', message: "{$label} {$code} {$message}");
         }
+    }
+
+    /** Nomor surat kontrol yang sudah terbit di BPJS untuk SEP kunjungan ini ('' = belum / tak bisa dicek) — App\Support\SuratKontrolBpjs. */
+    private function cariSuratKontrolTerbit(): string
+    {
+        $data = $this->findDataRJ($this->rjNo) ?? [];
+        $noKartu = trim((string) (DB::table('rsmst_pasiens')->where('reg_no', $data['regNo'] ?? '')->value('nokartu_bpjs') ?? ''))
+            ?: trim((string) ($data['sep']['reqSep']['request']['t_sep']['noKartu'] ?? ''));
+
+        return SuratKontrolBpjs::nomorTerbit((string) ($this->formKontrol['noSEP'] ?? ''), $noKartu, $this->formKontrol['tglKontrol'] ?? null);
     }
 
     /* ═══════════════════════════════════════
@@ -314,6 +337,11 @@ new class extends Component {
 
                 // Patch key 'kontrol' + pastikan tindak lanjut = 'Kontrol' (status tersimpan
                 // bersamaan supaya pengiriman BPJS tidak terhambat status).
+                // Nomor surat kontrol yang sudah ada di DB TIDAK BOLEH ditimpa kosong (form basi / insert gagal).
+                $noDb = trim((string) ($data['kontrol']['noSKDPBPJS'] ?? ''));
+                if (trim((string) ($this->formKontrol['noSKDPBPJS'] ?? '')) === '' && $noDb !== '') {
+                    $this->formKontrol['noSKDPBPJS'] = $noDb;
+                }
                 $data['kontrol'] = $this->formKontrol;
                 $data['perencanaan']['tindakLanjut']['tindakLanjut'] = 'Kontrol';
 

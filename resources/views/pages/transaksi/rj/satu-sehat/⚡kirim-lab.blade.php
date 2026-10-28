@@ -284,6 +284,10 @@ new class extends Component {
                             'effectiveDate' => $waktu,
                             'category' => [['coding' => [['system' => 'http://terminology.hl7.org/CodeSystem/observation-category', 'code' => 'laboratory', 'display' => 'Laboratory']]]],
                             'code' => ['system' => 'http://loinc.org', 'code' => $loinc, 'display' => $item->loinc_display ?: $item->clabitem_desc],
+                            // Playbook RJ 10.4: hasil menunjuk order & spesimennya.
+                            'basedOn' => ["ServiceRequest/{$serviceRequestId}"],
+                            'specimen' => $specimenId ? "Specimen/{$specimenId}" : null,
+                            'issued' => $waktu,
                         ];
                         if (is_numeric(str_replace(',', '.', $result))) {
                             $unit = trim((string) ($item->unit_desc ?? '')) ?: '1';

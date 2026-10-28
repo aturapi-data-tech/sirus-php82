@@ -140,6 +140,9 @@ new class extends Component {
                 'summary'     => $summary,
                 'description' => 'Asesmen kunjungan rawat jalan',
                 'effective'   => $waktu,
+                // Playbook RJ 12: tanggal = waktu kunjungan (bukan jam klik), problem = keluhan utama.
+                'date'        => $waktu,
+                'problemIds'  => array_filter([$satuSehat['chiefComplaintId'] ?? null]),
             ]);
 
             if (empty($respons['id'])) { $this->dispatch('toast', type: 'error', message: 'Impresi klinik gagal: respons tanpa id.'); return; }

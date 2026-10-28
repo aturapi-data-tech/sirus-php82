@@ -92,4 +92,130 @@ class DischargeDisposition
 
         return ['code' => $k, 'display' => self::SNOMED[$k]];
     }
+
+    /**
+     * Tindak Lanjut RAWAT JALAN (`perencanaan.tindakLanjut.tindakLanjut`) → CodeSystem HL7
+     * discharge-disposition — Playbook RJ bab 26–27 (Cara Keluar & Pembaharuan Kunjungan).
+     *
+     * Beda sistem dengan RI (SNOMED, fromKode()) DISENGAJA: RJ menyamakan dengan alur
+     * Rawat Jalan apikesehatan.com, yang memakai HL7 dan memberi contoh "oth" untuk
+     * pasien yang dirawat inap. Kode diverifikasi di tx.fhir.org (2026-10-28).
+     * MRS & Lain-lain tak punya padanan khusus → `oth`, maknanya dibawa `text`.
+     */
+    private const RAWAT_JALAN = [
+        'Kontrol'           => ['code' => 'home',      'display' => 'Home'],
+        'Perawatan Selesai' => ['code' => 'home',      'display' => 'Home'],
+        'PRB'               => ['code' => 'home',      'display' => 'Home'],
+        'Rujuk'             => ['code' => 'other-hcf', 'display' => 'Other healthcare facility'],
+        'MRS'               => ['code' => 'oth',       'display' => 'Other'],
+        'Lain-lain'         => ['code' => 'oth',       'display' => 'Other'],
+    ];
+
+    private const LABEL_RAWAT_JALAN = [
+        'Kontrol'           => 'Pulang, kontrol kembali',
+        'Perawatan Selesai' => 'Pulang, perawatan selesai',
+        'PRB'               => 'Pulang, program rujuk balik (PRB)',
+        'Rujuk'             => 'Dirujuk ke fasyankes lain',
+        'MRS'               => 'Dirawat inap (MRS)',
+        'Lain-lain'         => 'Lain-lain',
+    ];
+
+    /**
+     * @return array|null CodeableConcept siap pakai; null bila tindak lanjut kosong/tak dikenal
+     *                    (jangan menebak — lebih baik tanpa dischargeDisposition)
+     */
+    public static function rawatJalan(?string $tindakLanjut, ?string $keterangan = null): ?array
+    {
+        $tindakLanjut = trim((string) $tindakLanjut);
+        if (!isset(self::RAWAT_JALAN[$tindakLanjut])) {
+            return null;
+        }
+
+        $teks = self::LABEL_RAWAT_JALAN[$tindakLanjut];
+        $keterangan = trim((string) $keterangan);
+        if ($keterangan !== '') {
+            $teks .= ' — ' . $keterangan;
+        }
+
+        return [
+            'coding' => [[
+                'system'  => 'http://terminology.hl7.org/CodeSystem/discharge-disposition',
+                'code'    => self::RAWAT_JALAN[$tindakLanjut]['code'],
+                'display' => self::RAWAT_JALAN[$tindakLanjut]['display'],
+            ]],
+            'text' => $teks,
+        ];
+    }
+
+    /**
+     * Pilihan khusus UGD di luar peta rawat jalan. "Meninggal" = `exp` (alur IGD apikesehatan.com);
+     * KRS & APS = nilai daftar opsi LAMA yang masih tersimpan di record UGD lama (lihat catatan
+     * tindakLanjutOptions di rm-perencanaan-ugd-actions). Kode diverifikasi tx.fhir.org 2026-10-28.
+     */
+    private const GAWAT_DARURAT = [
+        'Meninggal' => ['code' => 'exp',     'display' => 'Expired',             'teks' => 'Meninggal'],
+        'KRS'       => ['code' => 'home',    'display' => 'Home',                'teks' => 'Pulang (KRS)'],
+        'APS'       => ['code' => 'aadvice', 'display' => 'Left against advice', 'teks' => 'Pulang atas permintaan sendiri (APS)'],
+    ];
+
+    /**
+     * Tindak Lanjut UGD (`perencanaan.tindakLanjut.tindakLanjut`) → HL7 discharge-disposition —
+     * Playbook IGD bab 26–27. Pilihan yang sama dengan RJ memakai peta rawat jalan supaya RJ &
+     * UGD tak berbeda diam-diam; sisanya dari GAWAT_DARURAT.
+     */
+    public static function gawatDarurat(?string $tindakLanjut, ?string $keterangan = null): ?array
+    {
+        $peta = self::GAWAT_DARURAT[trim((string) $tindakLanjut)] ?? null;
+        if ($peta === null) {
+            return self::rawatJalan($tindakLanjut, $keterangan);
+        }
+
+        $keterangan = trim((string) $keterangan);
+
+        return [
+            'coding' => [[
+                'system'  => 'http://terminology.hl7.org/CodeSystem/discharge-disposition',
+                'code'    => $peta['code'],
+                'display' => $peta['display'],
+            ]],
+            'text' => $peta['teks'] . ($keterangan !== '' ? ' — ' . $keterangan : ''),
+        ];
+    }
+
+    /**
+     * Status pulang RI (tindakLanjutKode, kunci internal ber-bentuk SNOMED) → HL7 discharge-disposition,
+     * Playbook RI bab 27–28. Keputusan user 2026-10-28: RI DISAMAKAN dengan RJ/UGD & alur Rawat Inap
+     * apikesehatan.com (HL7), menggantikan SNOMED fromKode() di Encounter. Kode SNOMED di EMR tetap
+     * tersimpan apa adanya (dipakai cetak & status BPJS). Kode lama salah arti ikut dipetakan menurut
+     * MAKSUD labelnya: 266707007 (APS) → aadvice, 371828006 (Pulang Tanpa Perbaikan) → home.
+     */
+    private const RAWAT_INAP = [
+        '371827001' => ['code' => 'home',      'display' => 'Home'],
+        '371828006' => ['code' => 'home',      'display' => 'Home'],
+        '266707007' => ['code' => 'aadvice',   'display' => 'Left against advice'],
+        '225928004' => ['code' => 'aadvice',   'display' => 'Left against advice'],
+        '306206005' => ['code' => 'other-hcf', 'display' => 'Other healthcare facility'],
+        '419099009' => ['code' => 'exp',       'display' => 'Expired'],
+        '74964007'  => ['code' => 'oth',       'display' => 'Other'],
+    ];
+
+    /** @return array|null CodeableConcept HL7; null bila kosong/tak dikenal (jangan menebak) */
+    public static function rawatInap(?string $kode, ?string $keterangan = null): ?array
+    {
+        $kode = trim((string) $kode);
+        $peta = self::RAWAT_INAP[$kode] ?? null;
+        if ($peta === null) {
+            return null;
+        }
+        $keterangan = trim((string) $keterangan);
+
+        return [
+            'coding' => [[
+                'system'  => 'http://terminology.hl7.org/CodeSystem/discharge-disposition',
+                'code'    => $peta['code'],
+                'display' => $peta['display'],
+            ]],
+            'text' => (self::label($kode) ?: $peta['display']) . ($keterangan !== '' ? ' — ' . $keterangan : ''),
+        ];
+    }
 }

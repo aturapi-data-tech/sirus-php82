@@ -15,6 +15,36 @@
             <x-input-error :messages="$errors->get('perencanaan.tindakLanjut.tindakLanjut')" class="mt-1" />
         </div>
 
+        {{-- Kondisi Saat Pulang (bab 25) & Prognosis (bab 22) — dikirim ke Satu Sehat. Buka-tutup seperti
+             Status Psikiatri: tertutup, terbuka sendiri bila salah satunya sudah dipilih. --}}
+        <x-border-form :title="__('Kondisi Pulang & Prognosis')" :collapsible="true" padding="p-3"
+            :open="filled($perencanaan['kondisiPulang']['kondisiPulang'] ?? null) || filled($perencanaan['prognosis']['prognosis'] ?? null)">
+        <div class="space-y-3">
+        <div>
+            <x-input-label value="Kondisi Saat Pulang" />
+            <div class="flex flex-wrap gap-x-4 gap-y-1 mt-1">
+                @foreach (array_keys(\App\Support\Terminologi\KondisiPulang::OPTIONS) as $kondisi)
+                    <x-radio-button :label="$kondisi" :value="$kondisi" name="kondisiPulang-rj"
+                        wire:model.live="perencanaan.kondisiPulang.kondisiPulang" :disabled="$isFormLocked" />
+                @endforeach
+            </div>
+        </div>
+
+        {{-- Prognosis (Playbook RJ bab 22) — dikirim ke Satu Sehat sebagai ClinicalImpression SNOMED --}}
+        <div>
+            <x-input-label value="Prognosis" />
+            <div class="flex flex-wrap gap-x-4 gap-y-1 mt-1">
+                @foreach (array_keys(\App\Support\Terminologi\Prognosis::OPTIONS) as $prognosis)
+                    <x-radio-button :label="$prognosis" :value="$prognosis" name="prognosis-rj"
+                        wire:model.live="perencanaan.prognosis.prognosis" :disabled="$isFormLocked" />
+                @endforeach
+            </div>
+            <x-text-input wire:model.live="perencanaan.prognosis.keteranganPrognosis" :disabled="$isFormLocked"
+                placeholder="Keterangan prognosis (opsional), mis. baik bila patuh minum obat" class="w-full mt-2" />
+        </div>
+        </div>
+        </x-border-form>
+
         {{-- Keterangan --}}
         <div>
             <x-text-input id="keteranganTindakLanjut" placeholder="Keterangan Tindak Lanjut" :error="$errors->has('perencanaan.tindakLanjut.keteranganTindakLanjut')"

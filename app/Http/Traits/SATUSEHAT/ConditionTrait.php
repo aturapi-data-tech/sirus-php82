@@ -72,12 +72,13 @@ trait ConditionTrait
                     'display' => 'Confirmed',
                 ]],
             ],
+            // 'kategori' => 'chief-complaint' (opt-in, dipakai RJ) = kategori kemkes Keluhan Utama —
+            // disamakan dgn alur Rawat Jalan apikesehatan.com (Playbook RJ bab 3a). Tanpa itu tetap
+            // problem-list-item supaya pengiriman UGD/RI yang memakai method ini tidak berubah diam-diam.
             'category'           => [[
-                'coding' => [[
-                    'system'  => 'http://terminology.hl7.org/CodeSystem/condition-category',
-                    'code'    => 'problem-list-item',
-                    'display' => 'Problem List Item',
-                ]],
+                'coding' => [($data['kategori'] ?? '') === 'chief-complaint'
+                    ? ['system' => 'http://terminology.kemkes.go.id', 'code' => 'chief-complaint', 'display' => 'Chief Complaint']
+                    : ['system' => 'http://terminology.hl7.org/CodeSystem/condition-category', 'code' => 'problem-list-item', 'display' => 'Problem List Item']],
             ]],
             'code'               => [
                 'coding' => [[
@@ -95,6 +96,14 @@ trait ConditionTrait
 
         if (!empty($data['onsetDate'])) {
             $payload['onsetDateTime'] = $data['onsetDate'];
+        }
+
+        // Opsional (dipakai RJ): pencatat & catatan anamnesis (teks keluhan dari EMR).
+        if (!empty($data['recorderId'])) {
+            $payload['recorder'] = ['reference' => 'Practitioner/' . $data['recorderId']];
+        }
+        if (filled($data['note'] ?? null)) {
+            $payload['note'] = [['text' => $data['note']]];
         }
 
         // Optional severity
@@ -296,54 +305,173 @@ trait ConditionTrait
 
 
     /**
-     * Membuat keluhan penyerta (Additional Complaint)
+     * Keluhan penyerta (Playbook RJ bab 3b) — satu Condition per keluhan, SNOMED CT.
+     * Disamakan dengan alur Rawat Jalan apikesehatan.com: category `problem-list-item`,
+     * clinicalStatus `active`, onset & recorded = waktu kunjungan.
      *
-     * @param array $data
-     *   - mainConditionId, additionalConditionId, dan data createChiefComplaint
-     * @return array
+     * Versi lama method ini (tak pernah dipanggil) PUT ke id yang belum ada, memakai
+     * category `complaint` (tak ada di condition-category), mengirim `severity: []`
+     * (ditolak validator: objek kosong) dan recordedDate = now() — ditulis ulang 2026-10-28.
+     *
+     * @param array $data patientId, encounterId, snomedCode, snomedDisplay, teks (Indonesia),
+     *                    waktuIso (waktu kunjungan), practitionerId (opsional → recorder)
      */
     public function createAdditionalComplaint(array $data): array
     {
-        // Ambil payload dasar dari createChiefComplaint
+        if (empty($data['snomedCode'])) {
+            throw new \InvalidArgumentException('Kode SNOMED keluhan penyerta wajib diisi.');
+        }
+
         $payload = [
-            'resourceType'       => 'Condition',
-            'clinicalStatus'     => [
+            'resourceType'   => 'Condition',
+            'clinicalStatus' => [
                 'coding' => [[
                     'system'  => 'http://terminology.hl7.org/CodeSystem/condition-clinical',
                     'code'    => 'active',
                     'display' => 'Active',
-                ]]
+                ]],
             ],
-            'verificationStatus' => [
-                'coding' => [[
-                    'system'  => 'http://terminology.hl7.org/CodeSystem/condition-ver-status',
-                    'code'    => 'confirmed',
-                    'display' => 'Confirmed',
-                ]]
-            ],
-            'category'           => [[
+            'category' => [[
                 'coding' => [[
                     'system'  => 'http://terminology.hl7.org/CodeSystem/condition-category',
-                    'code'    => 'complaint',
-                    'display' => 'Complaint',
-                ]]
+                    'code'    => 'problem-list-item',
+                    'display' => 'Problem List Item',
+                ]],
             ]],
-            'code'               => $data['codePayload'],
-            'subject'            => ['reference' => 'Patient/' . $data['patientId']],
-            'encounter'          => ['reference' => 'Encounter/' . $data['encounterId']],
-            'onsetDateTime'      => $data['onsetDate'] ?? Carbon::now()->toIso8601String(),
-            'recordedDate'       => Carbon::now()->toIso8601String(),
-            'severity'           => $data['severityPayload'] ?? [],
-            'extension'          => [[
-                'url'                => 'http://hl7.org/fhir/StructureDefinition/condition-related',
-                'valueReference'     => [
-                    'reference' => 'Condition/' . $data['mainConditionId'],
-                    'display'   => 'Keluhan Utama',
-                ],
-            ]],
+            'code' => [
+                'coding' => [[
+                    'system'  => 'http://snomed.info/sct',
+                    'code'    => $data['snomedCode'],
+                    'display' => $data['snomedDisplay'] ?? '',
+                ]],
+                'text' => ($data['teks'] ?? '') ?: ($data['snomedDisplay'] ?? ''),
+            ],
+            'subject'       => ['reference' => 'Patient/' . $data['patientId']],
+            'encounter'     => ['reference' => 'Encounter/' . $data['encounterId']],
+            'onsetDateTime' => $data['waktuIso'],
+            'recordedDate'  => $data['waktuIso'],
         ];
 
-        return $this->makeRequest('put', "Condition/{$data['additionalConditionId']}", $payload);
+        if (!empty($data['practitionerId'])) {
+            $payload['recorder'] = ['reference' => 'Practitioner/' . $data['practitionerId']];
+        }
+
+        return $this->makeRequest('post', 'Condition', $payload);
+    }
+
+
+    /**
+     * Riwayat penyakit pribadi (Playbook RJ bab 3d) — satu Condition per kode SNOMED.
+     * Disamakan dengan alur Rawat Jalan apikesehatan.com: category kemkes `previous-condition`;
+     *   jenis 'sekarang' → clinicalStatus active   + onsetPeriod.start (tanggal mulai diderita)
+     *   jenis 'dahulu'   → clinicalStatus inactive + onsetAge (usia saat menderita, tahun)
+     * Bentuk baris: App\Support\RiwayatPenyakitPribadi. createCurrentCondition()/
+     * createPastMedicalHistory() lama (problem-list-item, tak dipakai) BUKAN untuk ini.
+     *
+     * @param array $data patientId, encounterId, jenis, snomedCode, snomedDisplay, teks,
+     *                    tglMulaiIso (sekarang) | usiaTahun (dahulu), waktuIso, practitionerId?
+     */
+    public function createRiwayatPenyakitPribadi(array $data): array
+    {
+        if (empty($data['snomedCode'])) {
+            throw new \InvalidArgumentException('Kode SNOMED riwayat penyakit wajib diisi.');
+        }
+        $sekarang = ($data['jenis'] ?? '') === 'sekarang';
+
+        $payload = [
+            'resourceType'   => 'Condition',
+            'clinicalStatus' => [
+                'coding' => [[
+                    'system'  => 'http://terminology.hl7.org/CodeSystem/condition-clinical',
+                    'code'    => $sekarang ? 'active' : 'inactive',
+                    'display' => $sekarang ? 'Active' : 'Inactive',
+                ]],
+            ],
+            'category' => [[
+                'coding' => [[
+                    'system'  => 'http://terminology.kemkes.go.id',
+                    'code'    => 'previous-condition',
+                    'display' => 'Previous Condition',
+                ]],
+            ]],
+            'code' => [
+                'coding' => [[
+                    'system'  => 'http://snomed.info/sct',
+                    'code'    => $data['snomedCode'],
+                    'display' => $data['snomedDisplay'] ?? '',
+                ]],
+                'text' => ($data['teks'] ?? '') ?: ($data['snomedDisplay'] ?? ''),
+            ],
+            'subject'      => ['reference' => 'Patient/' . $data['patientId']],
+            'encounter'    => ['reference' => 'Encounter/' . $data['encounterId']],
+            'recordedDate' => $data['waktuIso'],
+        ];
+
+        if ($sekarang) {
+            $payload['onsetPeriod'] = ['start' => $data['tglMulaiIso']];
+        } else {
+            $payload['onsetAge'] = [
+                'value'  => (int) $data['usiaTahun'],
+                'unit'   => 'years',
+                'system' => 'http://unitsofmeasure.org',
+                'code'   => 'a',
+            ];
+        }
+
+        if (!empty($data['practitionerId'])) {
+            $payload['recorder'] = ['reference' => 'Practitioner/' . $data['practitionerId']];
+        }
+
+        return $this->makeRequest('post', 'Condition', $payload);
+    }
+
+
+    /**
+     * Kondisi Saat Meninggalkan Fasyankes (Playbook RJ bab 25) — Condition problem-list-item,
+     * clinicalStatus active, kode SNOMED dari App\Support\Terminologi\KondisiPulang.
+     *
+     * @param array $data patientId, encounterId, snomedCode, snomedDisplay, teks, waktuIso, practitionerId?
+     */
+    public function createKondisiPulang(array $data): array
+    {
+        if (empty($data['snomedCode'])) {
+            throw new \InvalidArgumentException('Kode SNOMED kondisi pulang wajib diisi.');
+        }
+
+        $payload = [
+            'resourceType'   => 'Condition',
+            'clinicalStatus' => [
+                'coding' => [[
+                    'system'  => 'http://terminology.hl7.org/CodeSystem/condition-clinical',
+                    'code'    => 'active',
+                    'display' => 'Active',
+                ]],
+            ],
+            'category' => [[
+                'coding' => [[
+                    'system'  => 'http://terminology.hl7.org/CodeSystem/condition-category',
+                    'code'    => 'problem-list-item',
+                    'display' => 'Problem List Item',
+                ]],
+            ]],
+            'code' => [
+                'coding' => [[
+                    'system'  => 'http://snomed.info/sct',
+                    'code'    => $data['snomedCode'],
+                    'display' => $data['snomedDisplay'] ?? '',
+                ]],
+                'text' => ($data['teks'] ?? '') ?: ($data['snomedDisplay'] ?? ''),
+            ],
+            'subject'      => ['reference' => 'Patient/' . $data['patientId']],
+            'encounter'    => ['reference' => 'Encounter/' . $data['encounterId']],
+            'recordedDate' => $data['waktuIso'],
+        ];
+
+        if (!empty($data['practitionerId'])) {
+            $payload['recorder'] = ['reference' => 'Practitioner/' . $data['practitionerId']];
+        }
+
+        return $this->makeRequest('post', 'Condition', $payload);
     }
 
 

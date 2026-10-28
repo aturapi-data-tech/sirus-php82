@@ -165,6 +165,9 @@
                 @endif
                 <span class="font-bold">Riwayat Penyakit Sekarang :</span> {!! nl2br(e($dataDaftarTxn['anamnesa']['riwayatPenyakitSekarangUmum']['riwayatPenyakitSekarangUmum'] ?? '-')) !!}<br>
                 <span class="font-bold">Riwayat Penyakit Dahulu :</span> {!! nl2br(e($dataDaftarTxn['anamnesa']['riwayatPenyakitDahulu']['riwayatPenyakitDahulu'] ?? '-')) !!}<br>
+                @if (filled($dataDaftarTxn['anamnesa']['riwayatPenyakitKeluarga']['riwayatPenyakitKeluarga'] ?? null))
+                    <span class="font-bold">Riwayat Penyakit Keluarga :</span> {!! nl2br(e($dataDaftarTxn['anamnesa']['riwayatPenyakitKeluarga']['riwayatPenyakitKeluarga'])) !!}<br>
+                @endif
                 <span class="font-bold">Alergi :</span> {!! nl2br(e(\App\Support\Terminologi\AlergiSnomed::untukCetak($dataDaftarTxn['anamnesa']['alergi'] ?? []))) !!}<br>
                 <span class="font-bold">Rekonsiliasi Obat :</span> {{ \App\Support\RekonsiliasiObat::teksStatus($dataDaftarTxn['anamnesa'][\App\Support\RekonsiliasiObat::STATUS_KEY] ?? null) }}
                 <table class="w-full border-collapse mt-0.5 text-[10px]">
@@ -427,6 +430,9 @@
                 {{ $dataDaftarTxn['perencanaan']['tindakLanjut']['tindakLanjut'] ?? '-' }}
                 @if (!empty($dataDaftarTxn['perencanaan']['tindakLanjut']['keteranganTindakLanjut']))
                     / {{ $dataDaftarTxn['perencanaan']['tindakLanjut']['keteranganTindakLanjut'] }}
+                @endif
+                @if (!empty($dataDaftarTxn['perencanaan']['kondisiPulang']['kondisiPulang']))
+                    <br><span class="font-bold">Kondisi Saat Keluar :</span> {{ $dataDaftarTxn['perencanaan']['kondisiPulang']['kondisiPulang'] }}
                 @endif
             </td>
         </tr>
