@@ -750,7 +750,6 @@ new class extends Component {
                                                                 jalur="UGD" />
 
                                                             <div class="grid grid-cols-2 gap-1 items-stretch">
-
                                                                 @hasanyrole(['Mr', 'Admin', 'Supervisor Tu'])
                                                                     <x-dropdown-link href="#"
                                                                         wire:click.prevent="openEdit('{{ $row->rj_no }}')"
@@ -800,17 +799,17 @@ new class extends Component {
                                                                     </x-dropdown-link>
                                                                 @endhasanyrole
 
-                                                                @hasanyrole('Admin|Mr')
+                                                                @hasanyrole('Admin|Casemix|Tu|Mr')
                                                                     <x-dropdown-link href="#"
-                                                                        x-on:click.prevent="$dispatch('daftar-ugd.satu-sehat.open', { rjNo: {{ $row->rj_no }} })"
-                                                                        class="px-3 py-2 text-sm rounded-lg h-full bg-teal-50 hover:bg-teal-100 dark:bg-teal-900/30 dark:hover:bg-teal-900/40">
+                                                                        wire:click.prevent="openBerkasBpjs({{ $row->rj_no }})"
+                                                                        class="px-3 py-2 text-sm rounded-lg h-full bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/30 dark:hover:bg-amber-900/40">
                                                                         <div class="flex items-start gap-2">
-                                                                            <svg class="w-5 h-5 mt-0.5 shrink-0 text-teal-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                                                            <svg class="w-5 h-5 mt-0.5 shrink-0 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                                                             </svg>
                                                                             <span class="min-w-0">
-                                                                                <span class="block font-semibold">Kirim Satu Sehat</span>
-                                                                                <span class="block text-xs font-normal text-muted dark:text-gray-400">FHIR — UGD (Emergency)</span>
+                                                                                <span class="block font-semibold">Berkas BPJS</span>
+                                                                                <span class="block text-xs font-normal text-muted dark:text-gray-400">SEP / Klaim / RM / SKDP / Lain</span>
                                                                             </span>
                                                                         </div>
                                                                     </x-dropdown-link>
@@ -832,30 +831,29 @@ new class extends Component {
                                                                     </x-dropdown-link>
                                                                 @endcan
 
-                                                                @hasanyrole('Admin|Casemix|Tu|Mr')
+                                                                @hasanyrole('Admin|Mr')
                                                                     <x-dropdown-link href="#"
-                                                                        wire:click.prevent="openBerkasBpjs({{ $row->rj_no }})"
-                                                                        class="px-3 py-2 text-sm rounded-lg h-full bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/30 dark:hover:bg-amber-900/40">
+                                                                        x-on:click.prevent="$dispatch('daftar-ugd.satu-sehat.open', { rjNo: {{ $row->rj_no }} })"
+                                                                        class="px-3 py-2 text-sm rounded-lg h-full bg-teal-50 hover:bg-teal-100 dark:bg-teal-900/30 dark:hover:bg-teal-900/40">
                                                                         <div class="flex items-start gap-2">
-                                                                            <svg class="w-5 h-5 mt-0.5 shrink-0 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                                            <svg class="w-5 h-5 mt-0.5 shrink-0 text-teal-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                                                                             </svg>
                                                                             <span class="min-w-0">
-                                                                                <span class="block font-semibold">Berkas BPJS</span>
-                                                                                <span class="block text-xs font-normal text-muted dark:text-gray-400">SEP / Klaim / RM / SKDP / Lain</span>
+                                                                                <span class="block font-semibold">Kirim Satu Sehat</span>
+                                                                                <span class="block text-xs font-normal text-muted dark:text-gray-400">FHIR — UGD (Emergency)</span>
                                                                             </span>
                                                                         </div>
                                                                     </x-dropdown-link>
                                                                 @endhasanyrole
-
                                                             </div>
 
-                                                            {{-- DIVIDER --}}
+                                                            {{-- Tombol Hapus DINONAKTIFKAN (dikomentari, permintaan user 2026-10-28) — divider + Hapus untuk
+                                                                 Admin, Manager Medis, Manager Umum. Hapus tanda komentar ini untuk memunculkan kembali.
                                                             <div
                                                                 class="my-1 border-t border-hairline dark:border-gray-700">
                                                             </div>
 
-                                                            {{-- Hapus — Admin, Manager Medis, Manager Umum --}}
                                                             @hasanyrole(['Admin', 'Manager Medis', 'Manager Umum'])
                                                                 <x-dropdown-link href="#"
                                                                     wire:click.prevent="requestDelete('{{ $row->rj_no }}')"
@@ -872,6 +870,7 @@ new class extends Component {
                                                                     </div>
                                                                 </x-dropdown-link>
                                                             @endhasanyrole
+                                                            --}}
 
                                                         </div>
                                                     </x-slot>

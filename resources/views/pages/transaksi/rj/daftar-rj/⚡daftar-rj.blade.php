@@ -1235,7 +1235,6 @@ new class extends Component {
 
                                                             {{-- GRID 2 KOLOM --}}
                                                             <div class="grid grid-cols-2 gap-1 items-stretch">
-
                                                                 @hasanyrole(['Mr', 'Admin', 'Supervisor Tu'])
                                                                     <x-dropdown-link href="#"
                                                                         wire:click.prevent="openEdit('{{ $row->rj_no }}')"
@@ -1269,22 +1268,6 @@ new class extends Component {
                                                                     </x-dropdown-link>
                                                                 @endhasanyrole
 
-                                                                @hasanyrole('Admin|Mr|Tu|Casemix')
-                                                                    <x-dropdown-link href="#"
-                                                                        x-on:click.prevent="$dispatch('riwayat-kontrol.open', { regNo: '{{ $row->reg_no }}', regName: '{{ addslashes($row->reg_name) }}' })"
-                                                                        class="px-3 py-2 text-sm rounded-lg h-full bg-cyan-50 hover:bg-cyan-100 dark:bg-cyan-900/30 dark:hover:bg-cyan-900/40">
-                                                                        <div class="flex items-start gap-2">
-                                                                            <svg class="w-5 h-5 mt-0.5 shrink-0 text-cyan-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                                                            </svg>
-                                                                            <span class="min-w-0">
-                                                                                <span class="block font-semibold">Riwayat Kontrol</span>
-                                                                                <span class="block text-xs font-normal text-muted dark:text-gray-400">Jadwal SKDP RJ/RI</span>
-                                                                            </span>
-                                                                        </div>
-                                                                    </x-dropdown-link>
-                                                                @endhasanyrole
-
                                                                 @hasanyrole('Admin|Casemix|Mr|Dokter')
                                                                     <x-dropdown-link href="#"
                                                                         x-on:click.prevent="$dispatch('daftar-rj.diagnosa.open', { rjNo: {{ $row->rj_no }} })"
@@ -1301,21 +1284,21 @@ new class extends Component {
                                                                     </x-dropdown-link>
                                                                 @endhasanyrole
 
-                                                                @can('satusehat.kirim')
+                                                                @hasanyrole('Admin|Mr|Tu|Casemix')
                                                                     <x-dropdown-link href="#"
-                                                                        wire:click.prevent="openSatuSehat('{{ $row->rj_no }}')"
-                                                                        class="px-3 py-2 text-sm rounded-lg h-full bg-teal-50 hover:bg-teal-100 dark:bg-teal-900/20 dark:hover:bg-teal-900/40">
+                                                                        x-on:click.prevent="$dispatch('riwayat-kontrol.open', { regNo: '{{ $row->reg_no }}', regName: '{{ addslashes($row->reg_name) }}' })"
+                                                                        class="px-3 py-2 text-sm rounded-lg h-full bg-cyan-50 hover:bg-cyan-100 dark:bg-cyan-900/30 dark:hover:bg-cyan-900/40">
                                                                         <div class="flex items-start gap-2">
-                                                                            <svg class="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                                                            <svg class="w-5 h-5 mt-0.5 shrink-0 text-cyan-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                                                             </svg>
                                                                             <span class="min-w-0">
-                                                                                <span class="block font-semibold">Kirim Satu Sehat</span>
-                                                                                <span class="block text-xs font-normal text-muted dark:text-gray-400">FHIR — RJ (Rawat Jalan)</span>
+                                                                                <span class="block font-semibold">Riwayat Kontrol</span>
+                                                                                <span class="block text-xs font-normal text-muted dark:text-gray-400">Jadwal SKDP RJ/RI</span>
                                                                             </span>
                                                                         </div>
                                                                     </x-dropdown-link>
-                                                                @endcan
+                                                                @endhasanyrole
 
                                                                 @can('emr.codingFhir')
                                                                     <x-dropdown-link href="#"
@@ -1333,14 +1316,29 @@ new class extends Component {
                                                                     </x-dropdown-link>
                                                                 @endcan
 
+                                                                @can('satusehat.kirim')
+                                                                    <x-dropdown-link href="#"
+                                                                        wire:click.prevent="openSatuSehat('{{ $row->rj_no }}')"
+                                                                        class="px-3 py-2 text-sm rounded-lg h-full bg-teal-50 hover:bg-teal-100 dark:bg-teal-900/20 dark:hover:bg-teal-900/40">
+                                                                        <div class="flex items-start gap-2">
+                                                                            <svg class="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                                                            </svg>
+                                                                            <span class="min-w-0">
+                                                                                <span class="block font-semibold">Kirim Satu Sehat</span>
+                                                                                <span class="block text-xs font-normal text-muted dark:text-gray-400">FHIR — RJ (Rawat Jalan)</span>
+                                                                            </span>
+                                                                        </div>
+                                                                    </x-dropdown-link>
+                                                                @endcan
                                                             </div>
 
-                                                            {{-- DIVIDER --}}
+                                                            {{-- Tombol Hapus DINONAKTIFKAN (dikomentari, permintaan user 2026-10-28) — divider + Hapus untuk
+                                                                 Admin, Manager Medis, Manager Umum. Hapus tanda komentar ini untuk memunculkan kembali.
                                                             <div
                                                                 class="my-1 border-t border-hairline dark:border-gray-700">
                                                             </div>
 
-                                                            {{-- Hapus — Admin, Manager Medis, Manager Umum --}}
                                                             @hasanyrole(['Admin', 'Manager Medis', 'Manager Umum'])
                                                                 <x-dropdown-link href="#"
                                                                     wire:click.prevent="requestDelete('{{ $row->rj_no }}')"
@@ -1357,6 +1355,7 @@ new class extends Component {
                                                                     </div>
                                                                 </x-dropdown-link>
                                                             @endhasanyrole
+                                                            --}}
 
                                                         </div>
                                                     </x-slot>
@@ -1391,8 +1390,11 @@ new class extends Component {
                                                         <x-danger-button type="button"
                                                             wire:click="$dispatch('task-id-batal-proses-rj', { rjNo: {{ $row->rj_no }} })"
                                                             class="!px-4 !py-2 text-sm {{ $row->task_id99 ? '!opacity-60' : '' }}"
-                                                            title="{{ $row->task_id99 ? 'Sudah dijalankan, klik untuk update' : 'Klik untuk membatalkan antrian (hanya bisa sebelum TaskId4/5)' }}">
-                                                            Batal
+                                                            title="{{ $row->task_id99 ? 'Sudah dijalankan, klik untuk update' : 'Batal antrean BPJS (Task ID 99) — hanya sebelum TaskId4/5. Bukan batal transaksi (itu di Kasir).' }}">
+                                                            <span class="flex flex-col items-center leading-tight">
+                                                                <span>Batal</span>
+                                                                <span class="text-[11px] font-normal opacity-90">Task 99</span>
+                                                            </span>
                                                         </x-danger-button>
                                                     </div>
                                                 @endhasanyrole
