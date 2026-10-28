@@ -48,8 +48,8 @@ trait ServiceRequestTrait
             ],
             'subject' => ['reference' => $data['subject']],
             'encounter' => ['reference' => $data['encounter']],
-            'occurrenceDateTime' => $data['occurrenceDateTime'] ?? now()->toIso8601String(),
-            'authoredOn' => $data['authoredOn'] ?? now()->toIso8601String(),
+            'occurrenceDateTime' => $data['occurrenceDateTime'] ?? throw new \RuntimeException('ServiceRequest.occurrenceDateTime: tanggal tidak dikirim dari data — tidak diisi jam sekarang.'),
+            'authoredOn' => $data['authoredOn'] ?? throw new \RuntimeException('ServiceRequest.authoredOn: tanggal tidak dikirim dari data — tidak diisi jam sekarang.'),
             'requester' => ['reference' => $data['requester'], 'display' => $data['requesterDisplay']],
         ];
 

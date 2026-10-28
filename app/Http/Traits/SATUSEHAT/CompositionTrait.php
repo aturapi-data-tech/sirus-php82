@@ -232,10 +232,13 @@ trait CompositionTrait
     /** UTC+00 dan tidak lebih awal dari batas SATUSEHAT. */
     private function waktuComposition(?string $iso): string
     {
+        if (blank($iso)) {
+            throw new \RuntimeException('Composition.date: tanggal tidak dikirim dari data — tidak diisi jam sekarang.');
+        }
         try {
-            $waktu = $iso ? Carbon::parse($iso) : Carbon::now();
+            $waktu = Carbon::parse($iso);
         } catch (\Throwable $e) {
-            $waktu = Carbon::now();
+            throw new \RuntimeException("Composition.date: tanggal '{$iso}' tidak terbaca — tidak diisi jam sekarang.");
         }
 
         $waktu = $waktu->utc();

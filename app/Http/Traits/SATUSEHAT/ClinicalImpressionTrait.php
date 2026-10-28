@@ -34,8 +34,8 @@ trait ClinicalImpressionTrait
             'description'       => $data['description'] ?? null,
             'subject'           => ['reference' => 'Patient/' . $data['patientId']],
             'encounter'         => ['reference' => 'Encounter/' . $data['encounterId']],
-            'effectiveDateTime' => $data['effective'] ?? now()->toIso8601String(),
-            'date'              => $data['date'] ?? now()->toIso8601String(),
+            'effectiveDateTime' => $data['effective'] ?? throw new \RuntimeException('ClinicalImpression.effective: tanggal tidak dikirim dari data — tidak diisi jam sekarang.'),
+            'date'              => $data['date'] ?? throw new \RuntimeException('ClinicalImpression.date: tanggal tidak dikirim dari data — tidak diisi jam sekarang.'),
             'assessor'          => ['reference' => 'Practitioner/' . $data['assessorId']],
             'summary'           => $data['summary'],
         ];

@@ -25,7 +25,7 @@ class ObatKfa
      * @param  int|null  $obatTanpaKfa  diisi jumlah item yang dilewati (productId kosong
      *                                  atau master belum punya KFA) — WAJIB dilaporkan
      *                                  pemanggil, jangan dibuang diam-diam.
-     * @return array<int, array{code:string, display:string, productId:string, qty:int}>
+     * @return array<int, array{code:string, display:string, productId:string, qty:int, signa:string, resepDate:?string, taskIdPelayanan:array}>
      */
     public static function nonRacikanList(array $data, ?int &$obatTanpaKfa = null): array
     {
@@ -44,6 +44,8 @@ class ObatKfa
                     'productName' => (string) ($obat['productName'] ?? ''),
                     'qty' => (int) ($obat['qty'] ?? 1) ?: 1,
                     'signa' => self::signa($obat),
+                    'resepDate' => $lembar['resepDate'],
+                    'taskIdPelayanan' => $lembar['taskIdPelayanan'],
                 ];
             }
         }
@@ -71,6 +73,9 @@ class ObatKfa
                 'productId' => $obat['productId'],
                 'qty' => $obat['qty'],
                 'signa' => $obat['signa'],
+                // RI: waktu per lembar resep (tulis/telaah/serah); RJ/UGD null/[] — pemanggil pakai waktu kunjungan
+                'resepDate' => $obat['resepDate'],
+                'taskIdPelayanan' => $obat['taskIdPelayanan'],
             ];
         }
 

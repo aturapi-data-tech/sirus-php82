@@ -20,13 +20,40 @@
     @param bool $terbuka   status panel (properti $pratinjauTerbuka milik kartu)
     @param string $kosong  kalimat bila tak ada data yang akan dikirim
     @param string $aksi    method Livewire pembuka/penutup
+    @param bool $ringkas   true = tanpa bingkai & tombol buka-tutup, hanya isi (mode pratinjau layar
+                           Coding SATUSEHAT). Bawaan false = tampilan kartu kirim seperti biasa.
 --}}
 @props([
     'baris' => [],
     'terbuka' => false,
     'kosong' => 'Tidak ada data yang akan dikirim untuk langkah ini.',
     'aksi' => 'togglePratinjau',
+    'ringkas' => false,
 ])
+
+@if ($ringkas)
+    <div class="mt-1">
+        @if (empty($baris))
+            <p class="text-xs text-muted dark:text-gray-400">{{ $kosong }}</p>
+        @else
+            <table class="w-full text-xs">
+                <tbody>
+                    @foreach ($baris as $satu)
+                        <tr class="border-b border-brand-green/20 last:border-0 dark:border-brand-green/50">
+                            <td class="px-1 py-1.5 align-top text-muted dark:text-gray-400 w-2/5">{{ $satu['label'] ?? '-' }}</td>
+                            <td class="px-1 py-1.5 align-top font-medium text-ink dark:text-gray-100">
+                                {{ $satu['nilai'] ?? '-' }}
+                                @if (!empty($satu['ket']))
+                                    <span class="block font-normal text-muted-soft">{{ $satu['ket'] }}</span>
+                                @endif
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        @endif
+    </div>
+@else
 
 <div class="mt-3 bg-canvas border border-hairline rounded-2xl dark:border-gray-700 dark:bg-gray-900">
 
@@ -83,3 +110,4 @@
         </div>
     @endif
 </div>
+@endif

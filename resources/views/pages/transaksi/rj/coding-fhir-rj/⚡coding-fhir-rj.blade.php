@@ -25,6 +25,25 @@ new class extends Component {
 
     public ?string $rjNo = null;
 
+    /**
+     * Kartu SATUSEHAT RJ dalam mode pratinjau, dikelompokkan seperti grid SOAP di atasnya (tanpa
+     * encounter). Kartu yang SAMA dengan modal kirim, jadi yang tampil = yang akan dikirim.
+     * Kunci = huruf SOAP => [judul, kelas header, kelas lingkaran, daftar kartu]. Pola sama dengan Coding RI.
+     */
+    public const KARTU_PRATINJAU = [
+        'S' => ['Subjective — Anamnesa', 'bg-blue-100 dark:border-blue-700', 'text-blue-700 bg-blue-100 dark:bg-blue-900/40 dark:text-blue-300',
+            ['chief-complaint', 'keluhan-penyerta', 'riwayat-penyakit', 'riwayat-keluarga', 'riwayat-pengobatan', 'riwayat-perjalanan', 'allergy', 'status-psikologis']],
+        'O' => ['Objective — Pemeriksaan', 'bg-emerald-100 dark:border-emerald-700', 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
+            ['observation', 'nyeri-kesadaran', 'penilaian', 'lab', 'radiologi']],
+        'A' => ['Assessment — Diagnosis', 'bg-amber-100 dark:border-amber-700', 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
+            ['condition', 'procedure', 'clinical-impression']],
+        'P' => ['Plan — Perencanaan', 'bg-rose-100 dark:border-rose-700', 'bg-rose-100 text-error dark:bg-rose-900/40 dark:text-rose-300',
+            ['medication-request', 'medication-dispense', 'telaah-resep', 'prognosis', 'rencana-tindak-lanjut', 'kondisi-pulang', 'resume-medis']],
+    ];
+
+    /** Bagian "Yang akan dikirim" baru dimuat saat diminta — tiap kartu membaca data sendiri. */
+    public bool $tampilkanKiriman = false;
+
     public array $renderVersions = [];
     protected array $renderAreas = ['modal-coding-fhir-rj'];
 
@@ -42,9 +61,15 @@ new class extends Component {
         }
 
         $this->rjNo = $rjNo;
+        $this->tampilkanKiriman = false;
         // Versi naik → semua kelompok di-mount ulang & membaca data terbaru dari prop rjNo.
         $this->incrementVersion('modal-coding-fhir-rj');
         $this->dispatch('open-modal', name: 'coding-fhir-rj');
+    }
+
+    public function toggleKiriman(): void
+    {
+        $this->tampilkanKiriman = !$this->tampilkanKiriman;
     }
 
     public function simpan(): void
@@ -58,6 +83,7 @@ new class extends Component {
     public function closeModal(): void
     {
         $this->rjNo = null;
+        $this->tampilkanKiriman = false;
         $this->dispatch('close-modal', name: 'coding-fhir-rj');
     }
 };
@@ -130,6 +156,42 @@ new class extends Component {
                                     wire:key="coding-perencanaan-rj-{{ $rjNo }}-{{ $versi }}" />
                             </div>
                         </div>
+                    </div>
+
+                    {{-- YANG AKAN DIKIRIM — kartu SATUSEHAT RJ mode pratinjau (tanpa tombol Kirim). Dimuat saat diminta. --}}
+                    <div class="p-4 mt-4 space-y-3 border shadow-sm bg-canvas border-hairline rounded-2xl dark:bg-gray-900 dark:border-gray-700">
+                        <div class="flex flex-wrap items-center justify-between gap-2">
+                            <div>
+                                <p class="text-base font-semibold text-ink dark:text-gray-100">Yang akan dikirim ke SATUSEHAT</p>
+                                <p class="text-sm text-muted dark:text-gray-400">
+                                    Pratinjau tiap kartu, dari sumber yang sama dengan tombol Kirim di modal SATUSEHAT.
+                                    Pengiriman tetap dari menu Kirim Satu Sehat.
+                                </p>
+                            </div>
+                            <x-secondary-button type="button" wire:click="toggleKiriman" wire:loading.attr="disabled" wire:target="toggleKiriman">
+                                <span wire:loading.remove wire:target="toggleKiriman">{{ $tampilkanKiriman ? 'Sembunyikan' : 'Tampilkan yang akan dikirim' }}</span>
+                                <span wire:loading wire:target="toggleKiriman" class="flex items-center gap-1"><x-loading /> Memuat...</span>
+                            </x-secondary-button>
+                        </div>
+                        @if ($tampilkanKiriman)
+                            <div class="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                                @foreach ($this::KARTU_PRATINJAU as $huruf => [$judulKelompok, $kelasHeader, $kelasHuruf, $kartuList])
+                                    <div>
+                                        <div class="flex items-center gap-2 p-2 mb-2 border-2 rounded-t-lg {{ $kelasHeader }}">
+                                            <span class="inline-flex items-center justify-center w-8 h-8 text-base font-bold rounded-full {{ $kelasHuruf }}">{{ $huruf }}</span>
+                                            <span class="text-base font-semibold text-body dark:text-gray-300">{{ $judulKelompok }}</span>
+                                        </div>
+                                        <div class="space-y-2">
+                                            @foreach ($kartuList as $kartu)
+                                                <livewire:dynamic-component :is="'pages::transaksi.rj.satu-sehat.kirim-' . $kartu"
+                                                    :rjNo="$rjNo" :hanyaPratinjau="true"
+                                                    :key="'coding-pratinjau-' . $kartu . '-' . $rjNo . '-' . $versi" />
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        @endif
                     </div>
                 </div>
 

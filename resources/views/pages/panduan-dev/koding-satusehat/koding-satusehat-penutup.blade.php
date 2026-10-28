@@ -53,13 +53,14 @@
                         <h2 class="ds-title-lg mt-8 mb-3">Waktu "selesai" beda tiap modul</h2>
                         <p class="ds-body-md mb-3" style="max-width:62ch">
                             <span class="ds-code">Encounter.period.end</span> harus jam layanan berakhir, bukan
-                            <span class="ds-code">now()</span> (= jam petugas mengklik tombol).
+                            <span class="ds-code">now()</span> (= jam petugas mengklik tombol). Semua sumber kosong →
+                            Encounter <strong>tidak di-finish</strong> + notifikasi (sejak 2026-10-28; dulu jatuh ke now()).
                         </p>
                         <div class="space-y-3">
                             @foreach ([
-                                ['RJ', 'taskId7 → taskId5 → now()', 'Probe 150 kunjungan: task5 (keluar poli) terisi 125×.'],
-                                ['UGD', 'taskId7 → perencanaan.pengkajianMedis.selesaiPemeriksaan → now()', 'UGD TIDAK memakai task 5 — terisi 0×, sedangkan "Selesai Pemeriksaan" terisi 91×.'],
-                                ['RI', 'exitDate (tgl pulang) → now()', 'Rawat inap tak memakai task antrean.'],
+                                ['RJ', 'taskId7 → taskId5 → notifikasi', 'Probe 150 kunjungan: task5 (keluar poli) terisi 125×.'],
+                                ['UGD', 'taskId7 → perencanaan.pengkajianMedis.selesaiPemeriksaan → notifikasi', 'UGD TIDAK memakai task 5 — terisi 0×, sedangkan "Selesai Pemeriksaan" terisi 91×.'],
+                                ['RI', 'exitDate (tgl pulang) → notifikasi', 'Rawat inap tak memakai task antrean. Berlaku juga untuk EpisodeOfCare selesai.'],
                             ] as [$modul, $urutan, $alasan])
                                 <div class="ds-card-outline" style="padding:16px 20px">
                                     <div class="ds-title-sm mb-1">{{ $modul }}</div>
@@ -67,6 +68,44 @@
                                     <div class="ds-body-sm" style="opacity:.85">{{ $alasan }}</div>
                                 </div>
                             @endforeach
+                        </div>
+
+                        <h2 class="ds-title-lg mt-8 mb-3">Tanggal kirim = data, bukan now()</h2>
+                        <p class="ds-body-md mb-3" style="max-width:62ch">
+                            Tiap tanggal di payload diambil dari data layanan. Cadangan hanya ke tanggal lain yang
+                            <strong>tercatat</strong> (tanggal resep, tanggal kunjungan/masuk) — <strong>tidak pernah</strong> ke jam sekarang.
+                            Bila semua kosong: kiriman dibatalkan / entrinya dilewati, dan toast menyebut apa yang perlu dilengkapi.
+                        </p>
+                        <div class="space-y-3">
+                            @foreach ([
+                                ['Penyerahan Obat RI', 'whenPrepared = taskId6, whenHandedOver = taskId7 lembar resepnya (satu terisi → dipakai keduanya)', 'Lembar tanpa task 6/7 DILEWATI + nama obatnya disebut di toast. Data 07/2026: baru ±43% lembar punya task 6.'],
+                                ['Penyerahan Obat RJ/UGD', 'taskId6 / taskId7 kunjungan', 'Keduanya kosong → batal: "selesaikan pelayanan di Apotek dulu".'],
+                                ['Resep Obat RI', 'authoredOn = resepDate tiap lembar → tanggal masuk', 'Dulu semua lembar memakai tanggal masuk.'],
+                                ['Radiologi RJ/UGD/RI', 'order = waktu_entry (RI cadangan rirad_date) → tanggal kunjungan/masuk; hasil = tgl_bacaan → jam order', 'tgl_bacaan belum pernah terisi (0 dari ±32 ribu order) → jam hasil = jam order.'],
+                                ['Diet RI', 'jamDokterPengkaji (TTD Pengkajian Dokter) → tanggal masuk', ''],
+                                ['Pindah kamar RI', 'rsmst_trfrooms.start_date kamar itu', 'Tak ada catatan pindah kamar → Encounter batal + notifikasi.'],
+                                ['Observasi lanjutan & pemberian obat UGD', 'jam entri (waktuPemeriksaan / waktuPemberian)', 'Entri tanpa jam dilewati (tetap antre) + dilaporkan.'],
+                                ['Observasi lanjutan RI', 'jam entri', 'Kartu sekali kirim → seluruh kiriman DITAHAN sampai semua baris ber-jam.'],
+                                ['Kartu lain', 'parseDate() tanggal sumber', 'Kosong / tak terbaca → melempar "tanggal sumber kosong — lengkapi datanya di EMR dulu".'],
+                            ] as [$kartu, $sumber, $catatan])
+                                <div class="ds-card-outline" style="padding:16px 20px">
+                                    <div class="ds-title-sm mb-1">{{ $kartu }}</div>
+                                    <div class="ds-body-sm"><span class="ds-code">{{ $sumber }}</span></div>
+                                    @if ($catatan !== '')
+                                        <div class="ds-body-sm" style="opacity:.85">{{ $catatan }}</div>
+                                    @endif
+                                </div>
+                            @endforeach
+                        </div>
+                        <div class="ds-card-outline mt-3" style="padding:16px 20px">
+                            <div class="ds-body-sm">
+                                <strong>Jaring pengaman di trait.</strong> Bawaan <span class="ds-code">?? now()</span> di 14 trait
+                                (<span class="ds-code">app/Http/Traits/SATUSEHAT</span>) diganti
+                                <span class="ds-code">?? throw new \RuntimeException('Resource.field: tanggal tidak dikirim dari data …')</span>.
+                                Kartu yang lupa mengirim tanggal langsung gagal dengan pesan jelas, bukan diam-diam terisi jam klik —
+                                begitulah <span class="ds-code">ClinicalImpression.date</span> (riwayat perjalanan, CPPT RI, prognosis) ketahuan
+                                lewat uji kering 2026-10-28. Sender baru: <strong>selalu</strong> kirim semua field tanggal.
+                            </div>
                         </div>
 
                         <h2 class="ds-title-lg mt-8 mb-3">Pasangan resep → penyerahan</h2>
@@ -95,6 +134,7 @@
                             @foreach ([
                                 ['env() tanpa config wrapper', 'Mati senyap bila config:cache. Rekomendasi: buat config/satusehat.php dan baca via config(\'satusehat.*\').'],
                                 ['5 resource belum di-wire', 'Dispense/ServiceRequest/Specimen/DiagnosticReport/Allergy → kolom dashboard itu akan 0 walau trait tersedia.'],
+                                ['DDL rsmst_rooms.room_uuid', 'Belum jalan di DB yang ditunjuk .env lokal (cek 2026-10-28) → Encounter RI ORA-00904. Jalankan database/sql/alter_rsmst_rooms_add_room_uuid.sql di tiap server.'],
                                 ['Timeout 10s tanpa retry/connectTimeout', 'Samakan pola dgn BPJS timeout(8)->connectTimeout(3) supaya tak membekukan worker.'],
                                 ['KFA/kode di-skip diam-diam', 'Bila master belum diisi → tambahkan peringatan "N item tanpa kode dilewati".'],
                                 ['registrationId == medicationCode == kfaCode', 'Di kirim-medication-request:89-90 — perlu ditinjau apakah field registrasi obat harus beda dari KFA.'],

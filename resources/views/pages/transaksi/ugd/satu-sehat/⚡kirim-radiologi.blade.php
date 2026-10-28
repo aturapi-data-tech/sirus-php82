@@ -22,6 +22,9 @@ new class extends Component {
     use EmrUGDTrait, ServiceRequestTrait, DiagnosticReportTrait, ObservationTrait, ImagingStudyTrait, OrthancTrait, PenunjangKirimTrait;
 
     public ?string $rjNo = null;
+
+    /** Mode pratinjau saja (layar Coding SATUSEHAT): tombol Kirim disembunyikan, kirim ditolak. */
+    public bool $hanyaPratinjau = false;
     public bool $hasEncounter = false;
     public int $count = 0;
 
@@ -60,8 +63,10 @@ new class extends Component {
     }
 
 
-    public function mount(?string $rjNo = null): void
+    public function mount(?string $rjNo = null, bool $hanyaPratinjau = false): void
     {
+        $this->hanyaPratinjau = $hanyaPratinjau;
+        $this->pratinjauTerbuka = $hanyaPratinjau;
         $this->rjNo = $rjNo;
         $this->reloadState();
     }
@@ -91,6 +96,9 @@ new class extends Component {
 
     public function kirimForCurrent(): void
     {
+        if ($this->hanyaPratinjau) {
+            return;
+        }
         if (empty($this->rjNo)) {
             return;
         }
@@ -107,6 +115,9 @@ new class extends Component {
     #[On('ss-radiologi-ugd.kirim')]
     public function kirim(string $rjNo): void
     {
+        if ($this->hanyaPratinjau) {
+            return;
+        }
         $this->kirimInti($rjNo);
         $this->dispatch('ugd-satu-sehat.langkah-selesai', langkah: 'radiologi');
     }
@@ -140,7 +151,7 @@ new class extends Component {
             $orders = DB::table('rstxn_ugdrads as a')
                 ->leftJoin('rsmst_radiologis as m', 'a.rad_id', '=', 'm.rad_id')
                 ->where('a.rj_no', $rjNo)
-                ->select('a.rad_dtl', 'a.rad_id', 'm.rad_desc', 'm.loinc_code', 'm.loinc_display', 'a.radnum_no', 'a.rad_upload_pdf_foto', 'a.study_uid', 'a.hasil_bacaan')
+                ->select('a.rad_dtl', 'a.rad_id', 'm.rad_desc', 'm.loinc_code', 'm.loinc_display', 'a.radnum_no', 'a.rad_upload_pdf_foto', 'a.study_uid', 'a.hasil_bacaan', 'a.waktu_entry', 'a.tgl_bacaan')
                 ->get();
 
             $regNo   = $dataUGD['regNo'] ?? '';
@@ -172,6 +183,10 @@ new class extends Component {
                 $deskripsi   = trim((string) ($order->rad_desc ?? 'Pemeriksaan Radiologi'));
                 $key         = "{$rjNo}-{$nomorDetail}";
                 $kunciOrder  = "ugd-rad-{$key}";
+                // Waktu per order: jam order dientri, bacaan = tgl_bacaan; kosong → tanggal kunjungan
+                $jamOrder     = (string) ($order->waktu_entry ?? '');
+                $waktuOrder   = $jamOrder !== '' ? $this->parseDate($jamOrder)->toIso8601String() : $waktu;
+                $waktuBacaan  = filled($order->tgl_bacaan ?? null) ? $this->parseDate((string) $order->tgl_bacaan)->toIso8601String() : $waktuOrder;
 
                 // LOINC spesifik dari master; generik 18748-4 hanya bila kosong.
                 // Master SUDAH terisi 144/155 baris — memaku 18748-4 membuat semua
@@ -222,7 +237,7 @@ new class extends Component {
                         'category' => ['system' => 'http://snomed.info/sct', 'code' => '363679005', 'display' => 'Imaging'],
                         'code' => ['system' => 'http://loinc.org', 'code' => $loincCode, 'display' => $loincDisplay ?: $deskripsi],
                         'subject' => "Patient/{$patientId}", 'encounter' => "Encounter/{$encounterId}",
-                        'occurrenceDateTime' => $waktu, 'authoredOn' => $waktu,
+                        'occurrenceDateTime' => $waktuOrder, 'authoredOn' => $waktuOrder,
                         'requester' => "Practitioner/{$practitionerId}", 'requesterDisplay' => $drDesc,
                         'performer' => $pjPenunjang['reference'] ?? null,
                         'performerDisplay' => $pjPenunjang['display'] ?? null,
@@ -247,13 +262,13 @@ new class extends Component {
                     if (empty($obsId)) {
                         $observation = $this->createObservation([
                             'patientId' => $patientId, 'encounterId' => $encounterId, 'performerId' => $practitionerId,
-                            'effectiveDate' => $waktu,
+                            'effectiveDate' => $waktuBacaan,
                             'category' => [['coding' => [['system' => 'http://terminology.hl7.org/CodeSystem/observation-category', 'code' => 'imaging', 'display' => 'Imaging']]]],
                             'code' => ['system' => 'http://loinc.org', 'code' => $loincCode, 'display' => $loincDisplay ?: $deskripsi],
                             'valueString' => $bacaan !== '' ? $bacaan : 'Lihat hasil pada lampiran radiologi',
                             // Playbook IGD 13.5: bacaan menunjuk order-nya.
                             'basedOn' => ["ServiceRequest/{$serviceRequestId}"],
-                            'issued' => $waktu,
+                            'issued' => $waktuBacaan,
                         ]);
                         $obsId = $observation['id'] ?? null;
                         if (!empty($obsId)) {
@@ -267,7 +282,7 @@ new class extends Component {
                         'status' => 'final', 'categoryCode' => 'RAD', 'categoryDisplay' => 'Radiology',
                         'codeSystem' => 'http://loinc.org', 'code' => $loincCode, 'display' => $loincDisplay ?: $deskripsi,
                         'patientId' => $patientId, 'encounterId' => $encounterId,
-                        'effectiveDate' => $waktu, 'issued' => $waktu,
+                        'effectiveDate' => $waktuBacaan, 'issued' => $waktuBacaan,
                         'performer' => ["Practitioner/{$practitionerId}"], 'basedOn' => [$serviceRequestId],
                     ];
                     if (!empty($obsId)) { $drPayload['observationIds'] = [$obsId]; }
@@ -301,7 +316,7 @@ new class extends Component {
                         'studyUid'         => $studyUid,
                         'patientId'        => $patientId,
                         'encounterId'      => $encounterId,
-                        'started'          => $waktu,
+                        'started'          => $waktuOrder,
                         'modalityCode'     => $modalitas['code'],
                         'modalityDisplay'  => $modalitas['display'],
                         'procedureCode'    => $loincCode,
@@ -382,23 +397,27 @@ new class extends Component {
 
     private function parseDate(string $teksTanggal): Carbon
     {
-        if (empty($teksTanggal)) return Carbon::now();
+        if (empty($teksTanggal)) throw new \RuntimeException('tanggal sumber kosong — lengkapi datanya di EMR dulu (tidak diisi jam sekarang).');
         try { return Carbon::createFromFormat('d/m/Y H:i:s', $teksTanggal); } catch (\Throwable) {
-            try { return Carbon::parse($teksTanggal); } catch (\Throwable) { return Carbon::now(); }
+            try { return Carbon::parse($teksTanggal); } catch (\Throwable) { throw new \RuntimeException("tanggal '{$teksTanggal}' tidak terbaca — betulkan datanya di EMR dulu (tidak diisi jam sekarang)."); }
         }
     }
 };
 ?>
 
-<div class="p-4 bg-canvas border border-hairline shadow-sm rounded-xl dark:bg-gray-900 dark:border-gray-700">
+<div class="{{ $hanyaPratinjau
+    ? 'p-3 border border-brand-green/30 rounded-xl bg-brand-green/5 dark:bg-brand-green/10 dark:border-brand-green/50'
+    : 'p-4 bg-canvas border border-hairline shadow-sm rounded-xl dark:bg-gray-900 dark:border-gray-700' }}">
     <div class="flex items-center justify-between">
         <div class="flex items-center gap-3">
+            @unless ($hanyaPratinjau)
             <div
                 class="flex items-center justify-center w-8 h-8 rounded-full {{ $count > 0 ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-surface-soft text-muted-soft dark:bg-gray-800 dark:text-gray-500' }}">
                 <span class="text-sm font-bold">16</span>
             </div>
+            @endunless
             <div>
-                <div class="font-semibold text-ink dark:text-gray-100">Penunjang Radiologi</div>
+                <div class="{{ $hanyaPratinjau ? 'text-xs font-semibold tracking-wide uppercase text-brand-green dark:text-brand-lime' : 'font-semibold text-ink dark:text-gray-100' }}">Penunjang Radiologi</div>
                 <div class="text-xs text-muted dark:text-gray-400">ServiceRequest + DiagnosticReport + ImagingStudy (kalau ada foto).</div>
                 @if ($count > 0)
                     <div class="mt-1 font-mono text-xs text-success dark:text-success">
@@ -407,6 +426,7 @@ new class extends Component {
                 @endif
             </div>
         </div>
+        @unless ($hanyaPratinjau)
         <x-primary-button type="button" wire:click="kirimForCurrent" wire:loading.attr="disabled" :disabled="!$hasEncounter"
             class="!bg-teal-600 hover:!bg-teal-700 {{ $count > 0 ? '!bg-emerald-600' : '' }}">
             <span wire:loading.remove wire:target="kirimForCurrent,kirim">
@@ -417,9 +437,10 @@ new class extends Component {
                 </span>
             <span wire:loading wire:target="kirimForCurrent,kirim"><x-loading />...</span>
         </x-primary-button>
+        @endunless
     </div>
 
-    <x-satu-sehat.pratinjau :terbuka="$pratinjauTerbuka"
+    <x-satu-sehat.pratinjau :terbuka="$pratinjauTerbuka" :ringkas="$hanyaPratinjau"
         :baris="$pratinjauTerbuka ? $this->pratinjau : []"
         kosong="Belum ada order radiologi untuk kunjungan ini — Kirim akan ditolak." />
 </div>

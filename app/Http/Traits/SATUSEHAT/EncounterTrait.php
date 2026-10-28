@@ -46,7 +46,7 @@ trait EncounterTrait
         // Mulai periode dari tanggal RJ (ISO8601)
         $start = isset($data['startDate'])
             ? (\Carbon\Carbon::parse($data['startDate']))->toIso8601String()
-            : now()->toIso8601String();
+            : throw new \RuntimeException('Encounter.startDate: tanggal mulai tidak dikirim dari data — tidak diisi jam sekarang.');
 
         // Update status dan history
         $existing['status'] = 'in-progress';
@@ -86,7 +86,7 @@ trait EncounterTrait
         // Mulai periode dari tanggal RJ (ISO8601)
         $start = isset($data['startDate'])
             ? (\Carbon\Carbon::parse($data['startDate']))->toIso8601String()
-            : now()->toIso8601String();
+            : throw new \RuntimeException('Encounter.startDate: tanggal mulai tidak dikirim dari data — tidak diisi jam sekarang.');
 
         // Identifier dengan sistem resmi SatuSehat
         $identifierSystem = 'http://sys-ids.kemkes.go.id/encounter/' . $this->organizationId;

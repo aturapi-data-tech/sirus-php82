@@ -78,3 +78,13 @@ racikan disebut **nama bahan** yang menghalangi supaya bisa langsung dilengkapi 
 `Encounter.period.end` = jam layanan berakhir, bukan `now()`:
 RJ `taskId7` → `taskId5`; UGD `taskId7` → `perencanaan.pengkajianMedis.selesaiPemeriksaan`
 (task5 tak pernah dipakai UGD); RI `exitDate`. Lihat skill `bpjs-antrean-task-id`.
+
+## 7. Tanggal = data, JANGAN `now()` (keputusan user 2026-10-28)
+
+Kosong → batal / lewati entri **+ toast**, bukan jam sekarang ("nanti malah nggak relevan").
+Cadangan hanya ke tanggal lain yang tercatat (resepDate, tgl kunjungan/masuk). Trait SATUSEHAT
+kini **melempar** bila field tanggal tak dikirim (`?? throw`), dan `parseDate()` tiap kartu melempar
+bila kosong/tak terbaca — sender baru wajib mengirim SEMUA field tanggal (termasuk
+`ClinicalImpression.date`). Penyerahan obat RI: task 6/7 per lembar (`ObatKfa` membawa
+`taskIdPelayanan`). Tabel lengkap: `docs/satusehat-api.md` §11.4b. Uji kering seluruh kartu:
+Http::fake + transaksi rollback, cek tak ada tanggal = hari ini.

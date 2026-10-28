@@ -58,7 +58,7 @@ trait EpisodeOfCareTrait
             'patient'              => ['reference' => 'Patient/' . $data['patientId']],
             'managingOrganization' => ['reference' => 'Organization/' . $this->organizationId],
             'period' => array_filter([
-                'start' => $data['start'] ?? now()->toIso8601String(),
+                'start' => $data['start'] ?? throw new \RuntimeException('EpisodeOfCare.start: tanggal tidak dikirim dari data — tidak diisi jam sekarang.'),
                 'end'   => $data['end'] ?? null,
             ]),
             'careManager' => ['reference' => 'Practitioner/' . $data['careManagerId']],

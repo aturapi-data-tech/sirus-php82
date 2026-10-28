@@ -19,6 +19,9 @@ new class extends Component {
     use EmrUGDTrait, ObservationTrait;
 
     public ?string $rjNo = null;
+
+    /** Mode pratinjau saja (layar Coding SATUSEHAT): tombol Kirim disembunyikan, kirim ditolak. */
+    public bool $hanyaPratinjau = false;
     public bool $hasEncounter = false;
 
     /** Entri Observasi Lanjutan yang belum terkirim — tombol baru 'Terkirim' bila nol. */
@@ -115,8 +118,10 @@ new class extends Component {
     }
 
 
-    public function mount(?string $rjNo = null): void
+    public function mount(?string $rjNo = null, bool $hanyaPratinjau = false): void
     {
+        $this->hanyaPratinjau = $hanyaPratinjau;
+        $this->pratinjauTerbuka = $hanyaPratinjau;
         $this->rjNo = $rjNo;
         $this->reloadState();
     }
@@ -147,6 +152,9 @@ new class extends Component {
 
     public function kirimForCurrent(): void
     {
+        if ($this->hanyaPratinjau) {
+            return;
+        }
         if (empty($this->rjNo)) {
             return;
         }
@@ -163,6 +171,9 @@ new class extends Component {
     #[On('ss-observation-ugd.kirim')]
     public function kirim(string $rjNo): void
     {
+        if ($this->hanyaPratinjau) {
+            return;
+        }
         $this->kirimInti($rjNo);
         $this->dispatch('ugd-satu-sehat.langkah-selesai', langkah: 'observation');
     }
@@ -214,19 +225,28 @@ new class extends Component {
 
             // 2) Observasi lanjutan — per entri, jam = waktuPemeriksaan entri. Bila gagal di tengah,
             //    blok catch tetap menyimpan entri yang sudah terbentuk → kirim ulang tak menggandakan.
+            //    Entri tanpa jam pemeriksaan DILEWATI (tetap antre) & dilaporkan — tidak diisi jam sekarang.
+            $tanpaJamPemeriksaan = 0;
             foreach ($antreanLanjutan as $kunci => $entri) {
-                $idList = $this->kirimSetVital($entri, [...$payloadDasar, 'effectiveDate' => $this->parseDate((string) ($entri['waktuPemeriksaan'] ?? ''))->toIso8601String()]);
+                $jamPemeriksaan = trim((string) ($entri['waktuPemeriksaan'] ?? ''));
+                if ($jamPemeriksaan === '') {
+                    $tanpaJamPemeriksaan++;
+                    continue;
+                }
+                $idList = $this->kirimSetVital($entri, [...$payloadDasar, 'effectiveDate' => $this->parseDate($jamPemeriksaan)->toIso8601String()]);
                 if ($idList !== []) {
                     $satuSehat['observasiLanjutanIds'][$kunci] = $idList;
                     $jumlahBaru += count($idList);
                 }
             }
 
-            if ($jumlahBaru === 0) { $this->dispatch('toast', type: 'error', message: 'Tidak ada nilai vital valid untuk dikirim.'); return; }
+            $pesanTanpaJam = $tanpaJamPemeriksaan > 0 ? " {$tanpaJamPemeriksaan} entri observasi lanjutan dilewati — jam pemeriksaan kosong, lengkapi di EMR." : '';
+            if ($jumlahBaru === 0) { $this->dispatch('toast', type: 'error', message: 'Tidak ada nilai vital valid untuk dikirim.' . $pesanTanpaJam); return; }
 
             $this->saveResult($rjNo, $satuSehat);
-            $this->dispatch('toast', type: 'success', message: "Tanda vital berhasil dikirim ({$jumlahBaru} item"
-                . (count($antreanLanjutan) > 0 ? ', ' . count($antreanLanjutan) . ' entri observasi lanjutan' : '') . ').');
+            $jumlahLanjutan = count($antreanLanjutan) - $tanpaJamPemeriksaan;
+            $this->dispatch('toast', type: $tanpaJamPemeriksaan > 0 ? 'warning' : 'success', message: "Tanda vital berhasil dikirim ({$jumlahBaru} item"
+                . ($jumlahLanjutan > 0 ? ', ' . $jumlahLanjutan . ' entri observasi lanjutan' : '') . ').' . $pesanTanpaJam);
             $this->dispatch('ugd-satu-sehat.refresh', rjNo: $rjNo);
         } catch (\Throwable $e) {
             // Simpan dulu yang sudah TERLANJUR terbentuk di SATUSEHAT sebelum melapor
@@ -293,23 +313,27 @@ new class extends Component {
 
     private function parseDate(string $teksTanggal): Carbon
     {
-        if (empty($teksTanggal)) return Carbon::now();
+        if (empty($teksTanggal)) throw new \RuntimeException('tanggal sumber kosong — lengkapi datanya di EMR dulu (tidak diisi jam sekarang).');
         try { return Carbon::createFromFormat('d/m/Y H:i:s', $teksTanggal); } catch (\Throwable) {
-            try { return Carbon::parse($teksTanggal); } catch (\Throwable) { return Carbon::now(); }
+            try { return Carbon::parse($teksTanggal); } catch (\Throwable) { throw new \RuntimeException("tanggal '{$teksTanggal}' tidak terbaca — betulkan datanya di EMR dulu (tidak diisi jam sekarang)."); }
         }
     }
 };
 ?>
 
-<div class="p-4 bg-canvas border border-hairline shadow-sm rounded-xl dark:bg-gray-900 dark:border-gray-700">
+<div class="{{ $hanyaPratinjau
+    ? 'p-3 border border-brand-green/30 rounded-xl bg-brand-green/5 dark:bg-brand-green/10 dark:border-brand-green/50'
+    : 'p-4 bg-canvas border border-hairline shadow-sm rounded-xl dark:bg-gray-900 dark:border-gray-700' }}">
     <div class="flex items-center justify-between">
         <div class="flex items-center gap-3">
+            @unless ($hanyaPratinjau)
             <div
                 class="flex items-center justify-center w-8 h-8 rounded-full {{ $count > 0 ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-surface-soft text-muted-soft dark:bg-gray-800 dark:text-gray-500' }}">
                 <span class="text-sm font-bold">4</span>
             </div>
+            @endunless
             <div>
-                <div class="font-semibold text-ink dark:text-gray-100">Observation</div>
+                <div class="{{ $hanyaPratinjau ? 'text-xs font-semibold tracking-wide uppercase text-brand-green dark:text-brand-lime' : 'font-semibold text-ink dark:text-gray-100' }}">Observation</div>
                 <div class="text-xs text-muted dark:text-gray-400">Tanda vital pemeriksaan awal, BB/TB, dan tiap entri Observasi Lanjutan.</div>
                 @if ($count > 0)
                     <div class="mt-1 font-mono text-xs text-success dark:text-success">
@@ -321,6 +345,7 @@ new class extends Component {
                 @endif
             </div>
         </div>
+        @unless ($hanyaPratinjau)
         <x-primary-button type="button" wire:click="kirimForCurrent" wire:loading.attr="disabled" :disabled="!$hasEncounter"
             class="!bg-teal-600 hover:!bg-teal-700 {{ $count > 0 && $antreanLanjutan === 0 ? '!bg-emerald-600' : '' }}">
             <span wire:loading.remove wire:target="kirimForCurrent,kirim">
@@ -331,9 +356,10 @@ new class extends Component {
                 </span>
             <span wire:loading wire:target="kirimForCurrent,kirim"><x-loading />...</span>
         </x-primary-button>
+        @endunless
     </div>
 
-    <x-satu-sehat.pratinjau :terbuka="$pratinjauTerbuka"
+    <x-satu-sehat.pratinjau :terbuka="$pratinjauTerbuka" :ringkas="$hanyaPratinjau"
         :baris="$pratinjauTerbuka ? $this->pratinjau : []"
         kosong="Belum ada tanda vital di EMR — Kirim akan ditolak sampai tanda vital diisi." />
 </div>

@@ -29,6 +29,9 @@
                                         ['Kata "re-use"/"reuse" di komentar //', 'Volt salah strip komentar → ParseError', 'hindari kata itu di komentar file Volt'],
                                         ['Call API BPJS sinkron tanpa timeout', 'seluruh worker app membeku', 'Http::timeout(8)->connectTimeout(3)'],
                                         ['Umur dari kolom thn/bln/hari', 'umur pasien basi (snapshot lama)', 'selalu hitung dari birth_date'],
+                                        ['x-radio-button di dalam modal + simpan per klik', 'klik pertama ter-reset (double-fire label bersarang + morph), petugas harus klik pilihan lain lalu balik', 'kartu-tombol wire:click dgn indikator dari properti (contoh: Tindak Lanjut Perencanaan RI); komponen bersama JANGAN diubah'],
+                                        ['Form menyimpan ulang seluruh node berisi ID pihak luar', 'nomor SKDP/SEP yang sudah terbit hilang tertimpa salinan form basi', 'baca ulang DB di bawah lock; ID yang sudah ada tak boleh ditimpa kosong (lihat EMR → Surat Kontrol)'],
+                                        ['Posisi tab/menu dgn indeks tetap (array_splice angka)', 'tab bergeser ke tempat salah saat tab lain ditambah', 'cari posisi berdasarkan key (array_search kolom key)'],
                                     ] as [$ranjau, $gejala, $obat])
                                         <tr>
                                             <td class="ds-td-strong">{{ $ranjau }}</td>

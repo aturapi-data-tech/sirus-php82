@@ -276,7 +276,7 @@ public function createEpisodeOfCare(array $data): array
         'patient'              => ['reference' => 'Patient/' . $data['patientId']],
         'managingOrganization' => ['reference' => 'Organization/' . $this->organizationId],
         'period' => array_filter([
-            'start' => $data['start'] ?? now()->toIso8601String(),
+            'start' => $data['start'] ?? throw new \RuntimeException('start: tanggal wajib dari data'),
             'end'   => $data['end'] ?? null,           // diisi saat pasien pulang → PUT status 'finished'
         ]),
         'careManager' => ['reference' => 'Practitioner/' . $data['careManagerId']],
@@ -329,8 +329,8 @@ public function createClinicalImpression(array $data): array
         'description'  => $data['description'] ?? null,
         'subject'      => ['reference' => 'Patient/'   . $data['patientId']],
         'encounter'    => ['reference' => 'Encounter/' . $data['encounterId']],
-        'effectiveDateTime' => $data['effective'] ?? now()->toIso8601String(),
-        'date'         => now()->toIso8601String(),
+        'effectiveDateTime' => $data['effective'] ?? throw new \RuntimeException('effective: tanggal wajib dari data'),
+        'date'         => $data['date'] ?? throw new \RuntimeException('date: tanggal wajib dari data'),
         'assessor'     => ['reference' => 'Practitioner/' . $data['assessorId']],
         'summary'      => $data['summary'],
         'finding'      => array_map(fn ($f) => [
@@ -386,7 +386,7 @@ public function createNutritionOrder(array $data): array
         'intent'       => 'order',
         'patient'      => ['reference' => 'Patient/'   . $data['patientId']],
         'encounter'    => ['reference' => 'Encounter/' . $data['encounterId']],
-        'dateTime'     => $data['dateTime'] ?? now()->toIso8601String(),
+        'dateTime'     => $data['dateTime'] ?? throw new \RuntimeException('dateTime: tanggal wajib dari data'),
         'orderer'      => ['reference' => 'Practitioner/' . $data['ordererId']],
         'oralDiet'     => [ 'type' => [[
             'coding' => [[
@@ -726,7 +726,7 @@ public function createImmunization(array $data): array
         ]]],
         'patient'            => ['reference' => 'Patient/'   . $data['patientId']],
         'encounter'          => ['reference' => 'Encounter/' . $data['encounterId']],
-        'occurrenceDateTime' => $data['occurrence'] ?? now()->toIso8601String(),
+        'occurrenceDateTime' => $data['occurrence'] ?? throw new \RuntimeException('occurrence: tanggal wajib dari data'),
         'primarySource'      => true,
         'location'           => ['reference' => 'Location/' . $data['locationId']],
         'lotNumber'          => $data['lotNumber'] ?? null,
@@ -816,11 +816,31 @@ percaya nama field di kode lama.
 
 | Modul | Urutan sumber | Alasan |
 |---|---|---|
-| RJ | `taskId7` → `taskId5` → `now()` | probe 150 kunjungan: task5 terisi 125× |
-| UGD | `taskId7` → `perencanaan.pengkajianMedis.selesaiPemeriksaan` → `now()` | task5 terisi **0×**, "Selesai Pemeriksaan" 91× |
-| RI | `exitDate` (tgl pulang) → `now()` | rawat inap tak memakai task antrean |
+| RJ | `taskId7` → `taskId5` → notifikasi (tidak di-finish) | probe 150 kunjungan: task5 terisi 125× |
+| UGD | `taskId7` → `perencanaan.pengkajianMedis.selesaiPemeriksaan` → notifikasi | task5 terisi **0×**, "Selesai Pemeriksaan" 91× |
+| RI | `exitDate` (tgl pulang) → notifikasi | rawat inap tak memakai task antrean |
 
 Lihat skill `bpjs-antrean-task-id` untuk arti taskId 1–7 & 99.
+
+### 11.4b Tanggal kirim = data, bukan `now()` (2026-10-28)
+
+Cadangan hanya ke tanggal lain yang **tercatat**; semua kosong → batal / entri dilewati + toast.
+
+| Kartu | Sumber tanggal | Bila kosong |
+|---|---|---|
+| Penyerahan Obat RI | `taskId6` / `taskId7` **lembar resepnya** (satu terisi → keduanya) | lembar dilewati, nama obat di toast |
+| Penyerahan Obat RJ/UGD | `taskId6` / `taskId7` kunjungan | batal + notifikasi |
+| Resep Obat RI | `resepDate` lembar → tanggal masuk | — |
+| Radiologi RJ/UGD/RI | order `waktu_entry` (RI: `rirad_date`) → tgl kunjungan/masuk; hasil `tgl_bacaan` → jam order | — |
+| Diet RI | `pengkajianDokter.tandaTanganDokter.jamDokterPengkaji` → tanggal masuk | — |
+| Pindah kamar RI | `rsmst_trfrooms.start_date` | Encounter batal + notifikasi |
+| Observasi lanjutan / pemberian obat UGD | jam entri | entri dilewati (tetap antre) |
+| Observasi lanjutan RI (sekali kirim) | jam entri | seluruh kiriman ditahan |
+| Kartu lain | `parseDate()` tanggal sumber | melempar "tanggal sumber kosong — lengkapi di EMR" |
+
+Jaring pengaman: bawaan `?? now()` di 14 trait diganti `?? throw new \RuntimeException(...)` —
+sender yang lupa mengirim tanggal gagal dengan pesan jelas. `EresepJson::lembar()`,
+`ObatKfa::nonRacikanList()`, `RacikanKfa::grupList()` membawa `resepDate` + `taskIdPelayanan` per item.
 
 ### 11.5 Pasangan resep → penyerahan
 

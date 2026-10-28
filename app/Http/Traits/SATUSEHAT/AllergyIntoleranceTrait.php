@@ -64,7 +64,7 @@ trait AllergyIntoleranceTrait
             "recorder"           => [
                 "reference" => "Practitioner/{$data['recorderId']}"
             ],
-            "onsetDateTime"      => $data['onset']   ?? now()->toIso8601String(),
+            "onsetDateTime"      => $data['onset'] ?? throw new \RuntimeException('AllergyIntolerance.onset: tanggal tidak dikirim dari data — tidak diisi jam sekarang.'),
             "note"               => [["text" => $data['note']  ?? '']],
         ];
 
