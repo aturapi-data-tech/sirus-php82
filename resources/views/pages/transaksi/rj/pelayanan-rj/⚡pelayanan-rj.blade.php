@@ -1171,11 +1171,9 @@ new class extends Component {
             </div>
 
             {{-- Sibling components — pelayanan-only: EMR + Modul Dokumen + Administrasi + Cetak Etiket --}}
-            <livewire:pages::transaksi.rj.emr-rj.emr-rj wire:key="rm-perawat-rj-actions" />
+            {{-- EMR RJ + Coding SATUSEHAT RJ: satu modal bertab (mendengar 'emr-rj.rekam-medis.open' & 'coding-fhir-rj.open') --}}
+            <livewire:pages::transaksi.rj.emr-coding-rj.emr-coding-rj wire:key="emr-coding-rj" />
             <livewire:pages::transaksi.rj.emr-rj.modul-dokumen.modul-dokumen-rj wire:key="modul-dokumen-rj" />
-            @can('emr.codingFhir')
-                <livewire:pages::transaksi.rj.coding-fhir-rj.coding-fhir-rj wire:key="coding-fhir-rj" />
-            @endcan
             <livewire:pages::transaksi.rj.emr-rj.log-aktivitas.log-aktivitas-rj wire:key="log-aktivitas-rj" />
             <livewire:pages::transaksi.rj.administrasi-rj.administrasi-rj wire:key="administrasi-rj-actions" />
             <livewire:pages::transaksi.rj.administrasi-rj.transfer-rj-ke-ugd-actions wire:key="transfer-rj-ke-ugd-actions" />
