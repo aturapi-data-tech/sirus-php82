@@ -152,10 +152,11 @@ new class extends Component {
                                 }
                             },
                         }">
-                            <x-tabs variant="pill">
-                                <x-tab :active="!$tabCoding" color="brand" x-on:click="pindahTab('rekamMedis')" x-bind:disabled="pindah">Rekam Medis Rawat Jalan</x-tab>
-                                <x-tab :active="$tabCoding" color="brand" x-on:click="pindahTab('coding')" x-bind:disabled="pindah">Coding SATUSEHAT</x-tab>
-                            </x-tabs>
+                            {{-- Gaya tab standar EMR (underline, sama dengan tab Pengkajian / Status Psikologis) --}}
+                            <div class="flex items-center gap-2">
+                                <x-tab variant="underline" :active="!$tabCoding" x-on:click="pindahTab('rekamMedis')" x-bind:disabled="pindah">Rekam Medis Rawat Jalan</x-tab>
+                                <x-tab variant="underline" :active="$tabCoding" x-on:click="pindahTab('coding')" x-bind:disabled="pindah">Coding SATUSEHAT</x-tab>
+                            </div>
                             <span x-show="pindah" x-cloak class="flex items-center gap-1 text-sm text-muted dark:text-gray-400"><x-loading /> Menyimpan…</span>
                         </div>
                     @endif

@@ -57,19 +57,17 @@
                     </div>
 
                     {{-- YANG AKAN DIKIRIM — kartu SATUSEHAT RJ mode pratinjau (tanpa tombol Kirim). Dimuat saat diminta. --}}
-                    <div class="p-4 mt-4 space-y-3 border shadow-sm bg-canvas border-hairline rounded-2xl dark:bg-gray-900 dark:border-gray-700">
-                        <div class="flex flex-wrap items-center justify-between gap-2">
-                            <div>
-                                <p class="text-base font-semibold text-ink dark:text-gray-100">Yang akan dikirim ke SATUSEHAT</p>
-                                <p class="text-sm text-muted dark:text-gray-400">
-                                    Pratinjau tiap kartu, dari sumber yang sama dengan tombol Kirim di modal SATUSEHAT.
-                                    Pengiriman tetap dari menu Kirim Satu Sehat.
-                                </p>
-                            </div>
-                            <x-secondary-button type="button" wire:click="toggleKiriman" wire:loading.attr="disabled" wire:target="toggleKiriman">
-                                <span wire:loading.remove wire:target="toggleKiriman">{{ $tampilkanKiriman ? 'Sembunyikan' : 'Tampilkan yang akan dikirim' }}</span>
-                                <span wire:loading wire:target="toggleKiriman" class="flex items-center gap-1"><x-loading /> Memuat...</span>
-                            </x-secondary-button>
+                    {{-- Frame buka-tutup (pola panel Status Psikiatri, x-border-form collapsible). Kartu baru
+                         di-mount saat frame PERTAMA kali dibuka ($wire.toggleKiriman) — layar Coding tetap ringan. --}}
+                    <x-border-form :title="__('Yang akan dikirim ke SATUSEHAT')" :align="__('start')" :bgcolor="__('bg-canvas')"
+                        class="mt-4" :collapsible="true" :open="$tampilkanKiriman"
+                        x-init="$watch('open', (buka) => { if (buka && !$wire.tampilkanKiriman) $wire.toggleKiriman() })">
+                        <p class="mb-3 text-sm text-muted dark:text-gray-400">
+                            Pratinjau tiap kartu, dari sumber yang sama dengan tombol Kirim di modal SATUSEHAT.
+                            Pengiriman tetap dari menu Kirim Satu Sehat.
+                        </p>
+                        <div wire:loading.flex wire:target="toggleKiriman" class="items-center gap-2 py-2 text-sm text-muted dark:text-gray-400">
+                            <x-loading /> Memuat kartu…
                         </div>
                         @if ($tampilkanKiriman)
                             <div class="grid grid-cols-1 gap-4 xl:grid-cols-2">
@@ -90,7 +88,7 @@
                                 @endforeach
                             </div>
                         @endif
-                    </div>
+                    </x-border-form>
                 </div>
 
                 {{-- FOOTER --}}

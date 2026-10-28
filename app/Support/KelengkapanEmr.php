@@ -35,34 +35,13 @@ final class KelengkapanEmr
     }
 
     /**
-     * Penilaian (nyeri / risiko jatuh / …) dianggap ada bila: daftar entri tak kosong (format kini), atau
-     * objek format lama yang punya minimal satu nilai terisi DI LUAR daftar pilihan (*Options) — objek lama
-     * UGD sering hanya berisi daftar pilihan kosong dan dulu keliru terhitung "terisi".
+     * Penilaian (nyeri / risiko jatuh / …) dianggap ada bila DAFTAR entrinya tak kosong. Format lama =
+     * satu objek template (daftar pilihan / skala berlabel, mis. "skalaMorseTab" + skor 0) — bukan
+     * penilaian sungguhan, tak dihitung; sama dengan kartu SATUSEHAT yang juga mengabaikannya.
      */
     public static function adaEntriPenilaian(mixed $node): bool
     {
-        if (!is_array($node) || $node === []) {
-            return false;
-        }
-        if (array_is_list($node)) {
-            return true;
-        }
-
-        return self::adaNilaiTerisi($node);
-    }
-
-    private static function adaNilaiTerisi(array $node): bool
-    {
-        foreach ($node as $kunci => $nilai) {
-            if (is_string($kunci) && str_ends_with($kunci, 'Options')) {
-                continue;
-            }
-            if (is_array($nilai) ? self::adaNilaiTerisi($nilai) : filled($nilai)) {
-                return true;
-            }
-        }
-
-        return false;
+        return is_array($node) && $node !== [] && array_is_list($node);
     }
 
     /** Status psikologis terisi: ada toggle dicentang (termasuk "tidak ada kelainan") atau keterangan lain. */

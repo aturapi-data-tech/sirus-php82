@@ -99,7 +99,7 @@ salah satunya diam-diam.
   beri `?? []` bila datanya bisa belum ada), `readOnly`, `tutup` (default `closeModal`). Slot bawaan =
   deskripsi (> 90 karakter otomatis diringkas + "Selengkapnya"); slot `badge` = badge khusus modul;
   slot `tab` (opsional, 2026-10-28) = navigasi tab tepat di sebelah judul — dipakai modal gabungan
-  `emr-coding-{rj,ugd,ri}` (`<x-tabs variant="pill">`). Bila diisi, baris judul rata tengah vertikal
+  `emr-coding-{rj,ugd,ri}` (`<x-tab variant="underline">`, gaya tab standar EMR). Bila diisi, baris judul rata tengah vertikal
   (`items-center`); tanpa slot tetap `items-baseline`.
 - Komponen khusus modul dokumen dikumpulkan di **`resources/views/components/modul-dokumen/`**
   (dipanggil `x-modul-dokumen.<nama>`) — bagian berulang berikutnya (footer, tabel daftar, …) masuk sini.
