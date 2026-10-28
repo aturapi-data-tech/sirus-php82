@@ -425,6 +425,7 @@ TXT,
                 'standar'   => 'Standarisasi per Resource',
                 'indeks-kirim' => 'Indeks Per-Order Penunjang',
                 'ri-ugd'    => 'Status per Modul (RJ/UGD/RI)',
+                'coding'    => 'Coding SATUSEHAT & Alur apikesehatan',
             ],
             'Adopsi' => [
                 'dashboard'  => 'Peta Dashboard SATUSEHAT',
@@ -520,6 +521,8 @@ TXT,
                     @include('pages.panduan-dev.koding-satusehat.koding-satusehat-indeks-kirim')
 
                     @include('pages.panduan-dev.koding-satusehat.koding-satusehat-ri-ugd')
+
+                    @include('pages.panduan-dev.koding-satusehat.koding-satusehat-coding')
 
                     @include('pages.panduan-dev.koding-satusehat.koding-satusehat-dashboard')
 

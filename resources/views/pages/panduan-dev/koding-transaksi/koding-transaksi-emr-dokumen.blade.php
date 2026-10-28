@@ -102,6 +102,30 @@
                                 </ul>
                             </div>
                         </div>
+
+                        <h2 class="ds-title-lg mt-8 mb-3">Surat Kontrol (SKDP) — cek sudah terbit sebelum insert</h2>
+                        <p class="ds-body-sm mb-3" style="max-width:72ch">
+                            Kasus 28/10/2026 (RI): beberapa petugas membuka SKDP pasien yang sama bersamaan. Form yang dibuka
+                            <em>sebelum</em> nomor terbit masih kosong → simpan = <span class="ds-code">Insert Rencana Kontrol</span> lagi →
+                            BPJS menolak → nomor kosong disimpan dan <strong>menimpa nomor yang sudah ada di DB</strong>.
+                            Polanya kini sama di SKDP RJ &amp; RI, lewat <span class="ds-code">App\Support\SuratKontrolBpjs</span>:
+                        </p>
+                        <div class="ds-card-outline" style="padding:0; overflow-x:auto">
+                            <table class="ds-table">
+                                <thead><tr><th>Langkah</th><th>Isi</th></tr></thead>
+                                <tbody>
+                                    <tr><td class="ds-td-strong">1. Nomor di DB</td><td class="ds-body-sm">Form kosong → ambil <span class="ds-code">kontrol.noSKDPBPJS</span> segar dari DB (mungkin baru disimpan petugas lain).</td></tr>
+                                    <tr><td class="ds-td-strong">2. Tanya BPJS</td><td class="ds-body-sm">Masih kosong → VClaim <em>Data Nomor Surat Kontrol Berdasarkan No Kartu</em> (<span class="ds-code">RencanaKontrol/ListRencanaKontrol/Bulan/…/Tahun/…/Nokartu/…/filter/…</span>; filter 1 = tgl entri, 2 = tgl rencana kontrol), disaring <span class="ds-code">noSepAsalKontrol</span> = SEP kunjungan &amp; <span class="ds-code">jnsKontrol</span> "2". VClaim <strong>tidak punya</strong> endpoint cari surat kontrol berdasarkan nomor SEP.</td></tr>
+                                    <tr><td class="ds-td-strong">3. Insert / Update</td><td class="ds-body-sm">Ketemu → pakai nomornya &amp; kirim <strong>Update</strong> (tanggal kontrol yang diubah ikut terbarui). Tidak ketemu → <strong>Insert</strong>.</td></tr>
+                                    <tr><td class="ds-td-strong">4. Simpan DB</td><td class="ds-body-sm">Di bawah row lock: nomor yang sudah ada di DB <strong>tidak pernah ditimpa kosong</strong> (form basi / BPJS down).</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <p class="ds-body-sm mt-3" style="max-width:72ch">
+                            Cek ke BPJS berhenti seketika bila BPJS tak merespons (kode 408) — layar paling lama menunggu satu
+                            timeout. Pola umumnya berlaku untuk node mana pun yang menyimpan <strong>ID balikan pihak luar</strong>:
+                            jangan biarkan salinan form menimpa ID yang sudah ada di DB.
+                        </p>
                     </section>
 
                     {{-- ====== 07 MODUL DOKUMEN ====== --}}
