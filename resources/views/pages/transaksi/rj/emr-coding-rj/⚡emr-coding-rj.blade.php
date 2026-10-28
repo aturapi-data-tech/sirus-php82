@@ -111,7 +111,56 @@ new class extends Component {
 
                 <x-modul-dokumen.header :judul="$tabCoding ? 'Coding SATUSEHAT' : 'Rekam Medis Rawat Jalan'" jalur="RJ"
                     :ikon="$tabCoding ? 'M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4' : 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z'"
-                    tutupAlpine="tryClose()" />
+                    tutupAlpine="tryClose()">
+                    <x-slot:tab>
+                    {{-- TAB di sebelah judul — pindah tab menyimpan otomatis tab yang ditinggalkan --}}
+                    @if ($bisaCoding)
+                        <div class="flex items-center gap-2" x-data="{
+                            pindah: false,
+                            // true bila `jumlah` event masuk sebelum batas waktu dan tak ada yang membalas berhasil:false.
+                            tunggu(namaEvent, jumlah) {
+                                return new Promise((resolve) => {
+                                    let masuk = 0, berhasil = true, batas = null;
+                                    const selesai = () => { window.removeEventListener(namaEvent, catat); clearTimeout(batas); resolve(berhasil && masuk >= jumlah); };
+                                    const catat = (event) => {
+                                        if (event.detail && event.detail.berhasil === false) berhasil = false;
+                                        if (++masuk >= jumlah) selesai();
+                                    };
+                                    window.addEventListener(namaEvent, catat);
+                                    batas = setTimeout(selesai, 4000);
+                                });
+                            },
+                            async pindahTab(tab) {
+                                if (this.pindah || tab === $wire.tabAktif) return;
+                                this.pindah = true;
+                                try {
+                                    let aman = true;
+                                    if ($wire.tabAktif === 'rekamMedis' && !$wire.emrTerkunci) {
+                                        const eventSimpan = @js($this::EVENT_SIMPAN_EMR);
+                                        const hasil = this.tunggu('refresh-after-rj.saved', eventSimpan.length);
+                                        eventSimpan.forEach((namaEvent) => Livewire.dispatch(namaEvent, { silent: true }));
+                                        aman = await hasil;
+                                        if (!aman) Livewire.dispatch('toast', { type: 'error', message: 'Rekam Medis belum tersimpan — periksa isian yang ditandai merah, lalu pindah tab lagi.' });
+                                    } else if ($wire.tabAktif === 'coding') {
+                                        const hasil = this.tunggu('coding-fhir-rj.tersimpan', 1);
+                                        Livewire.dispatch('save-coding-fhir-rj', { rjNo: String($wire.rjNo), senyap: true });
+                                        aman = await hasil;
+                                    }
+                                    if (aman) await $wire.pilihTab(tab);
+                                } finally {
+                                    this.pindah = false;
+                                }
+                            },
+                        }">
+                            <x-tabs variant="pill">
+                                <x-tab :active="!$tabCoding" color="brand" x-on:click="pindahTab('rekamMedis')" x-bind:disabled="pindah">Rekam Medis Rawat Jalan</x-tab>
+                                <x-tab :active="$tabCoding" color="brand" x-on:click="pindahTab('coding')" x-bind:disabled="pindah">Coding SATUSEHAT</x-tab>
+                            </x-tabs>
+                            <span x-show="pindah" x-cloak class="flex items-center gap-1 text-sm text-muted dark:text-gray-400"><x-loading /> Menyimpan…</span>
+                        </div>
+                    @endif
+                    </x-slot:tab>
+                </x-modul-dokumen.header>
 
                 {{-- DISPLAY PASIEN --}}
                 <div class="px-6 pt-3">
@@ -119,52 +168,6 @@ new class extends Component {
                         wire:key="emr-coding-rj-display-pasien-{{ $rjNo }}-{{ $versi }}" />
                 </div>
 
-                {{-- TAB — pindah tab menyimpan otomatis tab yang ditinggalkan --}}
-                @if ($bisaCoding)
-                    <div class="flex items-center gap-2 px-6 mt-3" x-data="{
-                        pindah: false,
-                        // true bila `jumlah` event masuk sebelum batas waktu dan tak ada yang membalas berhasil:false.
-                        tunggu(namaEvent, jumlah) {
-                            return new Promise((resolve) => {
-                                let masuk = 0, berhasil = true, batas = null;
-                                const selesai = () => { window.removeEventListener(namaEvent, catat); clearTimeout(batas); resolve(berhasil && masuk >= jumlah); };
-                                const catat = (event) => {
-                                    if (event.detail && event.detail.berhasil === false) berhasil = false;
-                                    if (++masuk >= jumlah) selesai();
-                                };
-                                window.addEventListener(namaEvent, catat);
-                                batas = setTimeout(selesai, 4000);
-                            });
-                        },
-                        async pindahTab(tab) {
-                            if (this.pindah || tab === $wire.tabAktif) return;
-                            this.pindah = true;
-                            try {
-                                let aman = true;
-                                if ($wire.tabAktif === 'rekamMedis' && !$wire.emrTerkunci) {
-                                    const eventSimpan = @js($this::EVENT_SIMPAN_EMR);
-                                    const hasil = this.tunggu('refresh-after-rj.saved', eventSimpan.length);
-                                    eventSimpan.forEach((namaEvent) => Livewire.dispatch(namaEvent, { silent: true }));
-                                    aman = await hasil;
-                                    if (!aman) Livewire.dispatch('toast', { type: 'error', message: 'Rekam Medis belum tersimpan — periksa isian yang ditandai merah, lalu pindah tab lagi.' });
-                                } else if ($wire.tabAktif === 'coding') {
-                                    const hasil = this.tunggu('coding-fhir-rj.tersimpan', 1);
-                                    Livewire.dispatch('save-coding-fhir-rj', { rjNo: String($wire.rjNo), senyap: true });
-                                    aman = await hasil;
-                                }
-                                if (aman) await $wire.pilihTab(tab);
-                            } finally {
-                                this.pindah = false;
-                            }
-                        },
-                    }">
-                        <x-tabs variant="underline">
-                            <x-tab :active="!$tabCoding" color="emerald" x-on:click="pindahTab('rekamMedis')" x-bind:disabled="pindah">Rekam Medis Rawat Jalan</x-tab>
-                            <x-tab :active="$tabCoding" color="emerald" x-on:click="pindahTab('coding')" x-bind:disabled="pindah">Coding SATUSEHAT</x-tab>
-                        </x-tabs>
-                        <span x-show="pindah" x-cloak class="flex items-center gap-1 text-sm text-muted dark:text-gray-400"><x-loading /> Menyimpan…</span>
-                    </div>
-                @endif
 
                 {{-- Tombol Tutup di footer anak → dirty guard di sini --}}
                 <div class="hidden" x-on:emr-rj-tutup.window="tryClose()" x-on:coding-fhir-rj-tutup.window="tryClose()"></div>

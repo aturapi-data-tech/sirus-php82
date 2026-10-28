@@ -34,6 +34,8 @@
      [ikon] Judul · deskripsi ················ [jalur] [N tersimpan] [slot badge] [Read Only] [✕]
      Slot bawaan = deskripsi (boleh HTML); lebih dari 90 karakter otomatis diringkas dengan
      tombol "Selengkapnya". Slot "badge" = badge khusus modul (mis. Mode Lihat/Edit, transit).
+     Slot "tab" (opsional) = navigasi tab tepat di sebelah judul, mis. modal gabungan EMR + Coding
+     (emr-coding-rj/ugd/ri) — tak diisi = tampilan bawaan tak berubah.
      Tombol tutup = anak terakhir baris flex dengan ml-auto (aturan §2a). --}}
 <div {{ $attributes->merge(['class' => 'px-6 py-2.5 border-b shrink-0 bg-surface-soft border-hairline dark:border-gray-700']) }}>
     <div class="flex items-center min-w-0 gap-3">
@@ -43,8 +45,12 @@
             </svg>
         </div>
 
-        <div class="flex items-baseline flex-1 min-w-0 gap-2">
+        {{-- Ada slot tab (pill, lebih tinggi dari teks) → rata tengah vertikal; tanpa tab tetap baseline seperti semula. --}}
+        <div @class(['flex flex-1 min-w-0 gap-2', 'items-center' => isset($tab), 'items-baseline' => !isset($tab)])>
             <h2 class="text-sm font-semibold truncate shrink-0 text-ink dark:text-gray-100">{{ $judul }}</h2>
+            @isset($tab)
+                <div class="flex items-center min-w-0 ml-2">{{ $tab }}</div>
+            @endisset
             @if ($teksDeskripsi !== '')
                 @if (mb_strlen($teksDeskripsi) > 90)
                     <x-deskripsi-ringkas class="hidden text-xs sm:flex">{{ $slot }}</x-deskripsi-ringkas>
