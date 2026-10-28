@@ -48,7 +48,7 @@ trait ObservationTrait
             ],
             'subject'           => ['reference' => 'Patient/' . $data['patientId']],
             'encounter'         => ['reference' => 'Encounter/' . $data['encounterId']],
-            'effectiveDateTime' => $data['effectiveDate'] ?? now()->toIso8601String(),
+            'effectiveDateTime' => $data['effectiveDate'] ?? throw new \RuntimeException('Observation.effectiveDate: tanggal tidak dikirim dari data — tidak diisi jam sekarang.'),
         ];
 
         // Optional performer

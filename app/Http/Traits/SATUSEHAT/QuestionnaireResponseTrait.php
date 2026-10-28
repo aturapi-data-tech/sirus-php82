@@ -42,7 +42,7 @@ trait QuestionnaireResponseTrait
                 'display'   => $data['patientName'] ?? null,
             ]),
             'encounter'     => ['reference' => 'Encounter/' . $data['encounterId']],
-            'authored'      => $data['authored'] ?? now()->toIso8601String(),
+            'authored'      => $data['authored'] ?? throw new \RuntimeException('QuestionnaireResponse.authored: tanggal tidak dikirim dari data — tidak diisi jam sekarang.'),
             // source = dari siapa jawabannya berasal. Pada telaah resep yang dinilai
             // adalah resep milik pasien, jadi contoh resmi pun menunjuk Patient.
             'source'        => ['reference' => 'Patient/' . $data['patientId']],

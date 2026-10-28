@@ -53,7 +53,7 @@ trait NutritionOrderTrait
             'intent'       => 'order',
             'patient'      => ['reference' => 'Patient/' . $data['patientId']],
             'encounter'    => ['reference' => 'Encounter/' . $data['encounterId']],
-            'dateTime'     => $data['dateTime'] ?? now()->toIso8601String(),
+            'dateTime'     => $data['dateTime'] ?? throw new \RuntimeException('NutritionOrder.dateTime: tanggal tidak dikirim dari data — tidak diisi jam sekarang.'),
             'orderer'      => ['reference' => 'Practitioner/' . $data['ordererId']],
             'oralDiet'     => $oralDiet,
         ];

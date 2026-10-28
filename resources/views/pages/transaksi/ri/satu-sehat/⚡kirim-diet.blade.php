@@ -133,7 +133,9 @@ new class extends Component {
             $dietText = trim((string) ($dataRI['pengkajianDokter']['rencana']['diet'] ?? ''));
             if ($dietText === '') { $this->dispatch('toast', type: 'error', message: 'Diet belum diisi di Pengkajian Dokter (Rencana).'); return; }
 
-            $dateTime = $this->parseDate($dataRI['entryDate'] ?? '')->toIso8601String();
+            // Waktu instruksi = jam TTD dokter pengkaji (diet ditulis di Pengkajian Dokter); cadangan tanggal masuk
+            $jamPengkajian = trim((string) ($dataRI['pengkajianDokter']['tandaTanganDokter']['jamDokterPengkaji'] ?? ''));
+            $dateTime = $this->parseDate($jamPengkajian ?: (string) ($dataRI['entryDate'] ?? ''))->toIso8601String();
 
             $respons = $this->createNutritionOrder([
                 'patientId'   => $patientId,
@@ -173,9 +175,9 @@ new class extends Component {
 
     private function parseDate(string $teksTanggal): Carbon
     {
-        if (empty($teksTanggal)) return Carbon::now();
+        if (empty($teksTanggal)) throw new \RuntimeException('tanggal sumber kosong — lengkapi datanya di EMR dulu (tidak diisi jam sekarang).');
         try { return Carbon::createFromFormat('d/m/Y H:i:s', $teksTanggal); } catch (\Throwable) {
-            try { return Carbon::parse($teksTanggal); } catch (\Throwable) { return Carbon::now(); }
+            try { return Carbon::parse($teksTanggal); } catch (\Throwable) { throw new \RuntimeException("tanggal '{$teksTanggal}' tidak terbaca — betulkan datanya di EMR dulu (tidak diisi jam sekarang)."); }
         }
     }
 };

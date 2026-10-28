@@ -30,14 +30,16 @@ class RacikanKfa
      * Grup racikan siap-kirim beserta alasan untuk yang gagal.
      *
      * @return array<int, array{noRacikan:string, jumlahBahan:int, siap:bool, alasan:string,
-     *                          bahanList:array<int, array{code:string, display:string}>}>
+     *                          bahanList:array<int, array{code:string, display:string}>,
+     *                          resepDate:?string, taskIdPelayanan:array}>
      */
     public static function grupList(array $data): array
     {
         $grupList = [];
         foreach (EresepJson::lembar($data) as $lembar) {
             foreach ($lembar['racikan'] as $noRacikan => $bahanList) {
-                $grupList[] = ['noRacikan' => (string) $noRacikan, 'bahanList' => $bahanList];
+                $grupList[] = ['noRacikan' => (string) $noRacikan, 'bahanList' => $bahanList,
+                    'resepDate' => $lembar['resepDate'], 'taskIdPelayanan' => $lembar['taskIdPelayanan']];
             }
         }
         if ($grupList === []) {
@@ -73,6 +75,8 @@ class RacikanKfa
                 'siap' => $gagal === [] && $bahanSiap !== [],
                 'alasan' => $gagal === [] ? '' : 'bahan tanpa padanan KFA: ' . implode(', ', $gagal),
                 'bahanList' => $bahanSiap,
+                'resepDate' => $grup['resepDate'],
+                'taskIdPelayanan' => $grup['taskIdPelayanan'],
             ];
         }
 

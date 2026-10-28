@@ -191,7 +191,11 @@ new class extends Component {
             $careManagerId = (string) (DB::table('rsmst_doctors')->where('dr_id', $dataRI['drId'] ?? '')->value('dr_uuid') ?? '');
 
             $exitStr = trim((string) ($dataRI['exitDate'] ?? ''));
-            $end = ($exitStr !== '' ? $this->parseDate($exitStr) : Carbon::now())->toIso8601String();
+            if ($exitStr === '') {
+                $this->dispatch('toast', type: 'error', message: 'Tanggal pulang (exitDate) belum diisi — EpisodeOfCare tidak di-finish (jam sekarang tidak relevan).');
+                return;
+            }
+            $end = $this->parseDate($exitStr)->toIso8601String();
             $start = $this->parseDate($dataRI['entryDate'] ?? '')->toIso8601String();
 
             $this->updateEpisodeOfCare($satuSehat['episodeOfCareId'], [
@@ -230,9 +234,9 @@ new class extends Component {
 
     private function parseDate(string $teksTanggal): Carbon
     {
-        if (empty($teksTanggal)) return Carbon::now();
+        if (empty($teksTanggal)) throw new \RuntimeException('tanggal sumber kosong — lengkapi datanya di EMR dulu (tidak diisi jam sekarang).');
         try { return Carbon::createFromFormat('d/m/Y H:i:s', $teksTanggal); } catch (\Throwable) {
-            try { return Carbon::parse($teksTanggal); } catch (\Throwable) { return Carbon::now(); }
+            try { return Carbon::parse($teksTanggal); } catch (\Throwable) { throw new \RuntimeException("tanggal '{$teksTanggal}' tidak terbaca — betulkan datanya di EMR dulu (tidak diisi jam sekarang)."); }
         }
     }
 };

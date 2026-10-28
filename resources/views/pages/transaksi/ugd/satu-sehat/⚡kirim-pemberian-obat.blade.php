@@ -214,6 +214,11 @@ new class extends Component {
                 $namaObat = trim((string) ($entri['namaObatAtauJenisCairan'] ?? '')) ?: $entri['_kfaName'];
                 $dosis = ObservasiLanjutanMap::dosis((string) ($entri['dosis'] ?? ''));
                 $rute = ObservasiLanjutanMap::rute((string) ($entri['rute'] ?? ''));
+                $jamPemberian = trim((string) ($entri['waktuPemberian'] ?? ''));
+                if ($jamPemberian === '') {
+                    $gagalList[] = $namaObat . ' (jam pemberian kosong — lengkapi di EMR)';
+                    continue;
+                }
 
                 $payload = [
                     'medContainedId'    => 'medadm-' . $kunci,
@@ -223,7 +228,7 @@ new class extends Component {
                     'patientId'         => $patientId,
                     'patientName'       => $patientName,
                     'encounterId'       => $satuSehat['encounterId'],
-                    'effectiveDate'     => $this->parseDate((string) ($entri['waktuPemberian'] ?? ''))->toIso8601String(),
+                    'effectiveDate'     => $this->parseDate($jamPemberian)->toIso8601String(),
                     'performerId'       => $practitionerId,
                     'identifierValue'   => 'UGD-' . $rjNo . '-' . $kunci,
                     'category'          => 'inpatient',
@@ -283,9 +288,9 @@ new class extends Component {
 
     private function parseDate(string $teksTanggal): Carbon
     {
-        if (empty($teksTanggal)) return Carbon::now();
+        if (empty($teksTanggal)) throw new \RuntimeException('tanggal sumber kosong — lengkapi datanya di EMR dulu (tidak diisi jam sekarang).');
         try { return Carbon::createFromFormat('d/m/Y H:i:s', $teksTanggal); } catch (\Throwable) {
-            try { return Carbon::parse($teksTanggal); } catch (\Throwable) { return Carbon::now(); }
+            try { return Carbon::parse($teksTanggal); } catch (\Throwable) { throw new \RuntimeException("tanggal '{$teksTanggal}' tidak terbaca — betulkan datanya di EMR dulu (tidak diisi jam sekarang)."); }
         }
     }
 };

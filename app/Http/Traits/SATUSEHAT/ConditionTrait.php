@@ -91,7 +91,7 @@ trait ConditionTrait
             ],
             'subject'            => ['reference' => 'Patient/' . $data['patientId']],
             'encounter'          => ['reference' => 'Encounter/' . $data['encounterId']],
-            'recordedDate'       => $data['recordedDate'] ?? now()->toIso8601String(),
+            'recordedDate'       => $data['recordedDate'] ?? throw new \RuntimeException('Condition.recordedDate: tanggal tidak dikirim dari data — tidak diisi jam sekarang.'),
         ];
 
         if (!empty($data['onsetDate'])) {
@@ -191,7 +191,7 @@ trait ConditionTrait
             'encounter'          => [
                 'reference' => 'Encounter/' . $data['encounterId'],
             ],
-            'recordedDate'       => $data['recordedDate'] ?? Carbon::now()->toIso8601String(),
+            'recordedDate'       => $data['recordedDate'] ?? throw new \RuntimeException('Condition.recordedDate: tanggal tidak dikirim dari data — tidak diisi jam sekarang.'),
         ];
 
         // Optional: onsetDateTime
@@ -281,7 +281,7 @@ trait ConditionTrait
             'encounter'          => [
                 'reference' => 'Encounter/' . $data['encounterId'],
             ],
-            'recordedDate'       => $data['recordedDate'] ?? Carbon::now()->toIso8601String(),
+            'recordedDate'       => $data['recordedDate'] ?? throw new \RuntimeException('Condition.recordedDate: tanggal tidak dikirim dari data — tidak diisi jam sekarang.'),
         ];
 
         // Optional: onsetDateTime

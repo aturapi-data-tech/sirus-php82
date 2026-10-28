@@ -209,10 +209,12 @@ new class extends Component {
             $teks = trim((string) ($dataRJ['rjDate'] ?? ''));
         }
         if ($teks === '') {
-            return Carbon::now();
+            throw new \RuntimeException('waktu telaah & tanggal kunjungan kosong — lengkapi datanya dulu (tidak diisi jam sekarang).');
         }
         try { return Carbon::createFromFormat('d/m/Y H:i:s', $teks); } catch (\Throwable) {
-            try { return Carbon::parse($teks); } catch (\Throwable) { return Carbon::now(); }
+            try { return Carbon::parse($teks); } catch (\Throwable) {
+                throw new \RuntimeException("waktu telaah '{$teks}' tidak terbaca — betulkan datanya dulu (tidak diisi jam sekarang).");
+            }
         }
     }
 

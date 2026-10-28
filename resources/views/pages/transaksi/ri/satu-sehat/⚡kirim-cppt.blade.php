@@ -183,6 +183,7 @@ new class extends Component {
                     'summary'     => $summary,
                     'description' => trim('CPPT ' . $profesi . ' — ' . (string) ($entry['tglCPPT'] ?? '')),
                     'effective'   => $effective->toIso8601String(),
+                    'date'        => $effective->toIso8601String(),
                 ]);
 
                 if (!empty($respons['id'])) {
@@ -229,9 +230,9 @@ new class extends Component {
 
     private function parseDate(string $teksTanggal): Carbon
     {
-        if (empty($teksTanggal)) return Carbon::now();
+        if (empty($teksTanggal)) throw new \RuntimeException('tanggal sumber kosong — lengkapi datanya di EMR dulu (tidak diisi jam sekarang).');
         try { return Carbon::createFromFormat('d/m/Y H:i:s', $teksTanggal); } catch (\Throwable) {
-            try { return Carbon::parse($teksTanggal); } catch (\Throwable) { return Carbon::now(); }
+            try { return Carbon::parse($teksTanggal); } catch (\Throwable) { throw new \RuntimeException("tanggal '{$teksTanggal}' tidak terbaca — betulkan datanya di EMR dulu (tidak diisi jam sekarang)."); }
         }
     }
 };

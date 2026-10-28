@@ -157,7 +157,8 @@ new class extends Component {
             if (empty($patientId)) { $this->dispatch('toast', type: 'error', message: 'Patient IHS Number kosong.'); return; }
 
             $practitionerId = (string) (DB::table('rsmst_doctors')->where('dr_id', $dataRI['drId'] ?? '')->value('dr_uuid') ?? '');
-            $authoredOn = $this->parseDate($dataRI['entryDate'] ?? '')->toIso8601String();
+            // authoredOn per lembar resep (resepDate); lembar tanpa tanggal → tanggal masuk rawat inap
+            $tanggalMasuk = (string) ($dataRI['entryDate'] ?? '');
             $orgId = env('SATUSEHAT_ORGANIZATION_ID');
             $drDesc = $dataRI['drDesc'] ?? '';
             $patientName = $dataRI['regName'] ?? '';
@@ -189,7 +190,7 @@ new class extends Component {
                     'prescriptionId' => $riHdrNo, 'prescriptionItemId' => $itemId,
                     'patientId' => $patientId, 'patientName' => $patientName,
                     'encounterId' => $satuSehat['encounterId'], 'requesterId' => $practitionerId, 'requesterName' => $drDesc,
-                    'authoredOn' => $authoredOn, 'category' => 'inpatient',
+                    'authoredOn' => $this->parseDate((string) ($obat['resepDate'] ?? '') ?: $tanggalMasuk)->toIso8601String(), 'category' => 'inpatient',
                     // Playbook RI 16b (pola RJ/UGD): resep aktif + aturan pakai sebagai teks signa e-resep.
                     'status' => 'active',
                     'dosageInstruction' => $obat['signa'] !== '' ? [['text' => $obat['signa']]] : [],
@@ -236,7 +237,7 @@ new class extends Component {
                     'prescriptionId' => $riHdrNo, 'prescriptionItemId' => $itemIdRacikan,
                     'patientId' => $patientId, 'patientName' => $patientName,
                     'encounterId' => $satuSehat['encounterId'], 'requesterId' => $practitionerId, 'requesterName' => $drDesc,
-                    'authoredOn' => $authoredOn, 'category' => 'inpatient',
+                    'authoredOn' => $this->parseDate((string) ($grup['resepDate'] ?? '') ?: $tanggalMasuk)->toIso8601String(), 'category' => 'inpatient',
                     'status' => 'active',
                     'dosageInstruction' => [], 'dispenseRequest' => [], 'reasonReference' => [],
                 ]);
@@ -297,9 +298,9 @@ new class extends Component {
 
     private function parseDate(string $teksTanggal): Carbon
     {
-        if (empty($teksTanggal)) return Carbon::now();
+        if (empty($teksTanggal)) throw new \RuntimeException('tanggal sumber kosong — lengkapi datanya di EMR dulu (tidak diisi jam sekarang).');
         try { return Carbon::createFromFormat('d/m/Y H:i:s', $teksTanggal); } catch (\Throwable) {
-            try { return Carbon::parse($teksTanggal); } catch (\Throwable) { return Carbon::now(); }
+            try { return Carbon::parse($teksTanggal); } catch (\Throwable) { throw new \RuntimeException("tanggal '{$teksTanggal}' tidak terbaca — betulkan datanya di EMR dulu (tidak diisi jam sekarang)."); }
         }
     }
 };

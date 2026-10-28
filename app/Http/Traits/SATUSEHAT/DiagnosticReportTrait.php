@@ -51,8 +51,8 @@ trait DiagnosticReportTrait
             ],
             'subject'           => ['reference' => 'Patient/' . $data['patientId']],
             'encounter'         => ['reference' => 'Encounter/' . $data['encounterId']],
-            'effectiveDateTime' => $data['effectiveDate']   ?? now()->toIso8601String(),
-            'issued'            => $data['issued']          ?? now()->toIso8601String(),
+            'effectiveDateTime' => $data['effectiveDate'] ?? throw new \RuntimeException('DiagnosticReport.effectiveDate: tanggal tidak dikirim dari data — tidak diisi jam sekarang.'),
+            'issued'            => $data['issued'] ?? throw new \RuntimeException('DiagnosticReport.issued: tanggal tidak dikirim dari data — tidak diisi jam sekarang.'),
         ];
 
         // Identifier (optional)

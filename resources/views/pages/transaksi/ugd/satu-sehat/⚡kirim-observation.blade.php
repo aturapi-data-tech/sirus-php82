@@ -225,19 +225,28 @@ new class extends Component {
 
             // 2) Observasi lanjutan — per entri, jam = waktuPemeriksaan entri. Bila gagal di tengah,
             //    blok catch tetap menyimpan entri yang sudah terbentuk → kirim ulang tak menggandakan.
+            //    Entri tanpa jam pemeriksaan DILEWATI (tetap antre) & dilaporkan — tidak diisi jam sekarang.
+            $tanpaJamPemeriksaan = 0;
             foreach ($antreanLanjutan as $kunci => $entri) {
-                $idList = $this->kirimSetVital($entri, [...$payloadDasar, 'effectiveDate' => $this->parseDate((string) ($entri['waktuPemeriksaan'] ?? ''))->toIso8601String()]);
+                $jamPemeriksaan = trim((string) ($entri['waktuPemeriksaan'] ?? ''));
+                if ($jamPemeriksaan === '') {
+                    $tanpaJamPemeriksaan++;
+                    continue;
+                }
+                $idList = $this->kirimSetVital($entri, [...$payloadDasar, 'effectiveDate' => $this->parseDate($jamPemeriksaan)->toIso8601String()]);
                 if ($idList !== []) {
                     $satuSehat['observasiLanjutanIds'][$kunci] = $idList;
                     $jumlahBaru += count($idList);
                 }
             }
 
-            if ($jumlahBaru === 0) { $this->dispatch('toast', type: 'error', message: 'Tidak ada nilai vital valid untuk dikirim.'); return; }
+            $pesanTanpaJam = $tanpaJamPemeriksaan > 0 ? " {$tanpaJamPemeriksaan} entri observasi lanjutan dilewati — jam pemeriksaan kosong, lengkapi di EMR." : '';
+            if ($jumlahBaru === 0) { $this->dispatch('toast', type: 'error', message: 'Tidak ada nilai vital valid untuk dikirim.' . $pesanTanpaJam); return; }
 
             $this->saveResult($rjNo, $satuSehat);
-            $this->dispatch('toast', type: 'success', message: "Tanda vital berhasil dikirim ({$jumlahBaru} item"
-                . (count($antreanLanjutan) > 0 ? ', ' . count($antreanLanjutan) . ' entri observasi lanjutan' : '') . ').');
+            $jumlahLanjutan = count($antreanLanjutan) - $tanpaJamPemeriksaan;
+            $this->dispatch('toast', type: $tanpaJamPemeriksaan > 0 ? 'warning' : 'success', message: "Tanda vital berhasil dikirim ({$jumlahBaru} item"
+                . ($jumlahLanjutan > 0 ? ', ' . $jumlahLanjutan . ' entri observasi lanjutan' : '') . ').' . $pesanTanpaJam);
             $this->dispatch('ugd-satu-sehat.refresh', rjNo: $rjNo);
         } catch (\Throwable $e) {
             // Simpan dulu yang sudah TERLANJUR terbentuk di SATUSEHAT sebelum melapor
@@ -304,9 +313,9 @@ new class extends Component {
 
     private function parseDate(string $teksTanggal): Carbon
     {
-        if (empty($teksTanggal)) return Carbon::now();
+        if (empty($teksTanggal)) throw new \RuntimeException('tanggal sumber kosong — lengkapi datanya di EMR dulu (tidak diisi jam sekarang).');
         try { return Carbon::createFromFormat('d/m/Y H:i:s', $teksTanggal); } catch (\Throwable) {
-            try { return Carbon::parse($teksTanggal); } catch (\Throwable) { return Carbon::now(); }
+            try { return Carbon::parse($teksTanggal); } catch (\Throwable) { throw new \RuntimeException("tanggal '{$teksTanggal}' tidak terbaca — betulkan datanya di EMR dulu (tidak diisi jam sekarang)."); }
         }
     }
 };

@@ -41,7 +41,7 @@ trait CarePlanTrait
             'description' => (string) $data['description'],
             'subject' => ['reference' => 'Patient/' . $data['patientId']],
             'encounter' => ['reference' => 'Encounter/' . $data['encounterId']],
-            'created' => $data['created'] ?? now()->toIso8601String(),
+            'created' => $data['created'] ?? throw new \RuntimeException('CarePlan.created: tanggal tidak dikirim dari data — tidak diisi jam sekarang.'),
         ];
 
         if (filled($data['authorId'] ?? null)) {

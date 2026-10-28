@@ -220,9 +220,12 @@ new class extends Component {
             $task = $dataUGD['taskIdPelayanan'] ?? [];
             $waktuSelesai = trim((string) ($task['taskId7'] ?? ''))
                 ?: trim((string) ($dataUGD['perencanaan']['pengkajianMedis']['selesaiPemeriksaan'] ?? ''));
-            $akhirIso = $waktuSelesai !== ''
-                ? $this->parseDate($waktuSelesai)->toIso8601String()
-                : now()->toIso8601String();
+            if ($waktuSelesai === '') {
+                $this->dispatch('toast', type: 'error',
+                    message: 'Jam selesai layanan (task 7 / Selesai Pemeriksaan) belum tercatat — Encounter tidak di-finish (jam sekarang tidak relevan).');
+                return;
+            }
+            $akhirIso = $this->parseDate($waktuSelesai)->toIso8601String();
 
             // Encounter.diagnosis wajib (RuleNumber 10457) dan harus merujuk Condition yang
             // sudah dikirim — tolak lebih dulu, jangan kirim lalu pasti ditolak server.
@@ -282,9 +285,9 @@ new class extends Component {
 
     private function parseDate(string $teksTanggal): Carbon
     {
-        if (empty($teksTanggal)) return Carbon::now();
+        if (empty($teksTanggal)) throw new \RuntimeException('tanggal sumber kosong — lengkapi datanya di EMR dulu (tidak diisi jam sekarang).');
         try { return Carbon::createFromFormat('d/m/Y H:i:s', $teksTanggal); } catch (\Throwable) {
-            try { return Carbon::parse($teksTanggal); } catch (\Throwable) { return Carbon::now(); }
+            try { return Carbon::parse($teksTanggal); } catch (\Throwable) { throw new \RuntimeException("tanggal '{$teksTanggal}' tidak terbaca — betulkan datanya di EMR dulu (tidak diisi jam sekarang)."); }
         }
     }
 };

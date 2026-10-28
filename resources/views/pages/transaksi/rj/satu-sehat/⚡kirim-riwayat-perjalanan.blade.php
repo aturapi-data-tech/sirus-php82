@@ -128,6 +128,7 @@ new class extends Component {
                 'encounterId' => $satuSehat['encounterId'],
                 'assessorId'  => $assessorId,
                 'effective'   => $this->parseDate($dataRJ['rjDate'] ?? '')->toIso8601String(),
+                'date'        => $this->parseDate($dataRJ['rjDate'] ?? '')->toIso8601String(),
                 'code'        => ['system' => 'http://snomed.info/sct', 'code' => '312850006', 'display' => 'H/O: Disorder'],
                 'summary'     => $narasi,
             ]);
@@ -166,9 +167,9 @@ new class extends Component {
 
     private function parseDate(string $teksTanggal): Carbon
     {
-        if (empty($teksTanggal)) return Carbon::now();
+        if (empty($teksTanggal)) throw new \RuntimeException('tanggal sumber kosong — lengkapi datanya di EMR dulu (tidak diisi jam sekarang).');
         try { return Carbon::createFromFormat('d/m/Y H:i:s', $teksTanggal); } catch (\Throwable) {
-            try { return Carbon::parse($teksTanggal); } catch (\Throwable) { return Carbon::now(); }
+            try { return Carbon::parse($teksTanggal); } catch (\Throwable) { throw new \RuntimeException("tanggal '{$teksTanggal}' tidak terbaca — betulkan datanya di EMR dulu (tidak diisi jam sekarang)."); }
         }
     }
 };

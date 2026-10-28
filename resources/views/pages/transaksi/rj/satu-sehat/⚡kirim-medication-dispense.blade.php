@@ -6,7 +6,7 @@
 // aproksimasi dari node 'eresep' + waktu kirim:
 //   - authorizingPrescription  → MedicationRequest yang sudah dikirim (index-match), maka WAJIB resep dikirim dulu
 //   - performer                → IHS dokter (idealnya apoteker; belum ada IHS apoteker)
-//   - whenPrepared/HandedOver   → jam taskId6 / taskId7 (cadangan: sekarang)
+//   - whenPrepared/HandedOver   → jam taskId6 / taskId7 (kosong keduanya → batal + notifikasi)
 //   - quantity                 → qty eresep
 // Item tanpa KFA di-skip (pola sama MedicationRequest).
 
@@ -153,11 +153,18 @@ new class extends Component {
             $orgId       = env('SATUSEHAT_ORGANIZATION_ID');
             $patientName = $dataRJ['regName'] ?? '';
             // Jam layanan apotek yang sebenarnya (task 6 = resep diterima/disiapkan, task 7 = obat
-            // diserahkan), bukan jam petugas mengklik; kosong → jam sekarang (perilaku lama).
+            // diserahkan), bukan jam petugas mengklik. Satu terisi → dipakai untuk keduanya;
+            // dua-duanya kosong → DIBATALKAN dengan notifikasi (jam sekarang tidak relevan).
             $task = $dataRJ['taskIdPelayanan'] ?? [];
-            $nowIso = Carbon::now()->toIso8601String();
-            $jamSiapIso = filled($task['taskId6'] ?? null) ? $this->parseDate((string) $task['taskId6'])->toIso8601String() : $nowIso;
-            $jamSerahIso = filled($task['taskId7'] ?? null) ? $this->parseDate((string) $task['taskId7'])->toIso8601String() : $nowIso;
+            $jamSiap = trim((string) ($task['taskId6'] ?? '')) ?: trim((string) ($task['taskId7'] ?? ''));
+            $jamSerah = trim((string) ($task['taskId7'] ?? '')) ?: $jamSiap;
+            if ($jamSiap === '') {
+                $this->dispatch('toast', type: 'error',
+                    message: 'Jam penyiapan/penyerahan obat (task 6/7 Apotek) belum tercatat — selesaikan pelayanan di Apotek dulu.');
+                return;
+            }
+            $jamSiapIso = $this->parseDate($jamSiap)->toIso8601String();
+            $jamSerahIso = $this->parseDate($jamSerah)->toIso8601String();
 
             // Sumber pasangan resep→penyerahan: peta yang dicatat saat MedicationRequest
             // dikirim. Sebelumnya dipasangkan lewat URUTAN daftar — geser satu item saja,
@@ -249,9 +256,9 @@ new class extends Component {
     /** Teks waktu task-id (d/m/Y H:i:s) → Carbon; gagal → sekarang. Pola sama dgn sender RJ lain. */
     private function parseDate(string $teksTanggal): Carbon
     {
-        if (empty($teksTanggal)) return Carbon::now();
+        if (empty($teksTanggal)) throw new \RuntimeException('tanggal sumber kosong — lengkapi datanya di EMR dulu (tidak diisi jam sekarang).');
         try { return Carbon::createFromFormat('d/m/Y H:i:s', $teksTanggal); } catch (\Throwable) {
-            try { return Carbon::parse($teksTanggal); } catch (\Throwable) { return Carbon::now(); }
+            try { return Carbon::parse($teksTanggal); } catch (\Throwable) { throw new \RuntimeException("tanggal '{$teksTanggal}' tidak terbaca — betulkan datanya di EMR dulu (tidak diisi jam sekarang)."); }
         }
     }
 

@@ -150,7 +150,7 @@ new class extends Component {
             $orders = DB::table('rstxn_ugdrads as a')
                 ->leftJoin('rsmst_radiologis as m', 'a.rad_id', '=', 'm.rad_id')
                 ->where('a.rj_no', $rjNo)
-                ->select('a.rad_dtl', 'a.rad_id', 'm.rad_desc', 'm.loinc_code', 'm.loinc_display', 'a.radnum_no', 'a.rad_upload_pdf_foto', 'a.study_uid', 'a.hasil_bacaan')
+                ->select('a.rad_dtl', 'a.rad_id', 'm.rad_desc', 'm.loinc_code', 'm.loinc_display', 'a.radnum_no', 'a.rad_upload_pdf_foto', 'a.study_uid', 'a.hasil_bacaan', 'a.waktu_entry', 'a.tgl_bacaan')
                 ->get();
 
             $regNo   = $dataUGD['regNo'] ?? '';
@@ -182,6 +182,10 @@ new class extends Component {
                 $deskripsi   = trim((string) ($order->rad_desc ?? 'Pemeriksaan Radiologi'));
                 $key         = "{$rjNo}-{$nomorDetail}";
                 $kunciOrder  = "ugd-rad-{$key}";
+                // Waktu per order: jam order dientri, bacaan = tgl_bacaan; kosong → tanggal kunjungan
+                $jamOrder     = (string) ($order->waktu_entry ?? '');
+                $waktuOrder   = $jamOrder !== '' ? $this->parseDate($jamOrder)->toIso8601String() : $waktu;
+                $waktuBacaan  = filled($order->tgl_bacaan ?? null) ? $this->parseDate((string) $order->tgl_bacaan)->toIso8601String() : $waktuOrder;
 
                 $loincCode    = trim((string) ($order->loinc_code ?? ''));
                 $loincDisplay = trim((string) ($order->loinc_display ?? ''));
@@ -229,7 +233,7 @@ new class extends Component {
                         'category' => ['system' => 'http://snomed.info/sct', 'code' => '363679005', 'display' => 'Imaging'],
                         'code' => ['system' => 'http://loinc.org', 'code' => $loincCode, 'display' => $loincDisplay ?: $deskripsi],
                         'subject' => "Patient/{$patientId}", 'encounter' => "Encounter/{$encounterId}",
-                        'occurrenceDateTime' => $waktu, 'authoredOn' => $waktu,
+                        'occurrenceDateTime' => $waktuOrder, 'authoredOn' => $waktuOrder,
                         'requester' => "Practitioner/{$practitionerId}", 'requesterDisplay' => $drDesc,
                         'performer' => $pjPenunjang['reference'] ?? null,
                         'performerDisplay' => $pjPenunjang['display'] ?? null,
@@ -254,13 +258,13 @@ new class extends Component {
                     if (empty($obsId)) {
                         $observation = $this->createObservation([
                             'patientId' => $patientId, 'encounterId' => $encounterId, 'performerId' => $practitionerId,
-                            'effectiveDate' => $waktu,
+                            'effectiveDate' => $waktuBacaan,
                             'category' => [['coding' => [['system' => 'http://terminology.hl7.org/CodeSystem/observation-category', 'code' => 'imaging', 'display' => 'Imaging']]]],
                             'code' => ['system' => 'http://loinc.org', 'code' => $loincCode, 'display' => $loincDisplay ?: $deskripsi],
                             'valueString' => $bacaan !== '' ? $bacaan : 'Lihat hasil pada lampiran radiologi',
                             // Playbook IGD 13.5: bacaan menunjuk order-nya.
                             'basedOn' => ["ServiceRequest/{$serviceRequestId}"],
-                            'issued' => $waktu,
+                            'issued' => $waktuBacaan,
                         ]);
                         $obsId = $observation['id'] ?? null;
                         if (!empty($obsId)) {
@@ -274,7 +278,7 @@ new class extends Component {
                         'status' => 'final', 'categoryCode' => 'RAD', 'categoryDisplay' => 'Radiology',
                         'codeSystem' => 'http://loinc.org', 'code' => $loincCode, 'display' => $loincDisplay ?: $deskripsi,
                         'patientId' => $patientId, 'encounterId' => $encounterId,
-                        'effectiveDate' => $waktu, 'issued' => $waktu,
+                        'effectiveDate' => $waktuBacaan, 'issued' => $waktuBacaan,
                         'performer' => ["Practitioner/{$practitionerId}"], 'basedOn' => [$serviceRequestId],
                     ];
                     if (!empty($obsId)) { $drPayload['observationIds'] = [$obsId]; }
@@ -308,7 +312,7 @@ new class extends Component {
                         'studyUid'         => $studyUid,
                         'patientId'        => $patientId,
                         'encounterId'      => $encounterId,
-                        'started'          => $waktu,
+                        'started'          => $waktuOrder,
                         'modalityCode'     => $modalitas['code'],
                         'modalityDisplay'  => $modalitas['display'],
                         'procedureCode'    => $loincCode,
@@ -389,9 +393,9 @@ new class extends Component {
 
     private function parseDate(string $teksTanggal): Carbon
     {
-        if (empty($teksTanggal)) return Carbon::now();
+        if (empty($teksTanggal)) throw new \RuntimeException('tanggal sumber kosong — lengkapi datanya di EMR dulu (tidak diisi jam sekarang).');
         try { return Carbon::createFromFormat('d/m/Y H:i:s', $teksTanggal); } catch (\Throwable) {
-            try { return Carbon::parse($teksTanggal); } catch (\Throwable) { return Carbon::now(); }
+            try { return Carbon::parse($teksTanggal); } catch (\Throwable) { throw new \RuntimeException("tanggal '{$teksTanggal}' tidak terbaca — betulkan datanya di EMR dulu (tidak diisi jam sekarang)."); }
         }
     }
 };

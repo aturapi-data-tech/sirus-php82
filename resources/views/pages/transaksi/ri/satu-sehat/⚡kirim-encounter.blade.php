@@ -198,7 +198,7 @@ new class extends Component {
             }
             // 2b) Pindah kamar → append location baru untuk kamar yang belum tercatat
             elseif (!empty($satuSehat['encounterId']) && $roomId !== '' && !in_array($roomId, $satuSehat['encounterRooms'] ?? [], true)) {
-                $this->appendEncounterLocation($satuSehat['encounterId'], $locationId);
+                $this->appendEncounterLocation($satuSehat['encounterId'], $locationId, $this->jamMasukKamar($riHdrNo, $roomId));
                 $satuSehat['encounterRooms'][] = $roomId;
             }
 
@@ -236,7 +236,11 @@ new class extends Component {
             // RI: waktu selesai = tgl pulang (exitDate) — bukan task antrean seperti
             // RJ/UGD, dan bukan now() yang berarti jam klik petugas.
             $exitStr = trim((string) ($dataRI['exitDate'] ?? ''));
-            $akhirIso = ($exitStr !== '' ? $this->parseDate($exitStr) : Carbon::now())->toIso8601String();
+            if ($exitStr === '') {
+                $this->dispatch('toast', type: 'error', message: 'Tanggal pulang (exitDate) belum diisi — Encounter tidak di-finish (jam sekarang tidak relevan).');
+                return;
+            }
+            $akhirIso = $this->parseDate($exitStr)->toIso8601String();
 
             // Encounter.diagnosis wajib (RuleNumber 10457) dan harus merujuk Condition
             // yang sudah dikirim — jangan dikirim tanpa itu, pasti ditolak.
@@ -276,15 +280,31 @@ new class extends Component {
     /**
      * Append satu entri location[] (pindah kamar) tanpa mengubah status.
      */
-    private function appendEncounterLocation(string $encounterId, string $locationId): void
+    private function appendEncounterLocation(string $encounterId, string $locationId, Carbon $mulai): void
     {
         $encounterTersimpan = $this->getEncounter($encounterId);
         $encounterTersimpan['location'][] = [
             'location' => ['reference' => 'Location/' . $locationId],
             'status'   => 'active',
-            'period'   => ['start' => Carbon::now()->toIso8601String()],
+            'period'   => ['start' => $mulai->toIso8601String()],
         ];
         $this->makeRequest('put', "Encounter/{$encounterId}", $encounterTersimpan);
+    }
+
+    /** Jam pasien masuk kamar ini = start_date pindah kamar terakhir (rsmst_trfrooms); tak ada → batal + notifikasi. */
+    private function jamMasukKamar(string $riHdrNo, string $roomId): Carbon
+    {
+        $mulai = DB::table('rsmst_trfrooms')
+            ->where('rihdr_no', $riHdrNo)
+            ->where('room_id', $roomId)
+            ->orderByDesc('start_date')
+            ->value(DB::raw("to_char(start_date, 'dd/mm/yyyy hh24:mi:ss')"));
+
+        if (blank($mulai)) {
+            throw new \RuntimeException("jam masuk kamar {$roomId} tidak ditemukan di riwayat pindah kamar — tidak diisi jam sekarang.");
+        }
+
+        return Carbon::createFromFormat('d/m/Y H:i:s', (string) $mulai);
     }
 
     private function loadData(string $riHdrNo): array
@@ -309,7 +329,7 @@ new class extends Component {
     private function parseDate(string $teksTanggal): Carbon
     {
         if (empty($teksTanggal)) {
-            return Carbon::now();
+            throw new \RuntimeException('tanggal sumber kosong — lengkapi datanya di EMR dulu (tidak diisi jam sekarang).');
         }
         try {
             return Carbon::createFromFormat('d/m/Y H:i:s', $teksTanggal);
@@ -317,7 +337,7 @@ new class extends Component {
             try {
                 return Carbon::parse($teksTanggal);
             } catch (\Throwable) {
-                return Carbon::now();
+                throw new \RuntimeException("tanggal '{$teksTanggal}' tidak terbaca — betulkan datanya di EMR dulu (tidak diisi jam sekarang).");
             }
         }
     }

@@ -247,9 +247,19 @@ new class extends Component {
                 ->mapWithKeys(fn($item) => [(string) ($item['kunci'] ?? '') => (string) $item['id']])
                 ->all();
 
+            // Kartu ini SEKALI KIRIM (observasiLanjutanIds diisi sekaligus) — baris tanpa jam tak bisa
+            // menyusul, jadi seluruh kiriman ditahan + notifikasi sampai jamnya dilengkapi (bukan jam sekarang).
+            $tanpaJam = collect($obat)->filter(fn($entri) => trim((string) ($entri['waktuPemberian'] ?? '')) === '')->count()
+                + collect($oksigen)->filter(fn($entri) => trim((string) ($entri['tanggalWaktuMulai'] ?? '')) === '' && ObservasiLanjutanMap::oksigen($entri) !== [])->count()
+                + collect($keluar)->filter(fn($entri) => trim((string) ($entri['waktuPengeluaran'] ?? '')) === '' && ObservasiLanjutanMap::pengeluaran($entri) !== [])->count();
+            if ($tanpaJam > 0) {
+                $this->dispatch('toast', type: 'error', message: "Observasi lanjutan belum dikirim: {$tanpaJam} baris (obat/cairan, oksigen, pengeluaran) jamnya kosong — lengkapi di EMR dulu.");
+                return;
+            }
+
             // 1) Pemberian obat & cairan → MedicationAdministration
             foreach ($obat as $indeks => $entriObat) {
-                $waktu = $this->parseDate((string) ($entriObat['waktuPemberian'] ?? ''))->toIso8601String();
+                $waktu = $this->parseDate((string) $entriObat['waktuPemberian'])->toIso8601String();
                 $dosis = ObservasiLanjutanMap::dosis((string) ($entriObat['dosis'] ?? ''));
                 $rute = ObservasiLanjutanMap::rute((string) ($entriObat['rute'] ?? ''));
 
@@ -284,16 +294,18 @@ new class extends Component {
             // 2) Oksigen & 3) pengeluaran cairan → Observation
             foreach ([[$oksigen, 'oksigen', 'tanggalWaktuMulai'], [$keluar, 'pengeluaran', 'waktuPengeluaran']] as [$rows, $jenis, $waktuKey]) {
                 foreach ($rows as $entri) {
-                    $waktu = $this->parseDate((string) ($entri[$waktuKey] ?? ''))->toIso8601String();
+                    $obsList = $jenis === 'oksigen'
+                        ? ObservasiLanjutanMap::oksigen($entri)
+                        : ObservasiLanjutanMap::pengeluaran($entri);
+                    if ($obsList === []) {
+                        continue;
+                    }
                     $payloadDasar = [
                         'patientId'     => $patientId,
                         'encounterId'   => $satuSehat['encounterId'],
                         'performerId'   => $practitionerId,
-                        'effectiveDate' => $waktu,
+                        'effectiveDate' => $this->parseDate((string) $entri[$waktuKey])->toIso8601String(),
                     ];
-                    $obsList = $jenis === 'oksigen'
-                        ? ObservasiLanjutanMap::oksigen($entri)
-                        : ObservasiLanjutanMap::pengeluaran($entri);
                     foreach ($obsList as $observation) {
                         $respons = $this->createObservation(array_merge($payloadDasar, $observation));
                         if (!empty($respons['id'])) $idList[] = $respons['id'];
@@ -341,9 +353,9 @@ new class extends Component {
 
     private function parseDate(string $teksTanggal): Carbon
     {
-        if (empty($teksTanggal)) return Carbon::now();
+        if (empty($teksTanggal)) throw new \RuntimeException('tanggal sumber kosong — lengkapi datanya di EMR dulu (tidak diisi jam sekarang).');
         try { return Carbon::createFromFormat('d/m/Y H:i:s', $teksTanggal); } catch (\Throwable) {
-            try { return Carbon::parse($teksTanggal); } catch (\Throwable) { return Carbon::now(); }
+            try { return Carbon::parse($teksTanggal); } catch (\Throwable) { throw new \RuntimeException("tanggal '{$teksTanggal}' tidak terbaca — betulkan datanya di EMR dulu (tidak diisi jam sekarang)."); }
         }
     }
 };

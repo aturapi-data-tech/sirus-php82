@@ -3,9 +3,10 @@
 // Kirim Obat Diserahkan (MedicationDispense) — RI.
 //
 // Sumber = eresepHdr[].eresep[] (obat non-racikan), KFA via immst_products.
-// obatList() IDENTIK dgn kirim-medication-request (filter KFA + urutan sama) →
+// obatList() = ObatKfa::nonRacikanList, sama dgn kirim-medication-request (urutan sama) →
 // tiap dispense sejajar 1:1 dengan medicationRequestIds & mereferensikannya.
 // WAJIB: MedicationRequest dikirim lebih dulu (butuh mrIds). Racikan belum ditangani.
+// whenPrepared/HandedOver = taskId6 / taskId7 lembar resepnya; keduanya kosong → obat dilewati + dilaporkan.
 
 use Livewire\Component;
 use Livewire\Attributes\On;
@@ -15,6 +16,7 @@ use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Http\Traits\SATUSEHAT\MedicationDispenseTrait;
 use App\Support\Terminologi\MedicationRequestItem;
+use App\Support\Terminologi\ObatKfa;
 
 new class extends Component {
     use EmrRITrait, MedicationDispenseTrait;
@@ -98,40 +100,13 @@ new class extends Component {
     }
 
     /**
-     * Daftar obat non-racikan ber-KFA — HARUS identik urutannya dengan
-     * kirim-medication-request agar sejajar dengan medicationRequestIds.
-     * @return array<int, array{code:string, display:string, qty:int}>
+     * Daftar obat non-racikan ber-KFA — helper yang SAMA dengan kirim-medication-request,
+     * jadi urutannya sejajar dengan medicationRequestIds. Tiap item membawa resepDate &
+     * taskIdPelayanan lembar resepnya (waktu siap/serah).
      */
     private function obatList(array $dataRI): array
     {
-        $itemList = [];
-        foreach ($dataRI['eresepHdr'] ?? [] as $resepHeader) {
-            foreach ($resepHeader['eresep'] ?? [] as $obat) {
-                $productId = trim((string) ($obat['productId'] ?? ''));
-                if ($productId === '') continue;
-                $itemList[] = ['productId' => $productId, 'productName' => (string) ($obat['productName'] ?? ''), 'qty' => (int) ($obat['qty'] ?? 1)];
-            }
-        }
-        if (empty($itemList)) return [];
-
-        $productIdList = array_values(array_unique(array_column($itemList, 'productId')));
-        $kfaMap = DB::table('immst_products')
-            ->whereIn('product_id', $productIdList)
-            ->get(['product_id', 'product_id_satusehat', 'product_name_satusehat'])
-            ->keyBy('product_id');
-
-        $obatKfaList = [];
-        foreach ($itemList as $obat) {
-            $master = $kfaMap->get($obat['productId']);
-            $kfaCode = (string) ($master->product_id_satusehat ?? '');
-            if ($kfaCode === '') continue;
-            $obatKfaList[] = [
-                'code'    => $kfaCode,
-                'display' => (string) ($master->product_name_satusehat ?? '') ?: $obat['productName'],
-                'qty'     => $obat['qty'],
-            ];
-        }
-        return $obatKfaList;
+        return ObatKfa::nonRacikanList($dataRI);
     }
 
     public function kirimForCurrent(): void
@@ -183,18 +158,28 @@ new class extends Component {
 
             $orgId       = env('SATUSEHAT_ORGANIZATION_ID');
             $patientName = $dataRI['regName'] ?? '';
-            $nowIso      = Carbon::now()->toIso8601String();
 
             $obatList = $this->obatList($dataRI);
             if (empty($obatList)) { $this->dispatch('toast', type: 'error', message: 'Tidak ada obat ber-KFA untuk diserahkan.'); return; }
 
             $satuSehat['medicationDispenseIds'] = [];
+            $tanpaJamSerah = [];
             foreach ($obatList as $indeks => $obat) {
                 $mrId = $mrIds[$indeks] ?? null;
                 if (empty($mrId)) continue; // tak sejajar dgn MedicationRequest → skip
 
                 $nomorUrut = $indeks + 1;
                 $itemId = "{$riHdrNo}-{$nomorUrut}";
+                // Jam task 6/7 lembar resepnya; satu terisi → dipakai keduanya; kosong → dilewati & dilaporkan
+                $task = $obat['taskIdPelayanan'] ?? [];
+                $jamSiap = trim((string) ($task['taskId6'] ?? '')) ?: trim((string) ($task['taskId7'] ?? ''));
+                $jamSerah = trim((string) ($task['taskId7'] ?? '')) ?: $jamSiap;
+                if ($jamSiap === '') {
+                    $tanpaJamSerah[] = $obat['display'] . ' (resep ' . ($obat['resepDate'] ?? '-') . ')';
+                    continue;
+                }
+                $jamSiapIso = $this->parseDate($jamSiap)->toIso8601String();
+                $jamSerahIso = $this->parseDate($jamSerah)->toIso8601String();
 
                 $respons = $this->createMedicationDispense([
                     'orgId' => $orgId, 'registrationId' => $obat['code'], 'prescriptionItemId' => $itemId,
@@ -204,7 +189,7 @@ new class extends Component {
                     'medicationTypeCode' => 'NC', 'medicationTypeDisplay' => 'Non-compound',
                     'patientId' => $patientId, 'patientName' => $patientName, 'encounterId' => $satuSehat['encounterId'],
                     'status' => 'completed', 'category' => 'inpatient',
-                    'whenPrepared' => $nowIso, 'whenHandedOver' => $nowIso,
+                    'whenPrepared' => $jamSiapIso, 'whenHandedOver' => $jamSerahIso,
                     'performer' => [['actor' => ['reference' => "Practitioner/{$performerId}"]]],
                     'dosageInstruction' => [],
                     'authorizingPrescription' => ['reference' => "MedicationRequest/{$mrId}"],
@@ -219,11 +204,12 @@ new class extends Component {
                 if (!empty($respons['id'])) $satuSehat['medicationDispenseIds'][] = $respons['id'];
             }
 
-            if (empty($satuSehat['medicationDispenseIds'])) { $this->dispatch('toast', type: 'error', message: 'Tidak ada obat yang bisa diserahkan.'); return; }
+            $pesanTanpaJam = $tanpaJamSerah === [] ? '' : ' ' . count($tanpaJamSerah) . ' obat dilewati — jam penyiapan/penyerahan (task 6/7 Apotek) belum tercatat: ' . implode('; ', $tanpaJamSerah) . '.';
+            if (empty($satuSehat['medicationDispenseIds'])) { $this->dispatch('toast', type: 'error', message: 'Tidak ada obat yang bisa diserahkan.' . $pesanTanpaJam); return; }
 
             $this->saveResult($riHdrNo, $satuSehat);
             $count = count($satuSehat['medicationDispenseIds']);
-            $this->dispatch('toast', type: 'success', message: "Obat diserahkan berhasil dikirim ({$count} item).");
+            $this->dispatch('toast', type: $tanpaJamSerah === [] ? 'success' : 'warning', message: "Obat diserahkan berhasil dikirim ({$count} item)." . $pesanTanpaJam);
             $this->dispatch('ri-satu-sehat.refresh', riHdrNo: $riHdrNo);
         } catch (\Throwable $e) {
             // Simpan dulu yang sudah TERLANJUR terbentuk di SATUSEHAT sebelum melapor
@@ -233,6 +219,14 @@ new class extends Component {
             // sendiri supaya kegagalan menyimpan tidak menutupi error aslinya.
             try { if (isset($satuSehat)) { $this->saveResult($riHdrNo, $satuSehat); } } catch (\Throwable) {}
             $this->dispatch('toast', type: 'error', message: 'Obat diserahkan gagal: ' . $e->getMessage());
+        }
+    }
+
+    private function parseDate(string $teksTanggal): Carbon
+    {
+        if (empty($teksTanggal)) throw new \RuntimeException('tanggal sumber kosong — lengkapi datanya di EMR dulu (tidak diisi jam sekarang).');
+        try { return Carbon::createFromFormat('d/m/Y H:i:s', $teksTanggal); } catch (\Throwable) {
+            try { return Carbon::parse($teksTanggal); } catch (\Throwable) { throw new \RuntimeException("tanggal '{$teksTanggal}' tidak terbaca — betulkan datanya di EMR dulu (tidak diisi jam sekarang)."); }
         }
     }
 

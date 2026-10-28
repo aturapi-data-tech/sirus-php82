@@ -17,7 +17,7 @@ namespace App\Support;
  *     eresepHdr[] → { resepNo, resepDate, eresep[], eresepRacikan[], slsNo?, tandaTanganDokter? }
  *
  * lembar() memulangkan bentuk seragam, sehingga pemanggil tidak perlu tahu modulnya:
- *   [ ['resepNo'=>?, 'resepDate'=>?, 'nonRacikan'=>[...], 'racikan'=>['R1'=>[bahan...], ...]], ... ]
+ *   [ ['resepNo'=>?, 'resepDate'=>?, 'taskIdPelayanan'=>[...], 'nonRacikan'=>[...], 'racikan'=>['R1'=>[bahan...], ...]], ... ]
  *
  * Racikan dikelompokkan per `noRacikan` ("R1","R2"): satu grup = satu obat racikan,
  * anggotanya = bahan-bahannya. Baris tanpa noRacikan dikumpulkan ke grup '-'.
@@ -33,7 +33,7 @@ class EresepJson
     /**
      * Normalkan node e-resep jadi daftar lembar resep.
      *
-     * @return array<int, array{resepNo: int|null, resepDate: string|null, nonRacikan: array, racikan: array}>
+     * @return array<int, array{resepNo: int|null, resepDate: string|null, taskIdPelayanan: array, nonRacikan: array, racikan: array}>
      */
     public static function lembar(array $data): array
     {
@@ -47,6 +47,7 @@ class EresepJson
                 $out[] = [
                     'resepNo'    => isset($hdr['resepNo']) ? (int) $hdr['resepNo'] : null,
                     'resepDate'  => $hdr['resepDate'] ?? null,
+                    'taskIdPelayanan' => is_array($hdr['taskIdPelayanan'] ?? null) ? $hdr['taskIdPelayanan'] : [],
                     'nonRacikan' => array_values(array_filter($hdr['eresep'] ?? [], 'is_array')),
                     'racikan'    => self::kelompokkanRacikan($hdr['eresepRacikan'] ?? []),
                 ];
@@ -65,6 +66,7 @@ class EresepJson
         return [[
             'resepNo'    => null,
             'resepDate'  => null,
+            'taskIdPelayanan' => [],
             'nonRacikan' => array_values(array_filter(is_array($nonRacikan) ? $nonRacikan : [], 'is_array')),
             'racikan'    => self::kelompokkanRacikan($racikan),
         ]];

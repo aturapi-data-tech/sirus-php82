@@ -60,7 +60,7 @@ trait ProcedureTrait
             ],
             'subject'           => ['reference' => 'Patient/'    . $data['patientId']],
             'encounter'         => ['reference' => 'Encounter/' . $data['encounterId']],
-            'performedDateTime' => $data['performedDateTime'] ?? now()->toIso8601String(),
+            'performedDateTime' => $data['performedDateTime'] ?? throw new \RuntimeException('Procedure.performedDateTime: tanggal tidak dikirim dari data — tidak diisi jam sekarang.'),
         ];
 
         // Opsional (aditif) — kategori, coding tambahan, catatan. Tidak diisi = payload lama tak berubah.
