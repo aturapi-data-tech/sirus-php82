@@ -12,6 +12,8 @@ use Carbon\Carbon;
  *     pelayanan, jadi bukan beban pengisi EMR. Ditampilkan terpisah lewat kodingSatuSehat().
  *   - Kondisi Saat Pulang (wajib SATUSEHAT) dihitung di Perencanaan hanya untuk kunjungan
  *     mulai 28/10/2026 (RI: pasien PULANG mulai tanggal itu) — angka lama tidak bergeser.
+ *   - Kolom tambahan opsional (keluhan penyerta, riwayat keluarga, riwayat pengobatan, status
+ *     psikologis, prognosis) TAMPIL di daftar periksa dengan tanda 'opsional' => true, TIDAK dihitung.
  */
 final class KelengkapanEmr
 {
@@ -61,6 +63,13 @@ final class KelengkapanEmr
         }
 
         return false;
+    }
+
+    /** Status psikologis terisi: ada toggle dicentang (termasuk "tidak ada kelainan") atau keterangan lain. */
+    public static function statusPsikologisTerisi(array $statusPsikologis): bool
+    {
+        return \App\Support\Terminologi\StatusPsikologisMap::aktif($statusPsikologis) !== []
+            || filled($statusPsikologis['sebutstatusPsikologis'] ?? null);
     }
 
     /** Alergi ter-coding: "tidak ada" (716186003 di snomedCode) ATAU daftar alergen ber-kode (layar Coding). */

@@ -159,7 +159,9 @@ trait EmrCompletenessRJTrait
      * dihitung di score* methods. Dipakai modal info-kelengkapan-emr agar
      * user tahu field mana yang sudah/belum diisi (bukan cuma % total).
      *
-     * @return array<string, array{label: string, weight: int, items: array<int, array{label: string, filled: bool}>}>
+     * Item ber-'opsional' => true hanya tampil (kolom tambahan) — TIDAK dihitung di score*.
+     *
+     * @return array<string, array{label: string, weight: int, items: array<int, array{label: string, filled: bool, opsional?: bool}>}>
      */
     public function collectChecklistRJ(array $json): array
     {
@@ -180,6 +182,11 @@ trait EmrCompletenessRJTrait
                     ['label' => 'Alergi (boleh "Tidak ada")', 'filled' => filled($a['alergi']['alergi'] ?? null) || filled($a['alergi']['adaAlergi'] ?? null)],
                     ['label' => 'Riwayat penyakit dahulu (boleh "Tidak ada")', 'filled' => filled($a['riwayatPenyakitDahulu']['riwayatPenyakitDahulu'] ?? null)],
                     ['label' => 'Waktu datang', 'filled' => filled($a['pengkajianPerawatan']['jamDatang'] ?? null)],
+                    // Opsional — tampil, TIDAK dihitung ke persentase.
+                    ['label' => 'Keluhan penyerta', 'filled' => filled($a['keluhanPenyerta']['keluhanPenyerta'] ?? null), 'opsional' => true],
+                    ['label' => 'Riwayat penyakit keluarga', 'filled' => filled($a['riwayatPenyakitKeluarga']['riwayatPenyakitKeluarga'] ?? null), 'opsional' => true],
+                    ['label' => 'Riwayat pengobatan', 'filled' => filled($a['riwayatPengobatan']['riwayatPengobatan'] ?? null), 'opsional' => true],
+                    ['label' => 'Status psikologis', 'filled' => KelengkapanEmr::statusPsikologisTerisi((array) ($a['statusPsikologis'] ?? [])), 'opsional' => true],
                 ],
             ],
             'o' => [
@@ -217,7 +224,9 @@ trait EmrCompletenessRJTrait
                     ['label' => 'TTD dokter pemeriksa', 'filled' => filled($r['pengkajianMedis']['drPemeriksa'] ?? null)],
                 ], KelengkapanEmr::wajibKondisiPulang($json['rjDate'] ?? null)
                     ? [['label' => 'Kondisi saat pulang (wajib SATUSEHAT)', 'filled' => filled($r['kondisiPulang']['kondisiPulang'] ?? null)]]
-                    : []),
+                    : [], [
+                    ['label' => 'Prognosis', 'filled' => filled($r['prognosis']['prognosis'] ?? null), 'opsional' => true],
+                ]),
             ],
             'n' => [
                 'label' => 'Penilaian',

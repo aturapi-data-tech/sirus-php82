@@ -153,8 +153,9 @@ new class extends Component {
                     @foreach ($checklist as $key => $section)
                         @php
                             $style = $sectionStyles[$key] ?? ['bg' => 'bg-surface-soft dark:bg-gray-900/20', 'badge' => 'text-body bg-surface-soft dark:bg-gray-700 dark:text-gray-300', 'border' => 'border border-hairline dark:border-gray-700'];
-                            $filledCount = collect($section['items'])->where('filled', true)->count();
-                            $totalCount = count($section['items']);
+                            $itemWajib = collect($section['items'])->reject(fn($item) => $item['opsional'] ?? false);
+                            $filledCount = $itemWajib->where('filled', true)->count();
+                            $totalCount = $itemWajib->count();
                         @endphp
                         <div class="overflow-hidden rounded-lg {{ $style['border'] }}">
                             <div class="flex items-center justify-between px-4 py-2 {{ $style['bg'] }}">
@@ -171,7 +172,11 @@ new class extends Component {
                             <ul class="divide-y divide-hairline-soft dark:divide-gray-700">
                                 @foreach ($section['items'] as $item)
                                     <li class="flex items-start gap-2 px-4 py-2 text-sm text-body dark:text-gray-300">
-                                        @if ($item['filled'])
+                                        @if ($item['opsional'] ?? false)
+                                            <span class="{{ $item['filled'] ? 'text-success dark:text-success' : 'text-muted dark:text-gray-400' }}">{{ $item['filled'] ? '✓' : '○' }}</span>
+                                            <div class="{{ $item['filled'] ? '' : 'text-muted dark:text-gray-400' }}">{{ $item['label'] }}
+                                                <x-badge variant="gray" class="ml-1">opsional — tidak dihitung</x-badge></div>
+                                        @elseif ($item['filled'])
                                             <span class="text-success dark:text-success">✓</span>
                                             <div>{{ $item['label'] }}</div>
                                         @else
@@ -207,6 +212,7 @@ new class extends Component {
                         <span class="font-semibold">Coding SATUSEHAT</span> (Keluhan Utama &amp; Alergi) <strong>tidak</strong> masuk persentase EMR sejak 28/10/2026 —
                         kode diisi coder di layar Coding SATUSEHAT sesudah pelayanan; ditampilkan terpisah sebagai indikator kesiapan kirim.
                         Kondisi Saat Keluar (Perencanaan) dinilai untuk kunjungan mulai 28/10/2026.
+                        Kolom bertanda <strong>opsional</strong> (riwayat keluarga, status psikologis, kedatangan) tampil sebagai pengingat — <strong>tidak dihitung</strong> ke persentase.
                         Modul observasi/obat-cairan/rujukan/transfer bersifat opsional. Standar: <strong>Permenkes 24/2022</strong> &amp; <strong>SNARS Ed. 1.1</strong>.
                     </p>
                 </div>

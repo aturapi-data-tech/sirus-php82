@@ -2,6 +2,7 @@
 
 namespace App\Http\Traits\Txn\Ri;
 
+use App\Support\AnamnesaRi;
 use App\Support\KelengkapanEmr;
 
 /**
@@ -194,7 +195,9 @@ trait EmrCompletenessRITrait
      * dihitung di score* methods. Dipakai modal info-kelengkapan-emr agar
      * user tahu field mana yang sudah/belum diisi (bukan cuma % total).
      *
-     * @return array<string, array{label: string, weight: int, items: array<int, array{label: string, filled: bool}>}>
+     * Item ber-'opsional' => true hanya tampil (kolom tambahan) — TIDAK dihitung di score*.
+     *
+     * @return array<string, array{label: string, weight: int, items: array<int, array{label: string, filled: bool, opsional?: bool}>}>
      */
     public function collectChecklistRI(array $json, ?string $tanggalPulang = null): array
     {
@@ -218,6 +221,10 @@ trait EmrCompletenessRITrait
                     ['label' => 'Keluhan utama (pemeriksaan fisik)', 'filled' => filled($b4['keluhanUtama'] ?? null)],
                     ['label' => 'Riwayat penyakit/operasi/cedera — pilihan (boleh "Tidak ada")', 'filled' => filled($b2['riwayatPenyakitOperasiCedera']['pilihan'] ?? null)],
                     ['label' => 'Riwayat penyakit/operasi/cedera — deskripsi (boleh "Tidak ada")', 'filled' => filled($b2['riwayatPenyakitOperasiCedera']['deskripsi'] ?? null)],
+                    // Opsional — tampil, TIDAK dihitung ke persentase (dikirim SATUSEHAT bila diisi).
+                    ['label' => 'Keluhan penyerta (Pengkajian Dokter)', 'filled' => AnamnesaRi::keluhanPenyerta($json) !== '', 'opsional' => true],
+                    ['label' => 'Riwayat penyakit keluarga', 'filled' => AnamnesaRi::riwayatPenyakitKeluarga($json) !== '', 'opsional' => true],
+                    ['label' => 'Status emosional (Pengkajian Awal)', 'filled' => AnamnesaRi::statusEmosional($json)[0] !== '', 'opsional' => true],
                 ],
             ],
             'o' => [
@@ -254,7 +261,11 @@ trait EmrCompletenessRITrait
                     ['label' => 'Discharge planning — pelayanan berkelanjutan (cukup salah satu)', 'filled' => filled($p['dischargePlanning']['pelayananBerkelanjutan']['pelayananBerkelanjutan'] ?? null)],
                 ], $wajibKondisiPulang
                     ? [['label' => 'Kondisi saat pulang (wajib SATUSEHAT)', 'filled' => filled($p['kondisiPulang']['kondisiPulang'] ?? null)]]
-                    : []),
+                    : [], [
+                    ['label' => 'Prognosis', 'filled' => filled($p['prognosis']['prognosis'] ?? null), 'opsional' => true],
+                    ['label' => 'Diet (Pengkajian Dokter — rencana)', 'filled' => filled($json['pengkajianDokter']['rencana']['diet'] ?? null), 'opsional' => true],
+                    ['label' => 'Edukasi terintegrasi (min 1 entri)', 'filled' => !empty($json['edukasiPasienTerintegrasi']), 'opsional' => true],
+                ]),
             ],
             'n' => [
                 'label' => 'Penilaian',

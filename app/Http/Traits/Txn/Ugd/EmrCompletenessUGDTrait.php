@@ -177,7 +177,9 @@ trait EmrCompletenessUGDTrait
      * dihitung di score* methods. Dipakai modal info-kelengkapan-emr agar
      * user tahu field mana yang sudah/belum diisi (bukan cuma % total).
      *
-     * @return array<string, array{label: string, weight: int, items: array<int, array{label: string, filled: bool}>}>
+     * Item ber-'opsional' => true hanya tampil (kolom tambahan) — TIDAK dihitung di score*.
+     *
+     * @return array<string, array{label: string, weight: int, items: array<int, array{label: string, filled: bool, opsional?: bool}>}>
      */
     public function collectChecklistUGD(array $json): array
     {
@@ -210,6 +212,11 @@ trait EmrCompletenessUGDTrait
                     ['label' => 'Alergi (boleh "Tidak ada")', 'filled' => filled($a['alergi']['alergi'] ?? null) || filled($a['alergi']['adaAlergi'] ?? null)],
                     ['label' => 'Riwayat penyakit dahulu (boleh "Tidak ada")', 'filled' => filled($a['riwayatPenyakitDahulu']['riwayatPenyakitDahulu'] ?? null)],
                     ['label' => 'Waktu datang', 'filled' => filled($a['pengkajianPerawatan']['jamDatang'] ?? null)],
+                    // Opsional — tampil, TIDAK dihitung ke persentase.
+                    ['label' => 'Riwayat penyakit keluarga', 'filled' => filled($a['riwayatPenyakitKeluarga']['riwayatPenyakitKeluarga'] ?? null), 'opsional' => true],
+                    ['label' => 'Status psikologis', 'filled' => KelengkapanEmr::statusPsikologisTerisi((array) ($a['statusPsikologis'] ?? [])), 'opsional' => true],
+                    ['label' => 'Kedatangan — sarana transportasi', 'filled' => filled($a['pengkajianPerawatan']['saranaTransportasiId'] ?? null) || filled($a['pengkajianPerawatan']['saranaTransportasiDesc'] ?? null), 'opsional' => true],
+                    ['label' => 'Kedatangan — cara masuk / surat rujukan', 'filled' => filled($a['pengkajianPerawatan']['caraMasukIgd'] ?? null), 'opsional' => true],
                 ],
             ],
             'o' => [
