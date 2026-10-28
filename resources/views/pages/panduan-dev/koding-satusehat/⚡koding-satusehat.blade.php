@@ -222,7 +222,7 @@ public function createImmunization(array $data): array
         ],
         'patient'            => ['reference' => 'Patient/'   . $data['patientId']],
         'encounter'          => ['reference' => 'Encounter/' . $data['encounterId']],
-        'occurrenceDateTime' => $data['occurrence'] ?? now()->toIso8601String(),
+        'occurrenceDateTime' => $data['occurrence'] ?? throw new \RuntimeException('occurrence: tanggal wajib dari data'),
         'primarySource'      => true,
         'location'           => ['reference' => 'Location/' . $data['locationId']],
         'lotNumber'          => $data['lotNumber'] ?? null,
@@ -257,7 +257,7 @@ public function createNutritionOrder(array $data): array
         'intent'       => 'order',
         'patient'      => ['reference' => 'Patient/'   . $data['patientId']],
         'encounter'    => ['reference' => 'Encounter/' . $data['encounterId']],
-        'dateTime'     => $data['dateTime'] ?? now()->toIso8601String(),
+        'dateTime'     => $data['dateTime'] ?? throw new \RuntimeException('dateTime: tanggal wajib dari data'),
         'orderer'      => ['reference' => 'Practitioner/' . $data['ordererId']],
         'oralDiet'     => [
             'type' => [[
@@ -297,7 +297,7 @@ public function createEpisodeOfCare(array $data): array
         'patient'              => ['reference' => 'Patient/' . $data['patientId']],
         'managingOrganization' => ['reference' => 'Organization/' . $this->organizationId],
         'period' => array_filter([
-            'start' => $data['start'] ?? now()->toIso8601String(),
+            'start' => $data['start'] ?? throw new \RuntimeException('start: tanggal wajib dari data'),
             'end'   => $data['end'] ?? null,              // diisi saat pasien pulang
         ]),
         'careManager' => ['reference' => 'Practitioner/' . $data['careManagerId']],
@@ -317,8 +317,8 @@ public function createClinicalImpression(array $data): array
         'description'  => $data['description'] ?? null,
         'subject'      => ['reference' => 'Patient/'   . $data['patientId']],
         'encounter'    => ['reference' => 'Encounter/' . $data['encounterId']],
-        'effectiveDateTime' => $data['effective'] ?? now()->toIso8601String(),
-        'date'         => now()->toIso8601String(),
+        'effectiveDateTime' => $data['effective'] ?? throw new \RuntimeException('effective: tanggal wajib dari data'),
+        'date'         => $data['date'] ?? throw new \RuntimeException('date: tanggal wajib dari data'),
         'assessor'     => ['reference' => 'Practitioner/' . $data['assessorId']],
         'summary'      => $data['summary'],               // teks asesmen klinis
         'finding'      => array_map(fn ($f) => [
@@ -356,7 +356,7 @@ public function createComposition(array $data): array
         ],
         'subject'   => ['reference' => 'Patient/'   . $data['patientId']],
         'encounter' => ['reference' => 'Encounter/' . $data['encounterId']],
-        'date'      => $data['date'] ?? now()->toIso8601String(),
+        'date'      => $data['date'] ?? throw new \RuntimeException('date: tanggal wajib dari data'),
         'author'    => [['reference' => 'Practitioner/' . $data['authorId']]],
         'title'     => $data['title'],
         'section'   => array_map(fn ($s) => [
