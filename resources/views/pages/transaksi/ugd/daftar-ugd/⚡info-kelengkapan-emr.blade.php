@@ -221,8 +221,11 @@ new class extends Component {
 
             {{-- FOOTER --}}
             <div class="flex justify-end px-6 py-4 border-t border-hairline bg-surface-soft dark:bg-gray-900/40 dark:border-gray-700">
-                <x-secondary-button type="button"
+                <x-secondary-button type="button" class="gap-1"
                     x-on:click="$dispatch('close-modal', { name: 'info-kelengkapan-emr-ugd' })">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
                     Mengerti
                 </x-secondary-button>
             </div>
