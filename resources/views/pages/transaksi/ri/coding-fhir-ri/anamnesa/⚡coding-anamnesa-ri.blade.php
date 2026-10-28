@@ -72,6 +72,9 @@ new class extends Component {
     /** Isian Tambah alergen — jenis + kode (KFA/SNOMED dari LOV) + keparahan. */
     public array $formAlergi = [];
 
+    /** Sidik isian kode terakhir yang tersimpan — simpan senyap (pindah tab) dilewati bila tak berubah. */
+    public string $sidikKodingTersimpan = '';
+
     public array $renderVersions = [];
     protected array $renderAreas = ['lov-coding-keluhan-penyerta', 'lov-coding-riwayat-sekarang', 'lov-coding-riwayat-dahulu', 'lov-coding-riwayat-keluarga', 'lov-coding-riwayat-obat', 'lov-coding-alergi'];
 
@@ -86,6 +89,12 @@ new class extends Component {
         if (!empty($riHdrNo)) {
             $this->muatDariDokumen($this->findDataRI($riHdrNo) ?? []);
         }
+        $this->sidikKodingTersimpan = $this->sidikKoding();
+    }
+
+    private function sidikKoding(): string
+    {
+        return md5(json_encode($this->koding));
     }
 
     private function resetFormRiwayat(?string $jenis = null): void
@@ -480,14 +489,25 @@ new class extends Component {
         }
     }
 
+    /**
+     * riHdrNo null = dari "Tutup dan Simpan" dirty guard tab Coding modal gabungan emr-coding-ri.
+     * $senyap = simpan otomatis saat pindah tab: tanpa toast sukses, dilewati bila kode tak berubah.
+     * Hasil dikabarkan lewat 'coding-fhir-ri.tersimpan' (berhasil); sukses juga 'refresh-after-ri.saved'
+     * (event dirty guard tab Coding → tanda "belum disimpan" hilang).
+     */
     #[On('save-coding-fhir-ri')]
-    public function save(string $riHdrNo): void
+    public function save(?string $riHdrNo = null, bool $senyap = false): void
     {
-        if ((string) $this->riHdrNo !== $riHdrNo) {
+        if (empty($this->riHdrNo) || ($riHdrNo !== null && (string) $this->riHdrNo !== $riHdrNo)) {
+            return;
+        }
+        if ($senyap && $this->sidikKoding() === $this->sidikKodingTersimpan) {
+            $this->dispatch('coding-fhir-ri.tersimpan', berhasil: true);
             return;
         }
         if (!auth()->user()?->can('emr.codingFhir')) {
             $this->dispatch('toast', type: 'error', message: 'Anda tidak berhak menyimpan Coding SATUSEHAT.');
+            $this->dispatch('coding-fhir-ri.tersimpan', berhasil: false);
             return;
         }
 
@@ -537,10 +557,16 @@ new class extends Component {
                     . ', alergi ' . (($this->koding['alergi']['adaAlergi'] ?? '') === 'Ya' ? count($kodingBaru['alergi']['alergenList'] ?? []) . ' alergen' : 'tidak ada / belum diisi'), 'MR');
             });
 
-            $this->dispatch('toast', type: 'success', message: 'Coding SATUSEHAT tersimpan.');
+            $this->sidikKodingTersimpan = $this->sidikKoding();
+            if (!$senyap) {
+                $this->dispatch('toast', type: 'success', message: 'Coding SATUSEHAT tersimpan.');
+            }
             $this->dispatch('ri-satu-sehat.refresh', riHdrNo: (string) $this->riHdrNo);
+            $this->dispatch('refresh-after-ri.saved');
+            $this->dispatch('coding-fhir-ri.tersimpan', berhasil: true);
         } catch (\Throwable $e) {
             $this->dispatch('toast', type: 'error', message: 'Gagal menyimpan coding: ' . $e->getMessage());
+            $this->dispatch('coding-fhir-ri.tersimpan', berhasil: false);
         }
     }
 

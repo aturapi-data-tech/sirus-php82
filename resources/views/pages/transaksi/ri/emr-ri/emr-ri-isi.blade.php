@@ -1,0 +1,560 @@
+{{--
+    Isi EMR RI (dirty guard per-tab + tab navigasi + panel + footer) — di-@include oleh emr-ri, baik mode
+    modal sendiri maupun embedded (tab "Rekam Medis Rawat Inap" di modal gabungan emr-coding-ri).
+    Header & identitas pasien hanya tampil di mode modal sendiri.
+--}}
+        {{-- guardSwitch=false: pindah tab tidak lagi memunculkan dialog konfirmasi.
+             Penanda dirty (titik amber di tab) & konfirmasi saat Tutup modal tetap aktif. --}}
+        <x-tabbed-dirty-modal-content :name="$embedded ? 'emr-coding-ri' : 'rm-ri-actions'" savedEvent="refresh-after-ri.saved" :reloadArg="$riHdrNo" :guardSwitch="false" :wireKey="$this->renderKey('modal-emr-ri', [$riHdrNo ?? 'new'])"
+            :tabs="[
+                [
+                    'key' => 'pengkajian-perawat',
+                    'label' => 'Pengkajian Perawat',
+                    'saveEvent' => 'save-rm-pengkajian-awal-ri',
+                    'reloadEvent' => 'open-rm-pengkajian-awal-ri',
+                ],
+                [
+                    'key' => 'pengkajian-dokter',
+                    'label' => 'Pengkajian Dokter',
+                    'saveEvent' => 'save-rm-pengkajian-dokter-ri',
+                    'reloadEvent' => 'open-rm-pengkajian-dokter-ri',
+                ],
+                ['key' => 'diagnosa', 'label' => 'Diagnosis', 'saveEvent' => 'save-rm-diagnosa-ri', 'reloadEvent' => 'open-rm-diagnosa-ri'],
+                ['key' => 'perencanaan', 'label' => 'Perencanaan', 'saveEvent' => 'save-rm-perencanaan-ri', 'reloadEvent' => 'open-rm-perencanaan-ri'],
+                ['key' => 'penilaian', 'label' => 'Penilaian Nyeri', 'saveEvent' => 'save-active-rm-penilaian-ri', 'reloadEvent' => 'open-rm-penilaian-ri'],
+                [
+                    'key' => 'observasi',
+                    'label' => 'Pemberian Obat & Cairan',
+                    'saveEvent' => 'save-active-rm-observasi-ri',
+                    'reloadEvent' => 'open-rm-observasi-ri',
+                ],
+                ['key' => 'cppt', 'label' => 'CPPT', 'saveEvent' => 'save-rm-cppt-ri', 'reloadEvent' => 'open-rm-cppt-ri'],
+                ['key' => 'sbar', 'label' => 'SBAR', 'saveEvent' => 'save-rm-sbar-ri', 'reloadEvent' => 'open-rm-sbar-ri'],
+            ]">
+
+            @unless ($embedded)
+            {{-- ═══════════ HEADER ═══════════ --}}
+            <x-modul-dokumen.header judul="Rekam Medis Rawat Inap"
+                ikon="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                jalur="RI" tutupAlpine="tryClose()" />
+
+            {{-- DISPLAY PASIEN --}}
+            <div class="px-6 pt-3">
+                <livewire:pages::transaksi.ri.display-pasien-ri.display-pasien-ri :riHdrNo="$riHdrNo"
+                    wire:key="emr-ri-display-pasien-header-{{ $riHdrNo }}" />
+            </div>
+
+            @endunless
+
+            {{-- Mode embedded: pembungkus emr-coding-ri minta simpan semua tab dirty sebelum pindah ke tab Coding
+                 ('emr-ri-pindah') / tutup lewat header pembungkus ('emr-ri-tutup'). Hasil: 'emr-ri-pindah-hasil'. --}}
+            <div class="hidden" x-on:emr-ri-tutup.window="tryClose()"
+                x-data="{
+                    async simpanUntukPindah() {
+                        const eventSimpan = this.dirtyTabKeys().map((kunci) => this.saveMap[kunci]?.saveEvent).filter(Boolean);
+                        eventSimpan.forEach((namaEvent) => Livewire.dispatch(namaEvent));
+                        const batas = Date.now() + 5000;
+                        while (this.dirtyTabKeys().length > 0 && Date.now() < batas) {
+                            await new Promise((selesai) => setTimeout(selesai, 50));
+                        }
+                        window.dispatchEvent(new CustomEvent('emr-ri-pindah-hasil', { detail: { berhasil: !this.isAnyDirty(), tabBelumTersimpan: this.dirtyTabLabels() } }));
+                    },
+                }"
+                x-on:emr-ri-pindah.window="simpanUntukPindah()"></div>
+
+            {{-- ── TAB NAVIGATION ── --}}
+            {{-- Satu baris + panah scroll (seragam EMR RJ/UGD): x-scrollable-tabs membungkus track x-tabs.
+                 w-max min-w-full = border bawah tetap penuh walau tab lebih sempit dari kontainer. --}}
+            <div class="mt-3">
+                <x-scrollable-tabs class="w-full">
+                    <x-tabs variant="underline" class="flex-nowrap w-max min-w-full gap-1">
+
+                    @php
+                        $klaimStatusRi =
+                            \Illuminate\Support\Facades\DB::table('rsmst_klaimtypes')
+                                ->where('klaim_id', $klaimId)
+                                ->value('klaim_status') ?? 'UMUM';
+                        $isBPJSRi = $klaimStatusRi === 'BPJS';
+
+                        $tabs = [
+                            /* 1 */ [
+                                'key' => 'pengkajian-perawat',
+                                'label' => 'Pengkajian Perawat',
+                                'icon' =>
+                                    'M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z',
+                            ],
+                            /* 2 */ [
+                                'key' => 'pengkajian-dokter',
+                                'label' => 'Pengkajian Dokter',
+                                'icon' =>
+                                    'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2',
+                            ],
+                            /* 3 */ [
+                                'key' => 'pemeriksaan',
+                                'label' => 'Pemeriksaan',
+                                'icon' =>
+                                    'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01',
+                            ],
+                            /* 4 */ [
+                                'key' => 'penilaian',
+                                'label' => 'Penilaian',
+                                'icon' =>
+                                    'M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z',
+                            ],
+                            /* 5 */ [
+                                'key' => 'observasi',
+                                'label' => 'Observasi',
+                                'icon' =>
+                                    'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z',
+                            ],
+                            /* 5b */ [
+                                'key' => 'automatic-stop-order',
+                                'label' => 'Automatic Stop Order',
+                                'icon' => 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',
+                            ],
+                            /* 6 */ [
+                                'key' => 'asuhan',
+                                'label' => 'Asuhan Kep.',
+                                'icon' =>
+                                    'M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z',
+                            ],
+                            /* 7 */ [
+                                'key' => 'cppt',
+                                'label' => 'CPPT',
+                                'icon' =>
+                                    'M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z',
+                            ],
+                            /* 7b */ [
+                                'key' => 'sbar',
+                                'label' => 'SBAR',
+                                'icon' =>
+                                    'M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z',
+                            ],
+                            /* 8 */ [
+                                'key' => 'diagnosa',
+                                'label' => 'Diagnosis (ICD)',
+                                'icon' => 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
+                            ],
+                            /* 9 */ [
+                                'key' => 'perencanaan',
+                                'label' => 'Perencanaan',
+                                'icon' =>
+                                    'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4',
+                            ],
+                            /*10 */ [
+                                'key' => 'riwayat',
+                                'label' => 'Riwayat Kunjungan',
+                                'icon' => 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',
+                            ],
+                        ];
+
+                        // Tab Surat Kontrol hanya untuk BPJS — tepat SESUDAH Perencanaan. Posisinya dicari, bukan
+                        // indeks tetap: dulu splice di indeks 9, lalu tab ASO & SBAR menyusul dan Surat Kontrol
+                        // bergeser ke depan Diagnosis.
+                        if ($isBPJSRi) {
+                            $posisiPerencanaan = array_search('perencanaan', array_column($tabs, 'key'), true);
+                            array_splice($tabs, $posisiPerencanaan === false ? count($tabs) : $posisiPerencanaan + 1, 0, [
+                                [
+                                    'key' => 'skdp',
+                                    'label' => 'Surat Kontrol',
+                                    'icon' =>
+                                        'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
+                                ],
+                            ]);
+                        }
+
+                        // Dokter: sembunyikan tab Penilaian & Asuhan Keperawatan (domain Perawat)
+                        if (auth()->user()->hasRole('Dokter')) {
+                            $tabs = array_values(
+                                array_filter($tabs, fn($t) => !in_array($t['key'], ['penilaian', 'asuhan'])),
+                            );
+                        }
+
+                        // Penunjang (Laboratorium/Radiologi): konteks klinis order (dua tab
+                        // pengkajian — read-only sendiri lewat $isReadOnlyByRole, pemeriksaan,
+                        // riwayat) + CPPT & SBAR, karena mereka mencatat di kolom profesi
+                        // 'Penunjang'. Tab asuhan/observasi/penilaian/diagnosa/perencanaan/SKDP
+                        // tetap tertutup — itu domain perawat & dokter.
+                        if (auth()->user()->can('emr.penunjangLihat')) {
+                            $tabs = array_values(
+                                array_filter(
+                                    $tabs,
+                                    fn($t) => in_array($t['key'], [
+                                        'pengkajian-perawat',
+                                        'pengkajian-dokter',
+                                        'pemeriksaan',
+                                        'cppt',
+                                        'sbar',
+                                        'riwayat',
+                                    ]),
+                                ),
+                            );
+                        }
+
+                        // Gizi: hanya tab yang relevan untuk asuhan gizi — pengkajian (view-only,
+                        // ada skrining gizi), pemeriksaan (TTV/nutrisi), CPPT (tulis), SBAR, riwayat.
+                        if (auth()->user()->hasRole('Gizi')) {
+                            $tabs = array_values(
+                                array_filter(
+                                    $tabs,
+                                    fn($t) => in_array($t['key'], [
+                                        'pengkajian-perawat',
+                                        'pengkajian-dokter',
+                                        'pemeriksaan',
+                                        'cppt',
+                                        'sbar',
+                                        'riwayat',
+                                    ]),
+                                ),
+                            );
+                        }
+                    @endphp
+
+                    @foreach ($tabs as $tab)
+                        <x-tab variant="underline" active-expr="activeTab === '{{ $tab['key'] }}'"
+                            x-on:click="requestSwitchTab('{{ $tab['key'] }}')" class="inline-flex items-center gap-2">
+                            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="{{ $tab['icon'] }}" />
+                            </svg>
+                            {{ $tab['label'] }}
+                            {{-- Dirty indicator dot --}}
+                            <span x-show="tabDirty['{{ $tab['key'] }}']" x-cloak
+                                class="inline-block w-2 h-2 rounded-full bg-amber-500" title="Belum disimpan"></span>
+                        </x-tab>
+                    @endforeach
+
+                    </x-tabs>
+                </x-scrollable-tabs>
+            </div>
+
+            {{-- ═══════════ BODY — TAB PANELS ═══════════ --}}
+            {{-- catatan: panel modal (x-modal height=full) yang scroll, BUKAN body ini.
+                 jangan beri overflow-y di sini agar sticky (mis. tab profesi CPPT) bisa menempel ke panel. --}}
+            <div class="flex-1 px-4 pb-4 bg-surface-soft/70 dark:bg-gray-950/20">
+                <div class="max-w-full mx-auto">
+                    <div
+                        class="p-4 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
+
+                        {{-- ────────────────────────────────────────────
+                        | TAB 1 — PENGKAJIAN PERAWAT
+                        | Diisi oleh Perawat — Pengkajian Awal Rawat Inap
+                        ──────────────────────────────────────────── --}}
+                        <div x-show="activeTab === 'pengkajian-perawat'" x-transition.opacity.duration.200ms>
+                            {{-- Dokter & role lain (termasuk Apoteker, Gizi, Laboratorium & Radiologi) boleh lihat (view-only); edit/simpan di-gate di dalam component
+                                 lewat $isReadOnlyByRole. Lihat rm-pengkajian-awal-ri-actions.blade.php --}}
+                            @hasanyrole('Perawat|Dokter|Admin|Casemix|Mr|Apoteker|Gizi|Laboratorium|Radiologi')
+                                <livewire:pages::transaksi.ri.emr-ri.pengkajian-awal-ri.rm-pengkajian-awal-ri-actions
+                                    :riHdrNo="$riHdrNo" wire:key="pengkajian-awal-ri-{{ $riHdrNo }}" />
+                            @else
+                                <div class="py-12 text-sm text-center text-muted-soft dark:text-gray-600">
+                                    <svg class="w-8 h-8 mx-auto mb-2 opacity-40" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                            d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                    </svg>
+                                    Anda tidak memiliki akses ke Pengkajian Perawat.
+                                </div>
+                            @endhasanyrole
+                        </div>
+
+                        {{-- ────────────────────────────────────────────
+                        | TAB 2 — PENGKAJIAN DOKTER
+                        | Diisi oleh Dokter — Pengkajian Dokter RI
+                        ──────────────────────────────────────────── --}}
+                        <div x-show="activeTab === 'pengkajian-dokter'" x-transition.opacity.duration.200ms>
+                            {{-- Perawat & role lain (termasuk Apoteker, Gizi, Laboratorium & Radiologi) boleh lihat (view-only); edit/simpan di-gate di dalam component
+                                 lewat $isReadOnlyByRole. Lihat rm-pengkajian-dokter-ri-actions.blade.php --}}
+                            @hasanyrole('Dokter|Perawat|Admin|Casemix|Mr|Apoteker|Gizi|Laboratorium|Radiologi')
+                                <livewire:pages::transaksi.ri.emr-ri.pengkajian-dokter-ri.rm-pengkajian-dokter-ri-actions
+                                    :riHdrNo="$riHdrNo" wire:key="pengkajian-dokter-ri-{{ $riHdrNo }}" />
+                            @else
+                                <div class="py-12 text-sm text-center text-muted-soft dark:text-gray-600">
+                                    <svg class="w-8 h-8 mx-auto mb-2 opacity-40" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                            d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                    </svg>
+                                    Anda tidak memiliki akses ke Pengkajian Dokter.
+                                </div>
+                            @endhasanyrole
+                        </div>
+
+                        {{-- ────────────────────────────────────────────
+                        | TAB 3 — PEMERIKSAAN
+                        | TTV | Nutrisi | Lab | Radiologi | Upload
+                        ──────────────────────────────────────────── --}}
+                        <div x-show="activeTab === 'pemeriksaan'" x-transition.opacity.duration.200ms>
+                            <livewire:pages::transaksi.ri.emr-ri.pemeriksaan-ri.rm-pemeriksaan-ri-actions
+                                :riHdrNo="$riHdrNo" wire:key="pemeriksaan-ri-{{ $riHdrNo }}" />
+                        </div>
+
+                        {{-- ────────────────────────────────────────────
+                        | TAB 4 — PENILAIAN
+                        | Penilaian pasien rawat inap
+                        ──────────────────────────────────────────── --}}
+                        <div x-show="activeTab === 'penilaian'" x-transition.opacity.duration.200ms>
+                            <livewire:pages::transaksi.ri.emr-ri.penilaian-ri.rm-penilaian-ri-actions :riHdrNo="$riHdrNo"
+                                wire:key="penilaian-ri-{{ $riHdrNo }}" />
+                        </div>
+
+                        {{-- ────────────────────────────────────────────
+                        | TAB 5 — OBSERVASI & TERAPI
+                        | Observasi | Obat & Cairan
+                        ──────────────────────────────────────────── --}}
+                        <div x-show="activeTab === 'observasi'" x-transition.opacity.duration.200ms>
+                            <div class="space-y-4">
+                                <livewire:pages::transaksi.ri.emr-ri.observasi-ri.rm-observasi-ri-actions
+                                    :riHdrNo="$riHdrNo" wire:key="observasi-ri-{{ $riHdrNo }}" />
+                            </div>
+                        </div>
+
+                        {{-- ────────────────────────────────────────────
+                        | TAB 5b — AUTOMATIC STOP ORDER (read-only)
+                        | Hari berjalan obat golongan stop-order dari e-resep RI
+                        ──────────────────────────────────────────── --}}
+                        <div x-show="activeTab === 'automatic-stop-order'" x-transition.opacity.duration.200ms>
+                            <livewire:pages::transaksi.ri.emr-ri.automatic-stop-order-ri.rm-automatic-stop-order-ri
+                                :riHdrNo="$riHdrNo" wire:key="automatic-stop-order-ri-{{ $riHdrNo }}" />
+                        </div>
+
+                        {{-- ────────────────────────────────────────────
+                        | TAB 6 — ASUHAN KEPERAWATAN
+                        | Asuhan Keperawatan | Diagnosa Keperawatan | Edukasi Pasien
+                        ──────────────────────────────────────────── --}}
+                        <div x-show="activeTab === 'asuhan'" x-transition.opacity.duration.200ms>
+                            @hasanyrole('Perawat|Admin|Apoteker')
+                                <div class="grid grid-cols-1">
+                                    <livewire:pages::transaksi.ri.emr-ri.asuhan-keperawatan-ri.rm-asuhan-keperawatan-ri-actions
+                                        :riHdrNo="$riHdrNo" wire:key="asuhan-keperawatan-ri-{{ $riHdrNo }}" />
+                                </div>
+                            @endhasanyrole
+                        </div>
+
+                        {{-- ────────────────────────────────────────────
+                        | TAB 7 — CPPT
+                        ──────────────────────────────────────────── --}}
+                        <div x-show="activeTab === 'cppt'" x-transition.opacity.duration.200ms>
+                            <livewire:pages::transaksi.ri.emr-ri.cppt-ri.rm-cppt-ri-actions :riHdrNo="$riHdrNo"
+                                wire:key="cppt-ri-{{ $riHdrNo }}" />
+                        </div>
+
+                        {{-- ────────────────────────────────────────────
+                        | TAB — SBAR
+                        | Situation, Background, Assessment, Recommendation
+                        ──────────────────────────────────────────── --}}
+                        <div x-show="activeTab === 'sbar'" x-transition.opacity.duration.200ms>
+                            <livewire:pages::transaksi.ri.emr-ri.sbar-ri.rm-sbar-ri-actions :riHdrNo="$riHdrNo"
+                                wire:key="sbar-ri-{{ $riHdrNo }}" />
+                        </div>
+
+                        {{-- ────────────────────────────────────────────
+                        | TAB 8 — DIAGNOSA (ICD)
+                        | Diagnosa ICD-10
+                        ──────────────────────────────────────────── --}}
+                        <div x-show="activeTab === 'diagnosa'" x-transition.opacity.duration.200ms>
+                            <livewire:pages::transaksi.ri.emr-ri.diagnosa-ri.rm-diagnosa-ri-actions :riHdrNo="$riHdrNo"
+                                wire:key="diagnosa-ri-{{ $riHdrNo }}" />
+                        </div>
+
+                        {{-- ────────────────────────────────────────────
+                        | TAB 9 — PERENCANAAN
+                        ──────────────────────────────────────────── --}}
+                        <div x-show="activeTab === 'perencanaan'" x-transition.opacity.duration.200ms>
+                            <livewire:pages::transaksi.ri.emr-ri.perencanaan-ri.rm-perencanaan-ri-actions
+                                :riHdrNo="$riHdrNo" wire:key="perencanaan-ri-{{ $riHdrNo }}" />
+                        </div>
+
+                        {{-- ────────────────────────────────────────────
+                        | TAB — SURAT KONTROL (SKDP) — hanya BPJS
+                        ──────────────────────────────────────────── --}}
+                        @if ($isBPJSRi)
+                            <div x-show="activeTab === 'skdp'" x-transition.opacity.duration.200ms>
+                                <livewire:pages::transaksi.ri.emr-ri.skdp-ri.rm-skdp-ri-actions :riHdrNo="$riHdrNo"
+                                    wire:key="skdp-ri-{{ $riHdrNo }}" />
+                            </div>
+                        @endif
+
+                        {{-- ────────────────────────────────────────────
+                        | TAB — RIWAYAT KUNJUNGAN
+                        ──────────────────────────────────────────── --}}
+                        <div x-show="activeTab === 'riwayat'" x-transition.opacity.duration.200ms>
+                            <livewire:pages::components.rekam-medis.rekam-medis-display.rekam-medis-display
+                                :regNo="$regNoPasien" :rjNoRefCopyTo="0" :contextRI="true"
+                                wire:key="emr-ri.rekam-medis-display-{{ $regNoPasien ?: 'new' }}" />
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+            {{-- ═══════════ FOOTER (justify-between: Tutup | aksi | Simpan) ═══════════ --}}
+            <div
+                class="sticky bottom-0 z-10 px-6 py-2 bg-canvas border-t border-hairline dark:bg-gray-900 dark:border-gray-700">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+
+                    {{-- KIRI: Status + Action buttons --}}
+                    <div class="flex flex-wrap items-center gap-2">
+
+                        @if ($isFormLocked)
+                            <x-badge variant="danger">Read Only</x-badge>
+                        @endif
+
+                        @can('ri.pindahKamar')
+                            {{-- Pindah Kamar — amber solid --}}
+                            <x-primary-button type="button" wire:click="openPindahKamar('{{ $riHdrNo }}')"
+                                wire:loading.attr="disabled" wire:target="openPindahKamar"
+                                class="gap-1 !bg-amber-500 hover:!bg-amber-600 !text-white focus:!ring-amber-300 dark:!bg-amber-500 dark:!text-white dark:hover:!bg-amber-600 dark:focus:!ring-amber-900">
+                                <span wire:loading.remove wire:target="openPindahKamar" class="flex items-center gap-1">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                                    </svg>Pindah Kamar
+                                </span>
+                                <span wire:loading wire:target="openPindahKamar"
+                                    class="flex items-center gap-1"><x-loading /> Memuat...</span>
+                            </x-primary-button>
+                        @endcan
+
+                        @hasanyrole('Admin|Perawat|Dokter|Casemix|Apoteker|Gizi|Laboratorium|Radiologi')
+                            {{-- Dokumen — indigo solid --}}
+                            <x-primary-button type="button" wire:click="openModulDokumen('{{ $riHdrNo }}')"
+                                wire:loading.attr="disabled" wire:target="openModulDokumen"
+                                class="gap-1 !bg-indigo-600 hover:!bg-indigo-700 !text-white focus:!ring-indigo-300 dark:!bg-indigo-600 dark:!text-white dark:hover:!bg-indigo-700 dark:focus:!ring-indigo-900">
+                                <span wire:loading.remove wire:target="openModulDokumen" class="flex items-center gap-1">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>Modul Dokumen
+                                </span>
+                                <span wire:loading wire:target="openModulDokumen"
+                                    class="flex items-center gap-1"><x-loading /> Memuat...</span>
+                            </x-primary-button>
+                        @endhasanyrole
+
+                        @hasanyrole('Admin|Perawat|Casemix|Apoteker|Gizi')
+                            {{-- Administrasi — teal solid --}}
+                            <x-primary-button type="button" wire:click="openAdministrasiPasien('{{ $riHdrNo }}')"
+                                wire:loading.attr="disabled" wire:target="openAdministrasiPasien"
+                                class="gap-1 !bg-teal-600 hover:!bg-teal-700 !text-white focus:!ring-teal-300 dark:!bg-teal-600 dark:!text-white dark:hover:!bg-teal-700 dark:focus:!ring-teal-900">
+                                <span wire:loading.remove wire:target="openAdministrasiPasien"
+                                    class="flex items-center gap-1">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                                        stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M2 8h20v12a1 1 0 01-1 1H3a1 1 0 01-1-1V8zm0 0V6a1 1 0 011-1h18a1 1 0 011 1v2M12 14a2 2 0 100-4 2 2 0 000 4z" />
+                                    </svg>Administrasi
+                                </span>
+                                <span wire:loading wire:target="openAdministrasiPasien"
+                                    class="flex items-center gap-1"><x-loading /> Memuat...</span>
+                            </x-primary-button>
+                        @endhasanyrole
+
+                        @can('emr.logAktivitas')
+                            {{-- Log Aktivitas — slate solid (manager ke atas) --}}
+                            <x-primary-button type="button" wire:click="openLogAktivitas('{{ $riHdrNo }}')"
+                                wire:loading.attr="disabled" wire:target="openLogAktivitas"
+                                class="order-first gap-1 !bg-slate-600 hover:!bg-slate-700 !text-white focus:!ring-slate-300 dark:!bg-slate-600 dark:!text-white dark:hover:!bg-slate-700 dark:focus:!ring-slate-900">
+                                <span wire:loading.remove wire:target="openLogAktivitas" class="flex items-center gap-1">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                                        stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                                    </svg>Log Aktivitas
+                                </span>
+                                <span wire:loading wire:target="openLogAktivitas"
+                                    class="flex items-center gap-1"><x-loading /> Memuat...</span>
+                            </x-primary-button>
+                        @endcan
+
+                        @hasanyrole('Dokter|Admin|Perawat')
+                            {{-- E-Resep — brand (x-primary default) --}}
+                            <x-primary-button type="button" class="gap-1"
+                                wire:click="openEresep('{{ $riHdrNo }}')" wire:loading.attr="disabled"
+                                wire:target="openEresep">
+                                <span wire:loading.remove wire:target="openEresep" class="flex items-center gap-1">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                                        stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>E-Resep
+                                </span>
+                                <span wire:loading wire:target="openEresep" class="flex items-center gap-1"><x-loading />
+                                    Memuat...</span>
+                            </x-primary-button>
+                        @endhasanyrole
+
+                        {{-- Resume Medis — rose solid. Ikut Gate dokumen.ttdPerwakilan supaya
+                             Manager Umum/Medis bisa membuka modal untuk TTD atas nama DPJP. --}}
+                        @if (auth()->user()?->hasAnyRole(['Dokter', 'Admin', 'Perawat']) || auth()->user()?->can('dokumen.ttdPerwakilan'))
+                            <x-primary-button type="button"
+                                wire:click="$dispatch('resume-medis-ri.open', { riHdrNo: {{ $riHdrNo }} })"
+                                class="gap-1 !bg-rose-600 hover:!bg-rose-700 !text-white focus:!ring-rose-300 dark:!bg-rose-600 dark:!text-white dark:hover:!bg-rose-700 dark:focus:!ring-rose-900">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                                    stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                                Resume Medis
+                            </x-primary-button>
+                        @endif
+
+                        {{-- Ringkasan Pemulangan Pasien — diisi Perawat/Bidan (teal) --}}
+                        @hasanyrole('Perawat|Admin')
+                            <x-primary-button type="button"
+                                wire:click="$dispatch('ringkasan-pulang-ri.open', { riHdrNo: {{ $riHdrNo }} })"
+                                class="gap-1 !bg-teal-600 hover:!bg-teal-700 !text-white focus:!ring-teal-300 dark:!bg-teal-600 dark:!text-white dark:hover:!bg-teal-700 dark:focus:!ring-teal-900">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                                    stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                Ringkasan Pulang
+                            </x-primary-button>
+                        @endhasanyrole
+
+                        {{-- Rekam Medis Nasional — riwayat pasien dari faskes lain (SATUSEHAT RME) --}}
+                        @hasanyrole('Dokter|Perawat|Admin')
+                            <x-primary-button type="button"
+                                wire:click="$dispatch('rekam-medis-nasional.open', { jalur: 'RI', nomor: '{{ $riHdrNo }}' })"
+                                class="gap-1 !bg-emerald-600 hover:!bg-emerald-700 !text-white focus:!ring-emerald-300 dark:!bg-emerald-600 dark:!text-white dark:hover:!bg-emerald-700 dark:focus:!ring-emerald-900">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="M21 12a9 9 0 11-18 0 9 9 0 0118 0zM3.6 9h16.8M3.6 15h16.8M12 3a15 15 0 010 18M12 3a15 15 0 000 18" />
+                                </svg>
+                                Rekam Medis Nasional
+                            </x-primary-button>
+                        @endhasanyrole
+                    </div>
+
+                    {{-- KANAN: Tutup + Simpan dinamis per active tab --}}
+                    <div class="flex items-center gap-2">
+                        <x-secondary-button x-on:click="tryClose()">Tutup</x-secondary-button>
+
+                        @if (!$isFormLocked)
+                            <template x-if="saveMap[activeTab]">
+                                <x-primary-button type="button" class="min-w-[120px]"
+                                    x-data="{ cpptEditing: false, sbarEditing: false }"
+                                    x-on:cppt-edit-mode.window="cpptEditing = $event.detail?.editing ?? false"
+                                    x-on:sbar-edit-mode.window="sbarEditing = $event.detail?.editing ?? false"
+                                    x-on:open-modal.window="cpptEditing = false; sbarEditing = false"
+                                    x-on:click="saveActive()">
+                                    <svg class="inline w-4 h-4 mr-1 -ml-1" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1-4l-4 4-4-4m4 4V4" />
+                                    </svg>
+                                    {{-- Saat mode edit, label berubah jadi "Perbarui CPPT/SBAR" --}}
+                                    <span x-show="activeTab === 'cppt' && cpptEditing" x-cloak>Perbarui CPPT</span>
+                                    <span x-show="activeTab === 'sbar' && sbarEditing" x-cloak>Perbarui SBAR</span>
+                                    <span
+                                        x-show="!((activeTab === 'cppt' && cpptEditing) || (activeTab === 'sbar' && sbarEditing))">Simpan
+                                        <span x-text="saveMap[activeTab].label"></span></span>
+                                </x-primary-button>
+                            </template>
+                        @endif
+                    </div>
+                </div>
+            </div>
+
+        </x-tabbed-dirty-modal-content>

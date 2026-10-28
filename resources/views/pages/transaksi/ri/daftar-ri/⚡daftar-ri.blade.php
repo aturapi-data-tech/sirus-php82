@@ -974,7 +974,8 @@ new class extends Component {
 
             {{-- Child components --}}
             <livewire:pages::transaksi.ri.daftar-ri.daftar-ri-actions wire:key="daftar-ri-actions" />
-            <livewire:pages::transaksi.ri.emr-ri.emr-ri wire:key="emr-ri-actions" />
+            {{-- EMR RI + Coding SATUSEHAT RI: satu modal bertab (mendengar 'emr-ri.rekam-medis.open' & 'coding-fhir-ri.open') --}}
+            <livewire:pages::transaksi.ri.emr-coding-ri.emr-coding-ri wire:key="emr-coding-ri" />
             <livewire:pages::transaksi.ri.administrasi-ri.administrasi-ri wire:key="administrasi-ri-actions" />
             <livewire:pages::transaksi.ri.administrasi-ri.pindah-kamar-ri wire:key="pindah-kamar-ri" />
 
@@ -984,9 +985,6 @@ new class extends Component {
             {{-- iDRG/INACBG Modal (sibling, listen ke event daftar-ri.idrg.open) --}}
             <livewire:pages::transaksi.ri.daftar-ri.idrg-ri-actions wire:key="idrg-ri-actions" />
             <livewire:pages::transaksi.ri.daftar-ri.satu-sehat-ri-actions wire:key="satu-sehat-ri-actions" />
-            @can('emr.codingFhir')
-                <livewire:pages::transaksi.ri.coding-fhir-ri.coding-fhir-ri wire:key="coding-fhir-ri" />
-            @endcan
             <livewire:pages::transaksi.ri.daftar-ri.cek-jumlah-record-ri-actions wire:key="cek-jumlah-record-ri-actions" />
             <livewire:pages::transaksi.ri.daftar-ri-bulanan.berkas-bpjs-ri-actions wire:key="berkas-bpjs-ri-actions" />
 

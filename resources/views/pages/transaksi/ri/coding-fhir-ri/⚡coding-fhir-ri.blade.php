@@ -14,7 +14,9 @@
 // tidak berubah. Simpan = event 'save-coding-fhir-ri'; tiap kelompok yang punya kode menyimpan
 // bagiannya sendiri (pola save-rm-* EMR). Tetap bisa diisi walau EMR terkunci.
 //
-// Dibuka dari titik-3 Daftar RI: dispatch 'coding-fhir-ri.open' (riHdrNo).
+// Dibuka dari titik-3 Daftar RI: dispatch 'coding-fhir-ri.open' (riHdrNo) — ditangkap modal gabungan
+// emr-coding-ri yang memasang komponen ini EMBEDDED di tab "Coding SATUSEHAT" (tanpa modal/header/identitas).
+// Mode modal sendiri tetap ada. Body + footer ada di coding-fhir-ri-isi.blade.php, di-@include kedua mode.
 
 use Livewire\Component;
 use Livewire\Attributes\On;
@@ -24,6 +26,9 @@ new class extends Component {
     use WithRenderVersioningTrait;
 
     public ?string $riHdrNo = null;
+
+    /** true = dipasang di tab Coding modal gabungan emr-coding-ri (lihat catatan atas). */
+    public bool $embedded = false;
 
     /**
      * Kartu SATUSEHAT RI dalam mode pratinjau, dikelompokkan seperti grid SOAP di atasnya (tanpa
@@ -47,14 +52,23 @@ new class extends Component {
     public array $renderVersions = [];
     protected array $renderAreas = ['modal-coding-fhir-ri'];
 
-    public function mount(): void
+    public function mount(?string $riHdrNo = null, bool $embedded = false): void
     {
         $this->registerAreas(['modal-coding-fhir-ri']);
+        $this->embedded = $embedded;
+        if ($embedded && $riHdrNo && auth()->user()?->can('emr.codingFhir')) {
+            $this->riHdrNo = $riHdrNo;
+            $this->incrementVersion('modal-coding-fhir-ri');
+        }
     }
 
     #[On('coding-fhir-ri.open')]
     public function openCoding(string $riHdrNo): void
     {
+        // Mode embedded dibuka oleh pembungkus (emr-coding-ri), bukan event ini.
+        if ($this->embedded) {
+            return;
+        }
         if (!auth()->user()?->can('emr.codingFhir')) {
             $this->dispatch('toast', type: 'error', message: 'Anda tidak berhak membuka Coding SATUSEHAT.');
             return;
@@ -89,7 +103,15 @@ new class extends Component {
 };
 ?>
 
-<div>
+<div @class(['flex flex-col flex-1 min-h-0' => $embedded])>
+    @if ($embedded)
+        @if ($riHdrNo)
+            @php $versi = $renderVersions['modal-coding-fhir-ri'] ?? 0; @endphp
+            <div class="flex flex-col flex-1 min-h-0">
+                @include('pages.transaksi.ri.coding-fhir-ri.coding-fhir-ri-isi')
+            </div>
+        @endif
+    @else
     <x-modal name="coding-fhir-ri" size="full" height="full" focusable>
         {{-- Kelompok hanya di-mount saat ada pasien: tertutup = nol komponen. --}}
         @if ($riHdrNo)
@@ -105,102 +127,10 @@ new class extends Component {
                         wire:key="coding-fhir-ri-display-pasien-{{ $riHdrNo }}-{{ $versi }}" />
                 </div>
 
-                {{-- BODY — grid SOAP seperti EMR RI --}}
-                <div class="flex-1 px-4 pb-4 overflow-y-auto text-base bg-surface-soft/70 dark:bg-gray-950/20">
-                    <div class="p-4 mt-3 space-y-4 border shadow-sm bg-canvas border-hairline rounded-2xl dark:bg-gray-900 dark:border-gray-700">
-                        <p class="text-sm text-muted dark:text-gray-400">
-                            Teks klinis diisi saat pelayanan (EMR) dan di sini hanya dibaca — yang perlu dibetulkan diubah di EMR.
-                            Isi kode di kotak <span class="font-semibold text-brand-green dark:text-brand-lime">Coding SATUSEHAT</span>.
-                        </p>
-
-                        <div class="grid grid-cols-1 gap-2 xl:grid-cols-2">
-                            {{-- S --}}
-                            <div>
-                                <div class="flex items-center gap-2 p-2 mb-2 border-2 rounded-t-lg bg-blue-100 dark:border-blue-700">
-                                    <span class="inline-flex items-center justify-center w-8 h-8 text-base font-bold text-blue-700 bg-blue-100 rounded-full dark:bg-blue-900/40 dark:text-blue-300">S</span>
-                                    <span class="text-base font-semibold text-body dark:text-gray-300">Subjective — Anamnesa</span>
-                                </div>
-                                <livewire:pages::transaksi.ri.coding-fhir-ri.anamnesa.coding-anamnesa-ri :riHdrNo="$riHdrNo"
-                                    wire:key="coding-anamnesa-ri-{{ $riHdrNo }}-{{ $versi }}" />
-                            </div>
-
-                            {{-- O --}}
-                            <div>
-                                <div class="flex items-center gap-2 p-2 mb-2 border-2 rounded-t-lg bg-emerald-100 dark:border-emerald-700">
-                                    <span class="inline-flex items-center justify-center w-8 h-8 text-base font-bold rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">O</span>
-                                    <span class="text-base font-semibold text-body dark:text-gray-300">Objective — Pemeriksaan</span>
-                                </div>
-                                <livewire:pages::transaksi.ri.coding-fhir-ri.pemeriksaan.coding-pemeriksaan-ri :riHdrNo="$riHdrNo"
-                                    wire:key="coding-pemeriksaan-ri-{{ $riHdrNo }}-{{ $versi }}" />
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-1 gap-2 xl:grid-cols-2">
-                            {{-- A --}}
-                            <div>
-                                <div class="flex items-center gap-2 p-2 mb-2 border-2 rounded-t-lg bg-amber-100 dark:border-amber-700">
-                                    <span class="inline-flex items-center justify-center w-8 h-8 text-base font-bold rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">A</span>
-                                    <span class="text-base font-semibold text-body dark:text-gray-300">Assessment — Diagnosis</span>
-                                </div>
-                                <livewire:pages::transaksi.ri.coding-fhir-ri.diagnosa.coding-diagnosa-ri :riHdrNo="$riHdrNo"
-                                    wire:key="coding-diagnosa-ri-{{ $riHdrNo }}-{{ $versi }}" />
-                            </div>
-
-                            {{-- P --}}
-                            <div>
-                                <div class="flex items-center gap-2 p-2 mb-2 border-2 rounded-t-lg bg-rose-100 dark:border-rose-700">
-                                    <span class="inline-flex items-center justify-center w-8 h-8 text-base font-bold rounded-full bg-rose-100 text-error dark:bg-rose-900/40 dark:text-rose-300">P</span>
-                                    <span class="text-base font-semibold text-body dark:text-gray-300">Plan — Perencanaan</span>
-                                </div>
-                                <livewire:pages::transaksi.ri.coding-fhir-ri.perencanaan.coding-perencanaan-ri :riHdrNo="$riHdrNo"
-                                    wire:key="coding-perencanaan-ri-{{ $riHdrNo }}-{{ $versi }}" />
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- YANG AKAN DIKIRIM — kartu SATUSEHAT RI mode pratinjau (tanpa tombol Kirim). Dimuat saat diminta. --}}
-                    <div class="p-4 mt-4 space-y-3 border shadow-sm bg-canvas border-hairline rounded-2xl dark:bg-gray-900 dark:border-gray-700">
-                        <div class="flex flex-wrap items-center justify-between gap-2">
-                            <div>
-                                <p class="text-base font-semibold text-ink dark:text-gray-100">Yang akan dikirim ke SATUSEHAT</p>
-                                <p class="text-sm text-muted dark:text-gray-400">
-                                    Pratinjau tiap kartu, dari sumber yang sama dengan tombol Kirim di modal SATUSEHAT — termasuk CPPT,
-                                    penilaian, edukasi, discharge planning, diet, lab, radiologi, dan obat. Pengiriman tetap dari menu Kirim Satu Sehat.
-                                </p>
-                            </div>
-                            <x-secondary-button type="button" wire:click="toggleKiriman" wire:loading.attr="disabled" wire:target="toggleKiriman">
-                                <span wire:loading.remove wire:target="toggleKiriman">{{ $tampilkanKiriman ? 'Sembunyikan' : 'Tampilkan yang akan dikirim' }}</span>
-                                <span wire:loading wire:target="toggleKiriman" class="flex items-center gap-1"><x-loading /> Memuat...</span>
-                            </x-secondary-button>
-                        </div>
-                        @if ($tampilkanKiriman)
-                            <div class="grid grid-cols-1 gap-4 xl:grid-cols-2">
-                                @foreach ($this::KARTU_PRATINJAU as $huruf => [$judulKelompok, $kelasHeader, $kelasHuruf, $kartuList])
-                                    <div>
-                                        <div class="flex items-center gap-2 p-2 mb-2 border-2 rounded-t-lg {{ $kelasHeader }}">
-                                            <span class="inline-flex items-center justify-center w-8 h-8 text-base font-bold rounded-full {{ $kelasHuruf }}">{{ $huruf }}</span>
-                                            <span class="text-base font-semibold text-body dark:text-gray-300">{{ $judulKelompok }}</span>
-                                        </div>
-                                        <div class="space-y-2">
-                                            @foreach ($kartuList as $kartu)
-                                                <livewire:dynamic-component :is="'pages::transaksi.ri.satu-sehat.kirim-' . $kartu"
-                                                    :riHdrNo="$riHdrNo" :hanyaPratinjau="true"
-                                                    :key="'coding-pratinjau-' . $kartu . '-' . $riHdrNo . '-' . $versi" />
-                                            @endforeach
-                                        </div>
-                                    </div>
-                                @endforeach
-                            </div>
-                        @endif
-                    </div>
-                </div>
-
-                {{-- FOOTER --}}
-                <div class="sticky bottom-0 z-10 flex justify-end gap-2 px-6 py-2 border-t bg-canvas border-hairline dark:bg-gray-900 dark:border-gray-700">
-                    <x-secondary-button type="button" wire:click="closeModal">Tutup</x-secondary-button>
-                    <x-primary-button type="button" wire:click="simpan">Simpan Coding</x-primary-button>
-                </div>
+                @include('pages.transaksi.ri.coding-fhir-ri.coding-fhir-ri-isi')
+                <div class="hidden" x-on:coding-fhir-ri-tutup.window="$wire.closeModal()"></div>
             </div>
         @endif
     </x-modal>
+    @endif
 </div>
