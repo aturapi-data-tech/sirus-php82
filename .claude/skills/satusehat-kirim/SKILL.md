@@ -91,6 +91,11 @@ Kelas layanan: `EncounterTrait::pasangKelasLayanan()` → extension `https://fhi
 (sub `value` + `upgradeClassIndicator`) di tiap `Encounter.location`. WAJIB di IGD (dipasang: `reguler`/`kelas-tetap`,
 saat create & dilengkapi saat finish), opsional di RJ/RI. `startRoomEncounter()` tak lagi menambah lokasi yang sama.
 
+Tautan IGD→RI: `RujukanRawatInapTrait::rujukanRawatInapDariUgd()` — cek `rstxn_ribiayaselamadugds`
+(`ugd_no_rsri` = RI); ada → cari/buat ServiceRequest `3457005`/`737481003` di Encounter UGD (id disimpan di
+JSON UGD `satusehat.rujukanRawatInapId`, dipakai ulang) → Encounter RI `basedOn`. Tak ada baris = Encounter
+biasa. Encounter RI lama ditautkan saat finish. Host wajib `EmrUGDTrait`.
+
 ## 6a. Zona waktu: UTC dikonversi terpusat
 
 `makeRequest()` (non-GET) melewatkan payload ke `SatuSehatTrait::waktuKeUtc()`: setiap string

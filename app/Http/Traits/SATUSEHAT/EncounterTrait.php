@@ -37,6 +37,12 @@ trait EncounterTrait
                 $data['kelasLayanan']['code'], $data['kelasLayanan']['display']);
         }
 
+        // Opsional: Encounter ini terjadi karena permintaan resmi — id ServiceRequest
+        // (mis. rujukan rawat inap dari IGD, lihat RujukanRawatInapTrait).
+        if (!empty($data['basedOn'])) {
+            $payload['basedOn'] = [['reference' => 'ServiceRequest/' . $data['basedOn']]];
+        }
+
         // Jalankan request ke SatuSehat
         return $this->makeRequest('post', 'Encounter', $payload);
     }

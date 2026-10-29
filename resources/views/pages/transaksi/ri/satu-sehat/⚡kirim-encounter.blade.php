@@ -14,11 +14,15 @@ use Livewire\Attributes\Computed;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
+use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
 use App\Http\Traits\SATUSEHAT\EncounterTrait;
+use App\Http\Traits\SATUSEHAT\RujukanRawatInapTrait;
 use App\Support\Terminologi\DischargeDisposition;
 
 new class extends Component {
-    use EmrRITrait, EncounterTrait;
+    // EmrUGDTrait HANYA untuk RujukanRawatInapTrait (baca/tulis dokumen UGD asal) — pola sama
+    // transfer-ugd-ke-ri-actions yang juga memakai EmrRITrait + EmrUGDTrait bersamaan.
+    use EmrRITrait, EmrUGDTrait, EncounterTrait, RujukanRawatInapTrait;
 
     public ?string $riHdrNo = null;
 
@@ -172,9 +176,19 @@ new class extends Component {
 
             $entryDate = $this->parseDate($tanggalMasuk);
 
-            // 1) Buat Encounter (IMP) kalau belum ada
+            // 1) Buat Encounter (IMP) kalau belum ada. Cek tautan transfer kasir dulu: pasien
+            //    pindahan UGD → basedOn rujukan rawat inap dari Encounter UGD; tidak → Encounter biasa.
+            $catatanTautan = '';
             if (empty($satuSehat['encounterId'])) {
+                $tautan = $this->rujukanRawatInapDariUgd($riHdrNo, $entryDate->toIso8601String(), $practitionerId, (string) ($dataRI['drDesc'] ?? ''));
+                $catatanTautan = $tautan['catatan'];
+                if ($tautan['id'] !== null) {
+                    $satuSehat['rujukanRawatInapId'] = $tautan['id'];
+                    $catatanTautan = 'tertaut ke IGD (UGD #' . $tautan['ugdRjNo'] . ')';
+                }
+
                 $respons = $this->createNewEncounter([
+                    'basedOn'          => $tautan['id'],
                     'encounterId'      => 'RI-' . $riHdrNo,
                     'patientId'        => $patientId,
                     'patientName'      => $dataRI['regName'] ?? '',
@@ -203,7 +217,9 @@ new class extends Component {
             }
 
             $this->saveResult($riHdrNo, $satuSehat);
-            $this->dispatch('toast', type: 'success', message: 'Encounter (Rawat Inap) berhasil dikirim: ' . ($satuSehat['encounterId'] ?? '-'));
+            $tautanBelum = $catatanTautan !== '' && empty($satuSehat['rujukanRawatInapId']);
+            $this->dispatch('toast', type: $tautanBelum ? 'warning' : 'success',
+                message: 'Encounter (Rawat Inap) berhasil dikirim: ' . ($satuSehat['encounterId'] ?? '-') . ($catatanTautan !== '' ? ' — ' . $catatanTautan : ''));
             $this->dispatch('ri-satu-sehat.refresh', riHdrNo: $riHdrNo);
         } catch (\Throwable $e) {
             $this->dispatch('toast', type: 'error', message: 'Encounter gagal: ' . $e->getMessage());
@@ -255,6 +271,18 @@ new class extends Component {
                 $this->getEncounter($satuSehat['encounterId']), $akhirIso, $conditionIdList,
                 $satuSehat['chiefComplaintId'] ?? null
             );
+
+            // Encounter RI yang dibuat sebelum tautan ada (atau saat Encounter UGD belum dikirim):
+            // coba tautkan sekarang. PUT di bawah membawa seluruh Encounter, termasuk basedOn.
+            if (empty($encounterTersimpan['basedOn'])) {
+                $dpjpRiId = (string) (DB::table('rsmst_doctors')->where('dr_id', $dataRI['drId'] ?? '')->value('dr_uuid') ?? '');
+                $tautan = $this->rujukanRawatInapDariUgd($riHdrNo,
+                    $this->parseDate((string) ($dataRI['entryDate'] ?? ''))->toIso8601String(), $dpjpRiId, (string) ($dataRI['drDesc'] ?? ''));
+                if ($tautan['id'] !== null) {
+                    $encounterTersimpan['basedOn'] = [['reference' => 'ServiceRequest/' . $tautan['id']]];
+                    $satuSehat['rujukanRawatInapId'] = $tautan['id'];
+                }
+            }
 
             // Status pulang → hospitalization.dischargeDisposition — HL7 discharge-disposition, disamakan
             // dgn RJ/UGD & alur Rawat Inap apikesehatan.com (keputusan user 2026-10-28; dulu SNOMED).
