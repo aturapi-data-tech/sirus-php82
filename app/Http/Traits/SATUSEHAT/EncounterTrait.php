@@ -220,8 +220,9 @@ trait EncounterTrait
      * @param  array  $encounter  hasil getEncounter()
      * @param  string $akhirIso   waktu pasien benar-benar selesai dilayani
      * @param  array  $conditionIdList  id Condition hasil kirim diagnosa
+     * @param  string|null $keluhanUtamaId  id Condition chief-complaint (satuSehat.chiefComplaintId); kosong = dilewati
      */
-    public function siapkanFinishEncounter(array $encounter, string $akhirIso, array $conditionIdList): array
+    public function siapkanFinishEncounter(array $encounter, string $akhirIso, array $conditionIdList, ?string $keluhanUtamaId = null): array
     {
         $encounter['status'] = 'finished';
 
@@ -267,6 +268,22 @@ trait EncounterTrait
                     ]],
                 ],
                 'rank' => $indeks + 1,
+            ];
+        }
+
+        // Keluhan utama ikut di diagnosis dengan use = CC (Playbook RJ bab 3 & 27) —
+        // tanpa ini Condition chief-complaint terkirim tapi tak tertaut balik ke Encounter.
+        if (!empty($keluhanUtamaId) && !in_array($keluhanUtamaId, $conditionIdList, true)) {
+            $encounter['diagnosis'][] = [
+                'condition' => ['reference' => "Condition/{$keluhanUtamaId}"],
+                'use' => [
+                    'coding' => [[
+                        'system' => 'http://terminology.hl7.org/CodeSystem/diagnosis-role',
+                        'code' => 'CC',
+                        'display' => 'Chief complaint',
+                    ]],
+                ],
+                'rank' => count($encounter['diagnosis']) + 1,
             ];
         }
 

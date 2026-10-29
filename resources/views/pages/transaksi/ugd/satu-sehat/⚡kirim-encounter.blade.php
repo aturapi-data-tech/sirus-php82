@@ -238,7 +238,8 @@ new class extends Component {
 
             // statusHistory tiap entri wajib start+end (Rule 10122) — dirapikan di trait.
             $encounterTersimpan = $this->siapkanFinishEncounter(
-                $this->getEncounter($satuSehat['encounterId']), $akhirIso, $conditionIdList
+                $this->getEncounter($satuSehat['encounterId']), $akhirIso, $conditionIdList,
+                $satuSehat['chiefComplaintId'] ?? null
             );
 
             // Cara keluar (Playbook IGD bab 26–27) dari Tindak Lanjut di Perencanaan.

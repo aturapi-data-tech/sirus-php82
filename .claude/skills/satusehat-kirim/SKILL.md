@@ -46,7 +46,8 @@ Logika KFA yang disalin ke dua tempat itulah yang dulu bikin RJ/UGD berbeda diam
 - **`Encounter.statusHistory`**: tiap entri wajib `start` DAN `end` (10122). Entri bawaan
   `createNewEncounter()`/`startRoomEncounter()` hanya punya `start` →
   `EncounterTrait::siapkanFinishEncounter()` yang merapikan.
-- **`Encounter.diagnosis` wajib saat finish** (10457) → dari `conditionIds`, `use` = `DD`.
+- **`Encounter.diagnosis` wajib saat finish** (10457) → dari `conditionIds`, `use` = `DD`;
+  keluhan utama (`chiefComplaintId`) ikut sebagai `use` = `CC` (Playbook bab 3/27).
   Tolak lebih dulu bila diagnosa belum dikirim, jangan kirim lalu gagal.
 - **Racikan**: campurannya tak punya KFA → `Medication.code` cukup `code.text`,
   `medicationType` = `SD`/Compound, kode KFA ada di `ingredient[]`.

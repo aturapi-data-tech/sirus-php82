@@ -252,7 +252,8 @@ new class extends Component {
             }
 
             $encounterTersimpan = $this->siapkanFinishEncounter(
-                $this->getEncounter($satuSehat['encounterId']), $akhirIso, $conditionIdList
+                $this->getEncounter($satuSehat['encounterId']), $akhirIso, $conditionIdList,
+                $satuSehat['chiefComplaintId'] ?? null
             );
 
             // Status pulang → hospitalization.dischargeDisposition — HL7 discharge-disposition, disamakan
