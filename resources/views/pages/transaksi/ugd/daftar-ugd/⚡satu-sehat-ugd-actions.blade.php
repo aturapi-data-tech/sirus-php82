@@ -33,7 +33,7 @@ new class extends Component {
         'chief-complaint', 'riwayat-penyakit', 'riwayat-keluarga', 'riwayat-pengobatan',
         'riwayat-perjalanan', 'allergy', 'medication-dispense', 'pemberian-obat', 'lab', 'radiologi',
         'clinical-impression', 'penilaian', 'nyeri-kesadaran', 'status-psikologis', 'telaah-resep',
-        'rencana-tindak-lanjut', 'kondisi-pulang', 'encounter-selesai', 'resume-medis',
+        'rencana-tindak-lanjut', 'perencanaan-pulang', 'kondisi-pulang', 'encounter-selesai', 'resume-medis',
     ];
 
     /** Sisa langkah yang belum dijalankan; kosong = tidak ada rantai berjalan. */
@@ -296,6 +296,8 @@ new class extends Component {
                         wire:key="ss-telaah-resep-ugd-{{ $rjNo ?? 'none' }}" />
                     <livewire:pages::transaksi.ugd.satu-sehat.kirim-rencana-tindak-lanjut :rjNo="$rjNo"
                         wire:key="ss-rencana-tindak-lanjut-ugd-{{ $rjNo ?? 'none' }}" />
+                    <livewire:pages::transaksi.ugd.satu-sehat.kirim-perencanaan-pulang :rjNo="$rjNo"
+                        wire:key="ss-perencanaan-pulang-ugd-{{ $rjNo ?? 'none' }}" />
                     <livewire:pages::transaksi.ugd.satu-sehat.kirim-kondisi-pulang :rjNo="$rjNo"
                         wire:key="ss-kondisi-pulang-ugd-{{ $rjNo ?? 'none' }}" />
 

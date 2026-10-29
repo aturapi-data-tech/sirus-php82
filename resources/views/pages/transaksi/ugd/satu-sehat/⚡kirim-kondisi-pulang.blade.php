@@ -187,7 +187,7 @@ new class extends Component {
             @unless ($hanyaPratinjau)
             <div
                 class="flex items-center justify-center w-8 h-8 rounded-full {{ $count > 0 ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-surface-soft text-muted-soft dark:bg-gray-800 dark:text-gray-500' }}">
-                <span class="text-sm font-bold">23</span>
+                <span class="text-sm font-bold">24</span>
             </div>
             @endunless
             <div>

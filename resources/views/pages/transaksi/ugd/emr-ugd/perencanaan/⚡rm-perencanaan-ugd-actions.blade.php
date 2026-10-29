@@ -5,6 +5,8 @@ use Livewire\Component;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use Illuminate\Support\Str;
+use App\Support\Options\DischargePlanningOptions;
 use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 use App\Http\Traits\Concerns\WithValidationToastTrait;
@@ -38,6 +40,10 @@ new class extends Component {
 
     /** Penanda kunjungan sudah dimuat lewat open(). */
     public bool $dokumenTermuat = false;
+
+    /** Form tambah entri Discharge Planning (pola RI) — bukan bagian dokumen sampai ditambahkan. */
+    public array $formPelayanan = [];
+    public array $formAlat = [];
 
     /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan + skalar + cuplikan disimpan. */
     private function muatDariDokumen(array $data): void
@@ -186,7 +192,7 @@ new class extends Component {
      | SAVE
      =============================== */
     #[On('save-rm-perencanaan-ugd')]
-    public function save(bool $silent = false): void
+    public function save(bool $silent = false, ?string $logKeterangan = null): void
     {
         if ($this->isFormLocked) {
             $this->dispatch('toast', type: 'error', message: 'Form dalam mode read-only, tidak dapat menyimpan data.');
@@ -196,7 +202,7 @@ new class extends Component {
         $this->validateWithToast();
 
         try {
-            DB::transaction(function () {
+            DB::transaction(function () use ($logKeterangan) {
                 // 1. Lock row dulu
                 $this->lockUGDRow($this->rjNo);
 
@@ -217,7 +223,9 @@ new class extends Component {
                 $this->muatDariDokumen($data);
 
                 // Audit log
-                $this->appendAdminLogUGD((int) $this->rjNo, ($isBaru ? 'Buat' : 'Update') . ' Perencanaan UGD — waktu pemeriksaan ' . ($data['perencanaan']['pengkajianMedis']['waktuPemeriksaan'] ?? '-'), 'MR');
+                $this->appendAdminLogUGD((int) $this->rjNo, $logKeterangan
+                    ? 'Perencanaan UGD — ' . $logKeterangan
+                    : ($isBaru ? 'Buat' : 'Update') . ' Perencanaan UGD — waktu pemeriksaan ' . ($data['perencanaan']['pengkajianMedis']['waktuPemeriksaan'] ?? '-'), 'MR');
             });
 
             // 4. Notify — di luar transaksi
@@ -526,7 +534,141 @@ new class extends Component {
 
             'terapiTab' => 'Terapi',
             'terapi' => ['terapi' => ''],
+
+            // Discharge Planning — bentuk SAMA dengan RI (multi-entri, snomedCode per entri) supaya
+            // CarePlan Rencana Pemulangan (Playbook IGD bab 22) memakai logika yang sama. Form toggle
+            // lama (pelayananBerkelanjutanOpsi: DM/PPOK/CKD…) tak pernah dipasang dan tak dipakai.
+            'dischargePlanning' => [
+                'pelayananBerkelanjutan' => ['pelayananBerkelanjutan' => 'Tidak Ada', 'ketPelayananBerkelanjutan' => '', 'pelayananBerkelanjutanData' => []],
+                'penggunaanAlatBantu' => ['penggunaanAlatBantu' => 'Tidak Ada', 'ketPenggunaanAlatBantu' => '', 'penggunaanAlatBantuData' => []],
+            ],
         ];
+    }
+
+    /* ===============================
+     | DISCHARGE PLANNING (port RI)
+     =============================== */
+    /** @return array<string, string> */
+    private function defaultFormPelayanan(): array
+    {
+        return ['jenisPelayanan' => '', 'ketJenis' => '', 'tempatFasyankes' => '', 'tglRencana' => ''];
+    }
+
+    /** @return array<string, string> */
+    private function defaultFormAlat(): array
+    {
+        return ['jenisAlat' => '', 'ketAlat' => '', 'durasi' => '', 'sumberAlat' => ''];
+    }
+
+    /**
+     * Tambah entri pelayanan berkelanjutan. snomedCode disimpan PER ENTRI supaya record lama
+     * tetap memakai kode saat dicatat, walau daftar opsi berubah kemudian.
+     */
+    public function tambahPelayanan(): void
+    {
+        if ($this->isFormLocked) {
+            $this->dispatch('toast', type: 'error', message: 'Form dalam mode read-only, tidak dapat menyimpan data.');
+            return;
+        }
+        // validate() DULU, sebelum guard lain — kalau di-guard duluan, field wajib tak pernah merah.
+        $this->validateWithToast([
+            'formPelayanan.jenisPelayanan' => 'required',
+            'formPelayanan.tglRencana' => 'nullable|date_format:d/m/Y',
+            'formPelayanan.ketJenis' => 'required_if:formPelayanan.jenisPelayanan,Lainnya',
+        ], [
+            'formPelayanan.jenisPelayanan.required' => 'Jenis pelayanan wajib dipilih.',
+            'formPelayanan.tglRencana.date_format' => 'Tanggal rencana harus dd/mm/yyyy.',
+            'formPelayanan.ketJenis.required_if' => 'Keterangan wajib diisi bila memilih Lainnya.',
+        ]);
+
+        $jenis = trim((string) $this->formPelayanan['jenisPelayanan']);
+        $snomed = DischargePlanningOptions::pelayanan($jenis);
+
+        $this->perencanaan['dischargePlanning']['pelayananBerkelanjutan']['pelayananBerkelanjutanData'][] = [
+            'id'              => (string) Str::uuid(),
+            'jenisPelayanan'  => $jenis,
+            'ketJenis'        => trim((string) ($this->formPelayanan['ketJenis'] ?? '')),
+            'tempatFasyankes' => trim((string) ($this->formPelayanan['tempatFasyankes'] ?? '')),
+            'tglRencana'      => trim((string) ($this->formPelayanan['tglRencana'] ?? '')),
+            'snomedCode'      => $snomed['code'] ?? '',
+            'snomedDisplay'   => $snomed['display'] ?? '',
+            'petugas'         => auth()->user()->myuser_name ?? '',
+            'petugasCode'     => auth()->user()->myuser_code ?? '',
+            'tglPencatatan'   => Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s'),
+        ];
+        $this->formPelayanan = $this->defaultFormPelayanan();
+        $this->save(false, 'Tambah pelayanan berkelanjutan — ' . $jenis);
+    }
+
+    public function hapusPelayanan(int $index): void
+    {
+        if ($this->isFormLocked) {
+            $this->dispatch('toast', type: 'error', message: 'Form dalam mode read-only, tidak dapat menyimpan data.');
+            return;
+        }
+        $rows = $this->perencanaan['dischargePlanning']['pelayananBerkelanjutan']['pelayananBerkelanjutanData'] ?? [];
+        if (!isset($rows[$index])) {
+            return;
+        }
+        $jenis = $rows[$index]['jenisPelayanan'] ?? '-';
+        unset($rows[$index]);
+        $this->perencanaan['dischargePlanning']['pelayananBerkelanjutan']['pelayananBerkelanjutanData'] = array_values($rows);
+        $this->save(false, 'Hapus pelayanan berkelanjutan — ' . $jenis);
+    }
+
+    /** Tambah entri alat bantu. snomedCode disimpan per entri (alasan sama seperti pelayanan). */
+    public function tambahAlat(): void
+    {
+        if ($this->isFormLocked) {
+            $this->dispatch('toast', type: 'error', message: 'Form dalam mode read-only, tidak dapat menyimpan data.');
+            return;
+        }
+        $this->validateWithToast([
+            'formAlat.jenisAlat' => 'required',
+            'formAlat.ketAlat' => 'required_if:formAlat.jenisAlat,Lainnya',
+        ], [
+            'formAlat.jenisAlat.required' => 'Jenis alat bantu wajib dipilih.',
+            'formAlat.ketAlat.required_if' => 'Keterangan wajib diisi bila memilih Lainnya.',
+        ]);
+
+        $jenis = trim((string) $this->formAlat['jenisAlat']);
+        $snomed = DischargePlanningOptions::alatBantu($jenis);
+
+        $this->perencanaan['dischargePlanning']['penggunaanAlatBantu']['penggunaanAlatBantuData'][] = [
+            'id'            => (string) Str::uuid(),
+            'jenisAlat'     => $jenis,
+            'ketAlat'       => trim((string) ($this->formAlat['ketAlat'] ?? '')),
+            'durasi'        => trim((string) ($this->formAlat['durasi'] ?? '')),
+            'sumberAlat'    => trim((string) ($this->formAlat['sumberAlat'] ?? '')),
+            'snomedCode'    => $snomed['code'] ?? '',
+            'snomedDisplay' => $snomed['display'] ?? '',
+            'petugas'       => auth()->user()->myuser_name ?? '',
+            'petugasCode'   => auth()->user()->myuser_code ?? '',
+            'tglPencatatan' => Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s'),
+        ];
+        $this->formAlat = $this->defaultFormAlat();
+        $this->save(false, 'Tambah alat bantu — ' . $jenis);
+    }
+
+    public function hapusAlat(int $index): void
+    {
+        if ($this->isFormLocked) {
+            $this->dispatch('toast', type: 'error', message: 'Form dalam mode read-only, tidak dapat menyimpan data.');
+            return;
+        }
+        $rows = $this->perencanaan['dischargePlanning']['penggunaanAlatBantu']['penggunaanAlatBantuData'] ?? [];
+        if (!isset($rows[$index])) {
+            return;
+        }
+        $jenis = $rows[$index]['jenisAlat'] ?? '-';
+        unset($rows[$index]);
+        $this->perencanaan['dischargePlanning']['penggunaanAlatBantu']['penggunaanAlatBantuData'] = array_values($rows);
+        $this->save(false, 'Hapus alat bantu — ' . $jenis);
+    }
+
+    public function setTglRencana(): void
+    {
+        $this->formPelayanan['tglRencana'] = Carbon::now(config('app.timezone'))->format('d/m/Y');
     }
 
     /* ===============================
@@ -547,6 +689,8 @@ new class extends Component {
     {
         $this->resetVersion();
         $this->isFormLocked = false;
+        $this->formPelayanan = $this->defaultFormPelayanan();
+        $this->formAlat = $this->defaultFormAlat();
     }
 };
 ?>
@@ -563,6 +707,8 @@ new class extends Component {
                         @include('pages.transaksi.ugd.emr-ugd.perencanaan.tabs.petugas-medis-tab')
 
                         @include('pages.transaksi.ugd.emr-ugd.perencanaan.tabs.tindak-lanjut-tab')
+
+                        @include('pages.transaksi.ugd.emr-ugd.perencanaan.tabs.discharge-planning-tab')
                     </div>
                 @endif
 

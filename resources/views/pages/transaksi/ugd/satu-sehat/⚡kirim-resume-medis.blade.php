@@ -249,6 +249,7 @@ new class extends Component {
             'tindakan' => $ref('Procedure', $satuSehat['procedureIds'] ?? []),
             'kondisiPulang' => $ref('Condition', $satuSehat['kondisiPulangId'] ?? []),
             'rencanaTindakLanjut' => $ref('ServiceRequest', $satuSehat['rencanaTindakLanjutId'] ?? []),
+            'perencanaanPerawatan' => $ref('CarePlan', $satuSehat['perencanaanPulangId'] ?? []), // bab 22 rencana pemulangan
             'obatSaatKunjungan' => array_merge(
                 $ref('MedicationRequest', $satuSehat['medicationRequestIds'] ?? []),
                 $ref('MedicationDispense', $satuSehat['medicationDispenseIds'] ?? []),
@@ -327,7 +328,7 @@ new class extends Component {
             @unless ($hanyaPratinjau)
             <div
                 class="flex items-center justify-center w-8 h-8 rounded-full {{ $count > 0 ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-teal-100 text-teal-600 dark:bg-teal-900/30 dark:text-teal-400' }}">
-                <span class="text-sm font-bold">24</span>
+                <span class="text-sm font-bold">25</span>
             </div>
             @endunless
             <div>
