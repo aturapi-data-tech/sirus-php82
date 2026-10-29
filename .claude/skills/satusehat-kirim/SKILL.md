@@ -82,6 +82,11 @@ racikan disebut **nama bahan** yang menghalangi supaya bisa langsung dilengkapi 
 RJ `taskId7` → `taskId5`; UGD `taskId7` → `perencanaan.pengkajianMedis.selesaiPemeriksaan`
 (task5 tak pernah dipakai UGD); RI `exitDate`. Lihat skill `bpjs-antrean-task-id`.
 
+Status antara UGD (`arrived → triaged → in-progress`): triaged = `screening.tanggalPelayanan`
+(TTD Screening) → cadangan `anamnesa.pengkajianPerawatan.jamDatang`, hanya bila tingkat triase ada
+(`KedatanganIgd::tingkatTriase`); in-progress = `perencanaan.pengkajianMedis.waktuPemeriksaan`.
+Dijepit `waktuTerakhir()` agar tak mendahului status sebelumnya. Flag `satusehat.encounterTriaged`.
+
 ## 6a. Zona waktu: UTC dikonversi terpusat
 
 `makeRequest()` (non-GET) melewatkan payload ke `SatuSehatTrait::waktuKeUtc()`: setiap string

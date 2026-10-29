@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
 use App\Http\Traits\SATUSEHAT\EncounterTrait;
 use App\Support\Terminologi\DischargeDisposition;
+use App\Support\Terminologi\KedatanganIgd;
 
 new class extends Component {
     use EmrUGDTrait, EncounterTrait;
@@ -71,6 +72,7 @@ new class extends Component {
     }
 
     public ?string $encounterId = null;
+    public bool $encounterTriaged = false;
     public bool $encounterInProgress = false;
     public bool $encounterFinished = false;
 
@@ -100,6 +102,7 @@ new class extends Component {
         }
         $satuSehat = $data['satusehat'] ?? [];
         $this->encounterId = $satuSehat['encounterId'] ?? null;
+        $this->encounterTriaged = !empty($satuSehat['encounterTriaged']);
         $this->encounterInProgress = !empty($satuSehat['encounterInProgress']);
         $this->encounterFinished = !empty($satuSehat['encounterFinished']);
     }
@@ -181,16 +184,46 @@ new class extends Component {
                 $satuSehat['encounterId'] = $respons['id'] ?? null;
             }
 
+            $catatanTriase = '';
             if (!empty($satuSehat['encounterId']) && empty($satuSehat['encounterInProgress'])) {
+                $waktuDatangIso = $ugdDate->toIso8601String();
+
+                // Status triaged = penanda khas IGD (arrived → triaged → in-progress → finished).
+                // Jam = TTD Screening (instrumen triase); cadangan jam datang Pengkajian Perawat —
+                // jam yang sama dipakai Observation triase di kartu Kedatangan. Urutan dijaga:
+                // tak boleh mendahului arrived. Tanpa tingkat/jam triase → dilewati + dilaporkan.
+                $waktuTriaseIso = '';
+                if (empty($satuSehat['encounterTriaged'])) {
+                    $tingkatTriase = KedatanganIgd::tingkatTriase($dataUGD)['tingkat'];
+                    $jamTriase = trim((string) ($dataUGD['screening']['tanggalPelayanan'] ?? ''))
+                        ?: trim((string) ($dataUGD['anamnesa']['pengkajianPerawatan']['jamDatang'] ?? ''));
+                    if ($tingkatTriase !== '' && $jamTriase !== '') {
+                        $waktuTriaseIso = $this->waktuTerakhir($waktuDatangIso, $this->parseDate($jamTriase)->toIso8601String());
+                        $this->tambahStatusEncounter($satuSehat['encounterId'], 'triaged', $waktuTriaseIso);
+                        $satuSehat['encounterTriaged'] = true;
+                        // Simpan segera: bila in-progress di bawah gagal, kirim ulang tak menambah triaged dobel.
+                        $this->saveResult($rjNo, $satuSehat);
+                    } else {
+                        $catatanTriase = ' — TANPA status triaged: tingkat/jam triase belum diisi (Screening / Pengkajian Perawat).';
+                    }
+                }
+
+                // in-progress = jam dokter memeriksa; belum ada → jam triase/datang. Tak boleh mendahului triaged.
+                $jamPeriksa = trim((string) ($dataUGD['perencanaan']['pengkajianMedis']['waktuPemeriksaan'] ?? ''));
+                $waktuMulaiIso = $this->waktuTerakhir(
+                    $waktuTriaseIso ?: $waktuDatangIso,
+                    $jamPeriksa !== '' ? $this->parseDate($jamPeriksa)->toIso8601String() : ''
+                );
                 $this->startRoomEncounter($satuSehat['encounterId'], [
-                    'startDate' => $ugdDate->toIso8601String(),
+                    'startDate' => $waktuMulaiIso,
                     'locationId' => $locationId,
                 ]);
                 $satuSehat['encounterInProgress'] = true;
             }
 
             $this->saveResult($rjNo, $satuSehat);
-            $this->dispatch('toast', type: 'success', message: 'Encounter UGD dikirim: ' . ($satuSehat['encounterId'] ?? '-'));
+            $this->dispatch('toast', type: $catatanTriase === '' ? 'success' : 'warning',
+                message: 'Encounter UGD dikirim: ' . ($satuSehat['encounterId'] ?? '-') . $catatanTriase);
             $this->dispatch('ugd-satu-sehat.refresh', rjNo: $rjNo);
         } catch (\Throwable $e) {
             $this->dispatch('toast', type: 'error', message: 'Encounter gagal: ' . $e->getMessage());
@@ -306,7 +339,10 @@ new class extends Component {
                 <div class="text-xs text-muted dark:text-gray-400">Kunjungan UGD — akar, wajib pertama.</div>
                 @if ($encounterId)
                     <div class="mt-1 font-mono text-xs text-success dark:text-success">
-                        {{ $encounterFinished ? 'finished' : ($encounterInProgress ? 'in-progress' : 'arrived') }}
+                        {{ $encounterFinished ? 'finished' : ($encounterInProgress ? 'in-progress' : ($encounterTriaged ? 'triaged' : 'arrived')) }}
+                        @if ($encounterInProgress && !$encounterTriaged)
+                            <span class="text-warning-deep dark:text-amber-200">· tanpa triaged</span>
+                        @endif
                     </div>
                     @if (!$encounterFinished)
                         @if ($this->caraKeluar)

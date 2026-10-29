@@ -36,6 +36,22 @@ trait EncounterTrait
     }
 
     /**
+     * Pindahkan Encounter ke status berikutnya tanpa mengubah lokasi (mis. 'triaged' di IGD).
+     * PUT berisi seluruh Encounter hasil GET — FHIR tak mengenal partial update.
+     */
+    public function tambahStatusEncounter(string $encounterId, string $status, string $mulaiIso): array
+    {
+        $existing = $this->getEncounter($encounterId);
+        $existing['status'] = $status;
+        $existing['statusHistory'][] = [
+            'status' => $status,
+            'period' => ['start' => $mulaiIso],
+        ];
+
+        return $this->makeRequest('put', "Encounter/{$encounterId}", $existing);
+    }
+
+    /**
      * Update encounter status ke 'in-progress' (Pasien Masuk Ruang)
      */
     public function startRoomEncounter(string $encounterId, array $data = []): array
