@@ -49,6 +49,8 @@ Logika KFA yang disalin ke dua tempat itulah yang dulu bikin RJ/UGD berbeda diam
 - **`Encounter.diagnosis` wajib saat finish** (10457) → dari `conditionIds`, `use` = `DD`;
   keluhan utama (`chiefComplaintId`) ikut sebagai `use` = `CC` (Playbook bab 3/27).
   Tolak lebih dulu bila diagnosa belum dikirim, jangan kirim lalu gagal.
+- **`Observation.issued` WAJIB** (10296, mulai ditegakkan 2026-10-29). `createObservation()` mengisinya
+  dari `issued` bila dikirim (lab/radiologi), selain itu = `effectiveDateTime`.
 - **Racikan**: campurannya tak punya KFA → `Medication.code` cukup `code.text`,
   `medicationType` = `SD`/Compound, kode KFA ada di `ingredient[]`.
 
