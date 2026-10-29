@@ -2,7 +2,7 @@
 {{-- Port form Discharge Planning RI (multi-entri, kode SNOMED per entri) — sumber CarePlan Rencana
      Pemulangan SATUSEHAT UGD (Playbook IGD bab 22). Metode tambah/hapus ada di rm-perencanaan-ugd-actions. --}}
 <x-border-form title="Discharge Planning" align="start" bgcolor="bg-surface-soft">
-    <div class="mt-3 grid grid-cols-2 gap-4">
+    <div class="mt-3 space-y-6">
         <div>
             <x-input-label value="Pelayanan Berkelanjutan" />
             <div class="mt-2 flex gap-4">
