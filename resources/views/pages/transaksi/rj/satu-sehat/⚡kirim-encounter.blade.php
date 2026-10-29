@@ -7,12 +7,15 @@ use Livewire\Attributes\Computed;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Rj\EmrRJTrait;
+use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
 use App\Http\Traits\SATUSEHAT\EncounterTrait;
 use App\Support\Terminologi\DischargeDisposition;
 
 new class extends Component {
-    use EmrRJTrait, MasterPasienTrait, EncounterTrait;
+    // EmrUGDTrait HANYA untuk transferKeUgd() (baca Jam Datang UGD tujuan) — pola sama
+    // transfer-rj-ke-ugd-actions yang memakai EmrRJTrait + EmrUGDTrait bersamaan.
+    use EmrRJTrait, EmrUGDTrait, MasterPasienTrait, EncounterTrait;
 
     public ?string $rjNo = null;
     public ?string $encounterId = null;
@@ -51,11 +54,44 @@ new class extends Component {
             return null;
         }
 
-        $tindakLanjut = $this->findDataRJ($this->rjNo)['perencanaan']['tindakLanjut'] ?? [];
+        return $this->caraKeluarRj((string) $this->rjNo, $this->findDataRJ($this->rjNo))['text'] ?? null;
+    }
+
+    /**
+     * Tautan transfer kasir RJ → UGD (rstxn_ugdbiayaselamadirjs, ditulis transfer-rj-ke-ugd-actions).
+     *
+     * @return array{ugdRjNo: string, jamDatang: string}|null null = pasien tidak dipindah ke UGD
+     */
+    private function transferKeUgd(string $rjNo): ?array
+    {
+        $ugdRjNo = DB::table('rstxn_ugdbiayaselamadirjs')->where('rj_no', $rjNo)->value('rj_no_rsugd');
+        if (blank($ugdRjNo)) {
+            return null;
+        }
+
+        // Jam tiba di IGD = akhir layanan RJ. Kasir tak menyimpan jam transfer (rj_date UGD
+        // disalin dari RJ), jadi dipakai Jam Datang di Pengkajian Perawat UGD tujuan.
+        $dataUGD = $this->findDataUGD((string) $ugdRjNo);
+
+        return [
+            'ugdRjNo' => (string) $ugdRjNo,
+            'jamDatang' => trim((string) ($dataUGD['anamnesa']['pengkajianPerawatan']['jamDatang'] ?? '')),
+        ];
+    }
+
+    /** Cara keluar Encounter RJ — satu sumber untuk pratinjau kartu & finish. */
+    private function caraKeluarRj(string $rjNo, array $dataRJ): ?array
+    {
+        $transfer = $this->transferKeUgd($rjNo);
+        if ($transfer !== null) {
+            return DischargeDisposition::pindahKeIgd($transfer['ugdRjNo']);
+        }
+
+        $tindakLanjut = $dataRJ['perencanaan']['tindakLanjut'] ?? [];
 
         return DischargeDisposition::rawatJalan(
             $tindakLanjut['tindakLanjut'] ?? null, $tindakLanjut['keteranganTindakLanjut'] ?? null
-        )['text'] ?? null;
+        );
     }
 
     #[Computed]
@@ -245,11 +281,15 @@ new class extends Component {
 
             // Waktu selesai = jam layanan berakhir, bukan now() (jam petugas mengklik):
             // task 7 (obat diserahkan), atau task 5 (keluar poli) bila tak ada obat.
+            // Pasien yang ditransfer ke UGD sering tak punya task 5/7 → cadangan = jam tiba di IGD.
             $task = $dataRJ['taskIdPelayanan'] ?? [];
-            $waktuSelesai = trim((string) ($task['taskId7'] ?? '')) ?: trim((string) ($task['taskId5'] ?? ''));
+            $transfer = $this->transferKeUgd($rjNo);
+            $waktuSelesai = trim((string) ($task['taskId7'] ?? '')) ?: trim((string) ($task['taskId5'] ?? ''))
+                ?: (string) ($transfer['jamDatang'] ?? '');
             if ($waktuSelesai === '') {
-                $this->dispatch('toast', type: 'error',
-                    message: 'Jam selesai layanan (task 7 / task 5) belum tercatat — Encounter tidak di-finish (jam sekarang tidak relevan).');
+                $this->dispatch('toast', type: 'error', message: $transfer !== null
+                    ? "Pasien dipindah ke UGD #{$transfer['ugdRjNo']}, tapi Jam Datang di Pengkajian Perawat UGD belum diisi — Encounter RJ tidak di-finish (jam sekarang tidak relevan)."
+                    : 'Jam selesai layanan (task 7 / task 5) belum tercatat — Encounter tidak di-finish (jam sekarang tidak relevan).');
                 return;
             }
             $akhirIso = $this->parseDate($waktuSelesai)->toIso8601String();
@@ -269,12 +309,10 @@ new class extends Component {
                 $satuSehat['chiefComplaintId'] ?? null
             );
 
-            // Cara keluar (Playbook RJ bab 26–27) dari Tindak Lanjut di Perencanaan.
-            // Kosong/tak dikenal → field TIDAK diisi (jangan menebak), tapi dilaporkan.
-            $tindakLanjut = $dataRJ['perencanaan']['tindakLanjut'] ?? [];
-            $caraKeluar = DischargeDisposition::rawatJalan(
-                $tindakLanjut['tindakLanjut'] ?? null, $tindakLanjut['keteranganTindakLanjut'] ?? null
-            );
+            // Cara keluar (Playbook RJ bab 26–27): transfer ke UGD (data kasir) → "Dipindahkan ke IGD";
+            // selain itu dari Tindak Lanjut di Perencanaan. Kosong/tak dikenal → field TIDAK diisi
+            // (jangan menebak), tapi dilaporkan.
+            $caraKeluar = $this->caraKeluarRj($rjNo, $dataRJ);
             if ($caraKeluar !== null) {
                 $encounterTersimpan['hospitalization']['dischargeDisposition'] = $caraKeluar;
             }

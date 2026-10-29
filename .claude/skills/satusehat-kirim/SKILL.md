@@ -95,6 +95,11 @@ Tautan IGD→RI: `RujukanRawatInapTrait::rujukanRawatInapDariUgd()` — cek `rst
 (`ugd_no_rsri` = RI); ada → cari/buat ServiceRequest `3457005`/`737481003` di Encounter UGD (id disimpan di
 JSON UGD `satusehat.rujukanRawatInapId`, dipakai ulang) → Encounter RI `basedOn`. Tak ada baris = Encounter
 biasa. Encounter RI lama ditautkan saat finish. Host wajib `EmrUGDTrait`.
+Tautan RJ→UGD (pola sama — TUJUAN mengecek asal): kartu Encounter UGD `RujukanIgdTrait::rujukanIgdDariRj()` cek
+`rstxn_ugdbiayaselamadirjs` (`rj_no_rsugd` = UGD) → SR `3457005`/`306104004` di Encounter RJ (`satusehat.rujukanIgdId`
+di JSON RJ) → Encounter UGD `basedOn`; host wajib `EmrRJTrait`. Penutupan RJ: kartu Encounter RJ `transferKeUgd()` cek `rstxn_ugdbiayaselamadirjs` → cara keluar
+`DischargeDisposition::pindahKeIgd()` (`oth`, mengalahkan Tindak Lanjut) dan jam selesai cadangan = `jamDatang`
+Pengkajian Perawat UGD tujuan (sesudah task 7 → task 5).
 
 ## 6a. Zona waktu: UTC dikonversi terpusat
 

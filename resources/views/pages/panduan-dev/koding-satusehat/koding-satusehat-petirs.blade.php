@@ -55,7 +55,7 @@
                                         <td class="ds-td-strong">7</td>
                                         <td class="ds-body-sm"><strong>Kunjungan harus tuntas</strong>: finished + diagnosis + resume. Dinilai berkala, berisiko sanksi.</td>
                                         <td class="ds-body-sm">Finish Encounter + Resume Medis di tiap modul; prasyarat ditolak di depan dengan toast (bukan dikirim lalu gagal).</td>
-                                        <td class="ds-body-sm">✅ — tapi lihat celah RJ→UGD di §Tautan</td>
+                                        <td class="ds-body-sm">✅ — celah RJ yang ditransfer ke UGD ditutup 29/10 (§Tautan)</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -256,7 +256,7 @@
                         <p class="ds-body-md mb-4" style="max-width:66ch">
                             Pertanyaan yang sering muncul: "pasien kontrol / transfer RJ→UGD→RI — dirangkai pakai apa?"
                             Jawaban singkat: <strong>bukan EpisodeOfCare</strong> untuk pelayanan biasa. Ringkasan riset dan rancangan
-                            di bawah — <strong>rancangan tautan belum dikerjakan</strong> (PR Tahap 3).
+                            di bawah — tautan RJ→UGD→RI <strong>sudah dikerjakan 29/10</strong> memakai tabel transfer kasir.
                         </p>
 
                         <h2 class="ds-title-lg mt-6 mb-3">EpisodeOfCare di SATUSEHAT</h2>
@@ -301,23 +301,28 @@
                         </div>
                         <p class="ds-body-sm mt-2" style="color:var(--muted)">RJ langsung → RI (lewat SPRI/pendaftaran RI) tidak punya tautan di kasir.</p>
 
-                        <h2 class="ds-title-lg mt-8 mb-3">Rancangan (PR Tahap 3 — belum dikerjakan)</h2>
+                        <h2 class="ds-title-lg mt-8 mb-3">Implementasi tautan (Tahap 3 — selesai 29/10)</h2>
                         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                             <div class="ds-card-outline" style="padding:20px">
-                                <div class="ds-title-sm mb-2">A · UGD → RI (prioritas)</div>
+                                <div class="ds-title-sm mb-2">A · UGD → RI — <span class="ds-code">75ef8de8a</span></div>
                                 <ul class="ds-body-sm space-y-1.5" style="list-style:disc; padding-left:18px">
-                                    <li>Kartu Rencana Tindak Lanjut UGD mengirim ServiceRequest <strong>rujukan internal Rawat Inap</strong> (Tabel 27 dok IGD): category <span class="ds-code">3457005</span> Patient referral, code <span class="ds-code">737481003</span> Inpatient care management — <strong>verifikasi tx.fhir.org dulu</strong>. Pemicu: baris transfer / Tindak Lanjut MRS. ID → <span class="ds-code">satusehat.rujukanRawatInapId</span>.</li>
-                                    <li>Encounter RI → <span class="ds-code">basedOn</span> SR itu (cari via <span class="ds-code">ugd_no_rsri</span>); bila SR belum ada saat create, pasang saat finish.</li>
-                                    <li>Cara keluar UGD tetap <span class="ds-code">oth</span> + teks "Dirawat inap" + no. RI.</li>
-                                    <li>Rujukan <em>luar</em> (ServiceRequest SISRUTE) hanya ditautkan ke Encounter pertama (UGD).</li>
+                                    <li><span class="ds-code">RujukanRawatInapTrait::rujukanRawatInapDariUgd($riHdrNo, $waktuMasukRiIso, $dpjpRiId, $dpjpRiNama)</span> — dipanggil kartu Encounter RI.</li>
+                                    <li>Cek <span class="ds-code">rstxn_ribiayaselamadugds</span> (<span class="ds-code">ugd_no_rsri</span> = RI). <strong>Tak ada baris → Encounter biasa.</strong></li>
+                                    <li>Ada → SR sudah ada di JSON UGD (<span class="ds-code">satusehat.rujukanRawatInapId</span>)? pakai ulang. Belum → POST ServiceRequest di <strong>Encounter UGD</strong>: category <span class="ds-code">3457005</span> Patient referral, code <span class="ds-code">737481003</span> Inpatient care management (diverifikasi tx.fhir.org), identifier <span class="ds-code">UGD-{rjNo}-RAWAT-INAP</span>, requester dokter UGD, performer DPJP RI, occurrence/authoredOn = jam masuk RI. ID disimpan ke JSON UGD.</li>
+                                    <li>Encounter RI dibuat dengan <span class="ds-code">basedOn</span> = SR (<span class="ds-code">createNewEncounter(['basedOn' => $id])</span>). Encounter RI lama / Encounter UGD yang baru dikirim belakangan → <span class="ds-code">basedOn</span> dipasang saat <strong>Finish Encounter RI</strong>.</li>
+                                    <li>Encounter UGD belum dikirim / IHS kosong → Encounter RI tetap dibuat, toast kuning menyebut alasannya.</li>
+                                    <li>Rujukan <em>luar</em> (ServiceRequest SISRUTE) hanya ditautkan ke Encounter pertama (UGD) — rancangan rujukan masuk, belum di develop.</li>
                                 </ul>
                             </div>
                             <div class="ds-card-outline" style="padding:20px">
                                 <div class="ds-title-sm mb-2">B · RJ → UGD</div>
                                 <ul class="ds-body-sm space-y-1.5" style="list-style:disc; padding-left:18px">
-                                    <li>Cara keluar RJ dari <strong>data transfer</strong>: <span class="ds-code">oth</span> "Dipindahkan ke IGD (UGD #…)" — Tindak Lanjut RJ tak punya opsi IGD.</li>
-                                    <li><strong>Celah nyata:</strong> RJ yang ditransfer sering tanpa task 5/7 → Finish Encounter RJ <em>selalu ditolak</em>. Kasir tak menyimpan jam transfer (<span class="ds-code">rj_date</span> UGD disalin dari RJ) → usul: jam selesai = <span class="ds-code">jamDatang</span> Pengkajian Perawat UGD tujuan.</li>
-                                    <li>Tanpa ServiceRequest/basedOn — tak ada kode Kemkes "ke IGD".</li>
+                                    <li><strong>Pola sama A — unit tujuan mengecek asalnya.</strong> Kartu Encounter UGD memanggil <span class="ds-code">RujukanIgdTrait::rujukanIgdDariRj($ugdRjNo, $waktuMasukUgdIso, $dokterUgdId, $dokterUgdNama)</span>: cek <span class="ds-code">rstxn_ugdbiayaselamadirjs</span> (<span class="ds-code">rj_no_rsugd</span> = UGD). <strong>Tak ada baris → Encounter UGD biasa.</strong></li>
+                                    <li>Ada → SR di JSON RJ (<span class="ds-code">satusehat.rujukanIgdId</span>)? pakai ulang. Belum → POST ServiceRequest di <strong>Encounter RJ</strong>: category <span class="ds-code">3457005</span>, code <span class="ds-code">306104004</span> Referral to accident and emergency service (SNOMED umum, diverifikasi tx.fhir.org — <em>Tabel 27 Kemkes tak punya entri "ke IGD"</em>), priority <span class="ds-code">urgent</span>, identifier <span class="ds-code">RJ-{rjNo}-IGD</span>, requester dokter RJ, performer dokter UGD, waktu = Jam Datang UGD (<span class="ds-code">waktuMasukUgdIso()</span>; kosong → <span class="ds-code">rj_date</span>).</li>
+                                    <li>Encounter UGD dibuat dengan <span class="ds-code">basedOn</span>; Encounter UGD lama / Encounter RJ yang dikirim belakangan → dipasang saat <strong>Finish Encounter UGD</strong>.</li>
+                                    <li>Penutupan sisi RJ (finish Encounter RJ): <span class="ds-code">transferKeUgd($rjNo)</span> cek tabel yang sama (<span class="ds-code">rj_no</span> = RJ) → no. UGD + <span class="ds-code">jamDatang</span> Pengkajian Perawat UGD tujuan.</li>
+                                    <li><strong>Cara keluar</strong>: <span class="ds-code">caraKeluarRj()</span> — satu sumber untuk pratinjau kartu &amp; finish. Ada transfer → <span class="ds-code">DischargeDisposition::pindahKeIgd()</span> = <span class="ds-code">oth</span> "Dipindahkan ke IGD (UGD #…)", <strong>mengalahkan Tindak Lanjut</strong> (tak punya opsi IGD). Tidak → Tindak Lanjut seperti biasa.</li>
+                                    <li><strong>Jam selesai</strong>: <span class="ds-code">taskId7</span> → <span class="ds-code">taskId5</span> → <span class="ds-code">jamDatang</span> UGD tujuan (kasir tak menyimpan jam transfer; <span class="ds-code">rj_date</span> UGD disalin dari RJ). Dulu RJ yang ditransfer tanpa task 5/7 <em>selalu ditolak finish</em>. Jam Datang UGD kosong → ditolak dengan pesan yang menyebut no. UGD.</li>
                                 </ul>
                             </div>
                         </div>
@@ -354,6 +359,9 @@
                                     <tr><td class="ds-body-sm"><span class="ds-code">17466d182</span></td><td class="ds-body-sm">Discharge Planning UGD + kartu CarePlan Rencana Pemulangan</td></tr>
                                     <tr><td class="ds-body-sm"><span class="ds-code">5a4af118f</span></td><td class="ds-body-sm">Lokasi ditutup — pindah kamar RI &amp; saat finish</td></tr>
                                     <tr><td class="ds-body-sm"><span class="ds-code">4a5366d1f</span></td><td class="ds-body-sm">Discharge Planning UGD disusun atas ke bawah</td></tr>
+                                    <tr><td class="ds-body-sm"><span class="ds-code">29735e061</span></td><td class="ds-body-sm">Panduan dev ini</td></tr>
+                                    <tr><td class="ds-body-sm"><span class="ds-code">75ef8de8a</span></td><td class="ds-body-sm">Tautan IGD → RI: Encounter RI <span class="ds-code">basedOn</span> rujukan rawat inap dari UGD</td></tr>
+                                    <tr><td class="ds-body-sm">(commit berikutnya)</td><td class="ds-body-sm">Tautan RJ → UGD: Encounter UGD <span class="ds-code">basedOn</span> rujukan ke IGD dari RJ; finish RJ: cara keluar "Dipindahkan ke IGD" + jam selesai dari Jam Datang UGD</td></tr>
                                 </tbody>
                             </table>
                         </div>

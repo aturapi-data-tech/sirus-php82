@@ -10,12 +10,16 @@ use Livewire\Attributes\Computed;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
+use App\Http\Traits\Txn\Rj\EmrRJTrait;
 use App\Http\Traits\SATUSEHAT\EncounterTrait;
+use App\Http\Traits\SATUSEHAT\RujukanIgdTrait;
 use App\Support\Terminologi\DischargeDisposition;
 use App\Support\Terminologi\KedatanganIgd;
 
 new class extends Component {
-    use EmrUGDTrait, EncounterTrait;
+    // EmrRJTrait HANYA untuk RujukanIgdTrait (baca/tulis dokumen RJ asal) — pola sama
+    // transfer-rj-ke-ugd-actions yang memakai EmrRJTrait + EmrUGDTrait bersamaan.
+    use EmrUGDTrait, EmrRJTrait, EncounterTrait, RujukanIgdTrait;
 
     /** Kelas layanan IGD — WAJIB di Playbook IGD (serviceClass bertanda *); IGD selalu reguler. */
     private const KELAS_LAYANAN_IGD = [
@@ -177,8 +181,19 @@ new class extends Component {
 
             $ugdDate = $this->parseDate($tanggalMasuk);
 
+            // Cek tautan transfer kasir dulu: pasien pindahan RJ → basedOn rujukan ke IGD dari
+            // Encounter RJ; tidak → Encounter biasa. Pola sama Encounter RI ← UGD.
+            $catatanTautan = '';
             if (empty($satuSehat['encounterId'])) {
+                $tautan = $this->rujukanIgdDariRj($rjNo, $this->waktuMasukUgdIso($dataUGD, $ugdDate), $practitionerId, (string) ($dataUGD['drDesc'] ?? ''));
+                $catatanTautan = $tautan['catatan'];
+                if ($tautan['id'] !== null) {
+                    $satuSehat['rujukanIgdId'] = $tautan['id'];
+                    $catatanTautan = 'tertaut ke Rawat Jalan (RJ #' . $tautan['rjNo'] . ')';
+                }
+
                 $respons = $this->createNewEncounter([
+                    'basedOn' => $tautan['id'],
                     'encounterId' => 'UGD-' . $rjNo,
                     'patientId' => $patientId,
                     'patientName' => $dataUGD['regName'] ?? '',
@@ -230,8 +245,10 @@ new class extends Component {
             }
 
             $this->saveResult($rjNo, $satuSehat);
-            $this->dispatch('toast', type: $catatanTriase === '' ? 'success' : 'warning',
-                message: 'Encounter UGD dikirim: ' . ($satuSehat['encounterId'] ?? '-') . $catatanTriase);
+            $tautanBelum = $catatanTautan !== '' && empty($satuSehat['rujukanIgdId']);
+            $this->dispatch('toast', type: ($catatanTriase === '' && !$tautanBelum) ? 'success' : 'warning',
+                message: 'Encounter UGD dikirim: ' . ($satuSehat['encounterId'] ?? '-') . $catatanTriase
+                    . ($catatanTautan !== '' ? ' — ' . $catatanTautan : ''));
             $this->dispatch('ugd-satu-sehat.refresh', rjNo: $rjNo);
         } catch (\Throwable $e) {
             $this->dispatch('toast', type: 'error', message: 'Encounter gagal: ' . $e->getMessage());
@@ -282,6 +299,18 @@ new class extends Component {
                 $this->getEncounter($satuSehat['encounterId']), $akhirIso, $conditionIdList,
                 $satuSehat['chiefComplaintId'] ?? null
             );
+            // Encounter UGD yang dibuat sebelum tautan ada (atau saat Encounter RJ belum dikirim):
+            // coba tautkan sekarang. PUT di bawah membawa seluruh Encounter, termasuk basedOn.
+            if (empty($encounterTersimpan['basedOn'])) {
+                $dokterUgdId = (string) (DB::table('rsmst_doctors')->where('dr_id', $dataUGD['drId'] ?? '')->value('dr_uuid') ?? '');
+                $tautan = $this->rujukanIgdDariRj($rjNo,
+                    $this->waktuMasukUgdIso($dataUGD, $this->parseDate((string) ($dataUGD['rjDate'] ?? ''))), $dokterUgdId, (string) ($dataUGD['drDesc'] ?? ''));
+                if ($tautan['id'] !== null) {
+                    $encounterTersimpan['basedOn'] = [['reference' => 'ServiceRequest/' . $tautan['id']]];
+                    $satuSehat['rujukanIgdId'] = $tautan['id'];
+                }
+            }
+
             // Encounter lama (dibuat sebelum kelas layanan dipasang) dilengkapi di sini.
             $encounterTersimpan = $this->pasangKelasLayanan($encounterTersimpan,
                 self::KELAS_LAYANAN_IGD['system'], self::KELAS_LAYANAN_IGD['code'], self::KELAS_LAYANAN_IGD['display']);
@@ -326,6 +355,17 @@ new class extends Component {
             $data['satusehat'] = $satuSehat;
             $this->updateJsonUGD((int) $rjNo, $data);
         });
+    }
+
+    /**
+     * Jam pasien tiba di IGD. Pasien pindahan RJ punya rj_date UGD yang DISALIN dari RJ (kasir tak
+     * menyimpan jam transfer), jadi Jam Datang Pengkajian Perawat lebih tepat; kosong → rj_date.
+     */
+    private function waktuMasukUgdIso(array $dataUGD, Carbon $ugdDate): string
+    {
+        $jamDatang = trim((string) ($dataUGD['anamnesa']['pengkajianPerawatan']['jamDatang'] ?? ''));
+
+        return $jamDatang !== '' ? $this->parseDate($jamDatang)->toIso8601String() : $ugdDate->toIso8601String();
     }
 
     private function parseDate(string $teksTanggal): Carbon

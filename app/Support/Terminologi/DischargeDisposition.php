@@ -148,6 +148,24 @@ class DischargeDisposition
     }
 
     /**
+     * Pasien RJ yang ditransfer ke IGD lewat kasir (rstxn_ugdbiayaselamadirjs). Tindak Lanjut RJ
+     * tak punya opsi "ke IGD", dan tabel cara keluar Kemkes tak punya kode khusus perpindahan
+     * internal → `oth` + teks (pola sama "Dirawat inap (MRS)"). Data transfer kasir = sumber pasti,
+     * jadi mengalahkan Tindak Lanjut dokter.
+     */
+    public static function pindahKeIgd(string $ugdRjNo): array
+    {
+        return [
+            'coding' => [[
+                'system'  => 'http://terminology.hl7.org/CodeSystem/discharge-disposition',
+                'code'    => 'oth',
+                'display' => 'Other',
+            ]],
+            'text' => 'Dipindahkan ke IGD (UGD #' . $ugdRjNo . ')',
+        ];
+    }
+
+    /**
      * Pilihan khusus UGD di luar peta rawat jalan. "Meninggal" = `exp` (alur IGD apikesehatan.com);
      * KRS & APS = nilai daftar opsi LAMA yang masih tersimpan di record UGD lama (lihat catatan
      * tindakLanjutOptions di rm-perencanaan-ugd-actions). Kode diverifikasi tx.fhir.org 2026-10-28.
