@@ -16,7 +16,7 @@
                             </div>
                             <div class="ds-card-outline" style="padding:16px 20px">
                                 <div class="ds-title-sm mb-1">UGD</div>
-                                <div class="ds-body-sm"><strong>24 kartu</strong> — disamakan dgn alur IGD (kedatangan &amp; triase CTAS, pemberian obat, observasi per entri); LOV SNOMED di EMR dicabut, kode lewat Coding SATUSEHAT. Kesadaran UGD (lima pilihan skrining) tetap dikirim sebagai teks.</div>
+                                <div class="ds-body-sm"><strong>25 kartu</strong> — disamakan dgn alur IGD (kedatangan &amp; triase CTAS, pemberian obat, observasi per entri; status <span class="ds-code">triaged</span>, kelas layanan &amp; CarePlan Rencana Pemulangan sejak 29/10 — <button type="button" class="hover:underline font-semibold" style="color:var(--primary)" x-on:click="go('siklus-encounter')">§Siklus Encounter</button>); LOV SNOMED di EMR dicabut, kode lewat Coding SATUSEHAT. Kesadaran UGD (lima pilihan skrining) tetap dikirim sebagai teks.</div>
                             </div>
                             <div class="ds-card-outline" style="padding:16px 20px">
                                 <div class="ds-title-sm mb-1">RI — Rawat Inap</div>
