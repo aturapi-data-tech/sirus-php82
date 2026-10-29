@@ -17,6 +17,13 @@ use App\Support\Terminologi\KedatanganIgd;
 new class extends Component {
     use EmrUGDTrait, EncounterTrait;
 
+    /** Kelas layanan IGD — WAJIB di Playbook IGD (serviceClass bertanda *); IGD selalu reguler. */
+    private const KELAS_LAYANAN_IGD = [
+        'system' => 'http://terminology.kemkes.go.id/CodeSystem/locationServiceClass-Outpatient',
+        'code' => 'reguler',
+        'display' => 'Kelas Reguler',
+    ];
+
     public ?string $rjNo = null;
 
     /** Pratinjau dihitung hanya saat dibuka — jangan bebani muat halaman belasan kartu. */
@@ -180,6 +187,7 @@ new class extends Component {
                     'locationId' => $locationId,
                     'class_code' => 'EMER',
                     'startDate' => $ugdDate->toIso8601String(),
+                    'kelasLayanan' => self::KELAS_LAYANAN_IGD,
                 ]);
                 $satuSehat['encounterId'] = $respons['id'] ?? null;
             }
@@ -274,6 +282,9 @@ new class extends Component {
                 $this->getEncounter($satuSehat['encounterId']), $akhirIso, $conditionIdList,
                 $satuSehat['chiefComplaintId'] ?? null
             );
+            // Encounter lama (dibuat sebelum kelas layanan dipasang) dilengkapi di sini.
+            $encounterTersimpan = $this->pasangKelasLayanan($encounterTersimpan,
+                self::KELAS_LAYANAN_IGD['system'], self::KELAS_LAYANAN_IGD['code'], self::KELAS_LAYANAN_IGD['display']);
 
             // Cara keluar (Playbook IGD bab 26–27) dari Tindak Lanjut di Perencanaan.
             // Kosong/tak dikenal → field TIDAK diisi (jangan menebak), tapi dilaporkan.

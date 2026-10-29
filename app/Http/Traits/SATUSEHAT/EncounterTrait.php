@@ -31,8 +31,48 @@ trait EncounterTrait
             'period' => ['start' => $start],
         ];
 
+        // Opsional: kelas layanan di lokasi — ['system' => ..., 'code' => ..., 'display' => ...].
+        if (!empty($data['kelasLayanan'])) {
+            $payload = $this->pasangKelasLayanan($payload, $data['kelasLayanan']['system'],
+                $data['kelasLayanan']['code'], $data['kelasLayanan']['display']);
+        }
+
         // Jalankan request ke SatuSehat
         return $this->makeRequest('post', 'Encounter', $payload);
+    }
+
+    /**
+     * Pasang extension kelas layanan (ServiceClass) pada setiap Encounter.location yang belum
+     * memilikinya. WAJIB di IGD (serviceClass.value & .upgradeClassIndicator bertanda *),
+     * opsional di RJ/RI. Canonical dari SATUSEHAT FHIR R4 IG (Simplifier, Extensions/ServiceClass).
+     *
+     * @param  string $kelasSystem  …/locationServiceClass-Outpatient | …/locationServiceClass-Inpatient
+     */
+    public function pasangKelasLayanan(array $encounter, string $kelasSystem, string $kode, string $display,
+        string $indikator = 'kelas-tetap', string $indikatorDisplay = 'Kelas Tetap Perawatan'): array
+    {
+        $url = 'https://fhir.kemkes.go.id/r4/StructureDefinition/ServiceClass';
+        $extension = [
+            'url' => $url,
+            'extension' => [
+                ['url' => 'value', 'valueCodeableConcept' => ['coding' => [[
+                    'system' => $kelasSystem, 'code' => $kode, 'display' => $display,
+                ]]]],
+                ['url' => 'upgradeClassIndicator', 'valueCodeableConcept' => ['coding' => [[
+                    'system' => 'http://terminology.kemkes.go.id/CodeSystem/locationUpgradeClass',
+                    'code' => $indikator, 'display' => $indikatorDisplay,
+                ]]]],
+            ],
+        ];
+
+        foreach ($encounter['location'] ?? [] as $indeks => $lokasi) {
+            $sudahAda = collect($lokasi['extension'] ?? [])->contains(fn($ext) => ($ext['url'] ?? '') === $url);
+            if (!$sudahAda) {
+                $encounter['location'][$indeks]['extension'][] = $extension;
+            }
+        }
+
+        return $encounter;
     }
 
     /**
@@ -71,8 +111,12 @@ trait EncounterTrait
             'period' => ['start' => $start],
         ];
 
-        // Append lokasi if ada
-        if (!empty($data['locationId'])) {
+        // Lokasi baru hanya ditambahkan bila BERBEDA dari lokasi terakhir — dulu lokasi yang sama
+        // (poli/IGD saat arrived) tercatat dua kali begitu Encounter masuk in-progress.
+        $lokasiList = $existing['location'] ?? [];
+        $lokasiTerakhir = end($lokasiList) ?: [];
+        $referensiBaru = 'Location/' . ($data['locationId'] ?? '');
+        if (!empty($data['locationId']) && ($lokasiTerakhir['location']['reference'] ?? '') !== $referensiBaru) {
             $existing['location'][] = [
                 'location' => ['reference' => 'Location/' . $data['locationId']],
                 'status'   => 'active',

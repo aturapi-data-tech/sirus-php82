@@ -87,6 +87,10 @@ Status antara UGD (`arrived → triaged → in-progress`): triaged = `screening.
 (`KedatanganIgd::tingkatTriase`); in-progress = `perencanaan.pengkajianMedis.waktuPemeriksaan`.
 Dijepit `waktuTerakhir()` agar tak mendahului status sebelumnya. Flag `satusehat.encounterTriaged`.
 
+Kelas layanan: `EncounterTrait::pasangKelasLayanan()` → extension `https://fhir.kemkes.go.id/r4/StructureDefinition/ServiceClass`
+(sub `value` + `upgradeClassIndicator`) di tiap `Encounter.location`. WAJIB di IGD (dipasang: `reguler`/`kelas-tetap`,
+saat create & dilengkapi saat finish), opsional di RJ/RI. `startRoomEncounter()` tak lagi menambah lokasi yang sama.
+
 ## 6a. Zona waktu: UTC dikonversi terpusat
 
 `makeRequest()` (non-GET) melewatkan payload ke `SatuSehatTrait::waktuKeUtc()`: setiap string
