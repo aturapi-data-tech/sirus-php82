@@ -316,6 +316,21 @@ trait EncounterTrait
         }
         $encounter['statusHistory'] = $riwayat;
 
+        // Lokasi yang masih terbuka ditutup: end = start lokasi berikutnya, yang terakhir = waktu
+        // selesai; status completed. Tanpa ini kamar/poli terakhir tercatat 'active' selamanya.
+        $lokasiList = array_values(array_filter($encounter['location'] ?? [], 'is_array'));
+        foreach ($lokasiList as $indeks => $lokasi) {
+            if (empty($lokasi['period']['end'])) {
+                $mulai = (string) ($lokasi['period']['start'] ?? '');
+                $selesai = $lokasiList[$indeks + 1]['period']['start'] ?? $encounter['period']['end'];
+                $lokasiList[$indeks]['period']['end'] = $this->waktuTerakhir($mulai, $selesai);
+            }
+            $lokasiList[$indeks]['status'] = 'completed';
+        }
+        if (!empty($lokasiList)) {
+            $encounter['location'] = $lokasiList;
+        }
+
         // classHistory[i].class & .period WAJIB (Pemetaan Nilai Encounter RJ, bertanda *) — riwayat
         // JENIS kunjungan (AMB/EMER/IMP), bukan kelas perawatan 1/2/3. Satu Encounter SATUSEHAT tak
         // pernah ganti jenis (IGD→RI = Encounter baru), jadi cukup satu entri sepanjang periode.

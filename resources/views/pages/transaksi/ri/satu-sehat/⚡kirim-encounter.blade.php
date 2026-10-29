@@ -279,11 +279,21 @@ new class extends Component {
     }
 
     /**
-     * Append satu entri location[] (pindah kamar) tanpa mengubah status.
+     * Append satu entri location[] (pindah kamar) tanpa mengubah status. Kamar sebelumnya
+     * DITUTUP (completed + period.end = jam masuk kamar baru) — dulu tetap 'active', sehingga
+     * pasien tercatat aktif di beberapa kamar sekaligus.
      */
     private function appendEncounterLocation(string $encounterId, string $locationId, Carbon $mulai): void
     {
         $encounterTersimpan = $this->getEncounter($encounterId);
+        foreach ($encounterTersimpan['location'] ?? [] as $indeks => $lokasi) {
+            if (($lokasi['status'] ?? '') === 'active' && empty($lokasi['period']['end'])) {
+                $encounterTersimpan['location'][$indeks]['status'] = 'completed';
+                $encounterTersimpan['location'][$indeks]['period']['end'] = $this->waktuTerakhir(
+                    (string) ($lokasi['period']['start'] ?? ''), $mulai->toIso8601String()
+                );
+            }
+        }
         $encounterTersimpan['location'][] = [
             'location' => ['reference' => 'Location/' . $locationId],
             'status'   => 'active',
