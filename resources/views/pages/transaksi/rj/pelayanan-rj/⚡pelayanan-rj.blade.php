@@ -627,7 +627,7 @@ new class extends Component {
                                             </div>
                                             <x-list.identitas-pasien :regNo="$row->reg_no" :nama="$row->reg_name" :sex="$row->sex"
                                                 :tglLahir="$row->birth_date" :alamat="$row->address"
-                                                :collapseUmur="true" />
+                                                :collapseUmur="false" />
                                         </div>
 
                                         {{-- Penanda hasil skrining awal — hanya jika eskalasi (Rujuk IGD / Disegerakan) --}}
@@ -692,6 +692,17 @@ new class extends Component {
                                         <div class="mt-0.5">
                                             <x-list.klaim-badge :status="$row->klaim_status" :desc="$row->klaim_desc" :id="$row->klaim_id" />
                                         </div>
+                                        {{-- Laborat/Radiologi selalu tampil, tidak menunggu expand --}}
+                                        @if ($row->lab_status || $row->rad_status)
+                                            <div class="flex flex-wrap gap-2">
+                                                @if ($row->lab_status)
+                                                    <x-badge variant="info">Laborat</x-badge>
+                                                @endif
+                                                @if ($row->rad_status)
+                                                    <x-badge variant="purple">Radiologi</x-badge>
+                                                @endif
+                                            </div>
+                                        @endif
                                         {{-- No Booking — hanya untuk pasien BPJS (klaim_status=BPJS atau klaim_id=JM/JKN Mobile) --}}
                                         @if ($row->klaim_status === 'BPJS' || $row->klaim_id === 'JM')
                                             <div class="text-xs text-body dark:text-gray-400 leading-tight">
@@ -703,17 +714,6 @@ new class extends Component {
                                                 {{ $row->rj_date_display ?? '-' }} | Shift : {{ $row->shift ?? '-' }}
                                             </div>
                                         </div>
-                                        {{-- Laborat/Radiologi selalu tampil, tidak menunggu expand --}}
-                                        @if ($row->lab_status || $row->rad_status)
-                                            <div class="flex flex-wrap gap-2">
-                                                @if ($row->lab_status)
-                                                    <x-badge variant="alternative">Laborat</x-badge>
-                                                @endif
-                                                @if ($row->rad_status)
-                                                    <x-badge variant="brand">Radiologi</x-badge>
-                                                @endif
-                                            </div>
-                                        @endif
                                     </td>
 
                                     {{-- STATUS LAYANAN --}}
