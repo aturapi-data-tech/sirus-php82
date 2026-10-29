@@ -256,6 +256,22 @@ trait EncounterTrait
         }
         $encounter['statusHistory'] = $riwayat;
 
+        // classHistory[i].class & .period WAJIB (Pemetaan Nilai Encounter RJ, bertanda *) — riwayat
+        // JENIS kunjungan (AMB/EMER/IMP), bukan kelas perawatan 1/2/3. Satu Encounter SATUSEHAT tak
+        // pernah ganti jenis (IGD→RI = Encounter baru), jadi cukup satu entri sepanjang periode.
+        $riwayatKelas = array_values(array_filter($encounter['classHistory'] ?? [], 'is_array'));
+        if (empty($riwayatKelas) && !empty($encounter['class'])) {
+            $riwayatKelas[] = ['class' => $encounter['class'], 'period' => $encounter['period']];
+        }
+        foreach ($riwayatKelas as $indeks => $entri) {
+            if (empty($entri['period']['end'])) {
+                $riwayatKelas[$indeks]['period']['end'] = $encounter['period']['end'];
+            }
+        }
+        if (!empty($riwayatKelas)) {
+            $encounter['classHistory'] = $riwayatKelas;
+        }
+
         $encounter['diagnosis'] = [];
         foreach (array_values($conditionIdList) as $indeks => $conditionId) {
             $encounter['diagnosis'][] = [
