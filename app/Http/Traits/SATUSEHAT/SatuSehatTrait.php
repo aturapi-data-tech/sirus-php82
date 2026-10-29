@@ -66,6 +66,12 @@ trait SatuSehatTrait
         $token = $this->getAccessToken();
         $url = $this->baseUrl . $endpoint;
 
+        // Aturan main #1 SATUSEHAT: semua dateTime dikirim UTC+00. Sender menyusun waktu
+        // dengan offset lokal (+07:00) — dikonversi di SATU tempat ini, bukan per sender.
+        if (strtolower($method) !== 'get') {
+            $data = $this->waktuKeUtc($data);
+        }
+
         // Base client: timeout, bearer token, common headers
         $client = Http::timeout(10)
             ->withToken($token)
@@ -108,6 +114,33 @@ trait SatuSehatTrait
     /**
      * Insert satu baris log ke web_log_status (audit trail call SatuSehat).
      */
+    /**
+     * Ubah setiap nilai dateTime ISO8601 berzona (mis. 2023-08-23T17:35:00+07:00) di payload
+     * menjadi UTC (2023-08-23T10:35:00+00:00). Titik waktunya sama — hanya penulisannya.
+     *
+     * Yang disentuh hanya string yang SELURUHNYA berbentuk dateTime dengan offset/Z;
+     * tanggal saja (Y-m-d), teks bebas, dan key array dibiarkan.
+     */
+    protected function waktuKeUtc(mixed $data): mixed
+    {
+        if (is_array($data)) {
+            foreach ($data as $key => $nilai) {
+                $data[$key] = $this->waktuKeUtc($nilai);
+            }
+            return $data;
+        }
+
+        if (is_string($data) && preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/', $data)) {
+            try {
+                return Carbon::parse($data)->utc()->format('Y-m-d\TH:i:sP');
+            } catch (\Throwable) {
+                return $data;
+            }
+        }
+
+        return $data;
+    }
+
     private function logSatuSehat(string $url, ?int $code, ?float $rtt, ?string $responseBody, ?string $payload): void
     {
         DB::table('web_log_status')->insert([

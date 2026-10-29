@@ -80,6 +80,13 @@ racikan disebut **nama bahan** yang menghalangi supaya bisa langsung dilengkapi 
 RJ `taskId7` → `taskId5`; UGD `taskId7` → `perencanaan.pengkajianMedis.selesaiPemeriksaan`
 (task5 tak pernah dipakai UGD); RI `exitDate`. Lihat skill `bpjs-antrean-task-id`.
 
+## 6a. Zona waktu: UTC dikonversi terpusat
+
+`makeRequest()` (non-GET) melewatkan payload ke `SatuSehatTrait::waktuKeUtc()`: setiap string
+dateTime ISO berzona → `+00:00` (aturan main #1). Sender tetap boleh `toIso8601String()` lokal —
+JANGAN konversi sendiri per sender. Payload wajib array (bukan `stdClass`) supaya tertelusuri.
+Uji kering yang menimpa `makeRequest()` (§4) melihat payload SEBELUM konversi.
+
 ## 7. Tanggal = data, JANGAN `now()` (keputusan user 2026-10-28)
 
 Kosong → batal / lewati entri **+ toast**, bukan jam sekarang ("nanti malah nggak relevan").
