@@ -702,6 +702,9 @@ new class extends Component {
                                             <div class="text-xs text-muted dark:text-gray-500 leading-tight">
                                                 {{ $row->rj_date_display ?? '-' }} | Shift : {{ $row->shift ?? '-' }}
                                             </div>
+                                        </div>
+                                        {{-- Laborat/Radiologi selalu tampil, tidak menunggu expand --}}
+                                        @if ($row->lab_status || $row->rad_status)
                                             <div class="flex flex-wrap gap-2">
                                                 @if ($row->lab_status)
                                                     <x-badge variant="alternative">Laborat</x-badge>
@@ -710,7 +713,7 @@ new class extends Component {
                                                     <x-badge variant="brand">Radiologi</x-badge>
                                                 @endif
                                             </div>
-                                        </div>
+                                        @endif
                                     </td>
 
                                     {{-- STATUS LAYANAN --}}

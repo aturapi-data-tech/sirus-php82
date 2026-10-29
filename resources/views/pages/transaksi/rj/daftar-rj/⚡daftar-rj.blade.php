@@ -949,6 +949,9 @@ new class extends Component {
                                                     No Booking: {{ $row->no_booking ?? '-' }}
                                                 </div>
                                             @endif
+                                        </div>
+                                        {{-- Laborat/Radiologi selalu tampil, tidak menunggu expand --}}
+                                        @if ($row->lab_status || $row->rad_status)
                                             <div class="flex flex-wrap gap-2">
                                                 @if ($row->lab_status)
                                                     <x-badge variant="alternative">Laborat</x-badge>
@@ -957,7 +960,7 @@ new class extends Component {
                                                     <x-badge variant="brand">Radiologi</x-badge>
                                                 @endif
                                             </div>
-                                        </div>
+                                        @endif
                                     </td>
 
                                     {{-- STATUS LAYANAN --}}
