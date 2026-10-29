@@ -115,8 +115,13 @@ new class extends Component {
     #[On('emr-rj.rekam-medis.open')]
     public function openRekamMedisPerawat(int $rjNo): void
     {
-        // Mode embedded dibuka oleh pembungkus (emr-coding-rj), bukan event ini.
+        // Mode embedded dibuka oleh pembungkus (emr-coding-rj), bukan event ini. Event yang sama datang
+        // lagi sesudah E-Resep disimpan: segarkan ringkasan (adaEresep → tombol Cetak E-Resep) tanpa
+        // mount ulang seksi, karena pembungkus tidak menaikkan versi untuk kunjungan & tab yang sama.
         if ($this->embedded) {
+            if ($rjNo === $this->rjNo && ($data = $this->findDataRJ($rjNo))) {
+                $this->muatDariDokumen($data);
+            }
             return;
         }
         if (!$this->muatKunjungan($rjNo)) {
