@@ -33,9 +33,11 @@ new class extends Component {
                 a.vno_sep,
                 a.status_pulang,
                 a.ri_status,
-                a.out_no
+                a.out_no,
+                o.out_desc
             FROM  rstxn_rihdrs  a
             JOIN  rsmst_pasiens b ON b.reg_no = a.reg_no
+            LEFT JOIN rsmst_outs o ON o.out_no = a.out_no
             WHERE a.rihdr_no = :rihdr
             ",
             ['rihdr' => $riHdrNo],
@@ -250,6 +252,7 @@ new class extends Component {
             'riHdrNo'    => $riHdrNo,
             'entryDate'  => $hdr->entry_date ?? '-',
             'exitDate'   => $hdr->exit_date ?? '-',
+            'outDesc'    => $hdr->out_desc ?? '-',
             'vnoSep'     => $hdr->vno_sep,
             'klaimName'  => $klaimName,
 

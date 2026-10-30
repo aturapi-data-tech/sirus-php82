@@ -39,6 +39,11 @@
                             <td class="py-0.5 text-[10px] whitespace-nowrap">{{ $data['exitDate'] }}</td>
                         </tr>
                         <tr>
+                            <td class="py-0.5 text-[10px] text-gray-500 whitespace-nowrap">Cara Keluar</td>
+                            <td class="py-0.5 text-[10px] px-1">:</td>
+                            <td class="py-0.5 text-[10px]">{{ $data['outDesc'] ?? '-' }}</td>
+                        </tr>
+                        <tr>
                             <td class="py-0.5 text-[10px] text-gray-500 whitespace-nowrap">Jenis Klaim</td>
                             <td class="py-0.5 text-[10px] px-1">:</td>
                             <td class="py-0.5 text-[10px] whitespace-nowrap">{{ $data['klaimName'] }}</td>
