@@ -9,9 +9,10 @@ use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 use App\Http\Traits\Txn\Rj\JsonKunjunganRJTrait;
+use App\Http\Traits\Txn\Rj\EmrRJTrait;
 
 new class extends Component {
-    use WithPagination, WithRenderVersioningTrait, JsonKunjunganRJTrait;
+    use WithPagination, WithRenderVersioningTrait, JsonKunjunganRJTrait, EmrRJTrait;
 
     public array $renderVersions = [];
     protected array $renderAreas = ['antrian-kasir-toolbar'];
@@ -95,6 +96,81 @@ new class extends Component {
     public function openAdministrasiPasien(string $rjNo): void
     {
         $this->dispatch('emr-rj.administrasi.open', rjNo: $rjNo);
+    }
+
+    /* -------------------------
+     | Kembalikan Batal → Antrian (F → A)
+     | Kebalikan batalKunjungan() di kasir-rj: status, txn_status & lockstatus pasien
+     | dipulihkan, data lain memang tak pernah dihapus saat batal. Task ID 99 yang
+     | sudah terkirim ke BPJS tidak bisa ditarik — hanya dicatat di log & toast.
+     * ------------------------- */
+    public function kembalikanKeAntrian(string $rjNo): void
+    {
+        if (!auth()->user()?->can('rj.kembalikanBatal')) {
+            $this->dispatch('toast', type: 'error', message: 'Anda tidak berhak mengembalikan kunjungan batal.');
+            return;
+        }
+
+        try {
+            $sudahTask99 = false;
+
+            DB::transaction(function () use ($rjNo, &$sudahTask99) {
+                $this->lockRJRow($rjNo);
+
+                $hdr = DB::table('rstxn_rjhdrs')
+                    ->select('reg_no', 'dr_id', 'klaim_id', 'rj_status', DB::raw("to_char(rj_date,'ddmmyyyy') as rj_tgl"))
+                    ->where('rj_no', $rjNo)
+                    ->first();
+
+                if (!$hdr) {
+                    throw new \RuntimeException('Data RJ tidak ditemukan.');
+                }
+                if ($hdr->rj_status !== 'F') {
+                    throw new \RuntimeException('Kunjungan tidak berstatus Batal.');
+                }
+
+                // Guard pendaftaran ganda (semantik sama dgn ubah-data-kunjungan-rj-actions):
+                // pasien + dokter + hari sama, KR hanya dibanding KR, kunjungan batal diabaikan.
+                $query = DB::table('rstxn_rjhdrs')
+                    ->where('reg_no', $hdr->reg_no)
+                    ->where('dr_id', $hdr->dr_id)
+                    ->where('rj_no', '!=', $rjNo)
+                    ->whereRaw("NVL(rj_status,'A') != 'F'")
+                    ->whereRaw("to_char(rj_date,'ddmmyyyy') = ?", [$hdr->rj_tgl]);
+                $hdr->klaim_id === 'KR'
+                    ? $query->where('klaim_id', 'KR')
+                    : $query->whereRaw("NVL(klaim_id,'UM') != 'KR'");
+
+                $rjNoGanda = $query->value('rj_no');
+                if ($rjNoGanda) {
+                    throw new \RuntimeException("Pasien sudah punya kunjungan aktif di dokter yang sama pada hari itu (No. RJ {$rjNoGanda}).");
+                }
+
+                DB::table('rstxn_rjhdrs')
+                    ->where('rj_no', $rjNo)
+                    ->update(['rj_status' => 'A', 'txn_status' => 'A']);
+
+                if ($hdr->reg_no) {
+                    DB::table('rsmst_pasiens')
+                        ->where('reg_no', $hdr->reg_no)
+                        ->update(['lockstatus' => 'RJ']);
+                }
+
+                $sudahTask99 = !empty($this->findDataRJ($rjNo)['taskIdPelayanan']['taskId99'] ?? null);
+
+                $this->appendAdminLogRJ((int) $rjNo, 'Kembalikan ke Antrian Kasir (Batal F → Aktif A)' . ($sudahTask99 ? ' - Task ID 99 BPJS sudah terkirim, antrean BPJS tetap batal' : ''));
+            });
+
+            $this->dispatch('toast', type: 'success', message: 'Kunjungan dikembalikan ke antrian kasir.');
+            if ($sudahTask99) {
+                $this->dispatch('toast', type: 'warning', message: 'Task ID 99 (batal antrean BPJS) sudah terkirim — antrean di BPJS tetap batal.');
+            }
+            $this->refreshAfterSaved();
+        } catch (\RuntimeException $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
+        } catch (\Exception $e) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal mengembalikan: ' . $e->getMessage());
+        }
     }
 
     /* -------------------------
@@ -606,6 +682,15 @@ new class extends Component {
                                                 <span class="text-xs text-muted dark:text-gray-400">
                                                     Konfirmasi ke<br>Pendaftaran
                                                 </span>
+                                                @can('rj.kembalikanBatal')
+                                                    <x-confirm-button variant="warning-soft" :action="'kembalikanKeAntrian(\'' . $row->rj_no . '\')'"
+                                                        wire:key="kembalikan-batal-{{ $row->rj_no }}" class="!px-3 !py-1.5 !text-xs"
+                                                        title="Kembalikan ke Antrian"
+                                                        message="Kembalikan kunjungan {{ $row->reg_name }} ({{ $row->reg_no }}) dari Batal ke antrian kasir (Aktif)? Tindakan ini dicatat di log admin."
+                                                        confirmText="Ya, kembalikan" cancelText="Batal">
+                                                        Kembalikan ke Antrian
+                                                    </x-confirm-button>
+                                                @endcan
                                             </div>
                                         @else
                                             {{-- Aksi kasir — menu titik-3 baku (sama dengan Pelayanan), melayang agar baris terbawah tak terpotong --}}

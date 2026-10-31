@@ -138,6 +138,13 @@ class AksiRole
      */
     public const RJ_UBAH_DATA_KUNJUNGAN = ['Admin', 'Tu', 'Manager Umum', 'Supervisor Tu'];
 
+    /**
+     * Kembalikan kunjungan RJ yang Batal (rj_status 'F') ke antrian kasir (Aktif 'A'), dari
+     * Antrian Kasir RJ. Sementara manager ke atas saja (keputusan user 2026-10-31); tiap
+     * pemakaian tercatat di log admin kunjungan.
+     */
+    public const RJ_KEMBALIKAN_BATAL = ['Admin', 'Manager Umum', 'Manager Medis'];
+
     /** Ubah Data Kunjungan UGD dari Antrian Kasir UGD — sama maksudnya dengan RJ, jalur terpisah. */
     public const UGD_UBAH_DATA_KUNJUNGAN = ['Admin', 'Tu', 'Manager Umum', 'Supervisor Tu'];
 
