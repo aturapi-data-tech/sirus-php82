@@ -46,6 +46,54 @@ new class extends Component {
         }
     }
 
+    /**
+     * Kotak Cari berisi waktu "dd/mm/yyyy [hh24[:mi[:ss]]]" → samakan Dari/Sampai Tgl
+     * ke hari itu, supaya filter tanggal tidak menyaring habis hasil pencarian waktu.
+     */
+    public function updatedSearch(): void
+    {
+        $rentang = $this->rentangWaktuCari();
+        if ($rentang !== null) {
+            $this->dateFrom = $rentang['mulai']->format('d/m/Y');
+            $this->dateTo = $rentang['mulai']->format('d/m/Y');
+        }
+    }
+
+    /**
+     * Baca kotak Cari sebagai waktu log (date_ref). Presisi mengikuti yang diketik:
+     *   03/11/2026            → sehari penuh
+     *   03/11/2026 15         → jam 15:00:00–15:59:59
+     *   03/11/2026 15:22      → menit 15:22:00–15:22:59
+     *   03/11/2026 15:22:12   → detik itu saja
+     * Bukan pola waktu / tanggal-jam tak valid → null (pencarian teks biasa).
+     *
+     * @return array{mulai: Carbon, akhir: Carbon, label: string}|null  akhir = eksklusif
+     */
+    private function rentangWaktuCari(): ?array
+    {
+        $isian = trim($this->search);
+        if (!preg_match('#^(\d{1,2})/(\d{1,2})/(\d{4})(?:\s+(\d{1,2})(?::(\d{2})(?::(\d{2}))?)?)?$#', $isian, $m)) {
+            return null;
+        }
+        [$hari, $bulan, $tahun] = [(int) $m[1], (int) $m[2], (int) $m[3]];
+        $jam = isset($m[4]) && $m[4] !== '' ? (int) $m[4] : null;
+        $menit = isset($m[5]) && $m[5] !== '' ? (int) $m[5] : null;
+        $detik = isset($m[6]) && $m[6] !== '' ? (int) $m[6] : null;
+        if (!checkdate($bulan, $hari, $tahun) || $jam > 23 || $menit > 59 || $detik > 59) {
+            return null;
+        }
+
+        $mulai = Carbon::create($tahun, $bulan, $hari, $jam ?? 0, $menit ?? 0, $detik ?? 0);
+        [$akhir, $label] = match (true) {
+            $jam === null => [$mulai->copy()->addDay(), $mulai->format('d/m/Y')],
+            $menit === null => [$mulai->copy()->addHour(), $mulai->format('d/m/Y H') . ':00–' . $mulai->format('H') . ':59'],
+            $detik === null => [$mulai->copy()->addMinute(), $mulai->format('d/m/Y H:i')],
+            default => [$mulai->copy()->addSecond(), $mulai->format('d/m/Y H:i:s')],
+        };
+
+        return ['mulai' => $mulai, 'akhir' => $akhir, 'label' => $label];
+    }
+
     public function resetFilters(): void
     {
         $this->reset(['search', 'service', 'statusFilter']);
@@ -129,8 +177,14 @@ new class extends Component {
             }
         }
 
+        // Kotak Cari berisi waktu (dd/mm/yyyy hh24:mi:ss, boleh dipotong) → saring date_ref
+        $rentang = $this->rentangWaktuCari();
+        if ($rentang !== null) {
+            $query->whereRaw("date_ref >= to_date(?, 'YYYY-MM-DD HH24:MI:SS')", [$rentang['mulai']->format('Y-m-d H:i:s')])
+                ->whereRaw("date_ref < to_date(?, 'YYYY-MM-DD HH24:MI:SS')", [$rentang['akhir']->format('Y-m-d H:i:s')]);
+        }
         // Free-text search di URL & response
-        if (!empty($this->search)) {
+        elseif (!empty($this->search)) {
             $keyword = strtolower(trim($this->search));
             $query->where(function ($subQuery) use ($keyword) {
                 $subQuery->whereRaw('LOWER(http_req) LIKE ?', ['%' . $keyword . '%'])
@@ -236,6 +290,7 @@ new class extends Component {
             // Tanggal yang BENAR-BENAR dipakai query (isian tak valid → hari ini), untuk pesan hapus.
             'tanggalBerlakuDari' => Carbon::parse($this->tanggalQuery($this->dateFrom))->format('d/m/Y'),
             'tanggalBerlakuSampai' => Carbon::parse($this->tanggalQuery($this->dateTo))->format('d/m/Y'),
+            'waktuCari' => $this->rentangWaktuCari()['label'] ?? null,
             'serviceOptions' => [
                 'all' => 'Semua Service',
                 'vclaim' => 'V-Claim BPJS',
@@ -289,7 +344,7 @@ new class extends Component {
                             </div>
                             <x-text-input wire:model.live.debounce.400ms="search" type="search"
                                 class="block w-full pl-10"
-                                placeholder="Cari URL endpoint / response (noKartu, vclaim, error...)" />
+                                placeholder="Cari URL / response, atau waktu dd/mm/yyyy hh24:mi:ss" />
                         </div>
                     </div>
 
@@ -373,7 +428,7 @@ new class extends Component {
                     @if ($stats['total'] > 0)
                         <div class="ml-auto">
             <x-confirm-button variant="danger" action="deleteFiltered()" title="Hapus Log Terfilter"
-                                message="Hapus {{ number_format($stats['total']) }} log sesuai filter aktif (tgl {{ $tanggalBerlakuDari }} s/d {{ $tanggalBerlakuSampai }})? Tindakan ini permanen dan tidak bisa dibatalkan."
+                                message="Hapus {{ number_format($stats['total']) }} log sesuai filter aktif (tgl {{ $tanggalBerlakuDari }} s/d {{ $tanggalBerlakuSampai }}{{ $waktuCari ? ', waktu ' . $waktuCari : '' }})? Tindakan ini permanen dan tidak bisa dibatalkan."
                                 confirmText="Ya, hapus" cancelText="Batal"
                                 wire:loading.attr="disabled" wire:target="deleteFiltered"
                                 class="!px-3 !py-1.5 !text-xs">
