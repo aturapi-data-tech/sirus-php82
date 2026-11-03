@@ -1007,7 +1007,7 @@ new class extends Component {
                                                                     <x-primary-button type="button"
                                                                         wire:click="$dispatch('task-id-poli-proses', { rjNo: {{ $row->rj_no }}, aksi: 'antrean' })"
                                                                         class="!px-4 !py-2 text-sm"
-                                                                        title="Klik untuk mengambil TaskId Antrean dari BPJS">
+                                                                        title="Banding waktu task SIRUS dengan yang tercatat di Antrean BPJS">
                                                                         TaskId Antrean
                                                                     </x-primary-button>
                                                                 </div>
