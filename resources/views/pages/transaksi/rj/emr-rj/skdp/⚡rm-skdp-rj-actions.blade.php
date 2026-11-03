@@ -209,20 +209,33 @@ new class extends Component {
             return true;
         }
 
-        // Surat kontrol untuk SEP ini mungkin SUDAH terbit walau form ini kosong — mis. petugas lain
-        // menyimpannya sesudah form ini dibuka. Dulu form kosong langsung insert ulang → BPJS menolak,
-        // nomor kosong lalu disimpan menimpa nomor yang ada (kasus RI 2026-10-28, pola sama).
-        // Urutan: nomor di DB → cek ke BPJS by kartu (SEP asal sama) → baru insert.
+        // Surat kontrol untuk kunjungan ini mungkin SUDAH ada walau form ini kosong — petugas lain menyimpannya
+        // sesudah form dibuka, atau dulu terbit di BPJS tapi nomornya tak tersimpan di DB. Insert ulang akan
+        // ditolak BPJS (203 tanggal sama) dan nomor tetap kosong. Urutan: nomor di DB → cocokkan ke BPJS → baru insert.
         if (empty($this->formKontrol['noSKDPBPJS'])) {
-            $noTerbit = trim((string) ($this->findDataRJ($this->rjNo)['kontrol']['noSKDPBPJS'] ?? '')) ?: $this->cariSuratKontrolTerbit();
-            if ($noTerbit !== '') {
-                $this->formKontrol['noSKDPBPJS'] = $noTerbit;
-                $this->dispatch('toast', type: 'info', message: "Surat kontrol untuk SEP ini sudah terbit ({$noTerbit}) — diperbarui, bukan dibuat ulang.");
+            $noSKDPBPJSTersimpan = trim((string) ($this->findDataRJ($this->rjNo)['kontrol']['noSKDPBPJS'] ?? ''));
+            if ($noSKDPBPJSTersimpan !== '') {
+                $this->formKontrol['noSKDPBPJS'] = $noSKDPBPJSTersimpan;
+            } else {
+                $hasilCocok = SuratKontrolBpjs::cariSuratKontrolSama($this->noKartuPasien(), $this->formKontrol);
+                $suratKontrol = $hasilCocok['suratKontrol'];
+
+                if ($hasilCocok['status'] === 'COCOK_SEP') {
+                    $this->formKontrol['noSKDPBPJS'] = (string) $suratKontrol['noSuratKontrol'];
+                    $this->dispatch('toast', type: 'info', message: "Surat kontrol untuk SEP ini sudah terbit ({$suratKontrol['noSuratKontrol']}) — nomor diambil & diperbarui.");
+                }
+                if ($hasilCocok['status'] === 'TABRAKAN_TANGGAL') {
+                    $this->dispatch('toast', type: 'error', message: 'KONTROL gagal: ' . $hasilCocok['pesanTabrakan']);
+
+                    return false;
+                }
             }
         }
 
         $isNew = empty($this->formKontrol['noSKDPBPJS']);
-        $response = $isNew ? VclaimTrait::suratkontrol_insert($this->formKontrol)->getOriginalContent() : VclaimTrait::suratkontrol_update($this->formKontrol)->getOriginalContent();
+        $response = $isNew
+            ? VclaimTrait::suratkontrol_insert($this->formKontrol)->getOriginalContent()
+            : VclaimTrait::suratkontrol_update($this->formKontrol)->getOriginalContent();
 
         $code = $response['metadata']['code'] ?? 0;
         $message = $response['metadata']['message'] ?? '';
@@ -230,7 +243,6 @@ new class extends Component {
 
         if ($code == 200) {
             if ($isNew) {
-                // Simpan noSKDPBPJS ke formKontrol — akan ikut tersimpan ke DB
                 $this->formKontrol['noSKDPBPJS'] = $response['response']['noSuratKontrol'] ?? '';
             }
             $this->dispatch('toast', type: 'success', message: "{$label} {$code} {$message}");
@@ -238,33 +250,9 @@ new class extends Component {
             return true;
         }
 
-        // 203 "Sudah Diterbitkan Rencana Kunjungan Kontrol Di Tanggal Yang Sama": satu kartu hanya boleh
-        // satu rencana kontrol per tanggal. Bila surat yang menabrak milik SEP INI → No SKDP BPJS yang
-        // kosong diisi dengan nomornya lalu diperbarui (bukan dibiarkan kosong). Bila dari SEP lain → sebutkan.
-        $penjelasTolakan = '';
-        if ($isNew && stripos($message, 'tanggal yang sama') !== false) {
-            $noSepSekarang = trim((string) ($this->formKontrol['noSEP'] ?? ''));
-            $suratKontrol = SuratKontrolBpjs::cariSuratKontrolPadaTanggal($this->noKartuPasien(), $this->formKontrol['tglKontrol'] ?? null);
-
-            if ($suratKontrol !== null && $noSepSekarang !== '' && (string) ($suratKontrol['noSepAsalKontrol'] ?? '') === $noSepSekarang) {
-                $this->formKontrol['noSKDPBPJS'] = (string) $suratKontrol['noSuratKontrol'];
-                $this->dispatch('toast', type: 'info', message: "Surat kontrol untuk SEP ini sudah terbit di tanggal tsb ({$suratKontrol['noSuratKontrol']}) — nomor diambil & diperbarui.");
-
-                // No SKDP BPJS kini terisi → panggilan kedua lewat jalur UPDATE (tidak berulang).
-                return $this->pushSuratKontrolBPJS();
-            }
-
-            $penjelasTolakan = SuratKontrolBpjs::penjelasTolakanTanggalSama($suratKontrol, $noSepSekarang);
-        }
-        $this->dispatch('toast', type: 'error', message: "{$label} {$code} {$message}" . ($penjelasTolakan !== '' ? " {$penjelasTolakan}" : ''));
+        $this->dispatch('toast', type: 'error', message: "{$label} {$code} {$message}");
 
         return false;
-    }
-
-    /** Nomor surat kontrol yang sudah terbit di BPJS untuk SEP kunjungan ini ('' = belum / tak bisa dicek) — App\Support\SuratKontrolBpjs. */
-    private function cariSuratKontrolTerbit(): string
-    {
-        return SuratKontrolBpjs::nomorTerbit((string) ($this->formKontrol['noSEP'] ?? ''), $this->noKartuPasien(), $this->formKontrol['tglKontrol'] ?? null);
     }
 
     /** No kartu BPJS pasien: master pasien, cadangan dari request SEP. */
@@ -367,9 +355,9 @@ new class extends Component {
                 // Patch key 'kontrol' + pastikan tindak lanjut = 'Kontrol' (status tersimpan
                 // bersamaan supaya pengiriman BPJS tidak terhambat status).
                 // Nomor surat kontrol yang sudah ada di DB TIDAK BOLEH ditimpa kosong (form basi / insert gagal).
-                $noDb = trim((string) ($data['kontrol']['noSKDPBPJS'] ?? ''));
-                if (trim((string) ($this->formKontrol['noSKDPBPJS'] ?? '')) === '' && $noDb !== '') {
-                    $this->formKontrol['noSKDPBPJS'] = $noDb;
+                $noSKDPBPJSTersimpan = trim((string) ($data['kontrol']['noSKDPBPJS'] ?? ''));
+                if (trim((string) ($this->formKontrol['noSKDPBPJS'] ?? '')) === '' && $noSKDPBPJSTersimpan !== '') {
+                    $this->formKontrol['noSKDPBPJS'] = $noSKDPBPJSTersimpan;
                 }
                 $data['kontrol'] = $this->formKontrol;
                 $data['perencanaan']['tindakLanjut']['tindakLanjut'] = 'Kontrol';
