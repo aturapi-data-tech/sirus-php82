@@ -260,7 +260,7 @@ new class extends Component {
             // Oracle: kolom dibuat tanpa quoted DDL → tersimpan sebagai REQUESTTRANSFERTIME.
             // Jangan di-quote, biar Oracle fold ke uppercase otomatis.
             DB::raw('requesttransfertime as request_transfer_time'),
-            DB::raw("to_char(date_ref, 'YYYY-MM-DD HH24:MI:SS') as date_ref_str"),
+            DB::raw("to_char(date_ref, 'DD/MM/YYYY HH24:MI:SS') as date_ref_str"),
         );
 
         $this->applyFilters($query);
