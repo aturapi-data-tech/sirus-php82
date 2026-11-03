@@ -87,8 +87,10 @@ new class extends Component {
             return;
         }
 
-        if ($this->checkUGDStatus($this->rjNo)) {
-            $this->dispatch('toast', type: 'error', message: 'Pasien sudah pulang, transaksi terkunci.');
+        // Kunci dicek dari erm_status (EMR), bukan status kunjungan — terapi tetap bisa
+        // disalin walau pasien sudah pulang selama EMR-nya belum dikunci.
+        if ($this->checkEmrUGDStatus($this->rjNo)) {
+            $this->dispatch('toast', type: 'error', message: 'EMR sudah terkunci, terapi tidak dapat disimpan.');
             return;
         }
 
@@ -292,7 +294,7 @@ new class extends Component {
                 class="sticky bottom-0 z-10 px-6 py-4 bg-canvas border-t border-hairline dark:bg-gray-900 dark:border-gray-700">
                 <div class="flex justify-end gap-3">
                     <x-secondary-button wire:click="closeModal">Tutup</x-secondary-button>
-                    @if (!$isFormLocked)
+                    {{-- Selalu tampil: kunci dicek di saveAllEreseptoTerapi() via checkEmrUGDStatus(). --}}
                         <x-primary-button wire:click="saveAllEreseptoTerapi" class="min-w-[120px]"
                             wire:loading.attr="disabled">
                             <span wire:loading.remove>
@@ -305,7 +307,6 @@ new class extends Component {
                             </span>
                             <span wire:loading><x-loading /> Menyimpan...</span>
                         </x-primary-button>
-                    @endif
                 </div>
             </div>
 
