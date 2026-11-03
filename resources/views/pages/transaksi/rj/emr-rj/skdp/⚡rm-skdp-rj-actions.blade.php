@@ -431,23 +431,6 @@ new class extends Component {
 
                 {{-- Render saat formKontrol sudah terisi --}}
                 @if (!empty($formKontrol['tglKontrol']))
-                    {{-- Daftar surat kontrol BPJS milik kartu pasien (lihat + centang + hapus di VClaim) — baris sendiri, kanan --}}
-                    @if (!$isFormLocked && ($klaimStatus === 'BPJS' || $klaimId === 'JM') && auth()->user()?->can('bpjs.hapusSuratKontrol'))
-                        <div class="flex justify-end mb-3">
-                            <x-secondary-button type="button" wire:click="bukaDaftarSuratKontrol" wire:loading.attr="disabled"
-                                wire:target="bukaDaftarSuratKontrol">
-                                <span wire:loading.remove wire:target="bukaDaftarSuratKontrol" class="inline-flex items-center gap-2">
-                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                            d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
-                                    </svg>
-                                    Daftar Surat Kontrol BPJS
-                                </span>
-                                <span wire:loading wire:target="bukaDaftarSuratKontrol" class="inline-flex items-center gap-2"><x-loading /> Memuat...</span>
-                            </x-secondary-button>
-                        </div>
-                    @endif
-
                     <div class="w-full">
                         <div class="grid grid-cols-1 gap-2">
 
@@ -562,7 +545,21 @@ new class extends Component {
                     {{-- Tombol Save --}}
                     @if (!$isFormLocked)
                         @php $isBPJS = $klaimStatus === 'BPJS' || $klaimId === 'JM'; @endphp
-                        <div class="flex justify-end pt-2">
+                        <div class="flex flex-wrap items-center justify-end gap-2 pt-2">
+                            {{-- Daftar surat kontrol BPJS milik kartu pasien (lihat + hapus di VClaim) — mepet kiri --}}
+                            @if ($isBPJS && auth()->user()?->can('bpjs.hapusSuratKontrol'))
+                                <x-secondary-button type="button" wire:click="bukaDaftarSuratKontrol" wire:loading.attr="disabled"
+                                    wire:target="bukaDaftarSuratKontrol" class="mr-auto">
+                                    <span wire:loading.remove wire:target="bukaDaftarSuratKontrol" class="inline-flex items-center gap-2">
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                                        </svg>
+                                        Daftar Surat Kontrol BPJS
+                                    </span>
+                                    <span wire:loading wire:target="bukaDaftarSuratKontrol" class="inline-flex items-center gap-2"><x-loading /> Memuat...</span>
+                                </x-secondary-button>
+                            @endif
                             <x-success-button type="button" wire:click="save" wire:loading.attr="disabled"
                                 wire:target="save">
                                 <span wire:loading.remove wire:target="save" class="inline-flex items-center gap-2">
