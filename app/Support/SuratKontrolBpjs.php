@@ -61,6 +61,65 @@ final class SuratKontrolBpjs
         return '';
     }
 
+    /**
+     * Surat kontrol (jnsKontrol 2) milik kartu ini yang rencana kontrolnya JATUH di $tglKontrol (d/m/Y),
+     * dari SEP mana pun — untuk menjelaskan tolakan BPJS 203 "Sudah Diterbitkan Rencana Kunjungan Kontrol
+     * Di Tanggal Yang Sama" (satu kartu hanya boleh satu rencana kontrol per tanggal). null = tak ketemu / tak bisa dicek.
+     */
+    public static function cariSuratKontrolPadaTanggal(string $noKartu, ?string $tglKontrol): ?array
+    {
+        $noKartu = trim($noKartu);
+        try {
+            $tglRencanaKontrolCarbon = Carbon::createFromFormat('d/m/Y', (string) $tglKontrol);
+        } catch (\Throwable) {
+            return null;
+        }
+        if ($noKartu === '') {
+            return null;
+        }
+
+        try {
+            $response = VclaimTrait::suratkontrol_list_kartu($tglRencanaKontrolCarbon->format('m'), $tglRencanaKontrolCarbon->format('Y'), $noKartu, 2)->getOriginalContent();
+        } catch (\Throwable) {
+            return null;
+        }
+        if ((int) ($response['metadata']['code'] ?? 0) !== 200) {
+            return null;
+        }
+
+        return self::cocokkanTanggalRencanaKontrol((array) ($response['response']['list'] ?? []), $tglRencanaKontrolCarbon->format('Y-m-d'));
+    }
+
+    /** Murni: surat kontrol (jnsKontrol 2) dengan tglRencanaKontrol = $tglRencanaKontrol; null bila tak ada. */
+    public static function cocokkanTanggalRencanaKontrol(array $daftar, string $tglRencanaKontrol): ?array
+    {
+        foreach ($daftar as $suratKontrol) {
+            if (substr((string) ($suratKontrol['tglRencanaKontrol'] ?? ''), 0, 10) === $tglRencanaKontrol && (string) ($suratKontrol['jnsKontrol'] ?? '') === '2'
+                && filled($suratKontrol['noSuratKontrol'] ?? null)) {
+                return (array) $suratKontrol;
+            }
+        }
+
+        return null;
+    }
+
+    /** Teks penjelas tolakan 203 tanggal sama; '' bila surat yang menabrak tak bisa ditemukan. */
+    public static function penjelasTolakanTanggalSama(string $noKartu, ?string $tglKontrol, string $noSepSekarang): string
+    {
+        $suratKontrol = self::cariSuratKontrolPadaTanggal($noKartu, $tglKontrol);
+        if ($suratKontrol === null) {
+            return '';
+        }
+        $noSepAsalKontrol = (string) ($suratKontrol['noSepAsalKontrol'] ?? '');
+        $namaPoliTujuan = trim((string) ($suratKontrol['namaPoliTujuan'] ?? ''));
+        $namaDokter = trim((string) ($suratKontrol['namaDokter'] ?? ''));
+
+        return 'Sudah ada surat kontrol ' . $suratKontrol['noSuratKontrol']
+            . ($namaPoliTujuan !== '' ? " ke {$namaPoliTujuan}" : '') . ($namaDokter !== '' ? " ({$namaDokter})" : '')
+            . ($noSepAsalKontrol !== '' ? ' dari SEP ' . $noSepAsalKontrol . ($noSepAsalKontrol === trim($noSepSekarang) ? ' (SEP ini)' : ' (SEP lain)') : '')
+            . ' — pilih tanggal kontrol lain, atau hapus/ubah surat tersebut di VClaim.';
+    }
+
     /** Murni: nomor surat kontrol (jnsKontrol 2) dari daftar yang SEP asalnya = $noSep; '' bila tak ada. */
     public static function cocokkan(array $daftar, string $noSep): string
     {

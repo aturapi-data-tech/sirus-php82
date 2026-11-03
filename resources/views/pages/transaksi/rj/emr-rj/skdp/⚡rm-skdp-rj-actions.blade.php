@@ -202,10 +202,11 @@ new class extends Component {
      | Dipanggil DI LUAR transaksi — API call ke BPJS tidak boleh
      | berada di dalam DB::transaction.
     ═══════════════════════════════════════ */
-    private function pushSuratKontrolBPJS(): void
+    /** true = surat kontrol BPJS terbit/diperbarui, atau pasien bukan BPJS (tak perlu push). */
+    private function pushSuratKontrolBPJS(): bool
     {
         if ($this->klaimStatus !== 'BPJS' && $this->klaimId !== 'JM') {
-            return;
+            return true;
         }
 
         // Surat kontrol untuk SEP ini mungkin SUDAH terbit walau form ini kosong — mis. petugas lain
@@ -233,19 +234,34 @@ new class extends Component {
                 $this->formKontrol['noSKDPBPJS'] = $response['response']['noSuratKontrol'] ?? '';
             }
             $this->dispatch('toast', type: 'success', message: "{$label} {$code} {$message}");
-        } else {
-            $this->dispatch('toast', type: 'error', message: "{$label} {$code} {$message}");
+
+            return true;
         }
+
+        // 203 "Sudah Diterbitkan Rencana Kunjungan Kontrol Di Tanggal Yang Sama": satu kartu hanya boleh
+        // satu rencana kontrol per tanggal (sering dari SEP lain). Sebutkan surat yang menabrak.
+        $penjelasTolakan = '';
+        if ($isNew && stripos($message, 'tanggal yang sama') !== false) {
+            $penjelasTolakan = SuratKontrolBpjs::penjelasTolakanTanggalSama($this->noKartuPasien(), $this->formKontrol['tglKontrol'] ?? null, (string) ($this->formKontrol['noSEP'] ?? ''));
+        }
+        $this->dispatch('toast', type: 'error', message: "{$label} {$code} {$message}" . ($penjelasTolakan !== '' ? " {$penjelasTolakan}" : ''));
+
+        return false;
     }
 
     /** Nomor surat kontrol yang sudah terbit di BPJS untuk SEP kunjungan ini ('' = belum / tak bisa dicek) — App\Support\SuratKontrolBpjs. */
     private function cariSuratKontrolTerbit(): string
     {
-        $data = $this->findDataRJ($this->rjNo) ?? [];
-        $noKartu = trim((string) (DB::table('rsmst_pasiens')->where('reg_no', $data['regNo'] ?? '')->value('nokartu_bpjs') ?? ''))
-            ?: trim((string) ($data['sep']['reqSep']['request']['t_sep']['noKartu'] ?? ''));
+        return SuratKontrolBpjs::nomorTerbit((string) ($this->formKontrol['noSEP'] ?? ''), $this->noKartuPasien(), $this->formKontrol['tglKontrol'] ?? null);
+    }
 
-        return SuratKontrolBpjs::nomorTerbit((string) ($this->formKontrol['noSEP'] ?? ''), $noKartu, $this->formKontrol['tglKontrol'] ?? null);
+    /** No kartu BPJS pasien: master pasien, cadangan dari request SEP. */
+    private function noKartuPasien(): string
+    {
+        $data = $this->findDataRJ($this->rjNo) ?? [];
+
+        return trim((string) (DB::table('rsmst_pasiens')->where('reg_no', $data['regNo'] ?? '')->value('nokartu_bpjs') ?? ''))
+            ?: trim((string) ($data['sep']['reqSep']['request']['t_sep']['noKartu'] ?? ''));
     }
 
     /* ═══════════════════════════════════════
@@ -312,8 +328,9 @@ new class extends Component {
         // 7. Push ke BPJS — DI LUAR transaksi DB & BEST-EFFORT.
         //    Kalau BPJS lemot/timeout/error, JANGAN batalkan simpan lokal: tangkap di sini,
         //    kasih toast, lalu lanjut simpan ke DB. (cegah "SKDP mental" saat BPJS down)
+        $bpjsOk = false;
         try {
-            $this->pushSuratKontrolBPJS();
+            $bpjsOk = $this->pushSuratKontrolBPJS();
         } catch (\Throwable $e) {
             $this->dispatch('toast', type: 'warning', message: 'SKDP tersimpan lokal, push BPJS gagal (' . $e->getMessage() . '). Bisa diulang nanti.');
         }
@@ -350,7 +367,11 @@ new class extends Component {
             });
 
             $this->incrementVersion('modal-skdp-rj');
-            $this->dispatch('toast', type: 'success', message: 'Surat Kontrol berhasil disimpan.');
+            if ($bpjsOk) {
+                $this->dispatch('toast', type: 'success', message: 'Surat Kontrol berhasil disimpan.');
+            } else {
+                $this->dispatch('toast', type: 'warning', message: 'Data kontrol tersimpan di SIRUS, tetapi surat kontrol BPJS BELUM terbit (tanpa nomor). Perbaiki lalu simpan ulang.');
+            }
         } catch (\RuntimeException $e) {
             // lockRJRow() throws RuntimeException jika row tidak ditemukan
             $this->dispatch('toast', type: 'error', message: $e->getMessage());

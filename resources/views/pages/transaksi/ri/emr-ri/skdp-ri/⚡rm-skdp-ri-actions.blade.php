@@ -222,14 +222,15 @@ new class extends Component {
     /* ═══════════════════════════════════════
      | PUSH SKDP BPJS
     ═══════════════════════════════════════ */
-    private function pushSuratKontrolBPJS(): void
+    /** true = surat kontrol BPJS terbit/diperbarui, atau pasien bukan BPJS (tak perlu push). */
+    private function pushSuratKontrolBPJS(): bool
     {
         $klaimStatus = DB::table('rsmst_klaimtypes')
             ->where('klaim_id', $this->klaimId)
             ->value('klaim_status') ?? 'UMUM';
 
         if ($klaimStatus !== 'BPJS') {
-            return;
+            return true;
         }
 
         // Surat kontrol untuk SEP ini mungkin SUDAH terbit walau form ini kosong — mis. petugas lain
@@ -258,19 +259,34 @@ new class extends Component {
                 $this->formKontrol['noSKDPBPJS'] = $response['response']['noSuratKontrol'] ?? '';
             }
             $this->dispatch('toast', type: 'success', message: "{$label} {$code} {$message}");
-        } else {
-            $this->dispatch('toast', type: 'error', message: "{$label} {$code} {$message}");
+
+            return true;
         }
+
+        // 203 "Sudah Diterbitkan Rencana Kunjungan Kontrol Di Tanggal Yang Sama": satu kartu hanya boleh
+        // satu rencana kontrol per tanggal (sering dari SEP lain). Sebutkan surat yang menabrak.
+        $penjelasTolakan = '';
+        if ($isNew && stripos($message, 'tanggal yang sama') !== false) {
+            $penjelasTolakan = SuratKontrolBpjs::penjelasTolakanTanggalSama($this->noKartuPasien(), $this->formKontrol['tglKontrol'] ?? null, (string) ($this->formKontrol['noSEP'] ?? ''));
+        }
+        $this->dispatch('toast', type: 'error', message: "{$label} {$code} {$message}" . ($penjelasTolakan !== '' ? " {$penjelasTolakan}" : ''));
+
+        return false;
     }
 
     /** Nomor surat kontrol yang sudah terbit di BPJS untuk SEP kunjungan ini ('' = belum / tak bisa dicek) — App\Support\SuratKontrolBpjs. */
     private function cariSuratKontrolTerbit(): string
     {
-        $data = $this->findDataRI($this->riHdrNo) ?? [];
-        $noKartu = trim((string) (DB::table('rsmst_pasiens')->where('reg_no', $data['regNo'] ?? '')->value('nokartu_bpjs') ?? ''))
-            ?: trim((string) ($data['sep']['reqSep']['request']['t_sep']['noKartu'] ?? ''));
+        return SuratKontrolBpjs::nomorTerbit((string) ($this->formKontrol['noSEP'] ?? ''), $this->noKartuPasien(), $this->formKontrol['tglKontrol'] ?? null);
+    }
 
-        return SuratKontrolBpjs::nomorTerbit((string) ($this->formKontrol['noSEP'] ?? ''), $noKartu, $this->formKontrol['tglKontrol'] ?? null);
+    /** No kartu BPJS pasien: master pasien, cadangan dari request SEP. */
+    private function noKartuPasien(): string
+    {
+        $data = $this->findDataRI($this->riHdrNo) ?? [];
+
+        return trim((string) (DB::table('rsmst_pasiens')->where('reg_no', $data['regNo'] ?? '')->value('nokartu_bpjs') ?? ''))
+            ?: trim((string) ($data['sep']['reqSep']['request']['t_sep']['noKartu'] ?? ''));
     }
 
     /* ═══════════════════════════════════════
@@ -292,7 +308,7 @@ new class extends Component {
         $this->validateWithToast();
 
         // Push ke BPJS — DI LUAR transaksi DB
-        $this->pushSuratKontrolBPJS();
+        $bpjsOk = $this->pushSuratKontrolBPJS();
 
         // Simpan ke DB
         try {
@@ -319,7 +335,11 @@ new class extends Component {
             });
 
             $this->incrementVersion('modal-skdp-ri');
-            $this->dispatch('toast', type: 'success', message: 'Surat Kontrol berhasil disimpan.');
+            if ($bpjsOk) {
+                $this->dispatch('toast', type: 'success', message: 'Surat Kontrol berhasil disimpan.');
+            } else {
+                $this->dispatch('toast', type: 'warning', message: 'Data kontrol tersimpan di SIRUS, tetapi surat kontrol BPJS BELUM terbit (tanpa nomor). Perbaiki lalu simpan ulang.');
+            }
         } catch (\RuntimeException $e) {
             $this->dispatch('toast', type: 'error', message: $e->getMessage());
         } catch (\Throwable $e) {
