@@ -31,10 +31,10 @@ new class extends Component {
     public function mount(): void
     {
         if (empty($this->dateFrom)) {
-            $this->dateFrom = now()->startOfDay()->format('Y-m-d');
+            $this->dateFrom = now()->format('d/m/Y');
         }
         if (empty($this->dateTo)) {
-            $this->dateTo = now()->endOfDay()->format('Y-m-d');
+            $this->dateTo = now()->format('d/m/Y');
         }
     }
 
@@ -49,9 +49,27 @@ new class extends Component {
     public function resetFilters(): void
     {
         $this->reset(['search', 'service', 'statusFilter']);
-        $this->dateFrom = now()->startOfDay()->format('Y-m-d');
-        $this->dateTo = now()->endOfDay()->format('Y-m-d');
+        $this->dateFrom = now()->format('d/m/Y');
+        $this->dateTo = now()->format('d/m/Y');
         $this->resetPage();
+    }
+
+    /**
+     * Ubah isian tanggal dd/mm/yyyy (seperti filter Pelayanan RJ) ke Y-m-d untuk query.
+     * Tautan lama ber-format Y-m-d tetap diterima. Isian tak valid / setengah diketik
+     * jatuh ke HARI INI — sengaja tidak diabaikan, karena applyFilters() juga dipakai
+     * deleteFiltered(): batas tanggal yang hilang berarti menghapus log di luar rentang.
+     */
+    private function tanggalQuery(string $isian): string
+    {
+        $isian = trim($isian);
+        if (preg_match('#^(\d{1,2})/(\d{1,2})/(\d{4})$#', $isian, $m) && checkdate((int) $m[2], (int) $m[1], (int) $m[3])) {
+            return sprintf('%04d-%02d-%02d', $m[3], $m[2], $m[1]);
+        }
+        if (preg_match('#^(\d{4})-(\d{2})-(\d{2})$#', $isian, $m) && checkdate((int) $m[2], (int) $m[3], (int) $m[1])) {
+            return $isian;
+        }
+        return now()->format('Y-m-d');
     }
 
     /**
@@ -61,12 +79,8 @@ new class extends Component {
     private function applyFilters($query)
     {
         // Date range
-        if (!empty($this->dateFrom)) {
-            $query->whereRaw("trunc(date_ref) >= to_date(?, 'YYYY-MM-DD')", [$this->dateFrom]);
-        }
-        if (!empty($this->dateTo)) {
-            $query->whereRaw("trunc(date_ref) <= to_date(?, 'YYYY-MM-DD')", [$this->dateTo]);
-        }
+        $query->whereRaw("trunc(date_ref) >= to_date(?, 'YYYY-MM-DD')", [$this->tanggalQuery($this->dateFrom)]);
+        $query->whereRaw("trunc(date_ref) <= to_date(?, 'YYYY-MM-DD')", [$this->tanggalQuery($this->dateTo)]);
 
         // Service filter — by URL pattern
         if ($this->service !== 'all') {
@@ -219,6 +233,9 @@ new class extends Component {
         return [
             'rows' => $rows,
             'stats' => $stats,
+            // Tanggal yang BENAR-BENAR dipakai query (isian tak valid → hari ini), untuk pesan hapus.
+            'tanggalBerlakuDari' => Carbon::parse($this->tanggalQuery($this->dateFrom))->format('d/m/Y'),
+            'tanggalBerlakuSampai' => Carbon::parse($this->tanggalQuery($this->dateTo))->format('d/m/Y'),
             'serviceOptions' => [
                 'all' => 'Semua Service',
                 'vclaim' => 'V-Claim BPJS',
@@ -279,13 +296,15 @@ new class extends Component {
                     {{-- TANGGAL DARI --}}
                     <div class="w-full sm:w-auto">
                         <x-input-label value="Dari Tgl" />
-                        <x-text-input type="date" wire:model.live="dateFrom" class="block w-full mt-1 sm:w-40" />
+                        <x-text-input type="text" wire:model.live="dateFrom" class="block w-full mt-1 sm:w-40"
+                            placeholder="dd/mm/yyyy" />
                     </div>
 
                     {{-- TANGGAL SAMPAI --}}
                     <div class="w-full sm:w-auto">
                         <x-input-label value="Sampai Tgl" />
-                        <x-text-input type="date" wire:model.live="dateTo" class="block w-full mt-1 sm:w-40" />
+                        <x-text-input type="text" wire:model.live="dateTo" class="block w-full mt-1 sm:w-40"
+                            placeholder="dd/mm/yyyy" />
                     </div>
 
                     {{-- SERVICE --}}
@@ -354,7 +373,7 @@ new class extends Component {
                     @if ($stats['total'] > 0)
                         <div class="ml-auto">
             <x-confirm-button variant="danger" action="deleteFiltered()" title="Hapus Log Terfilter"
-                                message="Hapus {{ number_format($stats['total']) }} log sesuai filter aktif (tgl {{ $dateFrom ?: '—' }} s/d {{ $dateTo ?: '—' }})? Tindakan ini permanen dan tidak bisa dibatalkan."
+                                message="Hapus {{ number_format($stats['total']) }} log sesuai filter aktif (tgl {{ $tanggalBerlakuDari }} s/d {{ $tanggalBerlakuSampai }})? Tindakan ini permanen dan tidak bisa dibatalkan."
                                 confirmText="Ya, hapus" cancelText="Batal"
                                 wire:loading.attr="disabled" wire:target="deleteFiltered"
                                 class="!px-3 !py-1.5 !text-xs">
