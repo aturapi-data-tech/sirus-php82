@@ -6,17 +6,28 @@
 // petugas bisa melihat surat mana yang menempati tanggal itu lalu menghapusnya bila memang tak dipakai.
 // Tampilan = standar modul dokumen (modal full, header, tabel-daftar, footer sticky).
 // Hanya Admin & manager ke atas (Gate bpjs.hapusSuratKontrol) — dicek di buka & hapus, bukan cuma tombol.
-// Setelah hapus, event 'surat-kontrol-bpjs.dihapus' dikirim agar form SKDP mengosongkan nomor yang ikut terhapus.
+// Fungsi dasarnya: membuat ulang No SKDP saat surat kontrol sudah terbit di BPJS tapi nomornya GAGAL tersimpan ke DB.
+// Maka No SKDP BPJS yang SUDAH tersimpan di JSON kunjungan ini tidak boleh dihapus — dicek ulang dari DB saat hapus.
 
 use Livewire\Component;
 use Livewire\Attributes\On;
 use Carbon\Carbon;
 use App\Http\Traits\BPJS\VclaimTrait;
+use App\Http\Traits\Txn\Rj\EmrRJTrait;
+use App\Http\Traits\Txn\Ri\EmrRITrait;
 
 new class extends Component {
+    use EmrRJTrait, EmrRITrait;
+
     public string $noKartu = '';
     public string $noSepSekarang = '';
     public ?string $jalur = null;
+
+    /** rjNo (RJ) / riHdrNo (RI) kunjungan pembuka modal. */
+    public string $nomorKunjungan = '';
+
+    /** No SKDP BPJS yang tersimpan di JSON kunjungan ini saat daftar dimuat (untuk tampilan; hapus() cek ulang dari DB). */
+    public string $noSKDPBPJSTersimpan = '';
 
     /** Baris surat kontrol (jnsKontrol 2) dari BPJS — sedikit, aman sebagai properti publik. */
     public array $rows = [];
@@ -24,15 +35,20 @@ new class extends Component {
     public string $pesanGagalMuat = '';
 
     #[On('daftar-surat-kontrol-bpjs.open')]
-    public function bukaDaftar(?string $noKartu = null, ?string $noSep = null, ?string $jalur = null): void
+    public function bukaDaftar(?string $noKartu = null, ?string $noSep = null, ?string $jalur = null, ?string $nomorKunjungan = null): void
     {
         if (!auth()->user()?->can('bpjs.hapusSuratKontrol')) {
             $this->dispatch('toast', type: 'error', message: 'Hanya Admin & manager ke atas yang dapat membuka/menghapus surat kontrol BPJS.');
             return;
         }
+        if (!in_array($jalur, ['RJ', 'RI'], true) || blank($nomorKunjungan)) {
+            $this->dispatch('toast', type: 'error', message: 'Kunjungan asal tidak dikenali — buka ulang dari form Surat Kontrol.');
+            return;
+        }
         $this->noKartu = trim((string) $noKartu);
         $this->noSepSekarang = trim((string) $noSep);
         $this->jalur = $jalur;
+        $this->nomorKunjungan = trim((string) $nomorKunjungan);
 
         if ($this->noKartu === '') {
             $this->dispatch('toast', type: 'error', message: 'No kartu BPJS pasien tidak ditemukan.');
@@ -43,6 +59,20 @@ new class extends Component {
         $this->dispatch('open-modal', name: 'daftar-surat-kontrol-bpjs');
     }
 
+    /** No SKDP BPJS di JSON kunjungan ini, dibaca SEGAR dari DB. Jalur di luar RJ/RI → '' (bukaDaftar sudah menolak). */
+    private function bacaNoSKDPBPJSTersimpan(): string
+    {
+        $data = [];
+        if ($this->jalur === 'RJ') {
+            $data = $this->findDataRJ($this->nomorKunjungan) ?? [];
+        }
+        if ($this->jalur === 'RI') {
+            $data = $this->findDataRI($this->nomorKunjungan) ?? [];
+        }
+
+        return trim((string) ($data['kontrol']['noSKDPBPJS'] ?? ''));
+    }
+
     /**
      * Daftar dari BPJS per bulan: rencana kontrol bulan lalu s/d 2 bulan ke depan (filter 2) + terbit bulan ini
      * (filter 1). Digabung per noSuratKontrol, hanya jnsKontrol "2" (surat kontrol; SPRI tidak ditampilkan).
@@ -51,6 +81,7 @@ new class extends Component {
     {
         $this->rows = [];
         $this->pesanGagalMuat = '';
+        $this->noSKDPBPJSTersimpan = $this->bacaNoSKDPBPJSTersimpan();
 
         $sekarang = Carbon::now(config('app.timezone'))->startOfMonth();
         $periode = [
@@ -120,13 +151,21 @@ new class extends Component {
             return;
         }
 
+        // Pengaman: No SKDP BPJS yang SUDAH tersimpan di kunjungan ini = surat kontrol yang sah → jangan dihapus.
+        // Dibaca ulang dari DB (bukan dari tampilan) supaya nomor yang baru disimpan petugas lain ikut terlindungi.
+        $noSKDPBPJSTersimpan = $this->bacaNoSKDPBPJSTersimpan();
+        if ($noSKDPBPJSTersimpan !== '' && $noSKDPBPJSTersimpan === $noSuratKontrol) {
+            $this->noSKDPBPJSTersimpan = $noSKDPBPJSTersimpan;
+            $this->dispatch('toast', type: 'warning', message: "Surat kontrol {$noSuratKontrol} adalah No SKDP BPJS yang SUDAH tersimpan di kunjungan ini — hapus dibatalkan. Untuk mengubah tanggal/dokter, cukup simpan ulang form Surat Kontrol (Update).");
+            return;
+        }
+
         $response = VclaimTrait::suratkontrol_delete($noSuratKontrol)->getOriginalContent();
         $kodeResponse = (int) ($response['metadata']['code'] ?? 0);
         $pesanResponse = (string) ($response['metadata']['message'] ?? '');
 
         if ($kodeResponse === 200) {
             $this->dispatch('toast', type: 'success', message: "Surat kontrol {$noSuratKontrol} dihapus di BPJS.");
-            $this->dispatch('surat-kontrol-bpjs.dihapus', nomorTerhapus: [$noSuratKontrol]);
         } else {
             $this->dispatch('toast', type: 'error', message: "Hapus {$noSuratKontrol} gagal: {$kodeResponse} {$pesanResponse}");
         }
@@ -138,6 +177,7 @@ new class extends Component {
     {
         $this->rows = [];
         $this->pesanGagalMuat = '';
+        $this->noSKDPBPJSTersimpan = '';
         $this->dispatch('close-modal', name: 'daftar-surat-kontrol-bpjs');
     }
 };
@@ -149,7 +189,8 @@ new class extends Component {
             <x-modul-dokumen.header judul="Daftar Surat Kontrol BPJS" :jalur="$jalur" :jumlah="count($rows)"
                 ikon="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
                 Surat kontrol milik kartu pasien di BPJS (rencana kontrol bulan lalu s/d 2 bulan ke depan). Hapus per baris
-                untuk menghapusnya di VClaim — surat yang sudah dipakai menerbitkan SEP tidak bisa dihapus.
+                untuk menghapusnya di VClaim — surat yang sudah dipakai menerbitkan SEP, atau yang sudah tersimpan sebagai
+                No SKDP BPJS kunjungan ini, tidak bisa dihapus.
             </x-modul-dokumen.header>
 
             <div class="flex-1 p-4 sm:p-6 space-y-4">
@@ -174,7 +215,12 @@ new class extends Component {
                                         <span class="block text-xs">terbit {{ Carbon::parse($row['tglTerbitKontrol'])->format('d/m/Y') }}</span>
                                     @endif
                                 </td>
-                                <td class="px-4 py-3 font-mono font-medium align-middle text-ink dark:text-white">{{ $row['noSuratKontrol'] }}</td>
+                                <td class="px-4 py-3 font-mono font-medium align-middle text-ink dark:text-white">
+                                    {{ $row['noSuratKontrol'] }}
+                                    @if ($noSKDPBPJSTersimpan !== '' && $row['noSuratKontrol'] === $noSKDPBPJSTersimpan)
+                                        <x-badge variant="success" class="block mt-1 font-sans w-fit">Tersimpan di kunjungan ini</x-badge>
+                                    @endif
+                                </td>
                                 <td class="px-4 py-3 align-middle text-ink dark:text-gray-200">
                                     {{ $row['namaPoliTujuan'] ?: '-' }}
                                     <span class="block text-xs text-muted dark:text-gray-400">{{ $row['namaDokter'] }}</span>
@@ -189,7 +235,7 @@ new class extends Component {
                                     <x-badge :variant="$row['sudahTerbitSep'] ? 'info' : 'warning'">{{ $row['terbitSEP'] ?: '-' }}</x-badge>
                                 </td>
                                 <td class="px-4 py-3 text-center align-middle whitespace-nowrap">
-                                    @if ($row['sudahTerbitSep'])
+                                    @if ($row['sudahTerbitSep'] || ($noSKDPBPJSTersimpan !== '' && $row['noSuratKontrol'] === $noSKDPBPJSTersimpan))
                                         <span class="text-xs text-muted-soft dark:text-gray-500">-</span>
                                     @else
                                         <x-hapus-button action="hapus('{{ $row['noSuratKontrol'] }}')" title="Hapus Surat Kontrol di BPJS"

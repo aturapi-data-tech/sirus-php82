@@ -342,7 +342,8 @@ new class extends Component {
     }
 
     /* ═══════════════════════════════════════
-     | DAFTAR SURAT KONTROL BPJS (centang + hapus) — komponen bersama modul-dokumen/bpjs/daftar-surat-kontrol
+     | DAFTAR SURAT KONTROL BPJS (lihat + hapus) — komponen bersama modul-dokumen/bpjs/daftar-surat-kontrol.
+     | Nomor kunjungan ikut dikirim: modal menolak menghapus No SKDP BPJS yang tersimpan di kunjungan ini.
     ═══════════════════════════════════════ */
     public function bukaDaftarSuratKontrol(): void
     {
@@ -350,38 +351,7 @@ new class extends Component {
             $this->dispatch('toast', type: 'error', message: 'Hanya Admin & manager ke atas yang dapat membuka/menghapus surat kontrol BPJS.');
             return;
         }
-        $this->dispatch('daftar-surat-kontrol-bpjs.open', noKartu: $this->noKartuPasien(), noSep: (string) ($this->formKontrol['noSEP'] ?? ''), jalur: 'RI');
-    }
-
-    /** Surat kontrol dihapus di BPJS → bila nomornya tersimpan di kunjungan ini, kosongkan supaya tak tercetak/terpakai. */
-    #[On('surat-kontrol-bpjs.dihapus')]
-    public function kosongkanNomorTerhapus(array $nomorTerhapus = []): void
-    {
-        if (empty($this->riHdrNo) || $nomorTerhapus === []) {
-            return;
-        }
-
-        try {
-            DB::transaction(function () use ($nomorTerhapus) {
-                $this->lockRIRow($this->riHdrNo);
-                $data = $this->findDataRI($this->riHdrNo) ?? [];
-                $noSKDPBPJSTersimpan = trim((string) ($data['kontrol']['noSKDPBPJS'] ?? ''));
-                if ($noSKDPBPJSTersimpan === '' || !in_array($noSKDPBPJSTersimpan, $nomorTerhapus, true)) {
-                    return;
-                }
-                $data['kontrol']['noSKDPBPJS'] = '';
-                $this->updateJsonRI((int) $this->riHdrNo, $data);
-                $this->appendAdminLogRI((int) $this->riHdrNo, 'Hapus surat kontrol BPJS ' . $noSKDPBPJSTersimpan, 'MR');
-            });
-        } catch (\Throwable $e) {
-            $this->dispatch('toast', type: 'error', message: 'Gagal mengosongkan No SKDP BPJS: ' . $e->getMessage());
-            return;
-        }
-
-        if (in_array(trim((string) ($this->formKontrol['noSKDPBPJS'] ?? '')), $nomorTerhapus, true)) {
-            $this->formKontrol['noSKDPBPJS'] = '';
-            $this->incrementVersion('modal-skdp-ri');
-        }
+        $this->dispatch('daftar-surat-kontrol-bpjs.open', noKartu: $this->noKartuPasien(), noSep: (string) ($this->formKontrol['noSEP'] ?? ''), jalur: 'RI', nomorKunjungan: (string) $this->riHdrNo);
     }
 };
 ?>
