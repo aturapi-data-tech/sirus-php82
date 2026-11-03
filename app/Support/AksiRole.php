@@ -145,6 +145,12 @@ class AksiRole
      */
     public const RJ_KEMBALIKAN_BATAL = ['Admin', 'Manager Umum', 'Manager Medis'];
 
+    /**
+     * Buka Daftar Surat Kontrol BPJS (form SKDP RJ & RI) — modal berisi HAPUS surat kontrol di VClaim
+     * (permanen). Admin & manager ke atas saja (keputusan user 2026-11-03).
+     */
+    public const BPJS_HAPUS_SURAT_KONTROL = ['Admin', 'Manager Umum', 'Manager Medis'];
+
     /** Ubah Data Kunjungan UGD dari Antrian Kasir UGD — sama maksudnya dengan RJ, jalur terpisah. */
     public const UGD_UBAH_DATA_KUNJUNGAN = ['Admin', 'Tu', 'Manager Umum', 'Supervisor Tu'];
 

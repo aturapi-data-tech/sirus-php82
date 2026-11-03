@@ -354,6 +354,49 @@ new class extends Component {
         }
         $this->dispatch('cetak-skdp-ri.open', riHdrNo: (string) $this->riHdrNo);
     }
+
+    /* ═══════════════════════════════════════
+     | DAFTAR SURAT KONTROL BPJS (centang + hapus) — komponen bersama modul-dokumen/bpjs/daftar-surat-kontrol
+    ═══════════════════════════════════════ */
+    public function bukaDaftarSuratKontrol(): void
+    {
+        if (!auth()->user()?->can('bpjs.hapusSuratKontrol')) {
+            $this->dispatch('toast', type: 'error', message: 'Hanya Admin & manager ke atas yang dapat membuka/menghapus surat kontrol BPJS.');
+            return;
+        }
+        $this->dispatch('daftar-surat-kontrol-bpjs.open', noKartu: $this->noKartuPasien(), noSep: (string) ($this->formKontrol['noSEP'] ?? ''), jalur: 'RI');
+    }
+
+    /** Surat kontrol dihapus di BPJS → bila nomornya tersimpan di kunjungan ini, kosongkan supaya tak tercetak/terpakai. */
+    #[On('surat-kontrol-bpjs.dihapus')]
+    public function kosongkanNomorTerhapus(array $nomorTerhapus = []): void
+    {
+        if (empty($this->riHdrNo) || $nomorTerhapus === []) {
+            return;
+        }
+
+        try {
+            DB::transaction(function () use ($nomorTerhapus) {
+                $this->lockRIRow($this->riHdrNo);
+                $data = $this->findDataRI($this->riHdrNo) ?? [];
+                $noSKDPBPJSTersimpan = trim((string) ($data['kontrol']['noSKDPBPJS'] ?? ''));
+                if ($noSKDPBPJSTersimpan === '' || !in_array($noSKDPBPJSTersimpan, $nomorTerhapus, true)) {
+                    return;
+                }
+                $data['kontrol']['noSKDPBPJS'] = '';
+                $this->updateJsonRI((int) $this->riHdrNo, $data);
+                $this->appendAdminLogRI((int) $this->riHdrNo, 'Hapus surat kontrol BPJS ' . $noSKDPBPJSTersimpan, 'MR');
+            });
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal mengosongkan No SKDP BPJS: ' . $e->getMessage());
+            return;
+        }
+
+        if (in_array(trim((string) ($this->formKontrol['noSKDPBPJS'] ?? '')), $nomorTerhapus, true)) {
+            $this->formKontrol['noSKDPBPJS'] = '';
+            $this->incrementVersion('modal-skdp-ri');
+        }
+    }
 };
 ?>
 
@@ -459,6 +502,15 @@ new class extends Component {
                             <x-cetak-button wire:click="cetakSKDP" label="Cetak SKDP" />
                         @endif
 
+                        {{-- Daftar surat kontrol BPJS milik kartu pasien: lihat + centang + hapus di VClaim --}}
+                        @if (!$isFormLocked && auth()->user()?->can('bpjs.hapusSuratKontrol'))
+                            <x-secondary-button type="button" wire:click="bukaDaftarSuratKontrol" wire:loading.attr="disabled"
+                                wire:target="bukaDaftarSuratKontrol">
+                                <span wire:loading.remove wire:target="bukaDaftarSuratKontrol">Daftar Surat Kontrol BPJS</span>
+                                <span wire:loading wire:target="bukaDaftarSuratKontrol" class="inline-flex items-center gap-2"><x-loading /> Memuat...</span>
+                            </x-secondary-button>
+                        @endif
+
                         {{-- Simpan --}}
                         @if (!$isFormLocked)
                             <x-success-button type="button" wire:click="save" wire:loading.attr="disabled">
@@ -485,4 +537,7 @@ new class extends Component {
 
     {{-- Cetak SKDP --}}
     <livewire:pages::components.modul-dokumen.bpjs.cetak-skdp.cetak-skdp wire:key="cetak-skdp-ri-{{ $riHdrNo }}" />
+
+    {{-- Daftar surat kontrol BPJS (modal centang + hapus) --}}
+    <livewire:pages::components.modul-dokumen.bpjs.daftar-surat-kontrol.daftar-surat-kontrol wire:key="daftar-surat-kontrol-ri-{{ $riHdrNo }}" />
 </div>

@@ -696,6 +696,46 @@ trait VclaimTrait
         }
     }
 
+    /**
+     * Hapus Rencana Kontrol (surat kontrol / SPRI).
+     * Endpoint: DELETE RencanaKontrol/Delete — body {"request":{"t_suratkontrol":{"noSuratKontrol","user"}}}.
+     * BPJS menolak bila surat kontrol sudah dipakai menerbitkan SEP.
+     */
+    public static function suratkontrol_delete($noSuratKontrol)
+    {
+        $r = [
+            'request' => [
+                't_suratkontrol' => [
+                    'noSuratKontrol' => (string) $noSuratKontrol,
+                    'user' => 'Sirus',
+                ],
+            ],
+        ];
+
+        $validator = Validator::make($r, [
+            'request.t_suratkontrol.noSuratKontrol' => 'required',
+            'request.t_suratkontrol.user' => 'required',
+        ], ['required' => ':attribute wajib diisi.'], ['request.t_suratkontrol.noSuratKontrol' => 'Nomor Surat Kontrol']);
+
+        if ($validator->fails()) {
+            return self::sendError($validator->errors()->first(), $validator->errors(), 201, null, null);
+        }
+
+        try {
+            $url = env('VCLAIM_URL') . 'RencanaKontrol/Delete';
+            $signature = self::signature();
+            $signature['Content-Type'] = 'application/x-www-form-urlencoded';
+
+            $response = Http::timeout(8)->connectTimeout(3)
+                ->withHeaders($signature)
+                ->delete($url, $r);
+
+            return self::response_decrypt($response, $signature, $url, $response->transferStats->getTransferTime());
+        } catch (Exception $e) {
+            return self::sendError($e->getMessage(), $validator->errors(), 408, $url ?? null, null);
+        }
+    }
+
 
     // RUJUKAN
     public static function rujukan_peserta($nomorKartu) //fktp dari
