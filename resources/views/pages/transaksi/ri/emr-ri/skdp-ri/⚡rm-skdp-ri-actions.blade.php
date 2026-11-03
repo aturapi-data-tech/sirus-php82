@@ -9,7 +9,6 @@ use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 use App\Http\Traits\Concerns\WithValidationToastTrait;
 use App\Http\Traits\BPJS\VclaimTrait;
-use App\Support\SuratKontrolBpjs;
 
 new class extends Component {
     use EmrRITrait, WithRenderVersioningTrait, WithValidationToastTrait;
@@ -233,26 +232,13 @@ new class extends Component {
             return true;
         }
 
-        // Surat kontrol untuk kunjungan ini mungkin SUDAH ada walau form ini kosong — petugas lain menyimpannya
-        // sesudah form dibuka, atau dulu terbit di BPJS tapi nomornya tak tersimpan di DB. Insert ulang akan
-        // ditolak BPJS (203 tanggal sama) dan nomor tetap kosong. Urutan: nomor di DB → cocokkan ke BPJS → baru insert.
+        // Form kosong tapi nomor SUDAH ada di DB (petugas lain menyimpannya sesudah form ini dibuka) → pakai nomor DB
+        // & kirim Update, bukan Insert ulang. Surat kontrol yang terbit di BPJS tapi tak tersimpan di DB dibereskan
+        // petugas lewat modal Daftar Surat Kontrol BPJS (lihat + hapus), bukan dicocokkan otomatis.
         if (empty($this->formKontrol['noSKDPBPJS'])) {
             $noSKDPBPJSTersimpan = trim((string) ($this->findDataRI($this->riHdrNo)['kontrol']['noSKDPBPJS'] ?? ''));
             if ($noSKDPBPJSTersimpan !== '') {
                 $this->formKontrol['noSKDPBPJS'] = $noSKDPBPJSTersimpan;
-            } else {
-                $hasilCocok = SuratKontrolBpjs::cariSuratKontrolSama($this->noKartuPasien(), $this->formKontrol);
-                $suratKontrol = $hasilCocok['suratKontrol'];
-
-                if ($hasilCocok['status'] === 'COCOK_SEP') {
-                    $this->formKontrol['noSKDPBPJS'] = (string) $suratKontrol['noSuratKontrol'];
-                    $this->dispatch('toast', type: 'info', message: "Surat kontrol untuk SEP ini sudah terbit ({$suratKontrol['noSuratKontrol']}) — nomor diambil & diperbarui.");
-                }
-                if ($hasilCocok['status'] === 'TABRAKAN_TANGGAL') {
-                    $this->dispatch('toast', type: 'error', message: 'KONTROL Post Inap gagal: ' . $hasilCocok['pesanTabrakan']);
-
-                    return false;
-                }
             }
         }
 
@@ -423,6 +409,23 @@ new class extends Component {
                 @endif
 
                 @if (!empty($formKontrol['tglKontrol']))
+                    {{-- Daftar surat kontrol BPJS milik kartu pasien (lihat + centang + hapus di VClaim) — baris sendiri, kanan --}}
+                    @if (!$isFormLocked && auth()->user()?->can('bpjs.hapusSuratKontrol'))
+                        <div class="flex justify-end">
+                            <x-secondary-button type="button" wire:click="bukaDaftarSuratKontrol" wire:loading.attr="disabled"
+                                wire:target="bukaDaftarSuratKontrol">
+                                <span wire:loading.remove wire:target="bukaDaftarSuratKontrol" class="inline-flex items-center gap-2">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                                    </svg>
+                                    Daftar Surat Kontrol BPJS
+                                </span>
+                                <span wire:loading wire:target="bukaDaftarSuratKontrol" class="inline-flex items-center gap-2"><x-loading /> Memuat...</span>
+                            </x-secondary-button>
+                        </div>
+                    @endif
+
                     <div class="grid grid-cols-2 gap-x-6 gap-y-4">
 
                         {{-- ══ KOLOM KIRI ══ --}}
@@ -500,15 +503,6 @@ new class extends Component {
                         {{-- Cetak --}}
                         @if (!empty($formKontrol['noSKDPBPJS']) || !empty($formKontrol['noKontrolRS']))
                             <x-cetak-button wire:click="cetakSKDP" label="Cetak SKDP" />
-                        @endif
-
-                        {{-- Daftar surat kontrol BPJS milik kartu pasien: lihat + centang + hapus di VClaim --}}
-                        @if (!$isFormLocked && auth()->user()?->can('bpjs.hapusSuratKontrol'))
-                            <x-secondary-button type="button" wire:click="bukaDaftarSuratKontrol" wire:loading.attr="disabled"
-                                wire:target="bukaDaftarSuratKontrol">
-                                <span wire:loading.remove wire:target="bukaDaftarSuratKontrol">Daftar Surat Kontrol BPJS</span>
-                                <span wire:loading wire:target="bukaDaftarSuratKontrol" class="inline-flex items-center gap-2"><x-loading /> Memuat...</span>
-                            </x-secondary-button>
                         @endif
 
                         {{-- Simpan --}}
