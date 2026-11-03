@@ -28,7 +28,8 @@ trait SirsTrait
 
     private static function sirsHeaders(array $extra = []): array
     {
-        date_default_timezone_set('UTC');
+        // time() sudah detik UTC sejak epoch. JANGAN date_default_timezone_set('UTC'):
+        // itu menggeser zona waktu sisa request, Carbon::now() di log jadi UTC (mundur 7 jam).
         $timestamp = strval(time());
 
         return array_merge([
