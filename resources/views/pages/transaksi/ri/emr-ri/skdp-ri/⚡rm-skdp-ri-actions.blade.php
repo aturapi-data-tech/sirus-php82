@@ -264,10 +264,22 @@ new class extends Component {
         }
 
         // 203 "Sudah Diterbitkan Rencana Kunjungan Kontrol Di Tanggal Yang Sama": satu kartu hanya boleh
-        // satu rencana kontrol per tanggal (sering dari SEP lain). Sebutkan surat yang menabrak.
+        // satu rencana kontrol per tanggal. Bila surat yang menabrak milik SEP INI → No SKDP BPJS yang
+        // kosong diisi dengan nomornya lalu diperbarui (bukan dibiarkan kosong). Bila dari SEP lain → sebutkan.
         $penjelasTolakan = '';
         if ($isNew && stripos($message, 'tanggal yang sama') !== false) {
-            $penjelasTolakan = SuratKontrolBpjs::penjelasTolakanTanggalSama($this->noKartuPasien(), $this->formKontrol['tglKontrol'] ?? null, (string) ($this->formKontrol['noSEP'] ?? ''));
+            $noSepSekarang = trim((string) ($this->formKontrol['noSEP'] ?? ''));
+            $suratKontrol = SuratKontrolBpjs::cariSuratKontrolPadaTanggal($this->noKartuPasien(), $this->formKontrol['tglKontrol'] ?? null);
+
+            if ($suratKontrol !== null && $noSepSekarang !== '' && (string) ($suratKontrol['noSepAsalKontrol'] ?? '') === $noSepSekarang) {
+                $this->formKontrol['noSKDPBPJS'] = (string) $suratKontrol['noSuratKontrol'];
+                $this->dispatch('toast', type: 'info', message: "Surat kontrol untuk SEP ini sudah terbit di tanggal tsb ({$suratKontrol['noSuratKontrol']}) — nomor diambil & diperbarui.");
+
+                // No SKDP BPJS kini terisi → panggilan kedua lewat jalur UPDATE (tidak berulang).
+                return $this->pushSuratKontrolBPJS();
+            }
+
+            $penjelasTolakan = SuratKontrolBpjs::penjelasTolakanTanggalSama($suratKontrol, $noSepSekarang);
         }
         $this->dispatch('toast', type: 'error', message: "{$label} {$code} {$message}" . ($penjelasTolakan !== '' ? " {$penjelasTolakan}" : ''));
 

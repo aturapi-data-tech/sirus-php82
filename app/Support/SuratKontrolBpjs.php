@@ -103,10 +103,9 @@ final class SuratKontrolBpjs
         return null;
     }
 
-    /** Teks penjelas tolakan 203 tanggal sama; '' bila surat yang menabrak tak bisa ditemukan. */
-    public static function penjelasTolakanTanggalSama(string $noKartu, ?string $tglKontrol, string $noSepSekarang): string
+    /** Murni: teks penjelas tolakan 203 tanggal sama dari hasil cariSuratKontrolPadaTanggal(); '' bila surat tak ditemukan. */
+    public static function penjelasTolakanTanggalSama(?array $suratKontrol, string $noSepSekarang): string
     {
-        $suratKontrol = self::cariSuratKontrolPadaTanggal($noKartu, $tglKontrol);
         if ($suratKontrol === null) {
             return '';
         }
