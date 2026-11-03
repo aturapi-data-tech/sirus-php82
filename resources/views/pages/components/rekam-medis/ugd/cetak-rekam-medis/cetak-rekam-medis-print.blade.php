@@ -423,6 +423,46 @@
             <td class="border border-black px-1.5 py-0.5 align-top" colspan="2">{!! nl2br(e($askepText ?: '-')) !!}</td>
         </tr>
 
+        {{-- SBAR — terbaru di atas, label S-O-A-P sama dengan viewer & cetak SBAR UGD --}}
+        @php
+            $daftarSbar = collect((array) ($dataDaftarTxn['sbar'] ?? []))
+                ->sortByDesc(function ($entriSbar) {
+                    try {
+                        return \Carbon\Carbon::createFromFormat('d/m/Y H:i:s', trim((string) data_get($entriSbar, 'tglSBAR')))->getTimestamp();
+                    } catch (\Throwable) {
+                        return 0;
+                    }
+                })
+                ->values();
+            $labelSbar = [
+                'situation' => 'S',
+                'background' => 'O',
+                'assessment' => 'A',
+                'recommendation' => 'P',
+            ];
+        @endphp
+        <tr>
+            <td class="border border-black px-1.5 py-0.5 font-bold align-top">SBAR</td>
+            <td class="border border-black px-1.5 py-0.5 align-top" colspan="2">
+                @forelse ($daftarSbar as $catatanSbar)
+                    <div class="{{ $loop->last ? '' : 'pb-1 mb-1 border-b border-gray-400' }}">
+                        <span class="font-bold">{{ $catatanSbar['tglSBAR'] ?? '-' }}</span>
+                        &mdash; {{ $catatanSbar['petugasSBAR'] ?? '-' }}
+                        @if (filled($catatanSbar['profession'] ?? null))
+                            ({{ $catatanSbar['profession'] }})
+                        @endif
+                        <br>
+                        @foreach ($labelSbar as $kunciSbar => $hurufSbar)
+                            <span class="font-bold">{{ $hurufSbar }} :</span>
+                            {!! nl2br(e(trim((string) data_get($catatanSbar, 'sbar.' . $kunciSbar)) ?: '-')) !!}<br>
+                        @endforeach
+                    </div>
+                @empty
+                    -
+                @endforelse
+            </td>
+        </tr>
+
         {{-- TINDAK LANJUT --}}
         <tr>
             <td class="border border-black px-1.5 py-0.5 font-bold align-middle">TINDAK LANJUT</td>
