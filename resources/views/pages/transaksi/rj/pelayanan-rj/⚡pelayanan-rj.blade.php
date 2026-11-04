@@ -603,11 +603,11 @@ new class extends Component {
                         <thead class="sticky top-0 z-10 [&_th]:bg-surface-card dark:[&_th]:bg-gray-800">
                             <tr
                                 class="text-sm font-semibold tracking-wide text-left text-muted uppercase dark:text-gray-300">
-                                <th class="px-6 py-3 w-[24%]">Pasien</th>
+                                <th class="px-6 py-3 w-[26%]">Pasien</th>
                                 <th class="px-6 py-3 w-[20%]">Poli</th>
-                                <th class="px-6 py-3 w-[16%]">Status Layanan</th>
+                                <th class="px-6 py-3 w-[19%]">Status Layanan</th>
                                 <th class="px-6 py-3 w-[18%]">Tindak Lanjut</th>
-                                <th class="px-6 py-3 w-[22%] text-center">Action</th>
+                                <th class="px-6 py-3 w-[17%] text-center">Action</th>
                             </tr>
                         </thead>
 
