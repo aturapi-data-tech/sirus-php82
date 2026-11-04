@@ -68,8 +68,9 @@ trait VclaimTrait
         $userkey = env('VCLAIM_USER_KEY');
 
 
-        date_default_timezone_set('UTC');
-        $tStamp = strval(time() - strtotime('1970-01-01 00:00:00'));
+        // time() sudah detik UTC sejak epoch. JANGAN date_default_timezone_set('UTC'):
+        // itu menggeser zona waktu sisa request, Carbon::now() di log jadi UTC (mundur 7 jam).
+        $tStamp = strval(time());
         $signature = hash_hmac('sha256', $cons_id . "&" . $tStamp, $secretKey, true);
         $encodedSignature = base64_encode($signature);
 
@@ -690,6 +691,46 @@ trait VclaimTrait
             $response = Http::timeout(8)->connectTimeout(3)
                 ->withHeaders($signature)
                 ->get($url);
+
+            return self::response_decrypt($response, $signature, $url, $response->transferStats->getTransferTime());
+        } catch (Exception $e) {
+            return self::sendError($e->getMessage(), $validator->errors(), 408, $url ?? null, null);
+        }
+    }
+
+    /**
+     * Hapus Rencana Kontrol (surat kontrol / SPRI).
+     * Endpoint: DELETE RencanaKontrol/Delete — body {"request":{"t_suratkontrol":{"noSuratKontrol","user"}}}.
+     * BPJS menolak bila surat kontrol sudah dipakai menerbitkan SEP.
+     */
+    public static function suratkontrol_delete($noSuratKontrol)
+    {
+        $r = [
+            'request' => [
+                't_suratkontrol' => [
+                    'noSuratKontrol' => (string) $noSuratKontrol,
+                    'user' => 'Sirus',
+                ],
+            ],
+        ];
+
+        $validator = Validator::make($r, [
+            'request.t_suratkontrol.noSuratKontrol' => 'required',
+            'request.t_suratkontrol.user' => 'required',
+        ], ['required' => ':attribute wajib diisi.'], ['request.t_suratkontrol.noSuratKontrol' => 'Nomor Surat Kontrol']);
+
+        if ($validator->fails()) {
+            return self::sendError($validator->errors()->first(), $validator->errors(), 201, null, null);
+        }
+
+        try {
+            $url = env('VCLAIM_URL') . 'RencanaKontrol/Delete';
+            $signature = self::signature();
+            $signature['Content-Type'] = 'application/x-www-form-urlencoded';
+
+            $response = Http::timeout(8)->connectTimeout(3)
+                ->withHeaders($signature)
+                ->delete($url, $r);
 
             return self::response_decrypt($response, $signature, $url, $response->transferStats->getTransferTime());
         } catch (Exception $e) {

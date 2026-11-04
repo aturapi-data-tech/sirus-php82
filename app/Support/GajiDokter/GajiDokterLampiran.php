@@ -574,4 +574,130 @@ class GajiDokterLampiran
             ? $bagianTanggal[2] . $bagianTanggal[1] . $bagianTanggal[0]
             : $tanggal;
     }
+
+    /* ===============================
+     | LAMPIRAN SIAP SAJI (modal layar, CSV, ZIP)
+     * =============================== */
+
+    /** Judul kolom CSV — urutannya bersebelahan dengan nilai di tulisCsv(). */
+    public const KOLOM_CSV = [
+        'Dokter', 'Periode Jasa', 'Komponen', 'Tanggal',
+        'No. RM', 'Nama Pasien', 'Keterangan Jasa', 'Klaim', 'Jenis Klaim', 'No. SEP',
+        'No. Transaksi', 'Nominal', 'Masuk Slip',
+    ];
+
+    public const NAMA_BULAN = [
+        '01' => 'Januari', '02' => 'Februari', '03' => 'Maret', '04' => 'April',
+        '05' => 'Mei', '06' => 'Juni', '07' => 'Juli', '08' => 'Agustus',
+        '09' => 'September', '10' => 'Oktober', '11' => 'November', '12' => 'Desember',
+    ];
+
+    /**
+     * Satu entri per dokter (yang punya transaksi): header slip, detail slip, baris lampiran,
+     * grup kapita, dan angka rekonsiliasinya. Dipakai modal Lampiran (layar + Unduh CSV) DAN
+     * ZIP slip per dokter — satu jalur, jadi isi berkas mustahil berbeda dari yang tampil.
+     * Transaksi ditarik lewat barisMassal() — sekali untuk semua dokter, bukan sekali per dokter.
+     *
+     * @param  array<int, int>  $gajidoctorNoList
+     * @return Collection<int, array{header: object, lampiran: Collection, grupKapita: array, perKomponen: Collection, angka: array}>
+     */
+    public static function susun(array $gajidoctorNoList): Collection
+    {
+        if ($gajidoctorNoList === []) {
+            return collect();
+        }
+
+        $headerList = DB::table('rstxn_gajidoctorhdrs as h')
+            ->join('rsmst_doctors as d', 'd.dr_id', '=', 'h.dr_id')
+            ->whereIn('h.gajidoctor_no', $gajidoctorNoList)
+            ->orderBy('d.dr_name')
+            ->select('h.*', 'd.dr_name')
+            ->get();
+
+        if ($headerList->isEmpty()) {
+            return collect();
+        }
+
+        // Periode diambil dari header, bukan dari saringan layar: slip yang
+        // dibuka bisa saja bukan periode yang sedang tampil di daftar.
+        $pertama = $headerList->first();
+        $drIds = $headerList->pluck('dr_id')->unique()->values()->all();
+        $lampiranPerDokter = self::barisMassal($drIds, $pertama->tahun_jasa, $pertama->bulan_jasa);
+        $grupKapitaPerDokter = self::grupKapitaMassal($drIds);
+
+        $detailPerSlip = DB::table('rstxn_gajidoctordtls')
+            ->whereIn('gajidoctor_no', $headerList->pluck('gajidoctor_no'))
+            ->orderBy('jenis')->orderBy('urutan')->orderBy('gajidoctor_dtl')
+            ->get()
+            ->groupBy('gajidoctor_no');
+
+        return $headerList
+            ->filter(fn ($header) => ($lampiranPerDokter[$header->dr_id] ?? collect())->isNotEmpty())
+            ->map(function ($header) use ($lampiranPerDokter, $grupKapitaPerDokter, $detailPerSlip) {
+                $lampiran = $lampiranPerDokter[$header->dr_id];
+                $detail = $detailPerSlip[$header->gajidoctor_no] ?? collect();
+                $grupKapita = $grupKapitaPerDokter[$header->dr_id] ?? [];
+
+                return [
+                    'header' => $header,
+                    'lampiran' => $lampiran,
+                    'grupKapita' => $grupKapita,
+                    'perKomponen' => $lampiran->groupBy('desc_doc'),
+                    'angka' => self::rekonsiliasi($lampiran, $detail, $grupKapita),
+                ];
+            })
+            ->values();
+    }
+
+    /**
+     * Tulis lampiran (satu atau banyak dokter, hasil susun()) sebagai CSV siap Excel ke $keluaran.
+     *
+     * BENTUKNYA SENGAJA PIPIH, TIDAK MENIRU PENGELOMPOKAN DI LAYAR: baris judul & subtotal
+     * akan merusak pivot. Kolom Dokter & Periode ikut di SETIAP baris supaya ekspor banyak
+     * dokter langsung bisa dipivot.
+     *
+     * JANGAN menambahkan baris "sep=;". Excel tidak mengenalinya bila didahului BOM (dan BOM
+     * wajib demi nama pasien beraksen), sehingga barisnya tercetak sebagai data. Excel berlokal
+     * Indonesia sudah memakai ';' sebagai pemisah daftar.
+     *
+     * @param  resource  $keluaran
+     */
+    public static function tulisCsv($keluaran, iterable $dataLampiran): void
+    {
+        // BOM UTF-8 — tanpa ini Excel membaca berkas sebagai ANSI dan nama pasien beraksen rusak.
+        fwrite($keluaran, "\xEF\xBB\xBF");
+        fputcsv($keluaran, self::KOLOM_CSV, ';', '"', '\\');
+
+        foreach ($dataLampiran as $satuDokter) {
+            $header = $satuDokter['header'];
+            $grupKapita = $satuDokter['grupKapita'];
+            $periodeJasa = (self::NAMA_BULAN[$header->bulan_jasa] ?? $header->bulan_jasa) . ' ' . $header->tahun_jasa;
+
+            foreach ($satuDokter['lampiran'] as $baris) {
+                // Baris komponen per kapita nominalnya tarif komponen yang TIDAK dibayarkan.
+                // Tanpa penanda ini, AutoSum kolom Nominal tidak cocok dengan slip.
+                $masukSlip = in_array($baris['group_doc'], $grupKapita, true) ? 'Tidak' : 'Ya';
+
+                fputcsv($keluaran, [
+                    $header->dr_name,
+                    $periodeJasa,
+                    $baris['label'],
+                    $baris['tgl'],
+                    $baris['reg_no'],
+                    $baris['nama'],
+                    // Nama jasa/tindakan/pemeriksaan/kasus operasi; kosong untuk uang periksa, visite, konsul.
+                    $baris['keterangan'],
+                    $baris['klaim'],
+                    // Jenis klaim (BPJS/UMUM/KRONIS/DOKEL) dipisah dari namanya supaya bisa jadi kolom pivot.
+                    $baris['klaim_status'],
+                    // Kosong itu WAJAR: pasien umum tidak punya SEP, RSTXN_RJHDRKS tidak menyimpan kolomnya.
+                    $baris['no_sep'],
+                    $baris['txn_no'],
+                    // Angka MENTAH, bukan 450.000 — nominal bertitik dibaca Excel sebagai teks, SUM-nya nol.
+                    (int) round((float) $baris['nominal']),
+                    $masukSlip,
+                ], ';', '"', '\\'); // escape = bawaan PHP, ditulis eksplisit (PHP 8.4 deprecation)
+            }
+        }
+    }
 }

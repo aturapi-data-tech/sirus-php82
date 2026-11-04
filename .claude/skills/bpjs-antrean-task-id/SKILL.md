@@ -74,3 +74,7 @@ memori komponen — modul lain (EMR, e-resep) menulis ke JSON yang sama.
   resep yang sudah diserahkan.
 - Nomor antrean apotek dikirim terpisah (`tambahAntrianApotek`), statusnya juga disimpan
   di node yang sama.
+- **Modal banding** (`task-id-poli-actions` → tombol "TaskId Antrean" di titik-3 Pelayanan RJ) memanggil
+  `taskid_antrean()` (getlisttask) dan menyandingkan `taskIdPelayanan` dengan respons BPJS. Respons
+  getlisttask = **daftar langsung** di `response` (`taskid`, `taskname`, `wakturs` = waktu yang dikirim RS,
+  `waktu` = kapan BPJS menerima, format `dd-mm-YYYY HH:ii:ss WIB`) — BUKAN `response.listTaskId`.

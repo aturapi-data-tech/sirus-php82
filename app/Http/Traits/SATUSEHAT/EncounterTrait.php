@@ -31,8 +31,70 @@ trait EncounterTrait
             'period' => ['start' => $start],
         ];
 
+        // Opsional: kelas layanan di lokasi — ['system' => ..., 'code' => ..., 'display' => ...].
+        if (!empty($data['kelasLayanan'])) {
+            $payload = $this->pasangKelasLayanan($payload, $data['kelasLayanan']['system'],
+                $data['kelasLayanan']['code'], $data['kelasLayanan']['display']);
+        }
+
+        // Opsional: Encounter ini terjadi karena permintaan resmi — id ServiceRequest
+        // (mis. rujukan rawat inap dari IGD, lihat RujukanRawatInapTrait).
+        if (!empty($data['basedOn'])) {
+            $payload['basedOn'] = [['reference' => 'ServiceRequest/' . $data['basedOn']]];
+        }
+
         // Jalankan request ke SatuSehat
         return $this->makeRequest('post', 'Encounter', $payload);
+    }
+
+    /**
+     * Pasang extension kelas layanan (ServiceClass) pada setiap Encounter.location yang belum
+     * memilikinya. WAJIB di IGD (serviceClass.value & .upgradeClassIndicator bertanda *),
+     * opsional di RJ/RI. Canonical dari SATUSEHAT FHIR R4 IG (Simplifier, Extensions/ServiceClass).
+     *
+     * @param  string $kelasSystem  …/locationServiceClass-Outpatient | …/locationServiceClass-Inpatient
+     */
+    public function pasangKelasLayanan(array $encounter, string $kelasSystem, string $kode, string $display,
+        string $indikator = 'kelas-tetap', string $indikatorDisplay = 'Kelas Tetap Perawatan'): array
+    {
+        $url = 'https://fhir.kemkes.go.id/r4/StructureDefinition/ServiceClass';
+        $extension = [
+            'url' => $url,
+            'extension' => [
+                ['url' => 'value', 'valueCodeableConcept' => ['coding' => [[
+                    'system' => $kelasSystem, 'code' => $kode, 'display' => $display,
+                ]]]],
+                ['url' => 'upgradeClassIndicator', 'valueCodeableConcept' => ['coding' => [[
+                    'system' => 'http://terminology.kemkes.go.id/CodeSystem/locationUpgradeClass',
+                    'code' => $indikator, 'display' => $indikatorDisplay,
+                ]]]],
+            ],
+        ];
+
+        foreach ($encounter['location'] ?? [] as $indeks => $lokasi) {
+            $sudahAda = collect($lokasi['extension'] ?? [])->contains(fn($ext) => ($ext['url'] ?? '') === $url);
+            if (!$sudahAda) {
+                $encounter['location'][$indeks]['extension'][] = $extension;
+            }
+        }
+
+        return $encounter;
+    }
+
+    /**
+     * Pindahkan Encounter ke status berikutnya tanpa mengubah lokasi (mis. 'triaged' di IGD).
+     * PUT berisi seluruh Encounter hasil GET — FHIR tak mengenal partial update.
+     */
+    public function tambahStatusEncounter(string $encounterId, string $status, string $mulaiIso): array
+    {
+        $existing = $this->getEncounter($encounterId);
+        $existing['status'] = $status;
+        $existing['statusHistory'][] = [
+            'status' => $status,
+            'period' => ['start' => $mulaiIso],
+        ];
+
+        return $this->makeRequest('put', "Encounter/{$encounterId}", $existing);
     }
 
     /**
@@ -55,8 +117,12 @@ trait EncounterTrait
             'period' => ['start' => $start],
         ];
 
-        // Append lokasi if ada
-        if (!empty($data['locationId'])) {
+        // Lokasi baru hanya ditambahkan bila BERBEDA dari lokasi terakhir — dulu lokasi yang sama
+        // (poli/IGD saat arrived) tercatat dua kali begitu Encounter masuk in-progress.
+        $lokasiList = $existing['location'] ?? [];
+        $lokasiTerakhir = end($lokasiList) ?: [];
+        $referensiBaru = 'Location/' . ($data['locationId'] ?? '');
+        if (!empty($data['locationId']) && ($lokasiTerakhir['location']['reference'] ?? '') !== $referensiBaru) {
             $existing['location'][] = [
                 'location' => ['reference' => 'Location/' . $data['locationId']],
                 'status'   => 'active',
@@ -234,8 +300,9 @@ trait EncounterTrait
      * @param  array  $encounter  hasil getEncounter()
      * @param  string $akhirIso   waktu pasien benar-benar selesai dilayani
      * @param  array  $conditionIdList  id Condition hasil kirim diagnosa
+     * @param  string|null $keluhanUtamaId  id Condition chief-complaint (satuSehat.chiefComplaintId); kosong = dilewati
      */
-    public function siapkanFinishEncounter(array $encounter, string $akhirIso, array $conditionIdList): array
+    public function siapkanFinishEncounter(array $encounter, string $akhirIso, array $conditionIdList, ?string $keluhanUtamaId = null): array
     {
         $encounter['status'] = 'finished';
 
@@ -269,6 +336,37 @@ trait EncounterTrait
         }
         $encounter['statusHistory'] = $riwayat;
 
+        // Lokasi yang masih terbuka ditutup: end = start lokasi berikutnya, yang terakhir = waktu
+        // selesai; status completed. Tanpa ini kamar/poli terakhir tercatat 'active' selamanya.
+        $lokasiList = array_values(array_filter($encounter['location'] ?? [], 'is_array'));
+        foreach ($lokasiList as $indeks => $lokasi) {
+            if (empty($lokasi['period']['end'])) {
+                $mulai = (string) ($lokasi['period']['start'] ?? '');
+                $selesai = $lokasiList[$indeks + 1]['period']['start'] ?? $encounter['period']['end'];
+                $lokasiList[$indeks]['period']['end'] = $this->waktuTerakhir($mulai, $selesai);
+            }
+            $lokasiList[$indeks]['status'] = 'completed';
+        }
+        if (!empty($lokasiList)) {
+            $encounter['location'] = $lokasiList;
+        }
+
+        // classHistory[i].class & .period WAJIB (Pemetaan Nilai Encounter RJ, bertanda *) — riwayat
+        // JENIS kunjungan (AMB/EMER/IMP), bukan kelas perawatan 1/2/3. Satu Encounter SATUSEHAT tak
+        // pernah ganti jenis (IGD→RI = Encounter baru), jadi cukup satu entri sepanjang periode.
+        $riwayatKelas = array_values(array_filter($encounter['classHistory'] ?? [], 'is_array'));
+        if (empty($riwayatKelas) && !empty($encounter['class'])) {
+            $riwayatKelas[] = ['class' => $encounter['class'], 'period' => $encounter['period']];
+        }
+        foreach ($riwayatKelas as $indeks => $entri) {
+            if (empty($entri['period']['end'])) {
+                $riwayatKelas[$indeks]['period']['end'] = $encounter['period']['end'];
+            }
+        }
+        if (!empty($riwayatKelas)) {
+            $encounter['classHistory'] = $riwayatKelas;
+        }
+
         $encounter['diagnosis'] = [];
         foreach (array_values($conditionIdList) as $indeks => $conditionId) {
             $encounter['diagnosis'][] = [
@@ -281,6 +379,22 @@ trait EncounterTrait
                     ]],
                 ],
                 'rank' => $indeks + 1,
+            ];
+        }
+
+        // Keluhan utama ikut di diagnosis dengan use = CC (Playbook RJ bab 3 & 27) —
+        // tanpa ini Condition chief-complaint terkirim tapi tak tertaut balik ke Encounter.
+        if (!empty($keluhanUtamaId) && !in_array($keluhanUtamaId, $conditionIdList, true)) {
+            $encounter['diagnosis'][] = [
+                'condition' => ['reference' => "Condition/{$keluhanUtamaId}"],
+                'use' => [
+                    'coding' => [[
+                        'system' => 'http://terminology.hl7.org/CodeSystem/diagnosis-role',
+                        'code' => 'CC',
+                        'display' => 'Chief complaint',
+                    ]],
+                ],
+                'rank' => count($encounter['diagnosis']) + 1,
             ];
         }
 

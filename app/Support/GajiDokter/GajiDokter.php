@@ -823,4 +823,53 @@ class GajiDokter
 
         throw new \RuntimeException("Gagal mendapatkan nomor baru untuk {$tabel} setelah 10 percobaan.");
     }
+
+    /**
+     * Logo kop slip untuk dompdf: "Logo Persegi.png" (1940 × 2603 px, PNG transparan) diperkecil ke
+     * tinggi 240 px dan diratakan ke latar putih, di-cache di storage/app/pdf-cache.
+     * Tanpa ini dompdf memisahkan kanal alfa piksel demi piksel di SETIAP slip (± 2 detik per PDF tanpa
+     * Imagick) — ZIP puluhan dokter jadi time out. Gagal (GD tak ada) → berkas asli.
+     */
+    public static function logoSlipPath(): string
+    {
+        $asli = public_path('images/Logo Persegi.png');
+        if (!is_file($asli) || !function_exists('imagecreatefrompng')) {
+            return $asli;
+        }
+
+        $folder = storage_path('app/pdf-cache');
+        $hasil = $folder . '/logo-persegi-' . md5($asli . '|' . filemtime($asli)) . '.png';
+        if (is_file($hasil)) {
+            return $hasil;
+        }
+
+        try {
+            $sumber = imagecreatefrompng($asli);
+            if (!$sumber) {
+                return $asli;
+            }
+            $lebarAsli = imagesx($sumber);
+            $tinggiAsli = imagesy($sumber);
+            $tinggi = min(240, $tinggiAsli);
+            $lebar = max(1, (int) round($lebarAsli * $tinggi / $tinggiAsli));
+
+            $kecil = imagecreatetruecolor($lebar, $tinggi);
+            imagefill($kecil, 0, 0, imagecolorallocate($kecil, 255, 255, 255));
+            imagecopyresampled($kecil, $sumber, 0, 0, 0, 0, $lebar, $tinggi, $lebarAsli, $tinggiAsli);
+            imagesavealpha($kecil, false);
+
+            if (!is_dir($folder)) {
+                mkdir($folder, 0775, true);
+            }
+            $sementara = $hasil . '.' . getmypid() . '.tmp';
+            if (!imagepng($kecil, $sementara, 6) || !rename($sementara, $hasil)) {
+                @unlink($sementara);
+                return $asli;
+            }
+
+            return $hasil;
+        } catch (\Throwable) {
+            return $asli;
+        }
+    }
 }

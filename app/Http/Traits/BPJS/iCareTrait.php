@@ -68,8 +68,9 @@ trait iCareTrait
         $secretKey = env('ICARE_SECRET_KEY');
         $userkey = env('ICARE_USER_KEY');
 
-        date_default_timezone_set('UTC');
-        $tStamp = strval(time() - strtotime('1970-01-01 00:00:00'));
+        // time() sudah detik UTC sejak epoch. JANGAN date_default_timezone_set('UTC'):
+        // itu menggeser zona waktu sisa request, Carbon::now() di log jadi UTC (mundur 7 jam).
+        $tStamp = strval(time());
         $signature = hash_hmac('sha256', $cons_id . "&" . $tStamp, $secretKey, true);
         $encodedSignature = base64_encode($signature);
 

@@ -96,34 +96,34 @@
                             <div class="ds-card-outline" style="padding:20px">
                                 <div class="ds-title-sm mb-2">Kelengkapan EMR</div>
                                 <ul class="ds-body-sm space-y-1.5" style="list-style:disc; padding-left:18px">
-                                    <li><span class="ds-code">EmrCompletenessRJTrait::calculateEmrPercentRJ()</span> — bobot S15/O20/A25/P20/N10/K10 (K = koding SNOMED)</li>
+                                    <li><span class="ds-code">EmrCompletenessRJTrait::calculateEmrPercentRJ()</span> — bobot S15/O20/A25/P30/N10. Sejak 2026-10-28 koding SNOMED <strong>tidak</strong> masuk % (indikator terpisah <span class="ds-code">koding</span>, <span class="ds-code">App\Support\KelengkapanEmr</span>); Kondisi Saat Pulang dinilai untuk kunjungan mulai 28/10/2026</li>
+                                    <li>Kolom tambahan <strong>opsional</strong> (RJ: keluhan penyerta, riwayat keluarga/pengobatan, status psikologis, prognosis · UGD: riwayat keluarga, status psikologis, kedatangan · RI: keluhan penyerta, riwayat keluarga, status emosional, prognosis, diet, edukasi) tampil di daftar periksa dengan <span class="ds-code">'opsional' =&gt; true</span> — <strong>tidak dihitung</strong> ke %. Kolom baru yang boleh kosong: tambahkan dengan pola ini, jangan masuk <span class="ds-code">score*</span>.</li>
                                     <li>Ditampilkan sebagai progress di list (info-kelengkapan-emr)</li>
                                     <li>RI bobotnya beda (+CPPT &amp; keperawatan) — jangan samakan lintas jalur</li>
                                 </ul>
                             </div>
                         </div>
 
-                        <h2 class="ds-title-lg mt-8 mb-3">Surat Kontrol (SKDP) — cek sudah terbit sebelum insert</h2>
+                        <h2 class="ds-title-lg mt-8 mb-3">Surat Kontrol (SKDP) — nomor DB dulu, sisanya lewat Daftar Surat Kontrol</h2>
                         <p class="ds-body-sm mb-3" style="max-width:72ch">
                             Kasus 28/10/2026 (RI): beberapa petugas membuka SKDP pasien yang sama bersamaan. Form yang dibuka
                             <em>sebelum</em> nomor terbit masih kosong → simpan = <span class="ds-code">Insert Rencana Kontrol</span> lagi →
                             BPJS menolak → nomor kosong disimpan dan <strong>menimpa nomor yang sudah ada di DB</strong>.
-                            Polanya kini sama di SKDP RJ &amp; RI, lewat <span class="ds-code">App\Support\SuratKontrolBpjs</span>:
+                            Polanya sama di SKDP RJ &amp; RI:
                         </p>
                         <div class="ds-card-outline" style="padding:0; overflow-x:auto">
                             <table class="ds-table">
                                 <thead><tr><th>Langkah</th><th>Isi</th></tr></thead>
                                 <tbody>
                                     <tr><td class="ds-td-strong">1. Nomor di DB</td><td class="ds-body-sm">Form kosong → ambil <span class="ds-code">kontrol.noSKDPBPJS</span> segar dari DB (mungkin baru disimpan petugas lain).</td></tr>
-                                    <tr><td class="ds-td-strong">2. Tanya BPJS</td><td class="ds-body-sm">Masih kosong → VClaim <em>Data Nomor Surat Kontrol Berdasarkan No Kartu</em> (<span class="ds-code">RencanaKontrol/ListRencanaKontrol/Bulan/…/Tahun/…/Nokartu/…/filter/…</span>; filter 1 = tgl entri, 2 = tgl rencana kontrol), disaring <span class="ds-code">noSepAsalKontrol</span> = SEP kunjungan &amp; <span class="ds-code">jnsKontrol</span> "2". VClaim <strong>tidak punya</strong> endpoint cari surat kontrol berdasarkan nomor SEP.</td></tr>
-                                    <tr><td class="ds-td-strong">3. Insert / Update</td><td class="ds-body-sm">Ketemu → pakai nomornya &amp; kirim <strong>Update</strong> (tanggal kontrol yang diubah ikut terbarui). Tidak ketemu → <strong>Insert</strong>.</td></tr>
-                                    <tr><td class="ds-td-strong">4. Simpan DB</td><td class="ds-body-sm">Di bawah row lock: nomor yang sudah ada di DB <strong>tidak pernah ditimpa kosong</strong> (form basi / BPJS down).</td></tr>
+                                    <tr><td class="ds-td-strong">2. Insert / Update</td><td class="ds-body-sm">Ada nomor → kirim <strong>Update</strong> (tanggal kontrol yang diubah ikut terbarui). Kosong → <strong>Insert</strong>. Gagal → toast error + peringatan "tersimpan di SIRUS tanpa nomor BPJS", bukan "berhasil".</td></tr>
+                                    <tr><td class="ds-td-strong">3. Simpan DB</td><td class="ds-body-sm">Di bawah row lock: nomor yang sudah ada di DB <strong>tidak pernah ditimpa kosong</strong> (form basi / BPJS down).</td></tr>
+                                    <tr><td class="ds-td-strong">4. Tolakan 203</td><td class="ds-body-sm">"Sudah Diterbitkan Rencana Kunjungan Kontrol Di Tanggal Yang Sama" (satu kartu = satu rencana kontrol per tanggal) → <strong>tidak dicocokkan otomatis</strong>. Admin/manager membuka tombol <strong>Daftar Surat Kontrol BPJS</strong> (komponen <span class="ds-code">modul-dokumen/bpjs/daftar-surat-kontrol</span>, Gate <span class="ds-code">bpjs.hapusSuratKontrol</span>): daftar surat kontrol kartu dari VClaim <em>ListRencanaKontrol by No Kartu</em>, hapus per baris (<span class="ds-code">VclaimTrait::suratkontrol_delete</span>), lalu simpan ulang. Nomor yang <strong>sudah tersimpan</strong> sebagai <span class="ds-code">kontrol.noSKDPBPJS</span> kunjungan ini ditolak (dicek ulang dari DB saat hapus) — modal hanya untuk surat yang terbit di BPJS tapi gagal tersimpan.</td></tr>
                                 </tbody>
                             </table>
                         </div>
                         <p class="ds-body-sm mt-3" style="max-width:72ch">
-                            Cek ke BPJS berhenti seketika bila BPJS tak merespons (kode 408) — layar paling lama menunggu satu
-                            timeout. Pola umumnya berlaku untuk node mana pun yang menyimpan <strong>ID balikan pihak luar</strong>:
+                            Pola umumnya berlaku untuk node mana pun yang menyimpan <strong>ID balikan pihak luar</strong>:
                             jangan biarkan salinan form menimpa ID yang sudah ada di DB.
                         </p>
                     </section>

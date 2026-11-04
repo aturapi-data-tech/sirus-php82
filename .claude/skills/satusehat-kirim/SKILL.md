@@ -46,8 +46,11 @@ Logika KFA yang disalin ke dua tempat itulah yang dulu bikin RJ/UGD berbeda diam
 - **`Encounter.statusHistory`**: tiap entri wajib `start` DAN `end` (10122). Entri bawaan
   `createNewEncounter()`/`startRoomEncounter()` hanya punya `start` →
   `EncounterTrait::siapkanFinishEncounter()` yang merapikan.
-- **`Encounter.diagnosis` wajib saat finish** (10457) → dari `conditionIds`, `use` = `DD`.
+- **`Encounter.diagnosis` wajib saat finish** (10457) → dari `conditionIds`, `use` = `DD`;
+  keluhan utama (`chiefComplaintId`) ikut sebagai `use` = `CC` (Playbook bab 3/27).
   Tolak lebih dulu bila diagnosa belum dikirim, jangan kirim lalu gagal.
+- **`Observation.issued` WAJIB** (10296, mulai ditegakkan 2026-10-29). `createObservation()` mengisinya
+  dari `issued` bila dikirim (lab/radiologi), selain itu = `effectiveDateTime`.
 - **Racikan**: campurannya tak punya KFA → `Medication.code` cukup `code.text`,
   `medicationType` = `SD`/Compound, kode KFA ada di `ingredient[]`.
 
@@ -78,6 +81,32 @@ racikan disebut **nama bahan** yang menghalangi supaya bisa langsung dilengkapi 
 `Encounter.period.end` = jam layanan berakhir, bukan `now()`:
 RJ `taskId7` → `taskId5`; UGD `taskId7` → `perencanaan.pengkajianMedis.selesaiPemeriksaan`
 (task5 tak pernah dipakai UGD); RI `exitDate`. Lihat skill `bpjs-antrean-task-id`.
+
+Status antara UGD (`arrived → triaged → in-progress`): triaged = `screening.tanggalPelayanan`
+(TTD Screening) → cadangan `anamnesa.pengkajianPerawatan.jamDatang`, hanya bila tingkat triase ada
+(`KedatanganIgd::tingkatTriase`); in-progress = `perencanaan.pengkajianMedis.waktuPemeriksaan`.
+Dijepit `waktuTerakhir()` agar tak mendahului status sebelumnya. Flag `satusehat.encounterTriaged`.
+
+Kelas layanan: `EncounterTrait::pasangKelasLayanan()` → extension `https://fhir.kemkes.go.id/r4/StructureDefinition/ServiceClass`
+(sub `value` + `upgradeClassIndicator`) di tiap `Encounter.location`. WAJIB di IGD (dipasang: `reguler`/`kelas-tetap`,
+saat create & dilengkapi saat finish), opsional di RJ/RI. `startRoomEncounter()` tak lagi menambah lokasi yang sama.
+
+Tautan IGD→RI: `RujukanRawatInapTrait::rujukanRawatInapDariUgd()` — cek `rstxn_ribiayaselamadugds`
+(`ugd_no_rsri` = RI); ada → cari/buat ServiceRequest `3457005`/`737481003` di Encounter UGD (id disimpan di
+JSON UGD `satusehat.rujukanRawatInapId`, dipakai ulang) → Encounter RI `basedOn`. Tak ada baris = Encounter
+biasa. Encounter RI lama ditautkan saat finish. Host wajib `EmrUGDTrait`.
+Tautan RJ→UGD (pola sama — TUJUAN mengecek asal): kartu Encounter UGD `RujukanIgdTrait::rujukanIgdDariRj()` cek
+`rstxn_ugdbiayaselamadirjs` (`rj_no_rsugd` = UGD) → SR `3457005`/`306104004` di Encounter RJ (`satusehat.rujukanIgdId`
+di JSON RJ) → Encounter UGD `basedOn`; host wajib `EmrRJTrait`. Penutupan RJ: kartu Encounter RJ `transferKeUgd()` cek `rstxn_ugdbiayaselamadirjs` → cara keluar
+`DischargeDisposition::pindahKeIgd()` (`oth`, mengalahkan Tindak Lanjut) dan jam selesai cadangan = `jamDatang`
+Pengkajian Perawat UGD tujuan (sesudah task 7 → task 5).
+
+## 6a. Zona waktu: UTC dikonversi terpusat
+
+`makeRequest()` (non-GET) melewatkan payload ke `SatuSehatTrait::waktuKeUtc()`: setiap string
+dateTime ISO berzona → `+00:00` (aturan main #1). Sender tetap boleh `toIso8601String()` lokal —
+JANGAN konversi sendiri per sender. Payload wajib array (bukan `stdClass`) supaya tertelusuri.
+Uji kering yang menimpa `makeRequest()` (§4) melihat payload SEBELUM konversi.
 
 ## 7. Tanggal = data, JANGAN `now()` (keputusan user 2026-10-28)
 

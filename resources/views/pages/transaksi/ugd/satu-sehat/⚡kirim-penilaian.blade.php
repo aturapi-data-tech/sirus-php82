@@ -116,13 +116,19 @@ new class extends Component {
     /** @return array<int, array> */
     private function resikoJatuhEntries(array $data): array
     {
-        return $data['penilaian']['resikoJatuh'] ?? [];
+        // Hanya DAFTAR entri. Format lama = satu objek template skala (label + skor 0, bukan penilaian
+        // sungguhan) — diabaikan; dulu ikut di-loop & pratinjau gagal ("string + int" pada indeks).
+        $daftar = $data['penilaian']['resikoJatuh'] ?? [];
+        return is_array($daftar) && array_is_list($daftar) ? $daftar : [];
     }
 
     /** @return array<int, array> */
     private function giziEntries(array $data): array
     {
-        return $data['penilaian']['gizi'] ?? [];
+        // Hanya DAFTAR entri. Format lama = satu objek template skala (label + skor 0, bukan penilaian
+        // sungguhan) — diabaikan; dulu ikut di-loop & pratinjau gagal ("string + int" pada indeks).
+        $daftar = $data['penilaian']['gizi'] ?? [];
+        return is_array($daftar) && array_is_list($daftar) ? $daftar : [];
     }
 
     public function kirimForCurrent(): void

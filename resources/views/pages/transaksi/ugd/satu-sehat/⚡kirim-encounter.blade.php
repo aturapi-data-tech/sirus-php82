@@ -13,13 +13,25 @@ use Livewire\Attributes\Computed;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
+use App\Http\Traits\Txn\Rj\EmrRJTrait;
 use App\Http\Traits\SATUSEHAT\EncounterTrait;
 use App\Http\Traits\SATUSEHAT\SatuSehatRujukanTrait;
 use App\Http\Traits\Txn\RujukanMasuk\RujukanMasukTrait;
+use App\Http\Traits\SATUSEHAT\RujukanIgdTrait;
 use App\Support\Terminologi\DischargeDisposition;
+use App\Support\Terminologi\KedatanganIgd;
 
 new class extends Component {
-    use EmrUGDTrait, EncounterTrait, SatuSehatRujukanTrait, RujukanMasukTrait;
+    // EmrRJTrait HANYA untuk RujukanIgdTrait (baca/tulis dokumen RJ asal) — pola sama
+    // transfer-rj-ke-ugd-actions yang memakai EmrRJTrait + EmrUGDTrait bersamaan.
+    use EmrUGDTrait, EmrRJTrait, EncounterTrait, SatuSehatRujukanTrait, RujukanMasukTrait, RujukanIgdTrait;
+
+    /** Kelas layanan IGD — WAJIB di Playbook IGD (serviceClass bertanda *); IGD selalu reguler. */
+    private const KELAS_LAYANAN_IGD = [
+        'system' => 'http://terminology.kemkes.go.id/CodeSystem/locationServiceClass-Outpatient',
+        'code' => 'reguler',
+        'display' => 'Kelas Reguler',
+    ];
 
     public ?string $rjNo = null;
 
@@ -76,6 +88,7 @@ new class extends Component {
     }
 
     public ?string $encounterId = null;
+    public bool $encounterTriaged = false;
     public bool $encounterInProgress = false;
     public bool $encounterFinished = false;
 
@@ -105,6 +118,7 @@ new class extends Component {
         }
         $satuSehat = $data['satusehat'] ?? [];
         $this->encounterId = $satuSehat['encounterId'] ?? null;
+        $this->encounterTriaged = !empty($satuSehat['encounterTriaged']);
         $this->encounterInProgress = !empty($satuSehat['encounterInProgress']);
         $this->encounterFinished = !empty($satuSehat['encounterFinished']);
     }
@@ -172,8 +186,19 @@ new class extends Component {
 
             $ugdDate = $this->parseDate($tanggalMasuk);
 
+            // Cek tautan transfer kasir dulu: pasien pindahan RJ → basedOn rujukan ke IGD dari
+            // Encounter RJ; tidak → Encounter biasa. Pola sama Encounter RI ← UGD.
+            $catatanTautan = '';
             if (empty($satuSehat['encounterId'])) {
+                $tautan = $this->rujukanIgdDariRj($rjNo, $this->waktuMasukUgdIso($dataUGD, $ugdDate), $practitionerId, (string) ($dataUGD['drDesc'] ?? ''));
+                $catatanTautan = $tautan['catatan'];
+                if ($tautan['id'] !== null) {
+                    $satuSehat['rujukanIgdId'] = $tautan['id'];
+                    $catatanTautan = 'tertaut ke Rawat Jalan (RJ #' . $tautan['rjNo'] . ')';
+                }
+
                 $respons = $this->createNewEncounter([
+                    'basedOn' => $tautan['id'],
                     'encounterId' => 'UGD-' . $rjNo,
                     'patientId' => $patientId,
                     'patientName' => $dataUGD['regName'] ?? '',
@@ -183,20 +208,53 @@ new class extends Component {
                     'class_code' => 'EMER',
                     'startDate' => $ugdDate->toIso8601String(),
                     'serviceRequestId' => $this->serviceRequestRujukan($rjNo, $dataUGD),
+                    'kelasLayanan' => self::KELAS_LAYANAN_IGD,
                 ]);
                 $satuSehat['encounterId'] = $respons['id'] ?? null;
             }
 
+            $catatanTriase = '';
             if (!empty($satuSehat['encounterId']) && empty($satuSehat['encounterInProgress'])) {
+                $waktuDatangIso = $ugdDate->toIso8601String();
+
+                // Status triaged = penanda khas IGD (arrived → triaged → in-progress → finished).
+                // Jam = TTD Screening (instrumen triase); cadangan jam datang Pengkajian Perawat —
+                // jam yang sama dipakai Observation triase di kartu Kedatangan. Urutan dijaga:
+                // tak boleh mendahului arrived. Tanpa tingkat/jam triase → dilewati + dilaporkan.
+                $waktuTriaseIso = '';
+                if (empty($satuSehat['encounterTriaged'])) {
+                    $tingkatTriase = KedatanganIgd::tingkatTriase($dataUGD)['tingkat'];
+                    $jamTriase = trim((string) ($dataUGD['screening']['tanggalPelayanan'] ?? ''))
+                        ?: trim((string) ($dataUGD['anamnesa']['pengkajianPerawatan']['jamDatang'] ?? ''));
+                    if ($tingkatTriase !== '' && $jamTriase !== '') {
+                        $waktuTriaseIso = $this->waktuTerakhir($waktuDatangIso, $this->parseDate($jamTriase)->toIso8601String());
+                        $this->tambahStatusEncounter($satuSehat['encounterId'], 'triaged', $waktuTriaseIso);
+                        $satuSehat['encounterTriaged'] = true;
+                        // Simpan segera: bila in-progress di bawah gagal, kirim ulang tak menambah triaged dobel.
+                        $this->saveResult($rjNo, $satuSehat);
+                    } else {
+                        $catatanTriase = ' — TANPA status triaged: tingkat/jam triase belum diisi (Screening / Pengkajian Perawat).';
+                    }
+                }
+
+                // in-progress = jam dokter memeriksa; belum ada → jam triase/datang. Tak boleh mendahului triaged.
+                $jamPeriksa = trim((string) ($dataUGD['perencanaan']['pengkajianMedis']['waktuPemeriksaan'] ?? ''));
+                $waktuMulaiIso = $this->waktuTerakhir(
+                    $waktuTriaseIso ?: $waktuDatangIso,
+                    $jamPeriksa !== '' ? $this->parseDate($jamPeriksa)->toIso8601String() : ''
+                );
                 $this->startRoomEncounter($satuSehat['encounterId'], [
-                    'startDate' => $ugdDate->toIso8601String(),
+                    'startDate' => $waktuMulaiIso,
                     'locationId' => $locationId,
                 ]);
                 $satuSehat['encounterInProgress'] = true;
             }
 
             $this->saveResult($rjNo, $satuSehat);
-            $this->dispatch('toast', type: 'success', message: 'Encounter UGD dikirim: ' . ($satuSehat['encounterId'] ?? '-'));
+            $tautanBelum = $catatanTautan !== '' && empty($satuSehat['rujukanIgdId']);
+            $this->dispatch('toast', type: ($catatanTriase === '' && !$tautanBelum) ? 'success' : 'warning',
+                message: 'Encounter UGD dikirim: ' . ($satuSehat['encounterId'] ?? '-') . $catatanTriase
+                    . ($catatanTautan !== '' ? ' — ' . $catatanTautan : ''));
             $this->dispatch('ugd-satu-sehat.refresh', rjNo: $rjNo);
         } catch (\Throwable $e) {
             $this->dispatch('toast', type: 'error', message: 'Encounter gagal: ' . $e->getMessage());
@@ -244,8 +302,24 @@ new class extends Component {
 
             // statusHistory tiap entri wajib start+end (Rule 10122) — dirapikan di trait.
             $encounterTersimpan = $this->siapkanFinishEncounter(
-                $this->getEncounter($satuSehat['encounterId']), $akhirIso, $conditionIdList
+                $this->getEncounter($satuSehat['encounterId']), $akhirIso, $conditionIdList,
+                $satuSehat['chiefComplaintId'] ?? null
             );
+            // Encounter UGD yang dibuat sebelum tautan ada (atau saat Encounter RJ belum dikirim):
+            // coba tautkan sekarang. PUT di bawah membawa seluruh Encounter, termasuk basedOn.
+            if (empty($encounterTersimpan['basedOn'])) {
+                $dokterUgdId = (string) (DB::table('rsmst_doctors')->where('dr_id', $dataUGD['drId'] ?? '')->value('dr_uuid') ?? '');
+                $tautan = $this->rujukanIgdDariRj($rjNo,
+                    $this->waktuMasukUgdIso($dataUGD, $this->parseDate((string) ($dataUGD['rjDate'] ?? ''))), $dokterUgdId, (string) ($dataUGD['drDesc'] ?? ''));
+                if ($tautan['id'] !== null) {
+                    $encounterTersimpan['basedOn'] = [['reference' => 'ServiceRequest/' . $tautan['id']]];
+                    $satuSehat['rujukanIgdId'] = $tautan['id'];
+                }
+            }
+
+            // Encounter lama (dibuat sebelum kelas layanan dipasang) dilengkapi di sini.
+            $encounterTersimpan = $this->pasangKelasLayanan($encounterTersimpan,
+                self::KELAS_LAYANAN_IGD['system'], self::KELAS_LAYANAN_IGD['code'], self::KELAS_LAYANAN_IGD['display']);
 
             // Cara keluar (Playbook IGD bab 26–27) dari Tindak Lanjut di Perencanaan.
             // Kosong/tak dikenal → field TIDAK diisi (jangan menebak), tapi dilaporkan.
@@ -361,6 +435,17 @@ new class extends Component {
         });
     }
 
+    /**
+     * Jam pasien tiba di IGD. Pasien pindahan RJ punya rj_date UGD yang DISALIN dari RJ (kasir tak
+     * menyimpan jam transfer), jadi Jam Datang Pengkajian Perawat lebih tepat; kosong → rj_date.
+     */
+    private function waktuMasukUgdIso(array $dataUGD, Carbon $ugdDate): string
+    {
+        $jamDatang = trim((string) ($dataUGD['anamnesa']['pengkajianPerawatan']['jamDatang'] ?? ''));
+
+        return $jamDatang !== '' ? $this->parseDate($jamDatang)->toIso8601String() : $ugdDate->toIso8601String();
+    }
+
     private function parseDate(string $teksTanggal): Carbon
     {
         if (empty($teksTanggal)) throw new \RuntimeException('tanggal sumber kosong — lengkapi datanya di EMR dulu (tidak diisi jam sekarang).');
@@ -383,7 +468,10 @@ new class extends Component {
                 <div class="text-xs text-muted dark:text-gray-400">Kunjungan UGD — akar, wajib pertama.</div>
                 @if ($encounterId)
                     <div class="mt-1 font-mono text-xs text-success dark:text-success">
-                        {{ $encounterFinished ? 'finished' : ($encounterInProgress ? 'in-progress' : 'arrived') }}
+                        {{ $encounterFinished ? 'finished' : ($encounterInProgress ? 'in-progress' : ($encounterTriaged ? 'triaged' : 'arrived')) }}
+                        @if ($encounterInProgress && !$encounterTriaged)
+                            <span class="text-warning-deep dark:text-amber-200">· tanpa triaged</span>
+                        @endif
                     </div>
                     @if (!$encounterFinished)
                         @if ($this->caraKeluar)

@@ -265,7 +265,7 @@ new class extends Component {
             $jsonRaw = $jsonPerRjNo[$row->rj_no] ?? '';
             $json = json_decode($jsonRaw ?: '{}', true) ?? [];
 
-            /* EMR completeness — weighted S15/O20/A20/P20/N10/T15.
+            /* EMR completeness — weighted S15/O15/A20/P25/N10/T15 (koding SNOMED terpisah, sejak 2026-10-28).
                Logic ada di EmrCompletenessUGDTrait. T = Triase/Screening, khusus UGD.
                Field "screening" (alergi, RPD) dianggap terisi kalau non-empty (termasuk
                "Tidak ada") — dokter wajib explicit isi negatif, jangan dibiarkan kosong. */
@@ -779,7 +779,6 @@ new class extends Component {
                                                             jalur="UGD" />
 
                                                         <div class="grid grid-cols-2 gap-1 items-stretch">
-
                                                             @hasanyrole('Perawat|Dokter|Admin|Casemix|Mr|Apoteker|Laboratorium')
                                                                 <x-dropdown-link href="#"
                                                                     wire:click.prevent="openRekamMedis('{{ $row->rj_no }}')"
@@ -812,17 +811,17 @@ new class extends Component {
                                                                 </x-dropdown-link>
                                                             @endhasanyrole
 
-                                                            @can('emr.codingFhir')
+                                                            @can('rekonsiliasi.obat')
                                                                 <x-dropdown-link href="#"
-                                                                    wire:click.prevent="openCodingFhir('{{ $row->rj_no }}')"
-                                                                    class="px-3 py-2 text-sm rounded-lg h-full bg-brand-green/5 hover:bg-brand-green/10 dark:bg-brand-green/10">
+                                                                    wire:click.prevent="openRekonsiliasiObat('{{ $row->rj_no }}')"
+                                                                    class="px-3 py-2 text-sm rounded-lg h-full bg-cyan-50 hover:bg-cyan-100 dark:bg-cyan-900/20">
                                                                     <div class="flex items-start gap-2">
                                                                         <svg class="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                                                                            <path stroke-linecap="round" stroke-linejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                                                                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                                                                         </svg>
                                                                         <span class="min-w-0">
-                                                                            <span class="block font-semibold">Coding SATUSEHAT</span>
-                                                                            <span class="block text-xs font-normal text-muted dark:text-gray-400">Kode SNOMED sesudah pelayanan</span>
+                                                                            <span class="block font-semibold">Rekonsiliasi Obat</span>
+                                                                            <span class="block text-xs font-normal text-muted dark:text-gray-400">Obat Bawaan Pasien</span>
                                                                         </span>
                                                                     </div>
                                                                 </x-dropdown-link>
@@ -843,22 +842,6 @@ new class extends Component {
                                                                     </div>
                                                                 </x-dropdown-link>
                                                             @endhasanyrole
-
-                                                            @can('rekonsiliasi.obat')
-                                                                <x-dropdown-link href="#"
-                                                                    wire:click.prevent="openRekonsiliasiObat('{{ $row->rj_no }}')"
-                                                                    class="px-3 py-2 text-sm rounded-lg h-full bg-cyan-50 hover:bg-cyan-100 dark:bg-cyan-900/20">
-                                                                    <div class="flex items-start gap-2">
-                                                                        <svg class="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                                                                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                                                                        </svg>
-                                                                        <span class="min-w-0">
-                                                                            <span class="block font-semibold">Rekonsiliasi Obat</span>
-                                                                            <span class="block text-xs font-normal text-muted dark:text-gray-400">Obat Bawaan Pasien</span>
-                                                                        </span>
-                                                                    </div>
-                                                                </x-dropdown-link>
-                                                            @endcan
 
                                                             @hasanyrole('Admin|Tu|Perawat|Manager Umum|Supervisor Tu')
                                                                 @if ($row->rj_status === 'A')
@@ -891,6 +874,21 @@ new class extends Component {
                                                                 @endif
                                                             @endhasanyrole
 
+                                                            @can('emr.codingFhir')
+                                                                <x-dropdown-link href="#"
+                                                                    wire:click.prevent="openCodingFhir('{{ $row->rj_no }}')"
+                                                                    class="px-3 py-2 text-sm rounded-lg h-full bg-brand-green/5 hover:bg-brand-green/10 dark:bg-brand-green/10">
+                                                                    <div class="flex items-start gap-2">
+                                                                        <svg class="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                                            <path stroke-linecap="round" stroke-linejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                                                                        </svg>
+                                                                        <span class="min-w-0">
+                                                                            <span class="block font-semibold">Coding SATUSEHAT</span>
+                                                                            <span class="block text-xs font-normal text-muted dark:text-gray-400">Kode SNOMED sesudah pelayanan</span>
+                                                                        </span>
+                                                                    </div>
+                                                                </x-dropdown-link>
+                                                            @endcan
                                                         </div>
 
                                                     </div>
@@ -926,7 +924,8 @@ new class extends Component {
             </div>
 
             {{-- Child components — pelayanan-only: EMR + Modul Dokumen + Administrasi + Cetak Etiket --}}
-            <livewire:pages::transaksi.ugd.emr-ugd.emr-ugd wire:key="emr-ugd-actions" />
+            {{-- EMR UGD + Coding SATUSEHAT UGD: satu modal bertab (mendengar 'emr-ugd.rekam-medis.open' & 'coding-fhir-ugd.open') --}}
+            <livewire:pages::transaksi.ugd.emr-coding-ugd.emr-coding-ugd wire:key="emr-coding-ugd" />
             <livewire:pages::transaksi.ugd.administrasi-ugd.administrasi-ugd wire:key="administrasi-ugd-actions" />
             <livewire:pages::transaksi.ugd.administrasi-ugd.transfer-ugd-ke-ri-actions wire:key="transfer-ugd-ke-ri-actions" />
             <livewire:pages::transaksi.ugd.pelayanan-ugd.cek-peserta-bpjs-ugd-actions wire:key="cek-peserta-bpjs-ugd-actions" />
@@ -934,9 +933,6 @@ new class extends Component {
             {{-- Modal Rekonsiliasi Obat (Farmasi) — listen ke event rekonsiliasi-obat-ugd.open --}}
             <livewire:pages::transaksi.ugd.rekonsiliasi-obat-ugd.rekonsiliasi-obat-ugd wire:key="rekonsiliasi-obat-ugd" />
             <livewire:pages::transaksi.ugd.emr-ugd.modul-dokumen.modul-dokumen-ugd wire:key="modul-dokumen-ugd" />
-            @can('emr.codingFhir')
-                <livewire:pages::transaksi.ugd.coding-fhir-ugd.coding-fhir-ugd wire:key="coding-fhir-ugd" />
-            @endcan
             <livewire:pages::transaksi.ugd.emr-ugd.log-aktivitas.log-aktivitas-ugd wire:key="log-aktivitas-ugd" />
             <livewire:pages::components.rekam-medis.etiket.cetak-etiket wire:key="cetak-etiket-ugd" />
 

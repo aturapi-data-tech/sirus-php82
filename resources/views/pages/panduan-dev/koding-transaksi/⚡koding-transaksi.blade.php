@@ -144,6 +144,10 @@ public function rows()
 TXT,
 
 'emr-host' => <<<'TXT'
+// SEJAK 2026-10-28: EMR & Coding SATUSEHAT satu modal bertab — emr-coding-{rj,ugd,ri} (pola Kasir:
+// <x-tabs> + @if per tab) memasang emr-{jalur} & coding-fhir-{jalur} dengan :embedded="true" dan
+// mendengar event open lama di bawah. Mode embedded: tanpa x-modal/header/identitas, rjNo dari prop,
+// isi di partial emr-{jalur}-isi. Contoh di bawah = mode modal sendiri (masih ada, tak di-mount).
 // EMR = MODAL full-screen (bukan route), di-embed sebagai sibling di pelayanan.
 // Host dibuka via event dari list, lalu MENYEBARKAN event open ke tiap section:
 

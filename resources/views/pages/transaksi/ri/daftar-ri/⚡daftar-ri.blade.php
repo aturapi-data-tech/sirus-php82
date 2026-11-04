@@ -328,7 +328,7 @@ new class extends Component {
             // EMR completeness — weighted S15/O15/A15/P10/N5/C20/K20.
             // C (CPPT) & K (Askep) khas RI — bobot besar karena engine monitoring harian.
             // Logic ada di EmrCompletenessRITrait. Field "screening" boleh "Tidak ada".
-            $pct = $this->calculateEmrPercentRI($json);
+            $pct = $this->calculateEmrPercentRI($json, $row->exit_date_display ?? null);
             $row->emr_percent = $pct['emr'];
             $row->eresep_percent = isset($json['eresep']) || isset($json['eresepRacikan']) ? 100 : 0;
             $row->lab_status = (int) ($labPerRiHdrNo[$row->rihdr_no] ?? 0);
@@ -734,7 +734,6 @@ new class extends Component {
                                                             jalur="Rawat Inap" />
 
                                                         <div class="grid grid-cols-2 gap-1 items-stretch">
-
                                                         @hasanyrole(['Mr', 'Admin', 'Supervisor Tu'])
                                                             <x-dropdown-link href="#"
                                                                 wire:click.prevent="openEdit('{{ $row->rihdr_no }}')"
@@ -784,22 +783,6 @@ new class extends Component {
                                                             </x-dropdown-link>
                                                         @endhasanyrole
 
-                                                        @hasanyrole('Admin|Perawat|Casemix|Tu|Gizi')
-                                                            <x-dropdown-link href="#"
-                                                                wire:click.prevent="openAdministrasiPasien('{{ $row->rihdr_no }}')"
-                                                                class="px-3 py-2 text-sm rounded-lg h-full bg-purple-50 hover:bg-purple-100 dark:bg-purple-900/20">
-                                                                <div class="flex items-start gap-2">
-                                                                    <svg class="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M2 8h20v12a1 1 0 01-1 1H3a1 1 0 01-1-1V8zm0 0V6a1 1 0 011-1h18a1 1 0 011 1v2M12 14a2 2 0 100-4 2 2 0 000 4z" />
-                                                                    </svg>
-                                                                    <span class="min-w-0">
-                                                                        <span class="block font-semibold">Administrasi</span>
-                                                                        <span class="block text-xs font-normal text-muted dark:text-gray-400">Tarif &amp; biaya pasien</span>
-                                                                    </span>
-                                                                </div>
-                                                            </x-dropdown-link>
-                                                        @endhasanyrole
-
                                                         @can('rekonsiliasi.obat')
                                                             <x-dropdown-link href="#"
                                                                 wire:click.prevent="openRekonsiliasiObat('{{ $row->rihdr_no }}')"
@@ -816,6 +799,22 @@ new class extends Component {
                                                             </x-dropdown-link>
                                                         @endcan
 
+                                                        @hasanyrole('Admin|Perawat|Casemix|Tu|Gizi')
+                                                            <x-dropdown-link href="#"
+                                                                wire:click.prevent="openAdministrasiPasien('{{ $row->rihdr_no }}')"
+                                                                class="px-3 py-2 text-sm rounded-lg h-full bg-purple-50 hover:bg-purple-100 dark:bg-purple-900/20">
+                                                                <div class="flex items-start gap-2">
+                                                                    <svg class="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M2 8h20v12a1 1 0 01-1 1H3a1 1 0 01-1-1V8zm0 0V6a1 1 0 011-1h18a1 1 0 011 1v2M12 14a2 2 0 100-4 2 2 0 000 4z" />
+                                                                    </svg>
+                                                                    <span class="min-w-0">
+                                                                        <span class="block font-semibold">Administrasi</span>
+                                                                        <span class="block text-xs font-normal text-muted dark:text-gray-400">Tarif &amp; biaya pasien</span>
+                                                                    </span>
+                                                                </div>
+                                                            </x-dropdown-link>
+                                                        @endhasanyrole
+
                                                         @can('ri.pindahKamar')
                                                             <x-dropdown-link href="#"
                                                                 wire:click.prevent="openPindahKamar('{{ $row->rihdr_no }}')"
@@ -831,6 +830,22 @@ new class extends Component {
                                                                 </div>
                                                             </x-dropdown-link>
                                                         @endcan
+
+                                                        @hasanyrole('Admin|Casemix|Tu|Mr')
+                                                            <x-dropdown-link href="#"
+                                                                wire:click.prevent="openBerkasBpjs({{ $row->rihdr_no }})"
+                                                                class="px-3 py-2 text-sm rounded-lg h-full bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/30 dark:hover:bg-amber-900/40">
+                                                                <div class="flex items-start gap-2">
+                                                                    <svg class="w-5 h-5 mt-0.5 shrink-0 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                                    </svg>
+                                                                    <span class="min-w-0">
+                                                                        <span class="block font-semibold">Berkas BPJS</span>
+                                                                        <span class="block text-xs font-normal text-muted dark:text-gray-400">SEP / Klaim / RM / SKDP / Lain</span>
+                                                                    </span>
+                                                                </div>
+                                                            </x-dropdown-link>
+                                                        @endhasanyrole
 
                                                         @can('idrg.kirim')
                                                             @if (($row->klaim_status === 'BPJS' || $row->klaim_id === 'JM') && $row->ri_status === 'P')
@@ -850,21 +865,21 @@ new class extends Component {
                                                             @endif
                                                         @endcan
 
-                                                        @hasanyrole('Admin|Casemix|Tu|Mr')
+                                                        @can('emr.codingFhir')
                                                             <x-dropdown-link href="#"
-                                                                wire:click.prevent="openBerkasBpjs({{ $row->rihdr_no }})"
-                                                                class="px-3 py-2 text-sm rounded-lg h-full bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/30 dark:hover:bg-amber-900/40">
+                                                                wire:click.prevent="openCodingFhir('{{ $row->rihdr_no }}')"
+                                                                class="px-3 py-2 text-sm rounded-lg h-full bg-brand-green/5 hover:bg-brand-green/10 dark:bg-brand-green/10">
                                                                 <div class="flex items-start gap-2">
-                                                                    <svg class="w-5 h-5 mt-0.5 shrink-0 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                                    <svg class="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
                                                                     </svg>
                                                                     <span class="min-w-0">
-                                                                        <span class="block font-semibold">Berkas BPJS</span>
-                                                                        <span class="block text-xs font-normal text-muted dark:text-gray-400">SEP / Klaim / RM / SKDP / Lain</span>
+                                                                        <span class="block font-semibold">Coding SATUSEHAT</span>
+                                                                        <span class="block text-xs font-normal text-muted dark:text-gray-400">Kode SNOMED sesudah pelayanan</span>
                                                                     </span>
                                                                 </div>
                                                             </x-dropdown-link>
-                                                        @endhasanyrole
+                                                        @endcan
 
                                                         @can('satusehat.kirim')
                                                             <x-dropdown-link href="#"
@@ -877,22 +892,6 @@ new class extends Component {
                                                                     <span class="min-w-0">
                                                                         <span class="block font-semibold">Kirim Satu Sehat</span>
                                                                         <span class="block text-xs font-normal text-muted dark:text-gray-400">Encounter RI (IMP) &amp; resource</span>
-                                                                    </span>
-                                                                </div>
-                                                            </x-dropdown-link>
-                                                        @endcan
-
-                                                        @can('emr.codingFhir')
-                                                            <x-dropdown-link href="#"
-                                                                wire:click.prevent="openCodingFhir('{{ $row->rihdr_no }}')"
-                                                                class="px-3 py-2 text-sm rounded-lg h-full bg-brand-green/5 hover:bg-brand-green/10 dark:bg-brand-green/10">
-                                                                <div class="flex items-start gap-2">
-                                                                    <svg class="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-                                                                    </svg>
-                                                                    <span class="min-w-0">
-                                                                        <span class="block font-semibold">Coding SATUSEHAT</span>
-                                                                        <span class="block text-xs font-normal text-muted dark:text-gray-400">Kode SNOMED sesudah pelayanan</span>
                                                                     </span>
                                                                 </div>
                                                             </x-dropdown-link>
@@ -914,14 +913,14 @@ new class extends Component {
                                                                 </div>
                                                             </x-dropdown-link>
                                                         @endcan
-
                                                         </div>
 
+                                                        {{-- Tombol Hapus DINONAKTIFKAN (dikomentari, permintaan user 2026-10-28) — divider + Hapus untuk
+                                                             Admin, Manager Medis, Manager Umum. Hapus tanda komentar ini untuk memunculkan kembali.
                                                         <div
                                                             class="my-1 border-t border-hairline dark:border-gray-700">
                                                         </div>
 
-                                                        {{-- Hapus — Admin, Manager Medis, Manager Umum --}}
                                                         @hasanyrole(['Admin', 'Manager Medis', 'Manager Umum'])
                                                             <x-dropdown-link href="#"
                                                                 wire:click.prevent="requestDelete('{{ $row->rihdr_no }}')"
@@ -938,6 +937,7 @@ new class extends Component {
                                                                 </div>
                                                             </x-dropdown-link>
                                                         @endhasanyrole
+                                                        --}}
 
                                                     </div>
                                                 </x-slot>
@@ -974,7 +974,8 @@ new class extends Component {
 
             {{-- Child components --}}
             <livewire:pages::transaksi.ri.daftar-ri.daftar-ri-actions wire:key="daftar-ri-actions" />
-            <livewire:pages::transaksi.ri.emr-ri.emr-ri wire:key="emr-ri-actions" />
+            {{-- EMR RI + Coding SATUSEHAT RI: satu modal bertab (mendengar 'emr-ri.rekam-medis.open' & 'coding-fhir-ri.open') --}}
+            <livewire:pages::transaksi.ri.emr-coding-ri.emr-coding-ri wire:key="emr-coding-ri" />
             <livewire:pages::transaksi.ri.administrasi-ri.administrasi-ri wire:key="administrasi-ri-actions" />
             <livewire:pages::transaksi.ri.administrasi-ri.pindah-kamar-ri wire:key="pindah-kamar-ri" />
 
@@ -984,9 +985,6 @@ new class extends Component {
             {{-- iDRG/INACBG Modal (sibling, listen ke event daftar-ri.idrg.open) --}}
             <livewire:pages::transaksi.ri.daftar-ri.idrg-ri-actions wire:key="idrg-ri-actions" />
             <livewire:pages::transaksi.ri.daftar-ri.satu-sehat-ri-actions wire:key="satu-sehat-ri-actions" />
-            @can('emr.codingFhir')
-                <livewire:pages::transaksi.ri.coding-fhir-ri.coding-fhir-ri wire:key="coding-fhir-ri" />
-            @endcan
             <livewire:pages::transaksi.ri.daftar-ri.cek-jumlah-record-ri-actions wire:key="cek-jumlah-record-ri-actions" />
             <livewire:pages::transaksi.ri.daftar-ri-bulanan.berkas-bpjs-ri-actions wire:key="berkas-bpjs-ri-actions" />
 

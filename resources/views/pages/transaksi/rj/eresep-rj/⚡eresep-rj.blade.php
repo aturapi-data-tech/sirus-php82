@@ -206,9 +206,10 @@ new class extends Component {
             return;
         }
 
-        // 2. Guard: pasien sudah pulang
-        if ($this->checkRJStatus($this->rjNo)) {
-            $this->dispatch('toast', type: 'error', message: 'Pasien sudah pulang, transaksi terkunci.');
+        // 2. Guard: EMR terkunci (erm_status) — bukan rj_status, agar terapi tetap bisa
+        //    disalin walau kunjungan sudah pulang/lunas selama EMR-nya belum dikunci.
+        if ($this->checkEmrRJStatus($this->rjNo)) {
+            $this->dispatch('toast', type: 'error', message: 'EMR sudah terkunci, terapi tidak dapat disimpan.');
             return;
         }
 
@@ -422,7 +423,7 @@ new class extends Component {
                         Tutup
                     </x-secondary-button>
 
-                    @if (!$isFormLocked)
+                    {{-- Selalu tampil: kunci dicek di saveAllEreseptoTerapi() via checkEmrRJStatus(). --}}
                         <x-primary-button wire:click="saveAllEreseptoTerapi" class="min-w-[120px]"
                             wire:loading.attr="disabled">
                             <span wire:loading.remove>
@@ -438,7 +439,6 @@ new class extends Component {
                                 Menyimpan...
                             </span>
                         </x-primary-button>
-                    @endif
                 </div>
             </div>
 

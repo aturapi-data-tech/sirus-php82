@@ -658,25 +658,6 @@ new class extends Component {
 
                                                             {{-- GRID 2 KOLOM --}}
                                                             <div class="grid grid-cols-2 gap-1 items-stretch">
-
-                                                            @can('idrg.kirim')
-                                                                @if (($row->klaim_status === 'BPJS' || $row->klaim_id === 'JM') && $row->rj_status === 'L')
-                                                                <x-dropdown-link href="#"
-                                                                    wire:click.prevent="openIdrg('{{ $row->rj_no }}')"
-                                                                    class="px-3 py-2 text-sm rounded-lg h-full bg-brand/5 hover:bg-brand/10 dark:bg-brand-lime/10 dark:hover:bg-brand-lime/20">
-                                                                    <div class="flex items-start gap-2">
-                                                                        <svg class="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                                                                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                                                        </svg>
-                                                                        <span class="min-w-0">
-                                                                            <span class="block font-semibold">Kirim iDRG / INACBG</span>
-                                                                            <span class="block text-xs font-normal text-muted dark:text-gray-400">E-Klaim Kemenkes</span>
-                                                                        </span>
-                                                                    </div>
-                                                                </x-dropdown-link>
-                                                                @endif
-                                                            @endcan
-
                                                             @hasanyrole('Admin|Casemix|Tu')
                                                                 @if ($row->rj_status === 'L')
                                                                 <x-dropdown-link href="#"
@@ -711,6 +692,23 @@ new class extends Component {
                                                                 </x-dropdown-link>
                                                             @endhasanyrole
 
+                                                            @can('idrg.kirim')
+                                                                @if (($row->klaim_status === 'BPJS' || $row->klaim_id === 'JM') && $row->rj_status === 'L')
+                                                                <x-dropdown-link href="#"
+                                                                    wire:click.prevent="openIdrg('{{ $row->rj_no }}')"
+                                                                    class="px-3 py-2 text-sm rounded-lg h-full bg-brand/5 hover:bg-brand/10 dark:bg-brand-lime/10 dark:hover:bg-brand-lime/20">
+                                                                    <div class="flex items-start gap-2">
+                                                                        <svg class="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                                        </svg>
+                                                                        <span class="min-w-0">
+                                                                            <span class="block font-semibold">Kirim iDRG / INACBG</span>
+                                                                            <span class="block text-xs font-normal text-muted dark:text-gray-400">E-Klaim Kemenkes</span>
+                                                                        </span>
+                                                                    </div>
+                                                                </x-dropdown-link>
+                                                                @endif
+                                                            @endcan
                                                         </div>
                                                     </x-slot>
                                                 </x-dropdown>

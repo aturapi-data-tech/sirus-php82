@@ -51,6 +51,14 @@ new class extends Component {
                 'ri-administrasi' => '4. Administrasi & Pulang',
                 'ri-kasir' => '5. Kasir RI',
             ],
+            'SATUSEHAT' => [
+                'ss-pengantar' => 'Pengantar: Siapa, Kapan, Di Mana',
+                'ss-rj' => 'Kirim SATUSEHAT — Rawat Jalan',
+                'ss-ugd' => 'Kirim SATUSEHAT — UGD',
+                'ss-ri' => 'Kirim SATUSEHAT — Rawat Inap',
+                'ss-transfer' => 'Pasien Pindahan RJ → UGD → RI',
+                'ss-masalah' => 'Arti Pesan & Cara Membereskan',
+            ],
             'Gudang' => [
                 'gudang-penerimaan' => 'Penerimaan Medis & Non-Medis',
                 'gudang-transfer' => 'Transfer Stok (Distribusi)',
@@ -141,6 +149,8 @@ new class extends Component {
                     @include('pages.panduan-dev.alur-pelayanan.alur-pelayanan-ugd')
 
                     @include('pages.panduan-dev.alur-pelayanan.alur-pelayanan-ri')
+
+                    @include('pages.panduan-dev.alur-pelayanan.alur-pelayanan-satusehat')
 
                     @include('pages.panduan-dev.alur-pelayanan.alur-pelayanan-gudang')
 

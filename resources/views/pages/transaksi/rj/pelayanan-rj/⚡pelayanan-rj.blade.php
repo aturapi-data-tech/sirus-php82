@@ -327,7 +327,7 @@ new class extends Component {
                 $jsonRaw = $jsonPerRjNo[$row->rj_no] ?? '';
                 $json = json_decode($jsonRaw ?: '{}', true) ?? [];
 
-                // EMR completeness — weighted S15/O25/A25/P25/N10. Logic ada di EmrCompletenessRJTrait.
+                // EMR completeness — weighted S15/O20/A25/P30/N10 (koding SNOMED terpisah). Logic ada di EmrCompletenessRJTrait.
                 // Field "screening" (alergi, RPD) dianggap terisi kalau non-empty (termasuk "Tidak ada"),
                 // sesuai praktik klinis — dokter wajib explicit isi negatif, jangan dibiarkan kosong.
                 $pct = $this->calculateEmrPercentRJ($json);
@@ -627,7 +627,7 @@ new class extends Component {
                                             </div>
                                             <x-list.identitas-pasien :regNo="$row->reg_no" :nama="$row->reg_name" :sex="$row->sex"
                                                 :tglLahir="$row->birth_date" :alamat="$row->address"
-                                                :collapseUmur="true" />
+                                                :collapseUmur="false" />
                                         </div>
 
                                         {{-- Penanda hasil skrining awal — hanya jika eskalasi (Rujuk IGD / Disegerakan) --}}
@@ -692,6 +692,17 @@ new class extends Component {
                                         <div class="mt-0.5">
                                             <x-list.klaim-badge :status="$row->klaim_status" :desc="$row->klaim_desc" :id="$row->klaim_id" />
                                         </div>
+                                        {{-- Laborat/Radiologi selalu tampil, tidak menunggu expand --}}
+                                        @if ($row->lab_status || $row->rad_status)
+                                            <div class="flex flex-wrap gap-2">
+                                                @if ($row->lab_status)
+                                                    <x-badge variant="info">Laborat</x-badge>
+                                                @endif
+                                                @if ($row->rad_status)
+                                                    <x-badge variant="purple">Radiologi</x-badge>
+                                                @endif
+                                            </div>
+                                        @endif
                                         {{-- No Booking — hanya untuk pasien BPJS (klaim_status=BPJS atau klaim_id=JM/JKN Mobile) --}}
                                         @if ($row->klaim_status === 'BPJS' || $row->klaim_id === 'JM')
                                             <div class="text-xs text-body dark:text-gray-400 leading-tight">
@@ -701,14 +712,6 @@ new class extends Component {
                                         <div x-show="expanded" x-collapse class="space-y-0.5">
                                             <div class="text-xs text-muted dark:text-gray-500 leading-tight">
                                                 {{ $row->rj_date_display ?? '-' }} | Shift : {{ $row->shift ?? '-' }}
-                                            </div>
-                                            <div class="flex flex-wrap gap-2">
-                                                @if ($row->lab_status)
-                                                    <x-badge variant="alternative">Laborat</x-badge>
-                                                @endif
-                                                @if ($row->rad_status)
-                                                    <x-badge variant="brand">Radiologi</x-badge>
-                                                @endif
                                             </div>
                                         </div>
                                     </td>
@@ -1004,7 +1007,7 @@ new class extends Component {
                                                                     <x-primary-button type="button"
                                                                         wire:click="$dispatch('task-id-poli-proses', { rjNo: {{ $row->rj_no }}, aksi: 'antrean' })"
                                                                         class="!px-4 !py-2 text-sm"
-                                                                        title="Klik untuk mengambil TaskId Antrean dari BPJS">
+                                                                        title="Banding waktu task SIRUS dengan yang tercatat di Antrean BPJS">
                                                                         TaskId Antrean
                                                                     </x-primary-button>
                                                                 </div>
@@ -1012,7 +1015,6 @@ new class extends Component {
 
                                                             {{-- GRID 2 KOLOM --}}
                                                             <div class="grid grid-cols-2 gap-1 items-stretch">
-
                                                                 @hasanyrole('Perawat|Dokter|Admin|Casemix|Mr')
                                                                     <x-dropdown-link href="#"
                                                                         wire:click.prevent="openRekamMedis('{{ $row->rj_no }}')"
@@ -1077,22 +1079,6 @@ new class extends Component {
                                                                     </x-dropdown-link>
                                                                 @endhasanyrole
 
-                                                                @can('emr.codingFhir')
-                                                                    <x-dropdown-link href="#"
-                                                                        wire:click.prevent="openCodingFhir('{{ $row->rj_no }}')"
-                                                                        class="px-3 py-2 text-sm rounded-lg h-full bg-brand-green/5 hover:bg-brand-green/10 dark:bg-brand-green/10">
-                                                                        <div class="flex items-start gap-2">
-                                                                            <svg class="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-                                                                            </svg>
-                                                                            <span class="min-w-0">
-                                                                                <span class="block font-semibold">Coding SATUSEHAT</span>
-                                                                                <span class="block text-xs font-normal text-muted dark:text-gray-400">Kode SNOMED sesudah pelayanan</span>
-                                                                            </span>
-                                                                        </div>
-                                                                    </x-dropdown-link>
-                                                                @endcan
-
                                                                 @hasanyrole('Admin|Perawat|Casemix|Tu')
                                                                     <x-dropdown-link href="#"
                                                                         wire:click.prevent="openAdministrasiPasien('{{ $row->rj_no }}')"
@@ -1132,6 +1118,21 @@ new class extends Component {
                                                                     </x-dropdown-link>
                                                                 @endhasanyrole
 
+                                                                @can('emr.codingFhir')
+                                                                    <x-dropdown-link href="#"
+                                                                        wire:click.prevent="openCodingFhir('{{ $row->rj_no }}')"
+                                                                        class="px-3 py-2 text-sm rounded-lg h-full bg-brand-green/5 hover:bg-brand-green/10 dark:bg-brand-green/10">
+                                                                        <div class="flex items-start gap-2">
+                                                                            <svg class="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                                                                            </svg>
+                                                                            <span class="min-w-0">
+                                                                                <span class="block font-semibold">Coding SATUSEHAT</span>
+                                                                                <span class="block text-xs font-normal text-muted dark:text-gray-400">Kode SNOMED sesudah pelayanan</span>
+                                                                            </span>
+                                                                        </div>
+                                                                    </x-dropdown-link>
+                                                                @endcan
                                                             </div>
 
                                                         </div>
@@ -1171,11 +1172,9 @@ new class extends Component {
             </div>
 
             {{-- Sibling components — pelayanan-only: EMR + Modul Dokumen + Administrasi + Cetak Etiket --}}
-            <livewire:pages::transaksi.rj.emr-rj.emr-rj wire:key="rm-perawat-rj-actions" />
+            {{-- EMR RJ + Coding SATUSEHAT RJ: satu modal bertab (mendengar 'emr-rj.rekam-medis.open' & 'coding-fhir-rj.open') --}}
+            <livewire:pages::transaksi.rj.emr-coding-rj.emr-coding-rj wire:key="emr-coding-rj" />
             <livewire:pages::transaksi.rj.emr-rj.modul-dokumen.modul-dokumen-rj wire:key="modul-dokumen-rj" />
-            @can('emr.codingFhir')
-                <livewire:pages::transaksi.rj.coding-fhir-rj.coding-fhir-rj wire:key="coding-fhir-rj" />
-            @endcan
             <livewire:pages::transaksi.rj.emr-rj.log-aktivitas.log-aktivitas-rj wire:key="log-aktivitas-rj" />
             <livewire:pages::transaksi.rj.administrasi-rj.administrasi-rj wire:key="administrasi-rj-actions" />
             <livewire:pages::transaksi.rj.administrasi-rj.transfer-rj-ke-ugd-actions wire:key="transfer-rj-ke-ugd-actions" />

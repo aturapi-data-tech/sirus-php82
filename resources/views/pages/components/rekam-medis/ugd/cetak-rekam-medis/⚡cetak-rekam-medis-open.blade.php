@@ -112,6 +112,20 @@ new class extends Component {
     }
 
     /* Ringkasan entri nyeri (metode/skor/interpretasi) — dipakai daftar Skala Nyeri. */
+    /** Urutkan entri berdasar kolom waktu 'd/m/Y H:i:s' — sama dengan viewer RI. */
+    public function urutkanKronologis(array $daftarEntri, string $kolomWaktu, bool $terbaruDiAtas = true): array
+    {
+        $terurut = collect($daftarEntri)->sortBy(function ($entri) use ($kolomWaktu) {
+            try {
+                return Carbon::createFromFormat('d/m/Y H:i:s', trim((string) data_get($entri, $kolomWaktu)))->getTimestamp();
+            } catch (\Throwable) {
+                return 0;
+            }
+        });
+
+        return ($terbaruDiAtas ? $terurut->reverse() : $terurut)->values()->all();
+    }
+
     public function ringkasNyeri(array $entri): array
     {
         return NyeriOptions::ringkasEntri($entri);
@@ -785,6 +799,48 @@ new class extends Component {
                             </table>
                         </div>
                     </x-border-form>
+
+                {{-- SBAR — gaya & label disamakan dengan viewer RI (asesmen-ri-tab) --}}
+                @php
+                    $daftarSbar = $this->urutkanKronologis((array) ($dataDaftarTxn['sbar'] ?? []), 'tglSBAR');
+                    $gayaSbar = [
+                        'situation' => ['lbl' => 'S', 'name' => 'Subjective', 'wrap' => 'border-l-4 border-blue-500 bg-blue-50/40 dark:bg-blue-900/10', 'text' => 'text-blue-700 dark:text-blue-400'],
+                        'background' => ['lbl' => 'O', 'name' => 'Objective', 'wrap' => 'border-l-4 border-emerald-500 bg-emerald-50/40 dark:bg-emerald-900/10', 'text' => 'text-success dark:text-success'],
+                        'assessment' => ['lbl' => 'A', 'name' => 'Assessment', 'wrap' => 'border-l-4 border-amber-500 bg-amber-50/40 dark:bg-amber-900/10', 'text' => 'text-amber-700 dark:text-amber-400'],
+                        'recommendation' => ['lbl' => 'P', 'name' => 'Plan', 'wrap' => 'border-l-4 border-rose-500 bg-rose-50/40 dark:bg-rose-900/10', 'text' => 'text-error dark:text-rose-400'],
+                    ];
+                @endphp
+                <x-border-form title="SBAR — Komunikasi Efektif ({{ count($daftarSbar) }} catatan)" class="mb-4">
+                    @if (empty($daftarSbar))
+                        <p class="text-base italic text-muted-soft">Belum ada catatan SBAR.</p>
+                    @else
+                        <div class="space-y-3">
+                            @foreach ($daftarSbar as $catatanSbar)
+                                <div class="p-3 border rounded-xl border-hairline bg-canvas dark:border-gray-700 dark:bg-gray-900">
+                                    <div class="flex flex-wrap items-center justify-between gap-2 pb-2 mb-2 border-b border-hairline-soft dark:border-gray-700/60">
+                                        <span class="font-semibold text-ink dark:text-gray-100">{{ $catatanSbar['tglSBAR'] ?? '-' }}</span>
+                                        <span class="text-muted">
+                                            {{ $catatanSbar['petugasSBAR'] ?? '-' }}
+                                            @if (filled($catatanSbar['profession'] ?? null))
+                                                <span class="px-2 py-0.5 ml-1 rounded-full bg-surface-soft dark:bg-gray-800">{{ $catatanSbar['profession'] }}</span>
+                                            @endif
+                                        </span>
+                                    </div>
+                                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                        @foreach ($gayaSbar as $kunciSbar => $gaya)
+                                            <div class="{{ $gaya['wrap'] }} pl-3 py-1 rounded-r-md">
+                                                <span class="font-bold {{ $gaya['text'] }}">{{ $gaya['lbl'] }}</span>
+                                                <span class="text-muted"> — {{ $gaya['name'] }}</span>
+                                                <p class="mt-0.5 whitespace-pre-wrap leading-relaxed text-body dark:text-gray-300">
+                                                    {{ trim((string) data_get($catatanSbar, 'sbar.' . $kunciSbar)) ?: '-' }}</p>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    @endif
+                </x-border-form>
 
                 {{-- TTD --}}
                 <x-border-form>

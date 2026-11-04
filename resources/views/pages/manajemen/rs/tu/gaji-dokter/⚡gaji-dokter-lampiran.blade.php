@@ -20,7 +20,6 @@ use Livewire\Component;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use App\Support\GajiDokter\GajiDokterLampiran;
 
@@ -144,89 +143,21 @@ new class extends Component {
             return null;
         }
 
-        $bulanNama = [
-            '01' => 'Januari', '02' => 'Februari', '03' => 'Maret', '04' => 'April',
-            '05' => 'Mei', '06' => 'Juni', '07' => 'Juli', '08' => 'Agustus',
-            '09' => 'September', '10' => 'Oktober', '11' => 'November', '12' => 'Desember',
-        ];
-
         $pertama = $data->first()['header'];
 
         $namaBerkas = $this->modeSemua
             ? 'lampiran-pasien-' . $pertama->tahun_gaji . $pertama->bulan_gaji . '-semua.csv'
             : 'lampiran-pasien-' . $pertama->dr_id . '-' . $pertama->tahun_gaji . $pertama->bulan_gaji . '.csv';
 
-        return response()->streamDownload(function () use ($data, $bulanNama) {
+        // Isi CSV ditulis GajiDokterLampiran::tulisCsv() — jalur yang sama dengan ZIP slip per dokter.
+        return response()->streamDownload(function () use ($data) {
             $keluaran = fopen('php://output', 'w');
-
-            // BOM UTF-8 — tanpa ini Excel membaca berkas sebagai ANSI dan nama
-            // pasien beraksen jadi rusak.
-            fwrite($keluaran, "\xEF\xBB\xBF");
-
-            // JANGAN menambahkan baris "sep=;" di sini. Sempat dipasang supaya
-            // berkasnya juga benar di Excel berlokal Inggris, dan hasilnya
-            // justru barisnya TERCETAK sebagai data di baris pertama: Excel
-            // tidak mengenali petunjuk itu bila didahului BOM, sementara BOM-nya
-            // wajib demi nama pasien. Tidak perlu juga — Excel berlokal
-            // Indonesia sudah memakai ';' sebagai pemisah daftar, jadi berkas
-            // ini terbaca benar apa adanya.
-            fputcsv($keluaran, self::KOLOM_CSV, ';');
-
-            foreach ($data as $satuDokter) {
-                $header = $satuDokter['header'];
-                $grupKapita = $satuDokter['grupKapita'];
-                $periodeJasa = ($bulanNama[$header->bulan_jasa] ?? $header->bulan_jasa) . ' ' . $header->tahun_jasa;
-
-                foreach ($satuDokter['lampiran'] as $baris) {
-                    // Baris komponen per kapita nominalnya tarif komponen yang
-                    // TIDAK dibayarkan. Tanpa penanda ini, siapa pun yang mem-blok
-                    // kolom Nominal lalu menekan AutoSum dapat angka yang tidak
-                    // cocok dengan slip — dan menyalahkan datanya.
-                    $masukSlip = in_array($baris['group_doc'], $grupKapita, true) ? 'Tidak' : 'Ya';
-
-                    fputcsv($keluaran, [
-                        $header->dr_name,
-                        $periodeJasa,
-                        $baris['label'],
-                        $baris['tgl'],
-                        $baris['reg_no'],
-                        $baris['nama'],
-                        // Nama jasa/tindakan/pemeriksaan/kasus operasi; kosong untuk
-                        // uang periksa, visite, konsul.
-                        $baris['keterangan'],
-                        $baris['klaim'],
-                        // Jenis klaim (BPJS/UMUM/KRONIS/DOKEL) dipisah dari namanya
-                        // supaya bisa jadi kolom pivot; nama klaim terlalu banyak
-                        // ragamnya untuk itu.
-                        $baris['klaim_status'],
-                        // Kosong itu WAJAR, bukan data hilang: pasien umum memang
-                        // tidak punya SEP, dan RSTXN_RJHDRKS (klinik) bahkan tidak
-                        // menyimpan kolomnya.
-                        $baris['no_sep'],
-                        $baris['txn_no'],
-                        // Angka MENTAH, bukan 450.000 — nominal berformat titik
-                        // ribuan dibaca Excel sebagai teks dan SUM-nya nol.
-                        (int) round((float) $baris['nominal']),
-                        $masukSlip,
-                    ], ';');
-                }
-            }
-
+            GajiDokterLampiran::tulisCsv($keluaran, $data);
             fclose($keluaran);
         }, $namaBerkas, [
             'Content-Type' => 'text/csv; charset=UTF-8',
         ]);
     }
-
-    /**
-     * Judul kolom CSV. Dipisah supaya urutannya bisa dibaca sekali pandang
-     * bersebelahan dengan urutan nilai di unduhCsv().
-     */
-    public const KOLOM_CSV = [
-        'Dokter', 'Periode Jasa', 'Komponen', 'Tanggal',
-        'No. RM', 'Nama Pasien', 'Keterangan Jasa', 'Klaim', 'Jenis Klaim', 'No. SEP',
-        'No. Transaksi', 'Nominal', 'Masuk Slip',
-    ];
 
     /**
      * Satu entri per dokter: header slip, detail slip, baris lampiran, grup kapita,
@@ -249,66 +180,13 @@ new class extends Component {
             }
         }
 
-        $data = $this->susunLampiran();
+        $data = GajiDokterLampiran::susun($this->gajidoctorNoList);
 
         if ($this->cacheKey !== '' && $data->isNotEmpty()) {
             Cache::store('file')->put($this->cacheKey, $data, now()->addMinutes(30));
         }
 
         return $data;
-    }
-
-    /** Tarik dari database — dipanggil sekali per buka modal, sisanya dari cache. */
-    protected function susunLampiran()
-    {
-
-        $headerList = DB::table('rstxn_gajidoctorhdrs as h')
-            ->join('rsmst_doctors as d', 'd.dr_id', '=', 'h.dr_id')
-            ->whereIn('h.gajidoctor_no', $this->gajidoctorNoList)
-            ->orderBy('d.dr_name')
-            ->select('h.*', 'd.dr_name')
-            ->get();
-
-        if ($headerList->isEmpty()) {
-            return collect();
-        }
-
-        // Periode diambil dari header, bukan dari saringan layar: slip yang
-        // dibuka bisa saja bukan periode yang sedang tampil di daftar.
-        $pertama = $headerList->first();
-
-        $lampiranPerDokter = GajiDokterLampiran::barisMassal(
-            $headerList->pluck('dr_id')->unique()->values()->all(),
-            $pertama->tahun_jasa,
-            $pertama->bulan_jasa,
-        );
-
-        $grupKapitaPerDokter = GajiDokterLampiran::grupKapitaMassal(
-            $headerList->pluck('dr_id')->unique()->values()->all()
-        );
-
-        $detailPerSlip = DB::table('rstxn_gajidoctordtls')
-            ->whereIn('gajidoctor_no', $headerList->pluck('gajidoctor_no'))
-            ->orderBy('jenis')->orderBy('urutan')->orderBy('gajidoctor_dtl')
-            ->get()
-            ->groupBy('gajidoctor_no');
-
-        return $headerList
-            ->filter(fn ($header) => ($lampiranPerDokter[$header->dr_id] ?? collect())->isNotEmpty())
-            ->map(function ($header) use ($lampiranPerDokter, $grupKapitaPerDokter, $detailPerSlip) {
-                $lampiran = $lampiranPerDokter[$header->dr_id];
-                $detail = $detailPerSlip[$header->gajidoctor_no] ?? collect();
-                $grupKapita = $grupKapitaPerDokter[$header->dr_id] ?? [];
-
-                return [
-                    'header' => $header,
-                    'lampiran' => $lampiran,
-                    'grupKapita' => $grupKapita,
-                    'perKomponen' => $lampiran->groupBy('desc_doc'),
-                    'angka' => GajiDokterLampiran::rekonsiliasi($lampiran, $detail, $grupKapita),
-                ];
-            })
-            ->values();
     }
 };
 ?>

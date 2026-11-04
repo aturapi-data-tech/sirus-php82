@@ -1,6 +1,6 @@
 {{-- resources/views/pages/components/manajemen/cetak-slip-gaji/cetak-slip-gaji-massal-print.blade.php --}}
 {{-- Template print: Slip Gaji Dokter — CETAK MASSAL satu periode. --}}
-{{-- Satu berkas berisi banyak slip, tiap dokter satu halaman.
+{{-- Satu berkas berisi banyak slip, tiap dokter satu halaman. Dipakai juga ZIP per dokter (satu slip per berkas).
 
      Tidak memakai <x-pdf.layout-kwitansi> karena komponen itu memancarkan satu
      dokumen <html> utuh — dipanggil berulang akan menghasilkan dokumen bersarang.
@@ -60,7 +60,7 @@
             <table class="w-full border-collapse">
                 <tr>
                     <td class="w-10 pr-2 align-middle">
-                        <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('images/Logo Persegi.png'))) }}"
+                        <img src="data:image/png;base64,{{ base64_encode(file_get_contents(\App\Support\GajiDokter\GajiDokter::logoSlipPath())) }}"
                             alt="Logo Rumah Sakit Islam Madinah" class="block w-auto h-10">
                     </td>
                     <td class="text-[6.5px] leading-tight text-gray-600 align-middle">

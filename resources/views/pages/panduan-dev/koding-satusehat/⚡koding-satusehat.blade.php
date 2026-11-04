@@ -10,6 +10,193 @@ new class extends Component {
     {
         return [
 
+'utc' => <<<'TXT'
+// SatuSehatTrait::makeRequest() — aturan main #1: semua dateTime dikirim UTC+00.
+// Sender TETAP menyusun waktu lokal (toIso8601String() → "+07:00"); konversi di SATU tempat:
+if (strtolower($method) !== 'get') {
+    $data = $this->waktuKeUtc($data);
+}
+
+protected function waktuKeUtc(mixed $data): mixed
+{
+    if (is_array($data)) {                       // telusuri seluruh payload, rekursif
+        foreach ($data as $key => $nilai) {
+            $data[$key] = $this->waktuKeUtc($nilai);
+        }
+        return $data;
+    }
+    // hanya string yang SELURUHNYA dateTime ISO berzona (+07:00 / Z)
+    if (is_string($data) && preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/', $data)) {
+        return Carbon::parse($data)->utc()->format('Y-m-d\TH:i:sP');
+    }
+    return $data;                                 // tanggal saja, teks bebas, angka → utuh
+}
+
+// "2023-08-23T17:35:00+07:00"  → "2023-08-23T10:35:00+00:00"   (contoh resmi PDF/Kemkes)
+// "1990-05-01" (birthDate)     → tetap
+// "kontrol 2023-08-23T17:35:00+07:00 lagi" → tetap (bukan dateTime utuh)
+//
+// AWAS: uji kering yang MENIMPA makeRequest() melihat payload SEBELUM konversi.
+// Payload wajib array (bukan stdClass) — objek tidak ditelusuri.
+TXT,
+
+'finish-encounter' => <<<'TXT'
+// EncounterTrait::siapkanFinishEncounter($encounter, $akhirIso, $conditionIdList, $keluhanUtamaId)
+// Dipakai BERSAMA RJ/UGD/RI. $encounter = hasil getEncounter() → PUT berisi SELURUH resource
+// (aturan main #6: FHIR tak mengenal partial update).
+
+$encounter['status'] = 'finished';
+$encounter['period']['end'] = waktuTerakhir(period.start, $akhirIso);   // end ≥ start (FHIRPath)
+
+// 1) statusHistory — tiap entri wajib start+end (Rule 10122):
+//    end entri = start entri BERIKUTNYA; entri terakhir 'finished'.
+// 2) location[] — yang masih terbuka ditutup: end = start lokasi berikutnya / waktu selesai,
+//    status 'completed' (dulu kamar/poli terakhir 'active' selamanya).
+// 3) classHistory — WAJIB (*classHistory[i].class & .period): 1 entri dari Encounter.class
+//    sepanjang period. Satu Encounter SATUSEHAT tak pernah ganti jenis (IGD→RI = Encounter baru).
+// 4) diagnosis — WAJIB (Rule 10457):
+//      conditionIds        → use DD  "Discharge diagnosis", rank 1..n
+//      chiefComplaintId    → use CC  "Chief complaint",     rank n+1   (Playbook bab 3 & 27)
+//    (system http://terminology.hl7.org/CodeSystem/diagnosis-role)
+
+// Pemanggil (kirim-encounter RJ/UGD/RI → finishInti):
+$encounterTersimpan = $this->siapkanFinishEncounter(
+    $this->getEncounter($satuSehat['encounterId']), $akhirIso, $conditionIdList,
+    $satuSehat['chiefComplaintId'] ?? null
+);
+// + hospitalization.dischargeDisposition (DischargeDisposition::rawatJalan/gawatDarurat/rawatInap)
+// + UGD: pasangKelasLayanan() untuk Encounter lama
+$this->makeRequest('put', "Encounter/{$satuSehat['encounterId']}", $encounterTersimpan);
+TXT,
+
+'triaged-ugd' => <<<'TXT'
+// ugd/satu-sehat/⚡kirim-encounter.blade.php — kirimInti()
+// arrived (POST) → triaged (PUT) → in-progress (PUT) → finished (PUT saat finish)
+
+$waktuDatangIso = $ugdDate->toIso8601String();                 // kolom rj_date
+
+if (empty($satuSehat['encounterTriaged'])) {
+    $tingkatTriase = KedatanganIgd::tingkatTriase($dataUGD)['tingkat'];   // P0–P3 (EMR / saran Screening)
+    $jamTriase = trim($dataUGD['screening']['tanggalPelayanan'] ?? '')    // TTD Screening
+        ?: trim($dataUGD['anamnesa']['pengkajianPerawatan']['jamDatang'] ?? '');  // cadangan
+    if ($tingkatTriase !== '' && $jamTriase !== '') {
+        $waktuTriaseIso = $this->waktuTerakhir($waktuDatangIso, parseDate($jamTriase));  // ≥ arrived
+        $this->tambahStatusEncounter($encounterId, 'triaged', $waktuTriaseIso);
+        $satuSehat['encounterTriaged'] = true;
+        $this->saveResult($rjNo, $satuSehat);    // simpan SEGERA: in-progress gagal ≠ triaged dobel
+    } else {
+        $catatanTriase = ' — TANPA status triaged: ...';   // toast KUNING, Encounter tetap jalan
+    }
+}
+
+$jamPeriksa = $dataUGD['perencanaan']['pengkajianMedis']['waktuPemeriksaan'] ?? '';
+$waktuMulaiIso = $this->waktuTerakhir($waktuTriaseIso ?: $waktuDatangIso, parseDate($jamPeriksa));
+$this->startRoomEncounter($encounterId, ['startDate' => $waktuMulaiIso, 'locationId' => $locationId]);
+
+// EncounterTrait::tambahStatusEncounter($id, $status, $mulaiIso)
+//   GET → status = $status, statusHistory[] += {status, period.start} → PUT utuh. Lokasi tak disentuh.
+TXT,
+
+'service-class' => <<<'TXT'
+// EncounterTrait::pasangKelasLayanan($encounter, $kelasSystem, $kode, $display,
+//                                    $indikator = 'kelas-tetap', $indikatorDisplay = 'Kelas Tetap Perawatan')
+// Canonical: SATUSEHAT FHIR R4 IG (Simplifier) → Extensions/ServiceClass.
+// Dipasang di SETIAP Encounter.location[] yang belum punya; aman dipanggil berulang.
+
+"location": [{
+  "location": { "reference": "Location/{uuid}" },
+  "status": "active",
+  "period": { "start": "..." },
+  "extension": [{
+    "url": "https://fhir.kemkes.go.id/r4/StructureDefinition/ServiceClass",
+    "extension": [
+      { "url": "value",
+        "valueCodeableConcept": { "coding": [{
+          "system": "http://terminology.kemkes.go.id/CodeSystem/locationServiceClass-Outpatient",
+          "code": "reguler", "display": "Kelas Reguler" }] } },
+      { "url": "upgradeClassIndicator",
+        "valueCodeableConcept": { "coding": [{
+          "system": "http://terminology.kemkes.go.id/CodeSystem/locationUpgradeClass",
+          "code": "kelas-tetap", "display": "Kelas Tetap Perawatan" }] } }
+    ]
+  }]
+}]
+
+// Kewajiban per modul (Pemetaan Nilai Encounter, dok resmi Kemkes):
+//   IGD : serviceClass.value & .upgradeClassIndicator BERTANDA *  → dipasang (reguler/kelas-tetap)
+//   RJ  : tanpa *  → tidak dipasang (RS tak punya poli eksekutif)
+//   RI  : tanpa *  → belum (usulan: 1/2/3/vip/vvip + naik/turun/titip-rawat dari riwayat kamar)
+// Pemasangan UGD: createNewEncounter([... 'kelasLayanan' => self::KELAS_LAYANAN_IGD])
+//                 + finishInti() melengkapi Encounter yang dibuat sebelum fitur ini.
+TXT,
+
+'careplan-ugd' => <<<'TXT'
+// JSON datadaftarugd_json → perencanaan.dischargePlanning (bentuk SAMA dengan RI)
+"dischargePlanning": {
+  "pelayananBerkelanjutan": {
+    "pelayananBerkelanjutan": "Ada",                 // Ada | Tidak Ada
+    "ketPelayananBerkelanjutan": "",
+    "pelayananBerkelanjutanData": [{
+      "id": "uuid", "jenisPelayanan": "Perawatan luka", "ketJenis": "",
+      "tempatFasyankes": "Puskesmas X", "tglRencana": "05/11/2026",
+      "snomedCode": "225358003", "snomedDisplay": "Wound care",     // disimpan PER ENTRI
+      "petugas": "...", "petugasCode": "...", "tglPencatatan": "29/10/2026 22:40:00"
+    }]
+  },
+  "penggunaanAlatBantu": {
+    "penggunaanAlatBantu": "Ada", "ketPenggunaanAlatBantu": "",
+    "penggunaanAlatBantuData": [{
+      "id": "uuid", "jenisAlat": "Kursi roda", "ketAlat": "", "durasi": "2 minggu",
+      "sumberAlat": "Pinjam RS", "snomedCode": "58938008", "snomedDisplay": "WC - Wheelchair", ...
+    }]
+  }
+}
+
+// Kode dari App\Support\Options\DischargePlanningOptions (diverifikasi tx.fhir.org — JANGAN hafalan).
+
+// → kartu ugd/satu-sehat/⚡kirim-perencanaan-pulang (CarePlanTrait::createCarePlanPemulangan)
+POST /CarePlan
+{ "status": "active", "intent": "plan", "title": "Perencanaan Pemulangan Pasien",
+  "category": [{ "coding": [{ "system": "http://snomed.info/sct", "code": "736372004",
+                              "display": "Discharge care plan" }] }],
+  "description": "Pelayanan berkelanjutan: Perawatan luka di Puskesmas X, rencana 05/11/2026. ...",
+  "subject": Patient, "encounter": Encounter, "author": Practitioner (dr_uuid DPJP UGD),
+  "created": rj_date, "period": { "end": taskId7 → selesaiPemeriksaan },
+  "activity": [
+    { "detail": { "kind": "ServiceRequest", "status": "not-started", "code": SNOMED pelayanan, ... } },
+    { "detail": { "kind": "DeviceRequest",  "status": "not-started", "code": SNOMED alat, ... } } ] }
+// Hasil: satusehat.perencanaanPulangId → section "Perencanaan Perawatan" resume medis UGD/RI.
+TXT,
+
+'uji-siklus' => <<<'TXT'
+// Uji kering SIKLUS Encounter dengan "server" tiruan di memori — tak ada yang terkirim.
+$t = new class {
+    use App\Http\Traits\SATUSEHAT\EncounterTrait;
+    public array $server = [];
+    public function makeRequest($method, $url, $payload = []) {
+        if ($method === 'get') return $this->server;     // getEncounter() membaca "server"
+        $this->server = $payload;                        // POST/PUT menimpa "server"
+        return $payload;
+    }
+};
+$t->createNewEncounter([... 'class_code' => 'EMER', 'startDate' => '2026-10-29T22:00:00+07:00',
+                        'kelasLayanan' => [...]]);
+$t->tambahStatusEncounter('x', 'triaged', '2026-10-29T22:05:00+07:00');
+$t->startRoomEncounter('x', ['startDate' => '2026-10-29T22:20:00+07:00', 'locationId' => 'L']);
+$akhir = $t->siapkanFinishEncounter($t->server, '2026-10-30T02:00:00+07:00', ['c1'], 'kk1');
+
+// Hasil yang diharapkan:
+//   statusHistory  arrived 22:00→22:05 · triaged 22:05→22:20 · in-progress 22:20→02:00 · finished
+//   location       1 entri (tak dobel), completed, end 02:00, extension ServiceClass 1x
+//   classHistory   EMER 22:00→02:00
+//   diagnosis      DD (c1, rank 1) · CC (kk1, rank 2)
+//
+// Uji render komponen Livewire TANPA DB:
+//   Livewire::test('pages::transaksi.ugd.emr-ugd.perencanaan.rm-perencanaan-ugd-actions')
+//       ->set('dokumenTermuat', true)->set('perencanaan', $dataBuatan)->html();
+// Jalankan dengan CACHE_STORE=array SESSION_DRIVER=array (DB lokal bisa mati / menunjuk PRODUKSI).
+TXT,
+
 'auth' => <<<'TXT'
 // OAuth2 client_credentials — SatuSehatTrait::getAccessToken()
 public function getAccessToken(): string
@@ -427,6 +614,12 @@ TXT,
                 'ri-ugd'    => 'Status per Modul (RJ/UGD/RI)',
                 'coding'    => 'Coding SATUSEHAT & Alur apikesehatan',
             ],
+            'Pembaruan 29/10 — PDF Petirs' => [
+                'aturan-main'        => 'Aturan Main → Implementasi',
+                'siklus-encounter'   => 'Siklus Encounter RJ/UGD/RI',
+                'rencana-pemulangan' => 'Discharge Planning & CarePlan',
+                'episode-tautan'     => 'EpisodeOfCare & Tautan Kunjungan',
+            ],
             'Adopsi' => [
                 'dashboard'  => 'Peta Dashboard SATUSEHAT',
                 'pacs'       => 'PACS, DICOM Router & ImagingStudy',
@@ -523,6 +716,8 @@ TXT,
                     @include('pages.panduan-dev.koding-satusehat.koding-satusehat-ri-ugd')
 
                     @include('pages.panduan-dev.koding-satusehat.koding-satusehat-coding')
+
+                    @include('pages.panduan-dev.koding-satusehat.koding-satusehat-petirs')
 
                     @include('pages.panduan-dev.koding-satusehat.koding-satusehat-dashboard')
 

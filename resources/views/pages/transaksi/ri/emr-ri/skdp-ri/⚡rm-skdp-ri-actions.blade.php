@@ -9,7 +9,6 @@ use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 use App\Http\Traits\Concerns\WithValidationToastTrait;
 use App\Http\Traits\BPJS\VclaimTrait;
-use App\Support\SuratKontrolBpjs;
 
 new class extends Component {
     use EmrRITrait, WithRenderVersioningTrait, WithValidationToastTrait;
@@ -222,25 +221,24 @@ new class extends Component {
     /* ═══════════════════════════════════════
      | PUSH SKDP BPJS
     ═══════════════════════════════════════ */
-    private function pushSuratKontrolBPJS(): void
+    /** true = surat kontrol BPJS terbit/diperbarui, atau pasien bukan BPJS (tak perlu push). */
+    private function pushSuratKontrolBPJS(): bool
     {
         $klaimStatus = DB::table('rsmst_klaimtypes')
             ->where('klaim_id', $this->klaimId)
             ->value('klaim_status') ?? 'UMUM';
 
         if ($klaimStatus !== 'BPJS') {
-            return;
+            return true;
         }
 
-        // Surat kontrol untuk SEP ini mungkin SUDAH terbit walau form ini kosong — mis. petugas lain
-        // menyimpannya sesudah form ini dibuka. Dulu form kosong langsung insert ulang → BPJS menolak,
-        // nomor kosong lalu disimpan menimpa nomor yang ada ("nomor tiba-tiba hilang", 2026-10-28).
-        // Urutan: nomor di DB → cek ke BPJS by kartu (SEP asal sama) → baru insert.
+        // Form kosong tapi nomor SUDAH ada di DB (petugas lain menyimpannya sesudah form ini dibuka) → pakai nomor DB
+        // & kirim Update, bukan Insert ulang. Surat kontrol yang terbit di BPJS tapi tak tersimpan di DB dibereskan
+        // petugas lewat modal Daftar Surat Kontrol BPJS (lihat + hapus), bukan dicocokkan otomatis.
         if (empty($this->formKontrol['noSKDPBPJS'])) {
-            $noTerbit = trim((string) ($this->findDataRI($this->riHdrNo)['kontrol']['noSKDPBPJS'] ?? '')) ?: $this->cariSuratKontrolTerbit();
-            if ($noTerbit !== '') {
-                $this->formKontrol['noSKDPBPJS'] = $noTerbit;
-                $this->dispatch('toast', type: 'info', message: "Surat kontrol untuk SEP ini sudah terbit ({$noTerbit}) — diperbarui, bukan dibuat ulang.");
+            $noSKDPBPJSTersimpan = trim((string) ($this->findDataRI($this->riHdrNo)['kontrol']['noSKDPBPJS'] ?? ''));
+            if ($noSKDPBPJSTersimpan !== '') {
+                $this->formKontrol['noSKDPBPJS'] = $noSKDPBPJSTersimpan;
             }
         }
 
@@ -258,19 +256,22 @@ new class extends Component {
                 $this->formKontrol['noSKDPBPJS'] = $response['response']['noSuratKontrol'] ?? '';
             }
             $this->dispatch('toast', type: 'success', message: "{$label} {$code} {$message}");
-        } else {
-            $this->dispatch('toast', type: 'error', message: "{$label} {$code} {$message}");
+
+            return true;
         }
+
+        $this->dispatch('toast', type: 'error', message: "{$label} {$code} {$message}");
+
+        return false;
     }
 
-    /** Nomor surat kontrol yang sudah terbit di BPJS untuk SEP kunjungan ini ('' = belum / tak bisa dicek) — App\Support\SuratKontrolBpjs. */
-    private function cariSuratKontrolTerbit(): string
+    /** No kartu BPJS pasien: master pasien, cadangan dari request SEP. */
+    private function noKartuPasien(): string
     {
         $data = $this->findDataRI($this->riHdrNo) ?? [];
-        $noKartu = trim((string) (DB::table('rsmst_pasiens')->where('reg_no', $data['regNo'] ?? '')->value('nokartu_bpjs') ?? ''))
-            ?: trim((string) ($data['sep']['reqSep']['request']['t_sep']['noKartu'] ?? ''));
 
-        return SuratKontrolBpjs::nomorTerbit((string) ($this->formKontrol['noSEP'] ?? ''), $noKartu, $this->formKontrol['tglKontrol'] ?? null);
+        return trim((string) (DB::table('rsmst_pasiens')->where('reg_no', $data['regNo'] ?? '')->value('nokartu_bpjs') ?? ''))
+            ?: trim((string) ($data['sep']['reqSep']['request']['t_sep']['noKartu'] ?? ''));
     }
 
     /* ═══════════════════════════════════════
@@ -292,7 +293,7 @@ new class extends Component {
         $this->validateWithToast();
 
         // Push ke BPJS — DI LUAR transaksi DB
-        $this->pushSuratKontrolBPJS();
+        $bpjsOk = $this->pushSuratKontrolBPJS();
 
         // Simpan ke DB
         try {
@@ -307,9 +308,9 @@ new class extends Component {
 
                 $isBaru = empty($fresh['kontrol']);
                 // Nomor surat kontrol yang sudah ada di DB TIDAK BOLEH ditimpa kosong (form basi / insert gagal).
-                $noDb = trim((string) ($fresh['kontrol']['noSKDPBPJS'] ?? ''));
-                if (trim((string) ($this->formKontrol['noSKDPBPJS'] ?? '')) === '' && $noDb !== '') {
-                    $this->formKontrol['noSKDPBPJS'] = $noDb;
+                $noSKDPBPJSTersimpan = trim((string) ($fresh['kontrol']['noSKDPBPJS'] ?? ''));
+                if (trim((string) ($this->formKontrol['noSKDPBPJS'] ?? '')) === '' && $noSKDPBPJSTersimpan !== '') {
+                    $this->formKontrol['noSKDPBPJS'] = $noSKDPBPJSTersimpan;
                 }
                 $fresh['kontrol'] = $this->formKontrol;
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
@@ -319,7 +320,11 @@ new class extends Component {
             });
 
             $this->incrementVersion('modal-skdp-ri');
-            $this->dispatch('toast', type: 'success', message: 'Surat Kontrol berhasil disimpan.');
+            if ($bpjsOk) {
+                $this->dispatch('toast', type: 'success', message: 'Surat Kontrol berhasil disimpan.');
+            } else {
+                $this->dispatch('toast', type: 'warning', message: 'Data kontrol tersimpan di SIRUS, tetapi surat kontrol BPJS BELUM terbit (tanpa nomor). Perbaiki lalu simpan ulang.');
+            }
         } catch (\RuntimeException $e) {
             $this->dispatch('toast', type: 'error', message: $e->getMessage());
         } catch (\Throwable $e) {
@@ -334,6 +339,19 @@ new class extends Component {
             return;
         }
         $this->dispatch('cetak-skdp-ri.open', riHdrNo: (string) $this->riHdrNo);
+    }
+
+    /* ═══════════════════════════════════════
+     | DAFTAR SURAT KONTROL BPJS (lihat + hapus) — komponen bersama modul-dokumen/bpjs/daftar-surat-kontrol.
+     | Nomor kunjungan ikut dikirim: modal menolak menghapus No SKDP BPJS yang tersimpan di kunjungan ini.
+    ═══════════════════════════════════════ */
+    public function bukaDaftarSuratKontrol(): void
+    {
+        if (!auth()->user()?->can('bpjs.hapusSuratKontrol')) {
+            $this->dispatch('toast', type: 'error', message: 'Hanya Admin & manager ke atas yang dapat membuka/menghapus surat kontrol BPJS.');
+            return;
+        }
+        $this->dispatch('daftar-surat-kontrol-bpjs.open', noKartu: $this->noKartuPasien(), noSep: (string) ($this->formKontrol['noSEP'] ?? ''), jalur: 'RI', nomorKunjungan: (string) $this->riHdrNo);
     }
 };
 ?>
@@ -434,7 +452,22 @@ new class extends Component {
                         </div>
                     </div>
 
-                    <div class="flex justify-end gap-2 pt-2">
+                    <div class="flex flex-wrap items-center justify-end gap-2 pt-2">
+                        {{-- Daftar surat kontrol BPJS milik kartu pasien (lihat + hapus di VClaim) — mepet kiri --}}
+                        @if (!$isFormLocked && auth()->user()?->can('bpjs.hapusSuratKontrol'))
+                            <x-secondary-button type="button" wire:click="bukaDaftarSuratKontrol" wire:loading.attr="disabled"
+                                wire:target="bukaDaftarSuratKontrol" class="mr-auto">
+                                <span wire:loading.remove wire:target="bukaDaftarSuratKontrol" class="inline-flex items-center gap-2">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                                    </svg>
+                                    Daftar Surat Kontrol BPJS
+                                </span>
+                                <span wire:loading wire:target="bukaDaftarSuratKontrol" class="inline-flex items-center gap-2"><x-loading /> Memuat...</span>
+                            </x-secondary-button>
+                        @endif
+
                         {{-- Cetak --}}
                         @if (!empty($formKontrol['noSKDPBPJS']) || !empty($formKontrol['noKontrolRS']))
                             <x-cetak-button wire:click="cetakSKDP" label="Cetak SKDP" />
@@ -466,4 +499,7 @@ new class extends Component {
 
     {{-- Cetak SKDP --}}
     <livewire:pages::components.modul-dokumen.bpjs.cetak-skdp.cetak-skdp wire:key="cetak-skdp-ri-{{ $riHdrNo }}" />
+
+    {{-- Daftar surat kontrol BPJS (modal centang + hapus) --}}
+    <livewire:pages::components.modul-dokumen.bpjs.daftar-surat-kontrol.daftar-surat-kontrol wire:key="daftar-surat-kontrol-ri-{{ $riHdrNo }}" />
 </div>

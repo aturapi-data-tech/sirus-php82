@@ -66,9 +66,10 @@ trait ObservationTrait
         if (!empty($data['specimen'])) {
             $payload['specimen'] = ['reference' => $data['specimen']];
         }
-        if (!empty($data['issued'])) {
-            $payload['issued'] = $data['issued'];
-        }
+        // issued WAJIB (RuleNumber 10296 — "Element not found: Observation.issued"). Lab/radiologi
+        // mengirim jam hasil terbit; tanda vital dkk. tak punya jam terbit terpisah → hasilnya
+        // tersedia saat diukur, jadi disamakan dengan effectiveDateTime (tetap dari data, bukan now()).
+        $payload['issued'] = !empty($data['issued']) ? $data['issued'] : $payload['effectiveDateTime'];
         // Opsional (aditif): catatan bebas — mis. asal surat rujukan (Playbook IGD 3b).
         if (filled($data['note'] ?? null)) {
             $payload['note'] = [['text' => (string) $data['note']]];

@@ -177,7 +177,7 @@ new class extends Component {
 
         try {
             DB::transaction(function () use ($empId, $shift, $tanggal) {
-                $nextNo = DB::selectOne('SELECT tucashk_seq.NEXTVAL AS val FROM dual')->val;
+                $nextNo = DB::selectOne('SELECT tucashd_seq.NEXTVAL AS val FROM dual')->val;
 
                 DB::table('rstxn_tucashds')->insert([
                     'tucashk_no' => $nextNo,
