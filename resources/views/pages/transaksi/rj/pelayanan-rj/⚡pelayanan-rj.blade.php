@@ -354,6 +354,29 @@ new class extends Component {
                     $row->masa_rujukan = null;
                 }
 
+                // Keterangan masuk BPJS (jenis kunjungan saat pendaftaran) — label sama dgn kunjunganOptions di daftar-rj-actions.
+                $kunjunganId = (string) ($json['kunjunganId'] ?? '');
+                $kunjunganLabel = match ($kunjunganId) {
+                    '1' => 'Rujukan FKTP',
+                    '2' => 'Rujukan Internal',
+                    '3' => 'Kontrol',
+                    '4' => 'Rujukan Antar RS',
+                    default => null,
+                };
+                if ($kunjunganLabel) {
+                    $sub = match ($kunjunganId) {
+                        '2' => $json['internal12Desc'] ?? null,
+                        '3' => $json['kontrol12Desc'] ?? null,
+                        default => null,
+                    };
+                    if (!empty($json['postInap'])) {
+                        $sub = trim(($sub ? $sub . ' · ' : '') . 'Post Inap');
+                    }
+                    $kunjunganLabel .= ($sub && $sub !== '-') ? ' (' . $sub . ')' : '';
+                }
+                $row->kunjungan_bpjs = $kunjunganLabel;
+                $row->no_referensi = $json['noReferensi'] ?? null;
+
                 $row->admin_user = isset($json['AdministrasiRj']) ? $json['AdministrasiRj']['userLog'] ?? '✔' : '—';
                 $row->tindak_lanjut = $json['perencanaan']['tindakLanjut']['tindakLanjut'] ?? '-';
                 $row->tindak_lanjut_detail = $json['perencanaan']['tindakLanjut'] ?? null;
@@ -708,6 +731,16 @@ new class extends Component {
                                             <div class="text-xs text-body dark:text-gray-400 leading-tight">
                                                 No Booking: {{ $row->no_booking ?? '-' }}
                                             </div>
+                                            @if ($row->kunjungan_bpjs)
+                                                <div class="text-xs text-body dark:text-gray-300 leading-tight">
+                                                    Masuk: <span class="font-medium">{{ $row->kunjungan_bpjs }}</span>
+                                                </div>
+                                            @endif
+                                            @if (filled($row->no_referensi))
+                                                <div class="text-xs text-muted dark:text-gray-400 leading-tight">
+                                                    No Referensi: {{ $row->no_referensi }}
+                                                </div>
+                                            @endif
                                         @endif
                                         <div x-show="expanded" x-collapse class="space-y-0.5">
                                             <div class="text-xs text-muted dark:text-gray-500 leading-tight">
@@ -866,25 +899,30 @@ new class extends Component {
                                             </span>
                                         </div>
 
+                                        {{-- Tindak lanjut (keterangan keluar) & No SKDP sengaja DI LUAR blok expanded:
+                                             petugas perlu langsung melihatnya tanpa membuka detail. --}}
+                                        @if ($row->tindak_lanjut && $row->tindak_lanjut !== '-')
+                                            <div class="text-xs text-body dark:text-gray-300 leading-tight">
+                                                Tindak Lanjut: <span class="font-medium">{{ $row->tindak_lanjut }}</span>
+                                                @if (filled($row->tindak_lanjut_detail['keteranganTindakLanjut'] ?? null))
+                                                    — {{ $row->tindak_lanjut_detail['keteranganTindakLanjut'] }}
+                                                @endif
+                                            </div>
+                                        @endif
+
+                                        @if ($row->no_skdp_bpjs && $row->no_skdp_bpjs != '-')
+                                            <div class="text-xs text-body dark:text-gray-300 leading-tight">
+                                                No SKDP BPJS: <span class="font-medium">{{ $row->no_skdp_bpjs }}</span>
+                                            </div>
+                                        @endif
+
                                         <div x-show="expanded" x-collapse class="space-y-0.5">
-                                            @if ($row->tindak_lanjut && $row->tindak_lanjut !== '-')
-                                                <div class="text-xs text-body dark:text-gray-400 leading-tight">
-                                                    Tindak Lanjut : {{ $row->tindak_lanjut }}
-                                                </div>
-                                            @endif
 
                                             @if (($row->tindak_lanjut_detail['tindakLanjut'] ?? null) === 'Kontrol')
                                                 @if (!empty($row->tgl_kontrol) && $row->tgl_kontrol !== '-')
                                                     <div
                                                         class="text-xs text-body dark:text-gray-300 leading-tight">
                                                         Tanggal Kontrol : {{ $row->tgl_kontrol }}
-                                                    </div>
-                                                @endif
-
-                                                @if ($row->no_skdp_bpjs && $row->no_skdp_bpjs != '-')
-                                                    <div
-                                                        class="text-xs text-muted dark:text-gray-400 leading-tight">
-                                                        No SKDP BPJS: {{ $row->no_skdp_bpjs }}
                                                     </div>
                                                 @endif
 
