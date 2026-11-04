@@ -348,7 +348,9 @@ new class extends Component {
                 if (isset($json['sep']['reqSep']['request']['t_sep']['rujukan']['tglRujukan'])) {
                     $tglRujukan = Carbon::parse($json['sep']['reqSep']['request']['t_sep']['rujukan']['tglRujukan']);
                     $batas = $tglRujukan->copy()->addMonths(3);
-                    $sisaHari = (int) now()->diffInDays($batas, false);
+                    // Sisa dihitung dari TANGGAL KUNJUNGAN (bukan hari ini) — data tanggal lampau tidak jadi minus.
+                    $tglKunjungan = filled($row->rj_date_display ?? null) ? Carbon::createFromFormat('d/m/Y H:i:s', $row->rj_date_display)->startOfDay() : now()->startOfDay();
+                    $sisaHari = (int) $tglKunjungan->diffInDays($batas, false);
                     $row->masa_rujukan = 'Masa berlaku Rujukan <br>' . $tglRujukan->format('d/m/Y') . ' s/d ' . $batas->format('d/m/Y') . '<br>Sisa : ' . $sisaHari . ' hari';
                 } else {
                     $row->masa_rujukan = null;
@@ -375,7 +377,6 @@ new class extends Component {
                     $kunjunganLabel .= ($sub && $sub !== '-') ? ' (' . $sub . ')' : '';
                 }
                 $row->kunjungan_bpjs = $kunjunganLabel;
-                $row->no_referensi = $json['noReferensi'] ?? null;
 
                 $row->admin_user = isset($json['AdministrasiRj']) ? $json['AdministrasiRj']['userLog'] ?? '✔' : '—';
                 $row->tindak_lanjut = $json['perencanaan']['tindakLanjut']['tindakLanjut'] ?? '-';
@@ -726,27 +727,28 @@ new class extends Component {
                                                 @endif
                                             </div>
                                         @endif
-                                        {{-- No Booking — hanya untuk pasien BPJS (klaim_status=BPJS atau klaim_id=JM/JKN Mobile) --}}
-                                        @if ($row->klaim_status === 'BPJS' || $row->klaim_id === 'JM')
-                                            <div class="text-xs text-body dark:text-gray-400 leading-tight">
-                                                No Booking: {{ $row->no_booking ?? '-' }}
-                                            </div>
-                                            @if ($row->kunjungan_bpjs)
-                                                <div class="text-xs text-body dark:text-gray-300 leading-tight">
-                                                    Masuk: <span class="font-medium">{{ $row->kunjungan_bpjs }}</span>
-                                                </div>
-                                            @endif
-                                            @if (filled($row->no_referensi))
-                                                <div class="text-xs text-muted dark:text-gray-400 leading-tight">
-                                                    No Referensi: {{ $row->no_referensi }}
-                                                </div>
-                                            @endif
-                                        @endif
-                                        <div x-show="expanded" x-collapse class="space-y-0.5">
-                                            <div class="text-xs text-muted dark:text-gray-500 leading-tight">
-                                                {{ $row->rj_date_display ?? '-' }} | Shift : {{ $row->shift ?? '-' }}
-                                            </div>
+                                        <div class="text-xs text-body dark:text-gray-300 leading-tight">
+                                            {{ $row->rj_date_display ?? '-' }} | Shift : {{ $row->shift ?? '-' }}
                                         </div>
+                                        {{-- Jenis masuk — hanya untuk pasien BPJS (klaim_status=BPJS atau klaim_id=JM/JKN Mobile) --}}
+                                        @if (($row->klaim_status === 'BPJS' || $row->klaim_id === 'JM') && $row->kunjungan_bpjs)
+                                            <div class="text-xs text-body dark:text-gray-300 leading-tight">
+                                                Masuk: <span class="font-medium">{{ $row->kunjungan_bpjs }}</span>
+                                            </div>
+                                        @endif
+                                        {{-- Data kunjungan lengkap (booking, referensi, SEP, kontrol) di modal ⚡info-kunjungan-rj
+                                             supaya grid tidak penuh. --}}
+                                        @if (!$row->is_booking_pending)
+                                            <button type="button"
+                                                x-on:click.stop="$dispatch('open-info-kunjungan-rj', { rjNo: {{ $row->rj_no }} })"
+                                                class="inline-flex items-center gap-1 text-xs font-medium text-brand-green hover:underline dark:text-brand-lime"
+                                                title="Lihat detail kunjungan lengkap">
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                </svg>
+                                                Detail Kunjungan
+                                            </button>
+                                        @endif
                                     </td>
 
                                     {{-- STATUS LAYANAN --}}
@@ -788,13 +790,11 @@ new class extends Component {
                                                 </div>
                                             </div>
 
-                                            <div x-show="expanded" x-collapse class="space-y-2">
-                                                @if ($row->status_resep)
-                                                    <x-badge :variant="$row->status_resep_color">
-                                                        Status Resep: {{ $row->status_resep_label }}
-                                                    </x-badge>
-                                                @endif
-                                            </div>
+                                            @if ($row->status_resep)
+                                                <x-badge :variant="$row->status_resep_color">
+                                                    Status Resep: {{ $row->status_resep_label }}
+                                                </x-badge>
+                                            @endif
 
                                             {{-- <div class="text-xs text-muted dark:text-gray-400">
                                                 <span class="font-semibold">Diagnosa:</span><br>
@@ -850,29 +850,6 @@ new class extends Component {
                                                     <span class="font-medium">{{ $row->task_id5 ?: '—' }}</span>
                                                 </span>
                                             </div>
-                                            @php
-                                                $rjLabel = match ($row->rj_status) {
-                                                    'A' => 'Menunggu Pembayaran',
-                                                    'L' => 'Selesai Pembayaran',
-                                                    'I' => 'Transfer UGD',
-                                                    'F' => 'Batal',
-                                                    default => null,
-                                                };
-                                                $rjTextColor = match ($row->rj_status) {
-                                                    'A' => 'text-slate-500 dark:text-slate-400',
-                                                    'L' => 'text-success dark:text-success',
-                                                    'I' => 'text-blue-600 dark:text-blue-400',
-                                                    'F' => 'text-red-600 dark:text-red-400',
-                                                    default => 'text-muted-soft',
-                                                };
-                                            @endphp
-                                            @if ($rjLabel)
-                                                <div class="text-xs text-muted dark:text-gray-500">
-                                                    Kasir:
-                                                    <span
-                                                        class="font-medium {{ $rjTextColor }}">{{ $rjLabel }}</span>
-                                                </div>
-                                            @endif
                                             <div class="flex items-center gap-1.5">
                                                 <span
                                                     class="w-2 h-2 rounded-full {{ $row->task_id6 ? 'bg-emerald-500' : 'bg-gray-300' }}"></span>
@@ -898,6 +875,29 @@ new class extends Component {
                                                 {{ $row->admin_user }}
                                             </span>
                                         </div>
+                                        @php
+                                            $rjLabel = match ($row->rj_status) {
+                                                'A' => 'Menunggu Pembayaran',
+                                                'L' => 'Selesai Pembayaran',
+                                                'I' => 'Transfer UGD',
+                                                'F' => 'Batal',
+                                                default => null,
+                                            };
+                                            $rjTextColor = match ($row->rj_status) {
+                                                'A' => 'text-slate-500 dark:text-slate-400',
+                                                'L' => 'text-success dark:text-success',
+                                                'I' => 'text-blue-600 dark:text-blue-400',
+                                                'F' => 'text-red-600 dark:text-red-400',
+                                                default => 'text-muted-soft',
+                                            };
+                                        @endphp
+                                        @if ($rjLabel)
+                                            <div class="text-xs text-muted dark:text-gray-500">
+                                                Kasir:
+                                                <span
+                                                    class="font-medium {{ $rjTextColor }}">{{ $rjLabel }}</span>
+                                            </div>
+                                        @endif
 
                                         {{-- Tindak lanjut (keterangan keluar) & No SKDP sengaja DI LUAR blok expanded:
                                              petugas perlu langsung melihatnya tanpa membuka detail. --}}
@@ -1219,6 +1219,7 @@ new class extends Component {
             <livewire:pages::components.rekam-medis.etiket.cetak-etiket wire:key="cetak-etiket-pasien" />
             <livewire:pages::components.rekam-medis.etiket.cetak-etiket-auto wire:key="cetak-etiket-auto-pasien" />
             <livewire:pages::transaksi.rj.daftar-rj.info-kelengkapan-emr wire:key="info-kelengkapan-emr-rj" />
+            <livewire:pages::transaksi.rj.pelayanan-rj.info-kunjungan-rj wire:key="info-kunjungan-rj" />
             <livewire:pages::transaksi.rj.pelayanan-rj.pengkajian-medis-rj-actions wire:key="pengkajian-medis-rj-actions" />
             <livewire:pages::transaksi.rj.pelayanan-rj.prmrj-rj-actions wire:key="prmrj-rj-actions" />
 
