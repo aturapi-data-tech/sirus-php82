@@ -688,7 +688,7 @@ trait VclaimTrait
             $url = env('VCLAIM_URL') . "RencanaKontrol/ListRencanaKontrol/Bulan/{$r['bulan']}/Tahun/{$r['tahun']}/Nokartu/{$r['noKartu']}/filter/{$r['filter']}";
 
             $signature = self::signature();
-            $response = Http::timeout(8)->connectTimeout(3)
+            $response = BpjsHttp::mulai()
                 ->withHeaders($signature)
                 ->get($url);
 
@@ -728,7 +728,7 @@ trait VclaimTrait
             $signature = self::signature();
             $signature['Content-Type'] = 'application/x-www-form-urlencoded';
 
-            $response = Http::timeout(8)->connectTimeout(3)
+            $response = BpjsHttp::mulai()
                 ->withHeaders($signature)
                 ->delete($url, $r);
 

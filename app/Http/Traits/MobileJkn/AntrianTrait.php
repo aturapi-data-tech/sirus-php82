@@ -6,7 +6,7 @@ namespace App\Http\Traits\MobileJkn;
 use Carbon\Carbon;
 
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Http;
+use App\Support\Bpjs\BpjsHttp;
 use Illuminate\Support\Facades\Validator;
 
 use Exception;
@@ -202,7 +202,7 @@ trait AntrianTrait
             $url = env('ANTRIAN_URL') . "antrean/add";
             $signature = $this->signature();
 
-            $response = Http::timeout(10)
+            $response = BpjsHttp::mulai()
                 ->withHeaders($signature)
                 ->post(
                     $url,
@@ -284,7 +284,7 @@ trait AntrianTrait
             $url = env('ANTRIAN_URL') . "antrean/updatewaktu";
             $signature = $this->signature();
 
-            $response = Http::timeout(10)
+            $response = BpjsHttp::mulai()
                 ->withHeaders($signature)
                 ->post(
                     $url,
