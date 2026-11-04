@@ -612,6 +612,7 @@ new class extends Component {
                         </thead>
 
                         <tbody>
+                            @php $canDetailKunjungan = auth()->user()?->can('rj.detailKunjungan') ?? false; @endphp
                             @forelse($this->rows as $row)
                                 <tr wire:key="pelayanan-rj-row-{{ $row->rj_no }}" x-data="{ expanded: false }"
                                     style="position: relative;"
@@ -738,7 +739,8 @@ new class extends Component {
                                         @endif
                                         {{-- Data kunjungan lengkap (booking, referensi, SEP, kontrol) di modal ⚡info-kunjungan-rj
                                              supaya grid tidak penuh. --}}
-                                        @if (!$row->is_booking_pending)
+                                        {{-- Detail Kunjungan: manager ke atas saja (Gate rj.detailKunjungan / AksiRole::RJ_DETAIL_KUNJUNGAN). --}}
+                                        @if (!$row->is_booking_pending && $canDetailKunjungan)
                                             <button type="button"
                                                 x-on:click.stop="$dispatch('open-info-kunjungan-rj', { rjNo: {{ $row->rj_no }} })"
                                                 class="inline-flex items-center gap-1 text-xs font-medium text-brand-green hover:underline dark:text-brand-lime"
@@ -1219,7 +1221,9 @@ new class extends Component {
             <livewire:pages::components.rekam-medis.etiket.cetak-etiket wire:key="cetak-etiket-pasien" />
             <livewire:pages::components.rekam-medis.etiket.cetak-etiket-auto wire:key="cetak-etiket-auto-pasien" />
             <livewire:pages::transaksi.rj.daftar-rj.info-kelengkapan-emr wire:key="info-kelengkapan-emr-rj" />
-            <livewire:pages::transaksi.rj.pelayanan-rj.info-kunjungan-rj wire:key="info-kunjungan-rj" />
+            @can('rj.detailKunjungan')
+                <livewire:pages::transaksi.rj.pelayanan-rj.info-kunjungan-rj wire:key="info-kunjungan-rj" />
+            @endcan
             <livewire:pages::transaksi.rj.pelayanan-rj.pengkajian-medis-rj-actions wire:key="pengkajian-medis-rj-actions" />
             <livewire:pages::transaksi.rj.pelayanan-rj.prmrj-rj-actions wire:key="prmrj-rj-actions" />
 

@@ -146,6 +146,12 @@ class AksiRole
     public const RJ_KEMBALIKAN_BATAL = ['Admin', 'Manager Umum', 'Manager Medis'];
 
     /**
+     * Lihat modal Detail Kunjungan di grid Pelayanan RJ (⚡info-kunjungan-rj) — ringkasan Pendaftaran,
+     * EMR & Administrasi termasuk rincian biaya. Manager ke atas saja (keputusan user 2026-11-04).
+     */
+    public const RJ_DETAIL_KUNJUNGAN = ['Admin', 'Manager Umum', 'Manager Medis'];
+
+    /**
      * Buka Daftar Surat Kontrol BPJS (form SKDP RJ & RI) — modal berisi HAPUS surat kontrol di VClaim
      * (permanen). Admin & manager ke atas saja (keputusan user 2026-11-03).
      */
