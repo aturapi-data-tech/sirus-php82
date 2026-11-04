@@ -16,6 +16,7 @@ use Livewire\Attributes\Session;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use App\Support\GajiDokter\GajiDokter;
+use App\Support\GajiDokter\GajiDokterLampiran;
 use Carbon\Carbon;
 
 new class extends Component {
@@ -56,7 +57,7 @@ new class extends Component {
     }
 
     /**
-     * Saringan bersama untuk daftar, Final Semua, dan Cetak Semua — satu tempat
+     * Saringan bersama untuk daftar, Final Semua, dan Unduh ZIP — satu tempat
      * supaya ketiganya mustahil mengenai kumpulan baris yang berbeda.
      */
     protected function slipQuery()
@@ -247,11 +248,20 @@ new class extends Component {
     }
 
     /**
-     * Cetak seluruh slip pada tampilan ini jadi SATU berkas, satu dokter satu
-     * halaman. Detail ditarik sekali lalu dikelompokkan di memori — bukan
-     * di-query per slip — supaya tidak jadi N+1 saat mencetak puluhan dokter.
+     * Unduh seluruh slip pada tampilan ini sebagai SATU ZIP, satu folder per dokter:
+     *
+     *   Slip Gaji Dokter Oktober 2026.zip
+     *   └── dr. Andi Wijaya, Sp.PD/
+     *       ├── Slip Gaji - dr. Andi Wijaya, Sp.PD - Oktober 2026.pdf
+     *       └── Lampiran Pasien - dr. Andi Wijaya, Sp.PD - Oktober 2026.csv
+     *
+     * Bulan di nama berkas = BULAN GAJI (sama dengan judul slip). Slip memakai template cetak
+     * massal dengan satu slip per berkas (hasil identik dengan cetak satuan). Lampiran = CSV
+     * yang sama persis dengan tombol Unduh CSV di modal lampiran (GajiDokterLampiran::tulisCsv),
+     * ditarik SEKALI untuk semua dokter lewat GajiDokterLampiran::susun(). Dokter tanpa transaksi
+     * pasien hanya mendapat slip.
      */
-    public function cetakSemua(): mixed
+    public function unduhZip(): mixed
     {
         $headerList = $this->slipQuery()
             ->orderBy('d.dr_name')
@@ -259,9 +269,11 @@ new class extends Component {
             ->get();
 
         if ($headerList->isEmpty()) {
-            $this->dispatch('toast', type: 'warning', message: 'Tidak ada slip untuk dicetak.');
+            $this->dispatch('toast', type: 'warning', message: 'Tidak ada slip untuk diunduh.');
             return null;
         }
+
+        @set_time_limit(300); // ± 1 dtk per slip (dompdf + Tailwind) — cadangan untuk puluhan dokter
 
         $detailPerSlip = DB::table('rstxn_gajidoctordtls')
             ->whereIn('gajidoctor_no', $headerList->pluck('gajidoctor_no'))
@@ -269,26 +281,68 @@ new class extends Component {
             ->get()
             ->groupBy('gajidoctor_no');
 
+        $lampiranPerSlip = GajiDokterLampiran::susun($headerList->pluck('gajidoctor_no')->map(fn ($no) => (int) $no)->all())
+            ->keyBy(fn ($satuDokter) => $satuDokter['header']->gajidoctor_no);
+
         $identitasRs = DB::table('rsmst_identitases')
             ->select('int_name', 'int_address', 'int_city', 'int_phone1')
             ->first();
-
         $kota = trim((string) ($identitasRs->int_city ?? ''));
+        // locale('id') WAJIB — APP_LOCALE repo ini 'en'.
+        $tanggalCetak = trim($kota . ($kota !== '' ? ', ' : '') . now()->locale('id')->translatedFormat('d F Y'));
 
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pages.components.manajemen.cetak-slip-gaji.cetak-slip-gaji-massal-print', [
-            'slipList' => $headerList->map(fn ($header) => [
-                'header' => $header,
-                'detail' => $detailPerSlip[$header->gajidoctor_no] ?? collect(),
-            ]),
-            'judulPeriode' => $this->periodeGajiLabel,
-            'identitasRs' => $identitasRs,
-            // locale('id') WAJIB — APP_LOCALE repo ini 'en'.
-            'tanggalCetak' => trim($kota . ($kota !== '' ? ', ' : '') . now()->locale('id')->translatedFormat('d F Y')),
-        ])->setPaper('A4');
+        $berkasZip = tempnam(sys_get_temp_dir(), 'slipdr');
+        $zip = new \ZipArchive();
+        if ($zip->open($berkasZip, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal menyiapkan berkas ZIP.');
+            return null;
+        }
 
-        $namaBerkas = 'slip-gaji-' . $this->tahunJasa . $this->bulanJasa . '-semua.pdf';
+        $folderTerpakai = [];
+        foreach ($headerList as $header) {
+            $namaDokter = $this->namaAmanBerkas($header->dr_name) ?: (string) $header->dr_id;
+            // Nama dokter kembar → folder ditambah ID dokter supaya tidak saling menimpa.
+            $folder = isset($folderTerpakai[mb_strtolower($namaDokter)]) ? $namaDokter . ' (' . $header->dr_id . ')' : $namaDokter;
+            $folderTerpakai[mb_strtolower($folder)] = true;
+            $periodeGaji = (GajiDokterLampiran::NAMA_BULAN[$header->bulan_gaji] ?? $header->bulan_gaji) . ' ' . $header->tahun_gaji;
 
-        return response()->streamDownload(fn () => print $pdf->output(), $namaBerkas);
+            $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pages.components.manajemen.cetak-slip-gaji.cetak-slip-gaji-massal-print', [
+                'slipList' => collect([[
+                    'header' => $header,
+                    'detail' => $detailPerSlip[$header->gajidoctor_no] ?? collect(),
+                ]]),
+                'judulPeriode' => $periodeGaji,
+                'identitasRs' => $identitasRs,
+                'tanggalCetak' => $tanggalCetak,
+            ])->setPaper('A4');
+            $zip->addFromString("{$folder}/Slip Gaji - {$namaDokter} - {$periodeGaji}.pdf", $pdf->output());
+
+            $lampiran = $lampiranPerSlip[$header->gajidoctor_no] ?? null;
+            if ($lampiran !== null) {
+                $csv = fopen('php://temp', 'w+');
+                GajiDokterLampiran::tulisCsv($csv, [$lampiran]);
+                rewind($csv);
+                $zip->addFromString("{$folder}/Lampiran Pasien - {$namaDokter} - {$periodeGaji}.csv", stream_get_contents($csv));
+                fclose($csv);
+            }
+        }
+        $zip->close();
+
+        $isiZip = file_get_contents($berkasZip);
+        @unlink($berkasZip);
+
+        [$tahunGaji, $bulanGaji] = GajiDokter::periodeGaji($this->tahunJasa, $this->bulanJasa);
+        $namaZip = 'Slip Gaji Dokter ' . (GajiDokterLampiran::NAMA_BULAN[$bulanGaji] ?? $bulanGaji) . ' ' . $tahunGaji . '.zip';
+
+        // streamDownload (bukan download()->deleteFileAfterSend): Livewire membaca isi unduhan
+        // sendiri tanpa memanggil send(), jadi berkas sementara harus dibuang di sini.
+        return response()->streamDownload(fn () => print $isiZip, $namaZip, ['Content-Type' => 'application/zip']);
+    }
+
+    /** Nama dokter aman untuk nama folder/berkas ZIP: buang \ / : * ? " < > | dan karakter kontrol. */
+    protected function namaAmanBerkas(?string $nama): string
+    {
+        return trim(preg_replace('/\s+/', ' ', preg_replace('~[\\\\/:*?"<>|\x00-\x1F]+~', ' ', (string) $nama)), ' .');
     }
 
     /**
@@ -454,7 +508,19 @@ new class extends Component {
                             <span wire:loading wire:target="finalkanSemua"><x-loading /> Mengunci...</span>
                         </x-primary-button>
 
-                        <x-cetak-button wire:click="cetakSemua" :disabled="$this->ringkasan['slip'] === 0" label="Cetak Semua" title="Cetak semua slip pada tampilan ini — satu dokter satu halaman" />
+                        {{-- Unduh ZIP: satu folder per dokter berisi slip PDF + lampiran pasien CSV. --}}
+                        <x-secondary-button type="button" class="gap-2" wire:click="unduhZip"
+                            wire:loading.attr="disabled" wire:target="unduhZip"
+                            :disabled="$this->ringkasan['slip'] === 0"
+                            title="Unduh ZIP semua slip pada tampilan ini — satu folder per dokter berisi slip PDF + lampiran pasien CSV">
+                            <span wire:loading.remove wire:target="unduhZip" class="inline-flex items-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                                Unduh ZIP
+                            </span>
+                            <span wire:loading wire:target="unduhZip" class="inline-flex items-center gap-2">
+                                <x-loading /> Menyiapkan...
+                            </span>
+                        </x-secondary-button>
 
                         {{-- Lampiran = outline, bukan info: tampilan pendamping yang
                              berdiri sendiri, bukan dokumen utama periode ini. Dibuka di
