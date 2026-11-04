@@ -731,6 +731,11 @@ new class extends Component {
                                         <div class="text-xs text-body dark:text-gray-300 leading-tight">
                                             {{ $row->rj_date_display ?? '-' }} | Shift : {{ $row->shift ?? '-' }}
                                         </div>
+                                        @if (filled($row->no_booking) && $row->no_booking !== '-')
+                                            <div class="text-xs text-body dark:text-gray-300 leading-tight">
+                                                Kode Booking: <span class="font-mono font-medium">{{ $row->no_booking }}</span>
+                                            </div>
+                                        @endif
                                         {{-- Jenis masuk — hanya untuk pasien BPJS (klaim_status=BPJS atau klaim_id=JM/JKN Mobile) --}}
                                         @if (($row->klaim_status === 'BPJS' || $row->klaim_id === 'JM') && $row->kunjungan_bpjs)
                                             <div class="text-xs text-body dark:text-gray-300 leading-tight">
