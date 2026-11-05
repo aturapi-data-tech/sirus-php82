@@ -135,11 +135,12 @@ new class extends Component {
     /**
      * Pesan guard "sudah pernah transfer" yang bisa DILACAK: menyebut RI tujuan
      * (No. RI, tgl masuk, ruang/bed, status) dari tautan rstxn_ribiayaselamadugds.
-     * Null bila UGD ini belum punya tautan transfer.
+     * Null bila UGD ini belum punya tautan transfer — atau tautannya menunjuk RI
+     * berstatus Batal ('F') dan baru saja dibersihkan otomatis.
      *
-     * Kasus nyata: user sudah membatalkan inap, tapi tautan masih tertinggal
-     * (Batal Inap dari kasir RI / Oracle 6i tidak menghapus tautan ini; hanya
-     * "Batal Transfer" di kasir UGD yang menghapusnya) → status RI 'F'.
+     * Kasus nyata (RI 63993, 2026-11-05): user sudah membatalkan inap, tapi tautan
+     * masih tertinggal (Batal Inap dari kasir RI / Oracle 6i tidak menghapus tautan
+     * ini; hanya "Batal Transfer" di kasir UGD yang menghapusnya).
      */
     private function pesanSudahTransferRI(int $rjNo): ?string
     {
@@ -162,15 +163,76 @@ new class extends Component {
             return "Transfer ke RI sudah tercatat untuk UGD ini (No. RI {$link->ugd_no_rsri}), tetapi data RI tersebut tidak ditemukan. Hubungi Admin untuk membersihkan tautan transfer.";
         }
 
+        if ($ri->ri_status === 'F') {
+            $this->bersihkanTautanTransferRIBatal($rjNo, (int) $ri->rihdr_no);
+            $this->dispatch('toast', type: 'warning', message: "Tautan transfer lama ke RI {$ri->rihdr_no} (status Batal) sudah dibersihkan. Transfer ke RI bisa dilanjutkan.");
+            return null;
+        }
+
         $statusDesc = ['I' => 'Dirawat', 'P' => 'Pulang', 'F' => 'Batal'][$ri->ri_status ?? ''] ?? ($ri->ri_status ?: '-');
         $lokasi = trim(($ri->room_name ?? '-') . ($ri->bed_no ? " bed {$ri->bed_no}" : ''));
         $pesan = "Transfer ke RI sudah pernah dilakukan untuk UGD ini: No. RI {$ri->rihdr_no}, masuk {$ri->tgl_masuk}, {$lokasi}, status {$statusDesc}.";
 
         return $pesan . match ($ri->ri_status) {
             'I' => ' Bila salah transfer, gunakan "Batal Transfer" di Kasir UGD.',
-            'F' => ' Inap sudah Batal tetapi tautan transfernya masih tercatat. Hubungi Admin untuk membersihkannya.',
             default => ' Cek transaksi RI tersebut di Daftar RI.',
         };
+    }
+
+    /**
+     * Bersihkan sisa transfer UGD→RI yang inap-nya sudah Batal — langkah yang sama
+     * dengan "Batal Transfer" kasir UGD minus mengubah header (RI sudah 'F', UGD sudah 'A'):
+     * biaya RJ yang ikut pindah dikembalikan ke rstxn_ugdtempadmins, lalu detail RI
+     * (tempadmins, trfrooms) & tautan dihapus. Header RI tetap ada utk audit.
+     */
+    private function bersihkanTautanTransferRIBatal(int $rjNo, int $riHdrNo): void
+    {
+        DB::transaction(function () use ($rjNo, $riHdrNo) {
+            $this->lockUGDRow($rjNo);
+
+            // Re-check di dalam lock: RI benar-benar Batal & tautan masih menunjuk ke sana.
+            $statusRI = DB::table('rstxn_rihdrs')->where('rihdr_no', $riHdrNo)->value('ri_status');
+            $masihTertaut = DB::table('rstxn_ribiayaselamadugds')
+                ->where('rj_no', $rjNo)
+                ->where('ugd_no_rsri', $riHdrNo)
+                ->exists();
+            if ($statusRI !== 'F' || !$masihTertaut) {
+                return;
+            }
+
+            // Kembalikan biaya RJ yang ikut dipindah ke RI (kecuali flag 'UGD' = biaya UGD sendiri).
+            $riTempList = DB::table('rstxn_ritempadmins')
+                ->where('rihdr_no', $riHdrNo)
+                ->where('tempadm_flag', '!=', 'UGD')
+                ->get();
+
+            $ugdTempNo = (int) DB::table('rstxn_ugdtempadmins')->max('tempadm_no') + 1;
+            foreach ($riTempList as $row) {
+                DB::table('rstxn_ugdtempadmins')->insert([
+                    'tempadm_no'   => $ugdTempNo++,
+                    'tempadm_date' => $row->tempadm_date,
+                    'tempadm_flag' => $row->tempadm_flag,
+                    'tempadm_ref'  => $row->tempadm_ref,
+                    'rj_no'        => $rjNo,
+                    'rj_admin'     => $row->rj_admin,
+                    'poli_price'   => $row->poli_price,
+                    'acte_price'   => $row->acte_price,
+                    'actp_price'   => $row->actp_price,
+                    'actd_price'   => $row->actd_price,
+                    'obat'         => $row->obat,
+                    'lab'          => $row->lab,
+                    'rad'          => $row->rad,
+                    'other'        => $row->other,
+                    'rs_admin'     => $row->rs_admin,
+                ]);
+            }
+
+            DB::table('rstxn_ritempadmins')->where('rihdr_no', $riHdrNo)->delete();
+            DB::table('rsmst_trfrooms')->where('rihdr_no', $riHdrNo)->delete();
+            DB::table('rstxn_ribiayaselamadugds')->where('rj_no', $rjNo)->delete();
+
+            $this->appendAdminLogUGD($rjNo, 'Bersihkan tautan transfer ke RI #' . $riHdrNo . ' (RI berstatus Batal)');
+        });
     }
 
     private function resetTransferState(): void
