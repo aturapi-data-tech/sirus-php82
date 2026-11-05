@@ -94,6 +94,13 @@ new class extends Component {
             return;
         }
 
+        // Guard: kunjungan ber-operasi tidak boleh ditransfer (lihat daftarOkSudahTrfBiayaUGD).
+        if ($nomorOkList = $this->daftarOkSudahTrfBiayaUGD($rjNo)) {
+            $nomorOk = implode(', ', $nomorOkList);
+            $this->dispatch('toast', type: 'error', message: "Kunjungan UGD ini memiliki transaksi Kamar Operasi No. {$nomorOk}, transfer tidak bisa dilakukan. Selesaikan pembayaran di Kasir UGD, lalu daftarkan pasien langsung.");
+            return;
+        }
+
         // Nama pasien + klaim UGD (dipakai sbg default pilihan klaim RI)
         $hdr = DB::table('rstxn_ugdhdrs as h')
             ->leftJoin('rsmst_pasiens as p', 'p.reg_no', '=', 'h.reg_no')
@@ -233,6 +240,26 @@ new class extends Component {
 
             $this->appendAdminLogUGD($rjNo, 'Bersihkan tautan transfer ke RI #' . $riHdrNo . ' (RI berstatus Batal)');
         });
+    }
+
+    /**
+     * Nomor transaksi Kamar Operasi kunjungan UGD ini yang biayanya SUDAH
+     * di-Trf Biaya (ok_status = 'L'). Kunjungan ber-operasi TIDAK boleh ditransfer
+     * (keputusan user 2026-11-05): jasa operator & anestesi di RSVIEW_NEWDOCSALARIES
+     * hanya terhitung bila UGD Lunas (rj_status='L') — setelah transfer statusnya 'I'
+     * dan rihdr_no operasi NULL, sehingga jasanya tak masuk slip gaji mana pun.
+     * Operasi Batal ('F') tidak menghalangi; yang 'A' sudah dijaga checkOkPendingUGD.
+     */
+    private function daftarOkSudahTrfBiayaUGD(int $rjNo): array
+    {
+        return DB::table('rstxn_oks')
+            ->where('status_rjri', 'UGD')
+            ->where('ref_no', $rjNo)
+            ->where('ok_status', 'L')
+            ->orderBy('ok_reg')
+            ->pluck('ok_reg')
+            ->map(fn($nomor) => (string) $nomor)
+            ->all();
     }
 
     private function resetTransferState(): void
@@ -388,6 +415,13 @@ new class extends Component {
         if ($this->checkOkPendingUGD($this->rjNo)) {
             $nomorOk = implode(', ', $this->daftarOkPendingUGD($this->rjNo));
             $this->dispatch('toast', type: 'error', message: "Transaksi Kamar Operasi No. {$nomorOk} belum ditransfer ke biaya UGD, transfer tidak bisa dilakukan.");
+            return;
+        }
+
+        // Guard: kunjungan ber-operasi tidak boleh ditransfer (lihat daftarOkSudahTrfBiayaUGD).
+        if ($nomorOkList = $this->daftarOkSudahTrfBiayaUGD($this->rjNo)) {
+            $nomorOk = implode(', ', $nomorOkList);
+            $this->dispatch('toast', type: 'error', message: "Kunjungan UGD ini memiliki transaksi Kamar Operasi No. {$nomorOk}, transfer tidak bisa dilakukan. Selesaikan pembayaran di Kasir UGD, lalu daftarkan pasien langsung.");
             return;
         }
 

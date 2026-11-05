@@ -85,6 +85,13 @@ new class extends Component {
             return;
         }
 
+        // Guard: kunjungan ber-operasi tidak boleh ditransfer (lihat daftarOkSudahTrfBiayaRJ).
+        if ($nomorOkList = $this->daftarOkSudahTrfBiayaRJ($rjNo)) {
+            $nomorOk = implode(', ', $nomorOkList);
+            $this->dispatch('toast', type: 'error', message: "Kunjungan RJ ini memiliki transaksi Kamar Operasi No. {$nomorOk}, transfer tidak bisa dilakukan. Selesaikan pembayaran di Kasir RJ, lalu daftarkan pasien langsung.");
+            return;
+        }
+
 
         // Guard: belum pernah ditransfer
         if (DB::table('rstxn_ugdbiayaselamadirjs')->where('rj_no', $rjNo)->exists()) {
@@ -121,6 +128,26 @@ new class extends Component {
 
         $this->incrementVersion('modal-transfer-rj-ke-ugd');
         $this->dispatch('open-modal', name: 'transfer-rj-ke-ugd');
+    }
+
+    /**
+     * Nomor transaksi Kamar Operasi kunjungan RJ ini yang biayanya SUDAH
+     * di-Trf Biaya (ok_status = 'L'). Kunjungan ber-operasi TIDAK boleh ditransfer
+     * (keputusan user 2026-11-05): jasa operator & anestesi di RSVIEW_NEWDOCSALARIES
+     * hanya terhitung bila RJ Lunas (rj_status='L') — setelah transfer statusnya 'I'
+     * dan rihdr_no operasi NULL, sehingga jasanya tak masuk slip gaji mana pun.
+     * Operasi Batal ('F') tidak menghalangi; yang 'A' sudah dijaga checkOkPendingRJ.
+     */
+    private function daftarOkSudahTrfBiayaRJ(int $rjNo): array
+    {
+        return DB::table('rstxn_oks')
+            ->where('status_rjri', 'RJ')
+            ->where('ref_no', $rjNo)
+            ->where('ok_status', 'L')
+            ->orderBy('ok_reg')
+            ->pluck('ok_reg')
+            ->map(fn($nomor) => (string) $nomor)
+            ->all();
     }
 
     private function resetTransferState(): void
@@ -236,6 +263,13 @@ new class extends Component {
         if ($this->checkOkPendingRJ($this->rjNo)) {
             $nomorOk = implode(', ', $this->daftarOkPendingRJ($this->rjNo));
             $this->dispatch('toast', type: 'error', message: "Transaksi Kamar Operasi No. {$nomorOk} belum ditransfer ke biaya RJ, transfer tidak bisa dilakukan.");
+            return;
+        }
+
+        // Guard: kunjungan ber-operasi tidak boleh ditransfer (lihat daftarOkSudahTrfBiayaRJ).
+        if ($nomorOkList = $this->daftarOkSudahTrfBiayaRJ($this->rjNo)) {
+            $nomorOk = implode(', ', $nomorOkList);
+            $this->dispatch('toast', type: 'error', message: "Kunjungan RJ ini memiliki transaksi Kamar Operasi No. {$nomorOk}, transfer tidak bisa dilakukan. Selesaikan pembayaran di Kasir RJ, lalu daftarkan pasien langsung.");
             return;
         }
 
