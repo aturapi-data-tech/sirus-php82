@@ -89,8 +89,8 @@ new class extends Component {
         }
 
         // Guard: belum pernah ditransfer
-        if (DB::table('rstxn_ribiayaselamadugds')->where('rj_no', $rjNo)->exists()) {
-            $this->dispatch('toast', type: 'error', message: 'Transfer ke RI sudah pernah dilakukan untuk UGD ini.');
+        if ($pesan = $this->pesanSudahTransferRI($rjNo)) {
+            $this->dispatch('toast', type: 'error', message: $pesan);
             return;
         }
 
@@ -130,6 +130,47 @@ new class extends Component {
 
         $this->incrementVersion('modal-transfer-ugd-ke-ri');
         $this->dispatch('open-modal', name: 'transfer-ugd-ke-ri');
+    }
+
+    /**
+     * Pesan guard "sudah pernah transfer" yang bisa DILACAK: menyebut RI tujuan
+     * (No. RI, tgl masuk, ruang/bed, status) dari tautan rstxn_ribiayaselamadugds.
+     * Null bila UGD ini belum punya tautan transfer.
+     *
+     * Kasus nyata: user sudah membatalkan inap, tapi tautan masih tertinggal
+     * (Batal Inap dari kasir RI / Oracle 6i tidak menghapus tautan ini; hanya
+     * "Batal Transfer" di kasir UGD yang menghapusnya) → status RI 'F'.
+     */
+    private function pesanSudahTransferRI(int $rjNo): ?string
+    {
+        $link = DB::table('rstxn_ribiayaselamadugds')
+            ->where('rj_no', $rjNo)
+            ->select('ugd_no_rsri')
+            ->first();
+
+        if (!$link) {
+            return null;
+        }
+
+        $ri = DB::table('rstxn_rihdrs as h')
+            ->leftJoin('rsmst_rooms as r', 'r.room_id', '=', 'h.room_id')
+            ->where('h.rihdr_no', $link->ugd_no_rsri)
+            ->select('h.rihdr_no', 'h.ri_status', 'h.bed_no', 'r.room_name', DB::raw("to_char(h.entry_date, 'dd/mm/yyyy hh24:mi') as tgl_masuk"))
+            ->first();
+
+        if (!$ri) {
+            return "Transfer ke RI sudah tercatat untuk UGD ini (No. RI {$link->ugd_no_rsri}), tetapi data RI tersebut tidak ditemukan. Hubungi Admin untuk membersihkan tautan transfer.";
+        }
+
+        $statusDesc = ['I' => 'Dirawat', 'P' => 'Pulang', 'F' => 'Batal'][$ri->ri_status ?? ''] ?? ($ri->ri_status ?: '-');
+        $lokasi = trim(($ri->room_name ?? '-') . ($ri->bed_no ? " bed {$ri->bed_no}" : ''));
+        $pesan = "Transfer ke RI sudah pernah dilakukan untuk UGD ini: No. RI {$ri->rihdr_no}, masuk {$ri->tgl_masuk}, {$lokasi}, status {$statusDesc}.";
+
+        return $pesan . match ($ri->ri_status) {
+            'I' => ' Bila salah transfer, gunakan "Batal Transfer" di Kasir UGD.',
+            'F' => ' Inap sudah Batal tetapi tautan transfernya masih tercatat. Hubungi Admin untuk membersihkannya.',
+            default => ' Cek transaksi RI tersebut di Daftar RI.',
+        };
     }
 
     private function resetTransferState(): void
@@ -290,8 +331,8 @@ new class extends Component {
 
 
         // Cek sudah pernah transfer
-        if (DB::table('rstxn_ribiayaselamadugds')->where('rj_no', $this->rjNo)->exists()) {
-            $this->dispatch('toast', type: 'error', message: 'Transfer ke RI sudah pernah dilakukan untuk UGD ini.');
+        if ($pesan = $this->pesanSudahTransferRI($this->rjNo)) {
+            $this->dispatch('toast', type: 'error', message: $pesan);
             return;
         }
 
