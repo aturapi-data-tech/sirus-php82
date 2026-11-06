@@ -61,7 +61,7 @@
                             ['U2', 'SIAP_API_HOST kosong: host SIRUS biasa, ditolak di host Mobile JKN.',
                              'Tanpa Route::domain, /api/siap ikut terjawab di host apa pun yang mengarah ke SIRUS — maka AuthSiapApi dan endpoint token menjawab 404 bila dipanggil lewat MOBILE_JKN_HOST (host publik). Di host SIRUS biasa pintu tetap terkunci token + role + rate limit + SIAP_API_IP_WHITELIST.'],
                             ['U2b', 'SIAP_API_HOST diisi: hanya host itu, seperti Mobile JKN.',
-                             'Route dimuat dengan Route::domain(SIAP_API_HOST) → host lain 404. BatasiHostMobileJkn juga menutup halaman web SIRUS di host itu (kecuali nilainya sama dengan host APP_URL, supaya salah isi tidak mematikan SIRUS). SIRUS_API_URL di SIAP harus memakai host ini.'],
+                             'Route dimuat dengan Route::domain(SIAP_API_HOST) → host lain 404. BatasiHostMobileJkn juga menutup halaman web SIRUS di host itu (kecuali nilainya sama dengan host APP_URL, supaya salah isi tidak mematikan SIRUS). SIAP_API_URL di SIAP harus memakai host ini.'],
                             ['U3', 'Satu mesin JWT untuk dua pintu, dua rahasia.',
                              'App\Support\Api\Jwt dipakai Mobile JKN (TraitJWTRsiMadinah) dan SIAP (JwtSiap). Kuncinya berbeda (MOBILE_JKN_JWT_SECRET vs SIAP_API_JWT_SECRET) sehingga token satu pintu tidak pernah membuka pintu lain.'],
                             ['U4', 'Database sama dengan SIRUS, dibaca langsung.',

@@ -11,7 +11,7 @@ use Spatie\Permission\Models\Role;
 /**
  * Buat / setel ulang akun API SIAP (penggajian): user di tabel users dengan role services.siap.role ('Api Siap').
  * Akun ini hanya untuk mesin — ditolak di login web (LoginRequest), tidak punya menu. Password dicetak sekali;
- * salin ke .env SIAP (SIRUS_API_USER / SIRUS_API_PASSWORD).
+ * salin ke .env SIAP (SIAP_API_USER / SIAP_API_PASSWORD).
  *
  *   php artisan siap-api:akun                 → user siap-gaji, password acak
  *   php artisan siap-api:akun siap-gaji --password=...   → password ditentukan
@@ -50,8 +50,8 @@ class BuatAkunApiSiap extends Command
 
         $this->line('');
         $this->line("Isi di .env SIAP:");
-        $this->line("  SIRUS_API_USER={$nama}");
-        $this->line("  SIRUS_API_PASSWORD={$password}");
+        $this->line("  SIAP_API_USER={$nama}");
+        $this->line("  SIAP_API_PASSWORD={$password}");
         $this->line('');
         $this->comment("Role: {$role->name}. Nonaktifkan / ganti password kapan saja dari User Control atau jalankan perintah ini lagi.");
 

@@ -60,7 +60,7 @@ MOBILE_JKN_JWT_SECRET=<acak ≥ 32 karakter>
 # Akun API dibuat SEKALI di server SIRUS (bukan di .env):
 php artisan siap-api:akun siap-gaji
 #   → user siap-gaji (email siap-gaji@api.siap.local), role Api Siap, password acak dicetak sekali
-#   → salin ke .env SIAP: SIRUS_API_USER=siap-gaji  SIRUS_API_PASSWORD=<password>
+#   → salin ke .env SIAP: SIAP_API_USER=siap-gaji  SIAP_API_PASSWORD=<password>
 # Jalankan lagi perintah yang sama untuk menyetel ulang password.
 php artisan config:clear
 TXT,
@@ -176,7 +176,7 @@ Gejala di SIAP (toast / Uji sambungan)              Periksa di SIRUS
 ──────────────────────────────────────────────────  ──────────────────────────────────────────────────
 "API SIAP tidak aktif (SIAP_API_JWT_SECRET…)" / 503  .env SIRUS: SIAP_API_JWT_SECRET ≥ 32 karakter, lalu
                                                     php artisan config:clear (route tidak dimuat bila kosong → 404)
-HTTP 404 semua endpoint                             secret kosong / < 32 karakter; SIRUS_API_URL di SIAP salah host;
+HTTP 404 semua endpoint                             secret kosong / < 32 karakter; SIAP_API_URL di SIAP salah host;
                                                     SIAP_API_HOST diisi tapi SIAP memanggil host lain (atau lewat host Mobile JKN)
 "Username / password API salah, akun nonaktif,      akun siap-gaji ada? aktif? punya role 'Api Siap'?
  atau bukan akun API SIAP." (401)                   password di .env SIAP = yang dicetak siap-api:akun?

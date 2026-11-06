@@ -43,7 +43,7 @@ Host:
   `MOBILE_JKN_HOST` (host publik).
 - `SIAP_API_HOST` diisi (mis. `siap-api.rsimadinah.local`) → route dimuat dengan `Route::domain()`, host lain 404, dan
   `BatasiHostMobileJkn` menutup halaman web SIRUS di host itu (kecuali nilainya = host `APP_URL`, pengaman salah isi).
-  `SIRUS_API_URL` di SIAP harus memakai host ini.
+  `SIAP_API_URL` di SIAP harus memakai host ini.
 
 ---
 
@@ -124,7 +124,7 @@ grup kapita (dibayar lewat skema lain). Semua dokter ±1 MB / ±3 detik untuk 36
 Rate limiter di `AppServiceProvider::boot()`: `siap-api` 120/menit/IP, `siap-token` 10/menit/IP.
 
 Urutan deploy: isi `.env` → `php artisan config:clear` → `php artisan siap-api:akun siap-gaji` → salin password ke
-`.env` SIAP (`SIRUS_API_URL`, `SIRUS_API_USER`, `SIRUS_API_PASSWORD`) → Uji sambungan dari SIAP → isi whitelist IP.
+`.env` SIAP (`SIAP_API_URL`, `SIAP_API_USER`, `SIAP_API_PASSWORD`) → Uji sambungan dari SIAP → isi whitelist IP.
 
 ---
 
@@ -149,7 +149,7 @@ periode berisi `jumlah` > 0 · bulan 13 → 422 · token Mobile JKN lama masih d
 
 | Gejala di SIAP | Periksa di SIRUS |
 |---|---|
-| 503 "API SIAP tidak aktif" / semua 404 | `SIAP_API_JWT_SECRET` ≥ 32 karakter, `config:clear`; `SIRUS_API_URL` di SIAP = host SIRUS (atau `SIAP_API_HOST`), bukan host Mobile JKN |
+| 503 "API SIAP tidak aktif" / semua 404 | `SIAP_API_JWT_SECRET` ≥ 32 karakter, `config:clear`; `SIAP_API_URL` di SIAP = host SIRUS (atau `SIAP_API_HOST`), bukan host Mobile JKN |
 | 401 "Username / password API salah, akun nonaktif, atau bukan akun API SIAP." | akun ada, aktif, ber-role Api Siap; password = hasil `siap-api:akun` |
 | 401 "Token tidak sah atau kedaluwarsa." berulang | rahasia diganti saat token masih di-cache SIAP (SIAP mencoba ulang sekali) |
 | 401 "Akun API SIAP tidak aktif atau bukan akun API." | akun dinonaktifkan / role dicabut dari User Control |

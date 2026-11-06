@@ -12,7 +12,7 @@
                             ['S1', 'Urutan di server SIRUS.',
                              'Isi SIAP_API_JWT_SECRET (dan MOBILE_JKN_JWT_SECRET), php artisan config:clear, lalu php artisan siap-api:akun siap-gaji. Salin password yang dicetak — tidak bisa dibaca ulang, hanya disetel ulang.'],
                             ['S2', 'Urutan di server SIAP.',
-                             'Isi SIRUS_API_URL (host SIRUS biasa, atau SIAP_API_HOST bila diisi — dengan https://), SIRUS_API_USER=siap-gaji, SIRUS_API_PASSWORD, php artisan config:clear, lalu Panduan → Bridging SIRUS → Uji sambungan.'],
+                             'Isi SIAP_API_URL (host SIRUS biasa, atau SIAP_API_HOST bila diisi — dengan https://), SIAP_API_USER=siap-gaji, SIAP_API_PASSWORD, php artisan config:clear, lalu Panduan → Bridging SIRUS → Uji sambungan.'],
                             ['S3', 'Whitelist IP setelah sambungan terbukti.',
                              'Isi SIAP_API_IP_WHITELIST dengan IP server SIAP (yang terlihat SIRUS — cek lewat log Apache bila di balik proxy), config:clear, uji lagi.'],
                             ['S4', 'Rotasi rahasia / password.',
