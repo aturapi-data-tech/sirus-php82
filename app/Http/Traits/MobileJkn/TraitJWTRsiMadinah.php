@@ -5,98 +5,37 @@ namespace App\Http\Traits\MobileJkn;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use App\Support\Api\Jwt;
 
 trait TraitJWTRsiMadinah
 {
-
-
-
-
-
-    private function urlsafeB64Encode($input)
+    /*
+     * Encode / decode JWT dipindah ke mesin bersama App\Support\Api\Jwt (dipakai juga API SIAP).
+     * Bentuk token & aturan klaim Mobile JKN TIDAK berubah: exp = durasi detik sejak iat (12 jam),
+     * pesan galat sama seperti sebelumnya. Token lama (base64 biasa, '+' '/') tetap diterima.
+     */
+    private function encode_jwt($payload, $key)
     {
-        return str_replace(['+/', '='], ['-_', ''], base64_encode($input));
+        return Jwt::encode($payload, $key);
     }
 
-    private function urlsafeB64Decode($input)
-    {
-        return str_replace(['-_', ''], ['+/',  '='], base64_decode($input));
-    }
-
-    private function signnature($msg, $key, $alg = 'HS256')
-    {
-        list($function, $algorithm) = $this->algoritm($alg);
-        switch ($function) {
-            case 'hash_hmac':
-                return hash_hmac($algorithm, $msg, $key, true);
-        }
-    }
-
-
-
-    private function encode_jwt($payload, $key, $alg = 'HS256')
-    {
-        $header = json_encode(['typ' => 'JWT', 'alg' => $alg]);
-        $payload = json_encode($payload);
-        $segments = array();
-        $segments[] = $this->urlsafeB64Encode($header);
-        $segments[] = $this->urlsafeB64Encode($payload);
-        $sign_input = implode('.', $segments);
-        $signature = $this->signnature($sign_input, $key, $alg);
-        $segments[] = $this->urlsafeB64Encode($signature);
-        return implode('.', $segments);
-    }
-
-    private function decode_jwt($token, $key, array $allowed_algs = array())
+    private function decode_jwt($token, $key)
     {
         if (empty($key)) {
             throw new \Exception('Key may not be empty');
         }
-
-        $tks = explode('.', $token);
-        if (count($tks) != 3) {
+        if (!is_string($token) || substr_count($token, '.') != 2) {
             throw new \Exception('Wrong number of segments');
         }
-
-        list($headb64, $bodyb64, $cryptob64) = $tks;
-        $header = json_decode($this->urlsafeB64Decode($headb64));
-        $payload = json_decode($this->urlsafeB64Decode($bodyb64));
-
-        if (null === ($header = json_decode($this->urlsafeB64Decode($headb64)))) {
-            throw new \Exception('Invalid header encoding');
-        }
-
-        if (null === $payload = json_decode($this->urlsafeB64Decode($bodyb64))) {
-            throw new \Exception('Invalid claims encoding');
-        }
-
-        if (false === ($sig = $this->urlsafeB64Decode($cryptob64))) {
-            throw new \Exception('Invalid signature encoding');
-        }
-
-        if (empty($header->alg)) {
-            throw new \Exception('Empty algorithm');
-        }
-
-        if (empty($this->algoritm($header->alg))) {
-            throw new \Exception('Algorithm not supported');
-        }
-
-        if (!in_array($header->alg, $allowed_algs)) {
-            throw new \Exception('Algorithm not allowed');
-        }
-
-        // Check the signature
-        if (!$this->verify("$headb64.$bodyb64", $sig, $key, $header->alg)) {
+        $payload = Jwt::decode($token, $key);
+        if ($payload === null) {
             throw new \Exception('Signature verification failed');
         }
-
-        // Check if this token has expired.
-        if (isset($payload->exp) && (time() - $payload->iat) >= $payload->exp) {
+        if (isset($payload['exp']) && (time() - (int) ($payload['iat'] ?? 0)) >= (int) $payload['exp']) {
             throw new \Exception('Expired token');
         }
 
-        return $payload;
+        return (object) $payload;
     }
 
     public function checkUser($username, $password)
@@ -125,7 +64,7 @@ trait TraitJWTRsiMadinah
     public function cektoken($token)
     {
         try {
-            if ($this->decode_jwt($token, $this->privateKey(), ['typ' => 'JWT', 'alg' => 'HS256'])) {
+            if ($this->decode_jwt($token, $this->privateKey())) {
                 $response = true;
                 return $response;
             }
@@ -141,51 +80,16 @@ trait TraitJWTRsiMadinah
         }
     }
 
-    // /* ---------------------- Configurasi TOKEN Information ----------------*/
+    /* ---------------------- Konfigurasi TOKEN ----------------
+     * Rahasia dari .env MOBILE_JKN_JWT_SECRET. Bila kosong, dipakai kunci lama yang dulu tertulis di kode
+     * supaya token yang sedang beredar tidak mendadak ditolak — isi .env lalu tunggu 12 jam, kunci lama
+     * tidak dipakai lagi. Rahasia ini TERPISAH dari SIAP_API_JWT_SECRET (API penggajian).
+     */
     private function privateKey()
     {
-        $key = '123!!abc**siRUS';
-        return $key;
-    }
+        $key = (string) config('services.mobile_jkn.jwt_secret', '');
 
-    private function algoritm($alg)
-    {
-        $supported_algs = array(
-            'ES256' => array('openssl', 'SHA256'),
-            'HS256' => array('hash_hmac', 'SHA256'),
-            'HS384' => array('hash_hmac', 'SHA384'),
-            'HS512' => array('hash_hmac', 'SHA512'),
-            'RS256' => array('openssl', 'SHA256'),
-            'RS384' => array('openssl', 'SHA384'),
-            'RS512' => array('openssl', 'SHA512'),
-        );
-        return $supported_algs[$alg];
-    }
-
-    private function verify($msg, $signature, $key, $alg)
-    {
-        if (empty($this->algoritm($alg))) {
-            throw new \Exception('Algorithm not supported');
-        }
-
-        list($function, $algorithm) = $this->algoritm($alg);
-        switch ($function) {
-            case 'hash_hmac':
-            default:
-                $hash = hash_hmac($algorithm, $msg, $key, true);
-                if (function_exists('hash_equals')) {
-                    return hash_equals($signature, $hash);
-                }
-                $len = min(strlen($signature), strlen($hash));
-
-                $status = 0;
-                for ($i = 0; $i < $len; $i++) {
-                    $status |= (\ord($signature[$i]) ^ \ord($hash[$i]));
-                }
-                $status |= (strlen($signature) ^ strlen($hash));
-
-                return ($status === 0);
-        }
+        return $key !== '' ? $key : '123!!abc**siRUS';
     }
 
     private function payloadtoken($username)

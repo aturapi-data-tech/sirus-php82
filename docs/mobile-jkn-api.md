@@ -103,6 +103,7 @@ Source: `AntrolBPJSController.php::ambilantrean()`
 | `ANTRIAN_CONS_ID`         | (RS)    | Consumer ID dari aplicares BPJS |
 | `ANTRIAN_SECRET_KEY`      | (RS)    | Secret untuk HMAC signature |
 | `ANTRIAN_USER_KEY`        | (RS)    | User key API |
+| `MOBILE_JKN_JWT_SECRET`   | (kosong) | Rahasia JWT token `/auth` (acak ≥ 32 karakter). Kosong = kunci lama yang dulu tertulis di kode `TraitJWTRsiMadinah` — isi di server, token lama kedaluwarsa sendiri ≤ 12 jam. Terpisah dari `SIAP_API_JWT_SECRET` (API penggajian) |
 
 ---
 

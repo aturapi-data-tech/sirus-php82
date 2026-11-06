@@ -72,6 +72,11 @@ Route::middleware(['auth'])->group(function () {
     Route::livewire('/panduan-dev/mobile-jkn', 'pages::panduan-dev.mobile-jkn.mobile-jkn')
         ->name('panduan-dev.mobile-jkn');
 
+    // Panduan API SIAP (bridging penggajian, SIRUS sebagai server) — akun & JWT, endpoint, pengaman,
+    // setup, uji, penanganan masalah — docs/siap-api.md versi web. Versi client ada di SIAP.
+    Route::livewire('/panduan-dev/siap-api', 'pages::panduan-dev.siap-api.siap-api')
+        ->name('panduan-dev.siap-api');
+
     // ===========================================
     // DOWN TIME — FORMULIR MANUAL WAKTU HENTI SIMRS
     // ===========================================

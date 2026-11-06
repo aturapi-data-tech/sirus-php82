@@ -13,6 +13,18 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
         then: function () {
+            // API SIAP (penggajian, baca saja) — prefix /api/siap, aktif hanya bila SIAP_API_JWT_SECRET terisi.
+            // Rate limiter 'siap-api' & 'siap-token' didaftarkan di AppServiceProvider::boot() (lihat catatan mobile-jkn).
+            // SIAP_API_HOST terisi → hanya host itu (pola Mobile JKN); kosong → host SIRUS biasa
+            // (AuthSiapApi menolak 404 bila dipanggil lewat host Mobile JKN).
+            if (strlen((string) config('services.siap.jwt_secret')) >= 32) {
+                $hostSiap = (string) config('services.siap.host', '');
+                ($hostSiap !== '' ? Route::domain($hostSiap) : Route::prefix(''))
+                    ->prefix('api/siap')
+                    ->middleware([\Illuminate\Routing\Middleware\SubstituteBindings::class, 'throttle:siap-api'])
+                    ->name('siap.')
+                    ->group(base_path('routes/api-siap.php'));
+            }
             // API Mobile JKN hanya di host-nya sendiri (URL terdaftar di BPJS, path di root).
             // Host kosong = API tidak dimuat.
             $hostMobileJkn = config('services.mobile_jkn.host');

@@ -23,8 +23,8 @@
                              'Ganti password di SIRUS = BPJS langsung gagal minta token sampai password baru juga diperbarui di portal BPJS. Lakukan berbarengan.'],
                             ['K3', 'Beri akun itu tanpa role.',
                              'Akun yang sama juga bisa login ke layar SIRUS. Tanpa role, menu SIRUS kosong untuknya. Status nonaktif (active_status 0) TIDAK menghentikan token API — Auth::attempt hanya mencocokkan nama & password.'],
-                            ['K4', 'Kunci tanda tangan token tertulis di kode.',
-                             'TraitJWTRsiMadinah::privateKey() — bawaan project lama, bukan dari .env. Mengubahnya membuat semua token yang beredar tidak sah; BPJS cukup minta token baru lewat /auth.'],
+                            ['K4', 'Kunci tanda tangan token dari .env MOBILE_JKN_JWT_SECRET.',
+                             'TraitJWTRsiMadinah::privateKey() membaca config services.mobile_jkn.jwt_secret; bila kosong dipakai kunci lama bawaan project (masa peralihan). Encode/decode memakai mesin bersama App\\Support\\Api\\Jwt (dipakai juga API SIAP, dengan rahasia terpisah). Mengganti rahasia membuat token yang beredar tidak sah; BPJS cukup minta token baru lewat /auth.'],
                         ] as [$nomor, $judul, $keterangan])
                             <div class="ds-card-outline mb-3" style="padding:18px 20px">
                                 <div class="flex items-start gap-3">
