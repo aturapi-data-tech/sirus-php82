@@ -125,8 +125,26 @@ new class extends Component {
     /* ===============================
      | AKSI
      =============================== */
+    /**
+     * Tahap 3 pemindahan ke SIAP (services.siap.gaji_dokter_nonaktif): slip dihitung di SIAP dari transaksi mentah
+     * (GET /api/siap/gaji-dokter/{tahun}/{bulan}/transaksi). Halaman ini tinggal arsip: baca, rincian, lampiran, cetak tetap
+     * bisa; Proses / Final / Buka Kunci / Hapus ditutup supaya tidak ada dua sumber slip.
+     */
+    private function modulNonaktif(): bool
+    {
+        if (!config('services.siap.gaji_dokter_nonaktif')) {
+            return false;
+        }
+        $this->dispatch('toast', type: 'warning', message: 'Slip gaji dokter sekarang diproses di SIAP (Gaji Dokter → Buku). Halaman SIRUS ini hanya arsip baca.');
+
+        return true;
+    }
+
     public function generate(): void
     {
+        if ($this->modulNonaktif()) {
+            return;
+        }
         $hasil = GajiDokter::generate($this->tahunJasa, $this->bulanJasa, null, Auth::user()->myuser_name ?? 'system');
 
         $pesan = "Slip dibuat {$hasil['dibuat']}, diperbarui {$hasil['diperbarui']}.";
@@ -165,6 +183,9 @@ new class extends Component {
 
     public function finalkan(int $gajidoctorNo): void
     {
+        if ($this->modulNonaktif()) {
+            return;
+        }
         $header = DB::table('rstxn_gajidoctorhdrs')->where('gajidoctor_no', $gajidoctorNo)->first();
         if (!$header) {
             $this->dispatch('toast', type: 'error', message: 'Slip tidak ditemukan.');
@@ -188,6 +209,9 @@ new class extends Component {
 
     public function bukaKunci(int $gajidoctorNo): void
     {
+        if ($this->modulNonaktif()) {
+            return;
+        }
         DB::table('rstxn_gajidoctorhdrs')->where('gajidoctor_no', $gajidoctorNo)->update([
             'gaji_status' => GajiDokter::STATUS_DRAFT,
             'update_user' => Auth::user()->myuser_name ?? 'system',
@@ -200,6 +224,9 @@ new class extends Component {
 
     public function hapus(int $gajidoctorNo): void
     {
+        if ($this->modulNonaktif()) {
+            return;
+        }
         $header = DB::table('rstxn_gajidoctorhdrs')->where('gajidoctor_no', $gajidoctorNo)->first();
 
         if ($header && $header->gaji_status === GajiDokter::STATUS_FINAL) {
@@ -223,6 +250,9 @@ new class extends Component {
      */
     public function finalkanSemua(): void
     {
+        if ($this->modulNonaktif()) {
+            return;
+        }
         // Nomornya dikumpulkan dulu, baru di-update terpisah. Oracle MENOLAK
         // UPDATE ber-JOIN (ORA-00971: missing SET keyword) — dan slipQuery()
         // selalu mengandung join ke RSMST_DOCTORS untuk saringan nama dokter.
@@ -432,6 +462,12 @@ new class extends Component {
     <x-page-title
         title="Slip Gaji Dokter"
         subtitle="Proses, koreksi, dan kunci slip gaji dokter per periode" />
+
+    @if (config('services.siap.gaji_dokter_nonaktif'))
+        <div class="mx-6 mt-2 px-4 py-3 text-sm border rounded-xl bg-amber-50 border-amber-200 text-amber-900 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-200" role="status">
+            <span class="font-semibold">Arsip baca.</span> Sejak dipindahkan, slip gaji dokter <span class="font-semibold">diproses di SIAP</span> (Gaji Dokter → Buku) dari transaksi SIRUS. Di sini Proses Slip, Final, Buka Kunci, dan Hapus tidak berlaku; rincian, lampiran, dan cetak slip lama tetap bisa dibuka.
+        </div>
+    @endif
 
     {{-- Kerangka halaman meniru pelayanan-rj: tinggi layar dikunci lalu dibagi
          flex-kolom, sehingga yang menggulung adalah isi tabel — toolbar & kepala

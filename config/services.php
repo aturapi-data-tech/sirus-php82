@@ -46,6 +46,14 @@ return [
         'jwt_secret' => env('SIAP_API_JWT_SECRET'),
         'token_ttl' => (int) env('SIAP_API_TOKEN_TTL', 3600),
         'ip_whitelist' => env('SIAP_API_IP_WHITELIST', ''),
+        // Tahap pemindahan gaji dokter ke SIAP (lihat panduan-dev/siap-api):
+        //  struktur_gaji_dari_siap : true → struktur gaji dokter (skema, potongan RS, PPh, kapita, …) disetel di SIAP dan
+        //                            dikirim lewat PUT /api/siap/dokter/{dr_id}/struktur-gaji; panel Struktur Gaji di Master
+        //                            Dokter SIRUS jadi baca-saja. false → SIRUS masih sumbernya dan endpoint PUT menolak (409).
+        //  gaji_dokter_nonaktif    : true → slip gaji dokter dihitung di SIAP (GET …/transaksi); Proses / Final / Buka Kunci /
+        //                            Hapus di Slip Gaji Dokter SIRUS ditutup, data lama tetap bisa dibaca & dicetak.
+        'struktur_gaji_dari_siap' => filter_var(env('SIAP_STRUKTUR_GAJI_DARI_SIAP', false), FILTER_VALIDATE_BOOL),
+        'gaji_dokter_nonaktif' => filter_var(env('SIAP_GAJI_DOKTER_NONAKTIF', false), FILTER_VALIDATE_BOOL),
     ],
 
     'slack' => [
