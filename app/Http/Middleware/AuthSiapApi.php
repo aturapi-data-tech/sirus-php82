@@ -11,7 +11,7 @@ use Symfony\Component\HttpFoundation\Response;
 /**
  * Penjaga API SIAP: Bearer JWT (App\Support\Api\JwtSiap) + akun users ber-role API SIAP + whitelist IP opsional (SIAP_API_IP_WHITELIST).
  * API ini baca (gaji dokter, master dokter, transaksi) + satu endpoint tulis struktur gaji dokter yang hanya menerima bila
- * services.siap.struktur_gaji_dari_siap menyala; aktif hanya bila SIAP_API_JWT_SECRET terisi.
+ * mode SIAP "struktur disetel di SIAP" (ModePindahSiap) menyala; aktif hanya bila SIAP_API_JWT_SECRET terisi.
  */
 class AuthSiapApi
 {

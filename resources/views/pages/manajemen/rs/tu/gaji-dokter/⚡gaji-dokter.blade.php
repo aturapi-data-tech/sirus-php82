@@ -10,6 +10,7 @@
 // CHECK ck_gajidoctorhdrs_periode.
 
 use Livewire\Component;
+use App\Support\GajiDokter\ModePindahSiap;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Session;
@@ -126,13 +127,13 @@ new class extends Component {
      | AKSI
      =============================== */
     /**
-     * Tahap 3 pemindahan ke SIAP (services.siap.gaji_dokter_nonaktif): slip dihitung di SIAP dari transaksi mentah
+     * Tahap 3 pemindahan ke SIAP (mode di SIAP, dibaca lewat ModePindahSiap): slip dihitung di SIAP dari transaksi mentah
      * (GET /api/siap/gaji-dokter/{tahun}/{bulan}/transaksi). Halaman ini tinggal arsip: baca, rincian, lampiran, cetak tetap
      * bisa; Proses / Final / Buka Kunci / Hapus ditutup supaya tidak ada dua sumber slip.
      */
     private function modulNonaktif(): bool
     {
-        if (!config('services.siap.gaji_dokter_nonaktif')) {
+        if (!ModePindahSiap::slipDiSiap()) {
             return false;
         }
         $this->dispatch('toast', type: 'warning', message: 'Slip gaji dokter sekarang diproses di SIAP (Gaji Dokter → Buku). Halaman SIRUS ini hanya arsip baca.');
@@ -463,7 +464,7 @@ new class extends Component {
         title="Slip Gaji Dokter"
         subtitle="Proses, koreksi, dan kunci slip gaji dokter per periode" />
 
-    @if (config('services.siap.gaji_dokter_nonaktif'))
+    @if (ModePindahSiap::slipDiSiap())
         <div class="mx-6 mt-2 px-4 py-3 text-sm border rounded-xl bg-amber-50 border-amber-200 text-amber-900 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-200" role="status">
             <span class="font-semibold">Arsip baca.</span> Sejak dipindahkan, slip gaji dokter <span class="font-semibold">diproses di SIAP</span> (Gaji Dokter → Buku) dari transaksi SIRUS. Di sini Proses Slip, Final, Buka Kunci, dan Hapus tidak berlaku; rincian, lampiran, dan cetak slip lama tetap bisa dibuka.
         </div>

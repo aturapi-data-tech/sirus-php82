@@ -18,7 +18,7 @@ Route::middleware(AuthSiapApi::class)->group(function () {
     Route::get('dokter', [GajiDokterApiController::class, 'dokter'])->name('dokter');
     Route::get('gaji-dokter/{tahun}/{bulan}', [GajiDokterApiController::class, 'periode'])->name('gaji-dokter');
     Route::get('gaji-dokter/{tahun}/{bulan}/lampiran', [GajiDokterApiController::class, 'lampiran'])->name('gaji-dokter.lampiran');
-    // Pemindahan gaji dokter ke SIAP (services.siap.struktur_gaji_dari_siap / gaji_dokter_nonaktif):
+    // Pemindahan gaji dokter ke SIAP (mode dibaca dari tabel pengaturan SIAP — App\Support\GajiDokter\ModePindahSiap):
     Route::put('dokter/{drId}/struktur-gaji', [GajiDokterApiController::class, 'strukturGaji'])->name('dokter.struktur-gaji');
     Route::get('gaji-dokter/{tahun}/{bulan}/transaksi', [GajiDokterApiController::class, 'transaksi'])->name('gaji-dokter.transaksi');
 });

@@ -7,6 +7,7 @@ use App\Http\Middleware\AuthSiapApi;
 use App\Models\User;
 use App\Support\Api\JwtSiap;
 use App\Support\GajiDokter\GajiDokter;
+use App\Support\GajiDokter\ModePindahSiap;
 use App\Support\GajiDokter\GajiDokterLampiran;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -22,7 +23,7 @@ use Illuminate\Support\Facades\DB;
  *   GET  /api/siap/gaji-dokter/{tahun}/{bulan}               header + detail slip semua dokter periode jasa itu
  *   GET  /api/siap/gaji-dokter/{tahun}/{bulan}/lampiran      lampiran rincian pasien (opsional ?dr_id=)
  *   PUT  /api/siap/dokter/{dr_id}/struktur-gaji              tahap 1: SIAP menulis struktur gaji dokter ke RSMST_DOCTORS
- *                                                            (hanya bila services.siap.struktur_gaji_dari_siap; selain itu 409)
+ *                                                            (hanya bila mode SIAP: struktur disetel di SIAP; selain itu 409)
  *   GET  /api/siap/gaji-dokter/{tahun}/{bulan}/transaksi     tahap 3: transaksi mentah bulan jasa per dokter (langsung dari
  *                                                            RSVIEW_NEWDOCSALARIES, tanpa butuh slip SIRUS) + struktur gaji saat ini
  *
@@ -57,11 +58,10 @@ class GajiDokterApiController extends Controller
         'pph21_persen', 'tarif_per_kapita_ri', 'tarif_per_kapita_rj', 'tunjangan_struktural', 'tunjangan_fungsional', 'tunjangan_hadir',
         'potongan_idi', 'potongan_arisan', 'potongan_koperasi', 'potongan_angsuran', 'potongan_bpjs', 'potongan_zariyah'];
 
-    /** Mode pemindahan gaji dokter ke SIAP — dikirim bersama /dokter dan /transaksi supaya SIAP tahu saklar sisi SIRUS. */
+    /** Mode pemindahan gaji dokter — dibaca SIRUS dari tabel pengaturan SIAP (ModePindahSiap), dikirim bersama /dokter dan /transaksi. */
     public static function mode(): array
     {
-        return ['struktur_gaji_dari_siap' => (bool) config('services.siap.struktur_gaji_dari_siap', false),
-            'gaji_dokter_nonaktif' => (bool) config('services.siap.gaji_dokter_nonaktif', false)];
+        return ModePindahSiap::ambil();
     }
 
     /** Struktur gaji satu baris RSMST_DOCTORS sebagai array bernama (angka float, teks apa adanya, NULL → default). */
@@ -97,13 +97,12 @@ class GajiDokterApiController extends Controller
 
     /**
      * Tahap 1 — SIAP menjadi tempat menyetel struktur gaji dokter; SIRUS menerima salinannya di sini dan tetap menghitung slip.
-     * Ditolak 409 bila services.siap.struktur_gaji_dari_siap belum dinyalakan (SIRUS masih sumber setelan), supaya dua sisi
-     * tidak saling menimpa. Aturan validasi = aturan form Struktur Gaji di Master Dokter.
+     * Ditolak 409 bila mode di SIAP masih "struktur disetel di SIRUS" (ModePindahSiap), supaya dua sisi tidak saling menimpa. Aturan validasi = aturan form Struktur Gaji di Master Dokter.
      */
     public function strukturGaji(Request $request, string $drId): JsonResponse
     {
         if (!self::mode()['struktur_gaji_dari_siap']) {
-            return response()->json(['error' => 'SIRUS masih sumber struktur gaji dokter — nyalakan SIAP_STRUKTUR_GAJI_DARI_SIAP di .env SIRUS dulu.'], 409);
+            return response()->json(['error' => 'SIRUS masih sumber struktur gaji dokter — ubah mode di SIAP (Gaji Dokter → Struktur Gaji) ke "disetel di SIAP" dulu.'], 409);
         }
         if (!DB::table('rsmst_doctors')->where('dr_id', $drId)->exists()) {
             return response()->json(['error' => "Dokter {$drId} tidak ada di master SIRUS."], 404);

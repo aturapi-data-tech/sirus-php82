@@ -82,7 +82,7 @@
                         </div>
                         <div class="ds-card-outline mb-6" style="padding:0; overflow:hidden">
                             <div class="px-4 py-2.5" style="background:var(--surface-dark-soft)">
-                                <span class="ds-caption-up" style="color:var(--on-dark-soft)">PUT /api/siap/dokter/{dr_id}/struktur-gaji — tahap 1 (hanya bila SIAP_STRUKTUR_GAJI_DARI_SIAP=true, selain itu 409)</span>
+                                <span class="ds-caption-up" style="color:var(--on-dark-soft)">PUT /api/siap/dokter/{dr_id}/struktur-gaji — tahap 1 (hanya bila mode SIAP = struktur disetel di SIAP, selain itu 409)</span>
                             </div>
                             <pre class="ds-code" style="margin:0; padding:20px 24px; color:var(--on-dark-soft); overflow-x:auto; line-height:1.6">{{ '{"basic_salary":6000000,"npwp_status":"Y","npwp":null,"skema_gaji_pokok":"A","potongan_rs_basis":"J","potongan_rs_persen":10,
  "potongan_rs_aturan":null,"pph21_persen":2.5,"tarif_per_kapita_ri":0,"tarif_per_kapita_rj":0,
@@ -103,11 +103,12 @@ Langsung dari RSVIEW_NEWDOCSALARIES (+ dokter bertarif kapita) — TIDAK bergant
 Slip Gaji Dokter SIRUS dimatikan. SIAP menghitung slipnya sendiri (App\Support\GajiDokterHitung, salinan rumus GajiDokter) dari baris ini.' }}</pre>
                         </div>
                         <div class="ds-card-outline mb-6" style="padding:20px">
-                            <div class="ds-caption-up mb-2" style="color:var(--primary)">Pemindahan ke SIAP — dua saklar .env SIRUS</div>
+                            <div class="ds-caption-up mb-2" style="color:var(--primary)">Pemindahan ke SIAP — mode disetel di SIAP, SIRUS mengikuti</div>
                             <ul class="ds-body-sm space-y-1.5">
-                                <li>• <span class="ds-code">SIAP_STRUKTUR_GAJI_DARI_SIAP=true</span> — tahap 1: struktur gaji dokter disetel di SIAP (Gaji Dokter → Struktur Gaji) dan dikirim lewat PUT; panel Struktur Gaji di Master Dokter jadi baca-saja. Harus seirama dengan mode "Struktur gaji disetel di: SIAP" di SIAP.</li>
-                                <li>• <span class="ds-code">SIAP_GAJI_DOKTER_NONAKTIF=true</span> — tahap 3: slip dihitung SIAP dari …/transaksi; di Slip Gaji Dokter SIRUS Proses/Final/Buka Kunci/Hapus ditutup (arsip tetap terbaca & tercetak). Harus seirama dengan mode "Slip dihitung oleh: SIAP".</li>
-                                <li>• Keduanya dilaporkan di field <span class="ds-code">mode</span> pada GET /dokter dan …/transaksi supaya SIAP bisa memperingatkan bila saklar dua sisi tidak sama.</li>
+                                <li>• Tidak ada saklar .env di SIRUS. Mode dibaca langsung dari tabel <span class="ds-code">SIAP.SIAPMST_PENGATURAN_GDOKS</span> (satu Oracle, beda skema) lewat <span class="ds-code">App\Support\GajiDokter\ModePindahSiap</span>; disetel di SIAP → Gaji Dokter → Struktur Gaji → Mode.</li>
+                                <li>• <b>Struktur disetel di SIAP</b> (tahap 1): panel Struktur Gaji di Master Dokter SIRUS jadi baca-saja dan PUT struktur-gaji diterima.</li>
+                                <li>• <b>Slip dihitung SIAP</b> (tahap 3): SIAP menghitung dari …/transaksi; di Slip Gaji Dokter SIRUS Proses/Final/Buka Kunci/Hapus ditutup (arsip tetap terbaca & tercetak).</li>
+                                <li>• Butuh hak baca sekali (SYSTEM): <span class="ds-code">GRANT SELECT ON siap.siapmst_pengaturan_gdoks TO sirus</span>. Tabel tak terbaca = tahap 0 (SIRUS sumber semuanya). Mode ikut dilaporkan di field <span class="ds-code">mode</span> pada GET /dokter dan …/transaksi.</li>
                             </ul>
                         </div>
                         @foreach ([
@@ -151,7 +152,7 @@ Slip Gaji Dokter SIRUS dimatikan. SIAP menghitung slipnya sendiri (App\Support\G
                             ['P5', 'Akun diperiksa tiap request.',
                              'sub di token harus user yang masih ada, aktif, dan ber-role Api Siap. Nonaktifkan dari User Control = akses putus seketika.'],
                             ['P6', 'Satu endpoint tulis yang bersaklar + tanpa sesi.',
-                             'Hanya PUT struktur gaji dokter yang menulis, dan itu pun ditolak 409 selama SIAP_STRUKTUR_GAJI_DARI_SIAP belum menyala. Tidak memakai cookie / CSRF, tidak menyentuh Auth::login. Password dibandingkan lewat Auth::validate (bcrypt) tanpa membuat sesi.'],
+                             'Hanya PUT struktur gaji dokter yang menulis, dan itu pun ditolak 409 selama mode di SIAP belum "struktur disetel di SIAP". Tidak memakai cookie / CSRF, tidak menyentuh Auth::login. Password dibandingkan lewat Auth::validate (bcrypt) tanpa membuat sesi.'],
                         ] as [$nomor, $judul, $keterangan])
                             <div class="ds-card-outline mb-3" style="padding:18px 20px">
                                 <div class="flex items-start gap-3">
