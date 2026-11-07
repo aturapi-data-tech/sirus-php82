@@ -1,9 +1,14 @@
-# Arsip — berkas SQL modul gaji dokter yang sudah digantikan
+# Arsip — berkas SQL modul slip gaji dokter (DICABUT 2026-11-07)
 
-**Jangan jalankan berkas di folder ini.** Pemasangan modul gaji dokter kini
-memakai satu berkas saja:
+**Jangan jalankan berkas di folder ini.** Penggajian dokter diproses di SIAP
+sejak November 2026; objek yang dipasang berkas-berkas ini dihapus dari
+database lewat:
 
-    database/sql/2026_08_04_install_gaji_dokter.sql
+    database/sql/2026_11_07_drop_gaji_dokter.sql
+
+Berkas pasang tunggalnya, `2026_08_04_install_gaji_dokter.sql`, ikut dipindah ke
+sini — berguna hanya untuk rollback (bagian E berkas drop) dan sebagai catatan
+rumus slip yang kini hidup di SIAP (`App\Support\GajiDokterHitung`).
 
 Keempat berkas di sini lahir bertahap selama pengembangan, dijalankan berurutan
 di lingkungan dev pada 1–3 Agustus 2026. Isinya sudah menyatu ke berkas pasang

@@ -51,7 +51,7 @@
                                 <ul class="ds-body-sm space-y-1.5">
                                     <li>• token: 3 bagian dipisah titik, expires_in 3600</li>
                                     <li>• dokter: <span class="ds-code">{"dokter":[…]}</span> — jumlah = baris rsmst_doctors</li>
-                                    <li>• gaji-dokter: <span class="ds-code">jumlah</span> = jumlah slip bulan jasa itu di SIRUS (0 bila belum digaji)</li>
+                                    <li>• transaksi: <span class="ds-code">jumlah_dokter</span> = dokter yang punya transaksi jasa pada bulan itu (0 bila belum ada)</li>
                                     <li>• tanpa token 401; akun web biasa 401; bulan 13 → 422</li>
                                 </ul>
                             </div>
@@ -83,7 +83,7 @@
                             <div class="ds-caption-up mb-2" style="color:var(--primary)">Mengubah kode API</div>
                             <ul class="ds-body-sm space-y-1.5">
                                     <li>• Bentuk JSON adalah kontrak dengan <span class="ds-code">App\Support\GajiDokterSirus</span> di SIAP — menambah field aman, mengubah nama / arti field harus bersamaan di dua repo</li>
-                                    <li>• Lampiran memakai <span class="ds-code">GajiDokterLampiran::susun</span> yang sama dengan cetak slip — ubah di satu tempat, keduanya ikut</li>
+                                    <li>• Baris transaksi memakai <span class="ds-code">GajiDokterLampiran::barisMassal</span> yang sama dengan Monitoring Jasa Dokter — ubah di satu tempat, keduanya ikut</li>
                                     <li>• Uji regresi minimal: token akun API 200, akun biasa 401, akun nonaktif 401, /dokter 200, periode 2026/07 jumlah &gt; 0, bulan 13 → 422</li>
                                     <li>• Referensi teknis lengkap: <span class="ds-code">docs/siap-api.md</span>; sisi client: SIAP → Panduan → Bridging SIRUS</li>
                             </ul>

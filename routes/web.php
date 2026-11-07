@@ -640,8 +640,9 @@ Route::middleware(['auth'])->group(function () {
     Route::livewire('/manajemen/rs/tu/laporan-operasi', 'pages::manajemen.rs.tu.laporan-operasi.laporan-operasi')
         ->name('manajemen.rs.tu.laporan-operasi');
 
-    Route::livewire('/manajemen/rs/tu/gaji-dokter', 'pages::manajemen.rs.tu.gaji-dokter.gaji-dokter')
-        ->name('manajemen.rs.tu.gaji-dokter');
+    // Menggantikan Slip Gaji Dokter (/manajemen/rs/tu/gaji-dokter) sejak penggajian dokter diproses di SIAP, 2026-11.
+    Route::livewire('/manajemen/rs/tu/monitoring-jasa-dokter', 'pages::manajemen.rs.tu.monitoring-jasa-dokter.monitoring-jasa-dokter')
+        ->name('manajemen.rs.tu.monitoring-jasa-dokter');
 
     Route::livewire('/manajemen/mutasi-obat', 'pages::manajemen.mutasi-obat.mutasi-obat')
         ->name('manajemen.mutasi-obat');

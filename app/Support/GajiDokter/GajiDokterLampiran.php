@@ -7,18 +7,20 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Lampiran rincian pasien untuk slip gaji dokter.
+ * Rincian transaksi jasa dokter per pasien — baris yang dipasok SIRUS ke SIAP
+ * (GET /api/siap/gaji-dokter/{tahun}/{bulan}/transaksi) dan yang dibuka di
+ * modal Rincian layar Monitoring Jasa Dokter.
  *
- * Slip sendiri hanya menyimpan AGREGAT per komponen (RSTXN_GAJIDOCTORDTLS:
- * satu baris 'UP RJ' berisi total + jumlah pasien). Kelas ini membongkar
- * agregat itu kembali menjadi daftar transaksi: tanggal layanan, nomor rekam
- * medis, nama pasien, dan nominalnya masing-masing.
+ * Lahir sebagai lampiran slip gaji dokter (Agustus 2026). Slip gaji dokter kini
+ * dihitung di SIAP; yang tersisa di sini adalah pembongkar agregat view menjadi
+ * daftar transaksi: tanggal layanan, nomor rekam medis, nama pasien, klaim,
+ * dan nominalnya masing-masing.
  *
  * ANGKANYA DARI MANA
- *   Nominal diambil dari RSVIEW_NEWDOCSALARIES — sumber yang sama persis
- *   dengan yang dipakai GajiDokter::generate(). Itu disengaja: kalau lampiran
- *   memakai sumber lain, dua kertas yang dicetak bersamaan bisa berbeda dan
- *   tidak ada cara menentukan mana yang benar.
+ *   Nominal diambil dari RSVIEW_NEWDOCSALARIES — view yang sama dengan rekap
+ *   per dokter (MonitoringJasaDokter) dan laporan Pendapatan Jasa Dokter. Itu
+ *   disengaja: kalau rincian memakai sumber lain, dua angka yang dilihat
+ *   bersamaan bisa berbeda dan tidak ada cara menentukan mana yang benar.
  *
  * TANGGALNYA DARI MANA — DAN KENAPA TIDAK DARI VIEW
  *   DOC_DATE di view BUKAN tanggal layanan untuk jalur rawat inap. Komponen
@@ -30,18 +32,18 @@ use Illuminate\Support\Facades\DB;
  *   Karena itu tanggal ditarik ulang dari tabel sumbernya (VISIT_DATE,
  *   KONSUL_DATE, ACTD_DATE, OK_DATE, RIRAD_DATE, RJ_DATE), sementara PERIODE
  *   tetap disaring memakai DOC_DATE. Dua hal yang berbeda dan keduanya perlu:
- *   periode menentukan baris mana yang masuk slip, tanggal layanan menentukan
- *   apa yang tercetak di lampiran. Konsekuensi yang harus dipahami pembaca
- *   lampiran: baris rawat inap bisa bertanggal BULAN LAIN dari periode slip,
- *   dan itu benar — pasien dirawat Mei, pulang Juni, jasanya masuk gaji Juni.
+ *   periode menentukan baris mana yang masuk bulan jasa, tanggal layanan
+ *   menentukan apa yang tampil di rincian. Konsekuensi yang harus dipahami
+ *   pembaca: baris rawat inap bisa bertanggal BULAN LAIN dari bulan jasa, dan
+ *   itu benar — pasien dirawat Mei, pulang Juni, jasanya masuk bulan jasa Juni.
  *
  * SATU KUERI PER KOMPONEN, BUKAN PER BARIS — DAN BUKAN PER DOKTER
  *   Identitas pasien di-lookup sekali per DESC_DOC dengan WHERE IN atas
  *   seluruh nomor transaksinya, jadi jumlah kueri tetap (paling banyak 22)
- *   berapa pun banyak barisnya. Cetak massal memakai jalur yang SAMA lewat
- *   barisMassal(): satu berkas berisi 36 dokter tetap ~23 kueri, bukan 36 x 23.
+ *   berapa pun banyak barisnya. Semua dokter sekaligus memakai jalur yang SAMA
+ *   lewat barisMassal(): satu tarikan 36 dokter tetap ~23 kueri, bukan 36 x 23.
  *   Itu sebabnya baris() cuma pembungkus tipis — kalau keduanya punya jalur
- *   sendiri, cepat atau lambat hasil cetak satuan dan massal akan berbeda.
+ *   sendiri, cepat atau lambat hasil satu dokter dan semua dokter akan berbeda.
  */
 class GajiDokterLampiran
 {
@@ -54,6 +56,45 @@ class GajiDokterLampiran
      * punya LISTAGG, dan menyambung semua nama pun tidak muat di kolom.
      */
     protected const GABUNG_JASA = "CASE WHEN COUNT(*) > 1 THEN MIN(m.accdoc_desc) || ' (+' || TO_CHAR(COUNT(*) - 1) || ' jasa lain)' ELSE MIN(m.accdoc_desc) END";
+
+    /**
+     * Nama panjang tiap kode komponen jasa (DESC_DOC RSVIEW_NEWDOCSALARIES), untuk layar, CSV, dan JSON API.
+     *
+     * Kodenya warisan Oracle Dev 6i dan sengaja TIDAK diubah — dipakai apa adanya sebagai 'komponen' di JSON
+     * SIAP. Yang diganti hanya teks yang dibaca orang: "UP RJ" tidak berarti apa-apa bagi dokter, "Uang Periksa
+     * Rawat Jalan" berarti. TRF = transfer, pasien yang berpindah unit; tarifnya terpisah dari kunjungan biasa.
+     * Dipindah dari kelas GajiDokter (mesin slip, dihapus 2026-11-07) — hanya bagian jasa yang masih relevan.
+     */
+    public const LABEL_KOMPONEN = [
+        'UP RJ' => 'Uang Periksa Rawat Jalan',
+        'JD RJ' => 'Jasa Dokter Rawat Jalan',
+        'UP RJTRF' => 'Uang Periksa Rawat Jalan Transfer',
+        'JD RJTRF' => 'Jasa Dokter Rawat Jalan Transfer',
+        'UP UGD' => 'Uang Periksa UGD',
+        'JD UGD' => 'Jasa Dokter UGD',
+        'UP UGDTRF' => 'Uang Periksa UGD Transfer',
+        'JD UGDTRF' => 'Jasa Dokter UGD Transfer',
+        'VISIT' => 'Visite Rawat Inap',
+        'KONSUL' => 'Konsultasi Rawat Inap',
+        'JD RI' => 'Jasa Dokter Rawat Inap',
+        'OPERATOR' => 'Operator Bedah',
+        'ANASTESI' => 'Anestesi',
+        'OPERATOR RJ' => 'Operator Bedah Rawat Jalan',
+        'ANASTESI RJ' => 'Anestesi Rawat Jalan',
+        'OPERATOR UGD' => 'Operator Bedah UGD',
+        'ANASTESI UGD' => 'Anestesi UGD',
+        'UP KLINIK' => 'Uang Periksa Klinik',
+        'JD KLINIK' => 'Jasa Dokter Klinik',
+        'RAD RJ' => 'Bacaan Radiologi Rawat Jalan',
+        'RAD UGD' => 'Bacaan Radiologi UGD',
+        'RAD RI' => 'Bacaan Radiologi Rawat Inap',
+    ];
+
+    /** Nama panjang satu kode komponen; kode yang belum terdaftar ditampilkan apa adanya. */
+    public static function labelKomponen(string $kode): string
+    {
+        return self::LABEL_KOMPONEN[$kode] ?? $kode;
+    }
 
     /**
      * Daftar transaksi satu dokter untuk satu periode jasa.
@@ -146,7 +187,7 @@ class GajiDokterLampiran
                     'dr_id' => (string) $baris->dr_id,
                     'group_doc' => (string) $baris->group_doc,
                     'desc_doc' => (string) $baris->desc_doc,
-                    'label' => GajiDokter::labelKomponen((string) $baris->desc_doc),
+                    'label' => self::labelKomponen((string) $baris->desc_doc),
                     'seq' => (int) $baris->seq,
                     'txn_no' => self::kunci($baris->txn_no),
                     'tgl' => (string) $tanggal,
@@ -168,112 +209,6 @@ class GajiDokterLampiran
             })
             ->sortBy([['seq', 'asc'], ['tgl_sort', 'asc'], ['nama', 'asc']])
             ->groupBy('dr_id');
-    }
-
-    /**
-     * Grup komponen yang DIGANTIKAN baris per kapita pada slip dokter ini.
-     *
-     * Untuk dokter per kepala, komponen RI/RJ tidak dibayar per baris — yang
-     * dipakai hanya jumlah pasiennya. Nominal komponennya tetap ditampilkan di
-     * lampiran (itu dasar hitungnya), tapi harus ditandai supaya tidak dibaca
-     * sebagai uang yang diterima.
-     *
-     * Dibaca dari MASTER, bukan snapshot header: tarif kapita memang tidak
-     * ikut di-snapshot ke RSTXN_GAJIDOCTORHDRS. Sejalan dengan sifat lampiran
-     * tahap ini yang seluruhnya live.
-     *
-     * @return array<int, string> daftar GROUP_DOC, mis. ['RI']
-     */
-    public static function grupKapita(string $drId): array
-    {
-        return self::grupKapitaMassal([$drId])[$drId] ?? [];
-    }
-
-    /**
-     * Versi banyak dokter: DR_ID -> daftar GROUP_DOC yang digantikan kapita.
-     *
-     * @param array<int, string> $drIds
-     * @return array<string, array<int, string>>
-     */
-    public static function grupKapitaMassal(array $drIds): array
-    {
-        $drIds = array_values(array_unique(array_filter($drIds, fn ($drIdItem) => trim((string) $drIdItem) !== '')));
-
-        if ($drIds === []) {
-            return [];
-        }
-
-        $petaKapita = [];
-
-        foreach (collect($drIds)->chunk(self::BATAS_IN) as $bagianDokter) {
-            $dokterList = DB::table('rsmst_doctors')
-                ->select('dr_id', 'tarif_per_kapita_ri', 'tarif_per_kapita_rj')
-                ->whereIn('dr_id', $bagianDokter->values()->all())
-                ->get();
-
-            foreach ($dokterList as $dokter) {
-                $grup = [];
-                foreach (GajiDokter::GRUP_KAPITA as $jalur => $grupJalur) {
-                    if ((float) ($dokter->{"tarif_per_kapita_$jalur"} ?? 0) > 0) {
-                        $grup = array_merge($grup, $grupJalur);
-                    }
-                }
-
-                $petaKapita[(string) $dokter->dr_id] = $grup;
-            }
-        }
-
-        return $petaKapita;
-    }
-
-    /**
-     * Angka kaki lampiran: perbandingan antara daftar transaksi dan slip.
-     *
-     * Dikerjakan di sini, bukan di blok @php cetakannya, karena ini agregasi —
-     * bukan pemetaan tampilan. Alasan yang sama membuat GajiDokter::denganLabel()
-     * ada: template cukup membaca hasilnya, dan cetak satuan & massal memakai
-     * perhitungan yang sama persis tanpa saling menyalin.
-     *
-     * Baris pada grup per kapita TIDAK ikut dijumlahkan. Dokter per kepala
-     * tidak dibayar sebesar nominal komponennya — yang dipakai slip hanya
-     * jumlah pasiennya dikali tarif kepala — sehingga menjumlahkannya bersama
-     * komponen lain menghasilkan total yang tidak pernah cocok dengan slip.
-     *
-     * @param  Collection|array $lampiran   keluaran baris()
-     * @param  Collection|array $detail     baris RSTXN_GAJIDOCTORDTLS milik slip
-     * @param  array<int, string> $grupKapita
-     * @return array{totalTransaksi:float,totalDasarKapita:float,jasaSlip:float,kapitaSlip:float,selisih:float}
-     */
-    public static function rekonsiliasi($lampiran, $detail, array $grupKapita): array
-    {
-        $barisLampiran = collect($lampiran);
-        $barisSlip = collect($detail);
-
-        $totalTransaksi = (float) $barisLampiran
-            ->reject(fn ($baris) => in_array($baris['group_doc'], $grupKapita, true))
-            ->sum('nominal');
-
-        $totalDasarKapita = (float) $barisLampiran
-            ->filter(fn ($baris) => in_array($baris['group_doc'], $grupKapita, true))
-            ->sum('nominal');
-
-        $jasaSlip = (float) $barisSlip
-            ->where('jenis', 'J')
-            ->reject(fn ($baris) => str_starts_with($baris->kode, 'TUNJ '))
-            ->sum('nilai');
-
-        $kapitaSlip = (float) $barisSlip
-            ->where('jenis', 'J')
-            ->filter(fn ($baris) => str_starts_with($baris->kode, 'KAPITA '))
-            ->sum('nilai');
-
-        return [
-            'totalTransaksi' => $totalTransaksi,
-            'totalDasarKapita' => $totalDasarKapita,
-            'jasaSlip' => $jasaSlip,
-            'kapitaSlip' => $kapitaSlip,
-            'selisih' => round($jasaSlip - $totalTransaksi - $kapitaSlip, 2),
-        ];
     }
 
     /* ===============================
@@ -576,14 +511,14 @@ class GajiDokterLampiran
     }
 
     /* ===============================
-     | LAMPIRAN SIAP SAJI (modal layar, CSV, ZIP)
+     | RINCIAN SIAP SAJI (modal layar, CSV)
      * =============================== */
 
     /** Judul kolom CSV — urutannya bersebelahan dengan nilai di tulisCsv(). */
     public const KOLOM_CSV = [
         'Dokter', 'Periode Jasa', 'Komponen', 'Tanggal',
         'No. RM', 'Nama Pasien', 'Keterangan Jasa', 'Klaim', 'Jenis Klaim', 'No. SEP',
-        'No. Transaksi', 'Nominal', 'Masuk Slip',
+        'No. Transaksi', 'Nominal',
     ];
 
     public const NAMA_BULAN = [
@@ -593,64 +528,53 @@ class GajiDokterLampiran
     ];
 
     /**
-     * Satu entri per dokter (yang punya transaksi): header slip, detail slip, baris lampiran,
-     * grup kapita, dan angka rekonsiliasinya. Dipakai modal Lampiran (layar + Unduh CSV) DAN
-     * ZIP slip per dokter — satu jalur, jadi isi berkas mustahil berbeda dari yang tampil.
-     * Transaksi ditarik lewat barisMassal() — sekali untuk semua dokter, bukan sekali per dokter.
+     * Satu entri per dokter dari DR_ID + bulan jasa — untuk modal Rincian Monitoring Jasa Dokter dan
+     * tulisCsv(). Header disusun sendiri (identitas + periode); tidak ada rekonsiliasi dengan slip dan
+     * tidak ada penandaan grup kapita — keduanya urusan SIAP sejak penggajian pindah ke sana (2026-11).
      *
-     * @param  array<int, int>  $gajidoctorNoList
-     * @return Collection<int, array{header: object, lampiran: Collection, grupKapita: array, perKomponen: Collection, angka: array}>
+     * @param  array<int, string>  $drIdList
+     * @return Collection<int, array{header: object, lampiran: Collection, perKomponen: Collection, angka: array{totalTransaksi: float}}>
      */
-    public static function susun(array $gajidoctorNoList): Collection
+    public static function susunPerDokter(array $drIdList, string $tahunJasa, string $bulanJasa): Collection
     {
-        if ($gajidoctorNoList === []) {
+        $drIdList = array_values(array_unique(array_filter(array_map(fn ($drId) => trim((string) $drId), $drIdList), fn ($drId) => $drId !== '')));
+
+        if ($drIdList === []) {
             return collect();
         }
 
-        $headerList = DB::table('rstxn_gajidoctorhdrs as h')
-            ->join('rsmst_doctors as d', 'd.dr_id', '=', 'h.dr_id')
-            ->whereIn('h.gajidoctor_no', $gajidoctorNoList)
-            ->orderBy('d.dr_name')
-            ->select('h.*', 'd.dr_name')
-            ->get();
+        $lampiranPerDokter = self::barisMassal($drIdList, $tahunJasa, $bulanJasa);
 
-        if ($headerList->isEmpty()) {
+        if ($lampiranPerDokter->isEmpty()) {
             return collect();
         }
 
-        // Periode diambil dari header, bukan dari saringan layar: slip yang
-        // dibuka bisa saja bukan periode yang sedang tampil di daftar.
-        $pertama = $headerList->first();
-        $drIds = $headerList->pluck('dr_id')->unique()->values()->all();
-        $lampiranPerDokter = self::barisMassal($drIds, $pertama->tahun_jasa, $pertama->bulan_jasa);
-        $grupKapitaPerDokter = self::grupKapitaMassal($drIds);
+        // Nama dari master, bukan dari view: view menyalin nama saat transaksi dibuat.
+        $namaDokter = DB::table('rsmst_doctors')
+            ->whereIn('dr_id', $lampiranPerDokter->keys()->all())
+            ->pluck('dr_name', 'dr_id')
+            ->mapWithKeys(fn ($nama, $drId) => [(string) $drId => trim((string) $nama)]);
 
-        $detailPerSlip = DB::table('rstxn_gajidoctordtls')
-            ->whereIn('gajidoctor_no', $headerList->pluck('gajidoctor_no'))
-            ->orderBy('jenis')->orderBy('urutan')->orderBy('gajidoctor_dtl')
-            ->get()
-            ->groupBy('gajidoctor_no');
-
-        return $headerList
-            ->filter(fn ($header) => ($lampiranPerDokter[$header->dr_id] ?? collect())->isNotEmpty())
-            ->map(function ($header) use ($lampiranPerDokter, $grupKapitaPerDokter, $detailPerSlip) {
-                $lampiran = $lampiranPerDokter[$header->dr_id];
-                $detail = $detailPerSlip[$header->gajidoctor_no] ?? collect();
-                $grupKapita = $grupKapitaPerDokter[$header->dr_id] ?? [];
-
+        return $lampiranPerDokter
+            ->map(function (Collection $lampiran, $drId) use ($namaDokter, $tahunJasa, $bulanJasa) {
                 return [
-                    'header' => $header,
+                    'header' => (object) [
+                        'dr_id' => (string) $drId,
+                        'dr_name' => $namaDokter[(string) $drId] ?? (string) $drId,
+                        'tahun_jasa' => $tahunJasa,
+                        'bulan_jasa' => $bulanJasa,
+                    ],
                     'lampiran' => $lampiran,
-                    'grupKapita' => $grupKapita,
                     'perKomponen' => $lampiran->groupBy('desc_doc'),
-                    'angka' => self::rekonsiliasi($lampiran, $detail, $grupKapita),
+                    'angka' => ['totalTransaksi' => (float) $lampiran->sum('nominal')],
                 ];
             })
+            ->sortBy(fn ($entri) => $entri['header']->dr_name)
             ->values();
     }
 
     /**
-     * Tulis lampiran (satu atau banyak dokter, hasil susun()) sebagai CSV siap Excel ke $keluaran.
+     * Tulis rincian (satu atau banyak dokter, hasil susunPerDokter()) sebagai CSV siap Excel ke $keluaran.
      *
      * BENTUKNYA SENGAJA PIPIH, TIDAK MENIRU PENGELOMPOKAN DI LAYAR: baris judul & subtotal
      * akan merusak pivot. Kolom Dokter & Periode ikut di SETIAP baris supaya ekspor banyak
@@ -670,14 +594,9 @@ class GajiDokterLampiran
 
         foreach ($dataLampiran as $satuDokter) {
             $header = $satuDokter['header'];
-            $grupKapita = $satuDokter['grupKapita'];
             $periodeJasa = (self::NAMA_BULAN[$header->bulan_jasa] ?? $header->bulan_jasa) . ' ' . $header->tahun_jasa;
 
             foreach ($satuDokter['lampiran'] as $baris) {
-                // Baris komponen per kapita nominalnya tarif komponen yang TIDAK dibayarkan.
-                // Tanpa penanda ini, AutoSum kolom Nominal tidak cocok dengan slip.
-                $masukSlip = in_array($baris['group_doc'], $grupKapita, true) ? 'Tidak' : 'Ya';
-
                 fputcsv($keluaran, [
                     $header->dr_name,
                     $periodeJasa,
@@ -695,7 +614,6 @@ class GajiDokterLampiran
                     $baris['txn_no'],
                     // Angka MENTAH, bukan 450.000 — nominal bertitik dibaca Excel sebagai teks, SUM-nya nol.
                     (int) round((float) $baris['nominal']),
-                    $masukSlip,
                 ], ';', '"', '\\'); // escape = bawaan PHP, ditulis eksplisit (PHP 8.4 deprecation)
             }
         }
