@@ -89,8 +89,15 @@ new class extends Component {
         }
 
         // Guard: belum pernah ditransfer
-        if (DB::table('rstxn_ribiayaselamadugds')->where('rj_no', $rjNo)->exists()) {
-            $this->dispatch('toast', type: 'error', message: 'Transfer ke RI sudah pernah dilakukan untuk UGD ini.');
+        if ($pesan = $this->pesanSudahTransferRI($rjNo)) {
+            $this->dispatch('toast', type: 'error', message: $pesan);
+            return;
+        }
+
+        // Guard: kunjungan ber-operasi tidak boleh ditransfer (lihat daftarOkSudahTrfBiayaUGD).
+        if ($nomorOkList = $this->daftarOkSudahTrfBiayaUGD($rjNo)) {
+            $nomorOk = implode(', ', $nomorOkList);
+            $this->dispatch('toast', type: 'error', message: "Kunjungan UGD ini memiliki transaksi Kamar Operasi No. {$nomorOk}, transfer tidak bisa dilakukan. Selesaikan pembayaran di Kasir UGD, lalu daftarkan pasien langsung.");
             return;
         }
 
@@ -130,6 +137,129 @@ new class extends Component {
 
         $this->incrementVersion('modal-transfer-ugd-ke-ri');
         $this->dispatch('open-modal', name: 'transfer-ugd-ke-ri');
+    }
+
+    /**
+     * Pesan guard "sudah pernah transfer" yang bisa DILACAK: menyebut RI tujuan
+     * (No. RI, tgl masuk, ruang/bed, status) dari tautan rstxn_ribiayaselamadugds.
+     * Null bila UGD ini belum punya tautan transfer — atau tautannya menunjuk RI
+     * berstatus Batal ('F') dan baru saja dibersihkan otomatis.
+     *
+     * Kasus nyata (RI 63993, 2026-11-05): user sudah membatalkan inap, tapi tautan
+     * masih tertinggal (Batal Inap dari kasir RI / Oracle 6i tidak menghapus tautan
+     * ini; hanya "Batal Transfer" di kasir UGD yang menghapusnya).
+     */
+    private function pesanSudahTransferRI(int $rjNo): ?string
+    {
+        $link = DB::table('rstxn_ribiayaselamadugds')
+            ->where('rj_no', $rjNo)
+            ->select('ugd_no_rsri')
+            ->first();
+
+        if (!$link) {
+            return null;
+        }
+
+        $ri = DB::table('rstxn_rihdrs as h')
+            ->leftJoin('rsmst_rooms as r', 'r.room_id', '=', 'h.room_id')
+            ->where('h.rihdr_no', $link->ugd_no_rsri)
+            ->select('h.rihdr_no', 'h.ri_status', 'h.bed_no', 'r.room_name', DB::raw("to_char(h.entry_date, 'dd/mm/yyyy hh24:mi') as tgl_masuk"))
+            ->first();
+
+        if (!$ri) {
+            return "Transfer ke RI sudah tercatat untuk UGD ini (No. RI {$link->ugd_no_rsri}), tetapi data RI tersebut tidak ditemukan. Hubungi Admin untuk membersihkan tautan transfer.";
+        }
+
+        if ($ri->ri_status === 'F') {
+            $this->bersihkanTautanTransferRIBatal($rjNo, (int) $ri->rihdr_no);
+            $this->dispatch('toast', type: 'warning', message: "Tautan transfer lama ke RI {$ri->rihdr_no} (status Batal) sudah dibersihkan. Transfer ke RI bisa dilanjutkan.");
+            return null;
+        }
+
+        $statusDesc = ['I' => 'Dirawat', 'P' => 'Pulang', 'F' => 'Batal'][$ri->ri_status ?? ''] ?? ($ri->ri_status ?: '-');
+        $lokasi = trim(($ri->room_name ?? '-') . ($ri->bed_no ? " bed {$ri->bed_no}" : ''));
+        $pesan = "Transfer ke RI sudah pernah dilakukan untuk UGD ini: No. RI {$ri->rihdr_no}, masuk {$ri->tgl_masuk}, {$lokasi}, status {$statusDesc}.";
+
+        return $pesan . match ($ri->ri_status) {
+            'I' => ' Bila salah transfer, gunakan "Batal Transfer" di Kasir UGD.',
+            default => ' Cek transaksi RI tersebut di Daftar RI.',
+        };
+    }
+
+    /**
+     * Bersihkan sisa transfer UGD→RI yang inap-nya sudah Batal — langkah yang sama
+     * dengan "Batal Transfer" kasir UGD minus mengubah header (RI sudah 'F', UGD sudah 'A'):
+     * biaya RJ yang ikut pindah dikembalikan ke rstxn_ugdtempadmins, lalu detail RI
+     * (tempadmins, trfrooms) & tautan dihapus. Header RI tetap ada utk audit.
+     */
+    private function bersihkanTautanTransferRIBatal(int $rjNo, int $riHdrNo): void
+    {
+        DB::transaction(function () use ($rjNo, $riHdrNo) {
+            $this->lockUGDRow($rjNo);
+
+            // Re-check di dalam lock: RI benar-benar Batal & tautan masih menunjuk ke sana.
+            $statusRI = DB::table('rstxn_rihdrs')->where('rihdr_no', $riHdrNo)->value('ri_status');
+            $masihTertaut = DB::table('rstxn_ribiayaselamadugds')
+                ->where('rj_no', $rjNo)
+                ->where('ugd_no_rsri', $riHdrNo)
+                ->exists();
+            if ($statusRI !== 'F' || !$masihTertaut) {
+                return;
+            }
+
+            // Kembalikan biaya RJ yang ikut dipindah ke RI (kecuali flag 'UGD' = biaya UGD sendiri).
+            $riTempList = DB::table('rstxn_ritempadmins')
+                ->where('rihdr_no', $riHdrNo)
+                ->where('tempadm_flag', '!=', 'UGD')
+                ->get();
+
+            $ugdTempNo = (int) DB::table('rstxn_ugdtempadmins')->max('tempadm_no') + 1;
+            foreach ($riTempList as $row) {
+                DB::table('rstxn_ugdtempadmins')->insert([
+                    'tempadm_no'   => $ugdTempNo++,
+                    'tempadm_date' => $row->tempadm_date,
+                    'tempadm_flag' => $row->tempadm_flag,
+                    'tempadm_ref'  => $row->tempadm_ref,
+                    'rj_no'        => $rjNo,
+                    'rj_admin'     => $row->rj_admin,
+                    'poli_price'   => $row->poli_price,
+                    'acte_price'   => $row->acte_price,
+                    'actp_price'   => $row->actp_price,
+                    'actd_price'   => $row->actd_price,
+                    'obat'         => $row->obat,
+                    'lab'          => $row->lab,
+                    'rad'          => $row->rad,
+                    'other'        => $row->other,
+                    'rs_admin'     => $row->rs_admin,
+                ]);
+            }
+
+            DB::table('rstxn_ritempadmins')->where('rihdr_no', $riHdrNo)->delete();
+            DB::table('rsmst_trfrooms')->where('rihdr_no', $riHdrNo)->delete();
+            DB::table('rstxn_ribiayaselamadugds')->where('rj_no', $rjNo)->delete();
+
+            $this->appendAdminLogUGD($rjNo, 'Bersihkan tautan transfer ke RI #' . $riHdrNo . ' (RI berstatus Batal)');
+        });
+    }
+
+    /**
+     * Nomor transaksi Kamar Operasi kunjungan UGD ini yang biayanya SUDAH
+     * di-Trf Biaya (ok_status = 'L'). Kunjungan ber-operasi TIDAK boleh ditransfer
+     * (keputusan user 2026-11-05): jasa operator & anestesi di RSVIEW_NEWDOCSALARIES
+     * hanya terhitung bila UGD Lunas (rj_status='L') — setelah transfer statusnya 'I'
+     * dan rihdr_no operasi NULL, sehingga jasanya tak masuk slip gaji mana pun.
+     * Operasi Batal ('F') tidak menghalangi; yang 'A' sudah dijaga checkOkPendingUGD.
+     */
+    private function daftarOkSudahTrfBiayaUGD(int $rjNo): array
+    {
+        return DB::table('rstxn_oks')
+            ->where('status_rjri', 'UGD')
+            ->where('ref_no', $rjNo)
+            ->where('ok_status', 'L')
+            ->orderBy('ok_reg')
+            ->pluck('ok_reg')
+            ->map(fn($nomor) => (string) $nomor)
+            ->all();
     }
 
     private function resetTransferState(): void
@@ -288,10 +418,17 @@ new class extends Component {
             return;
         }
 
+        // Guard: kunjungan ber-operasi tidak boleh ditransfer (lihat daftarOkSudahTrfBiayaUGD).
+        if ($nomorOkList = $this->daftarOkSudahTrfBiayaUGD($this->rjNo)) {
+            $nomorOk = implode(', ', $nomorOkList);
+            $this->dispatch('toast', type: 'error', message: "Kunjungan UGD ini memiliki transaksi Kamar Operasi No. {$nomorOk}, transfer tidak bisa dilakukan. Selesaikan pembayaran di Kasir UGD, lalu daftarkan pasien langsung.");
+            return;
+        }
+
 
         // Cek sudah pernah transfer
-        if (DB::table('rstxn_ribiayaselamadugds')->where('rj_no', $this->rjNo)->exists()) {
-            $this->dispatch('toast', type: 'error', message: 'Transfer ke RI sudah pernah dilakukan untuk UGD ini.');
+        if ($pesan = $this->pesanSudahTransferRI($this->rjNo)) {
+            $this->dispatch('toast', type: 'error', message: $pesan);
             return;
         }
 

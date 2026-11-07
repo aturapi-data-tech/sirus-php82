@@ -237,6 +237,7 @@ class AppMenu
             $entry(['group' => 'Sistem', 'groupOrder' => 15, 'order' => 16, 'route' => 'panduan-dev.koding-skill', 'title' => 'Katalog Skill', 'desc' => 'Daftar skill repo (.claude/skills/*) + kapan dibaca', 'roles' => ['admin'], 'badge' => 'DOC']),
             $entry(['group' => 'Sistem', 'groupOrder' => 15, 'order' => 17, 'route' => 'panduan-dev.rujukan-kompetensi', 'title' => 'Rujukan Kompetensi (SRBK)', 'desc' => 'Alur rujukan berbasis kompetensi dua jalur (BPJS & FHIR) + FAQ permasalahan', 'roles' => ['admin'], 'badge' => 'DOC']),
             $entry(['group' => 'Sistem', 'groupOrder' => 15, 'order' => 18, 'route' => 'panduan-dev.mobile-jkn', 'title' => 'Panduan Mobile JKN', 'desc' => 'Cara kerja API Antrean Online BPJS — booking, checkin, kuota, host API, penanganan masalah', 'roles' => ['admin'], 'badge' => 'DOC']),
+            $entry(['group' => 'Sistem', 'groupOrder' => 15, 'order' => 19, 'route' => 'panduan-dev.siap-api', 'title' => 'Panduan API SIAP', 'desc' => 'Bridging penggajian ke SIAP (SIRUS sebagai server) — akun & JWT, endpoint gaji dokter, pengaman, setup, uji', 'roles' => ['admin'], 'badge' => 'DOC']),
         ];
     }
 }

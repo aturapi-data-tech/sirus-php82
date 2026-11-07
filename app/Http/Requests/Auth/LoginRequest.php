@@ -60,6 +60,16 @@ class LoginRequest extends FormRequest
             ]);
         }
 
+        // Akun API SIAP (role services.siap.role) hanya untuk mesin — tidak boleh masuk ke web.
+        if (Auth::user()->hasRole((string) config('services.siap.role', 'Api Siap'))) {
+            Auth::logout();
+            RateLimiter::hit($this->throttleKey());
+
+            throw ValidationException::withMessages([
+                'email' => 'Akun API tidak bisa dipakai untuk masuk ke SIRUS.',
+            ]);
+        }
+
         RateLimiter::clear($this->throttleKey());
     }
 
