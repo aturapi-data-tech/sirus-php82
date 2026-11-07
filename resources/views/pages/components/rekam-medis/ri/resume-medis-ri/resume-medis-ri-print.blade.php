@@ -177,17 +177,36 @@
         }
 
         /* Table dari TinyMCE — DomPDF native */
+        /* Ukuran piksel sisa editor WAJIB ditimpa (!important): TinyMCE menulis
+           `height: …px` di <table>/<tr> tiap tabel diseret, dan tempelan dari Word
+           membawa `width: 850px` pada tabel/sel. DomPDF menghormatinya literal →
+           tabel tembus tepi kanan kertas (teks terpotong) dan baris kosong memanjang.
+           Kasus nyata: Resume Medis RI 5300808Z, 2026-11-06. Konsekuensi: lebar
+           kolom label mengikuti teks terpanjang, bukan 200px template. */
         .resume-medis-content table {
-            width: 100%;
+            width: 100% !important;
+            height: auto !important;
             border-collapse: collapse;
             margin: 4px 0;
         }
 
+        .resume-medis-content table tr {
+            height: auto !important;
+        }
+
         .resume-medis-content table td,
         .resume-medis-content table th {
+            width: auto !important;
+            height: auto !important;
             border: 1px solid #cbd5e1;
             padding: 3px 6px;
             vertical-align: top;
+            word-wrap: break-word;
+        }
+
+        /* Tabel yang ditempel dokter di dalam sel: tanpa jarak ganda. */
+        .resume-medis-content table table {
+            margin: 0;
         }
 
         .resume-medis-content table th {

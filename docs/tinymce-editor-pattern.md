@@ -185,6 +185,26 @@ TinyMCE output HTML clean dengan `<table>`, `<ol>`, `<ul>`, `<strong>`, `<em>`, 
 </div>
 ```
 
+### Wajib: timpa ukuran piksel sisa editor dengan `!important`
+
+TinyMCE menulis `height: 426.5px` di `<table>`/`<tr>` tiap kali tabel diseret, dan tempelan
+dari Word/aplikasi lain membawa `width: 850px` pada tabel/sel. DomPDF menghormati angka itu
+literal: tabel tembus tepi kanan kertas (teks terpotong, garis kanan hilang) dan baris setinggi
+nilai tersimpan (kotak kosong memanjang, isi terdorong ke halaman berikut). Kasus nyata:
+Resume Medis RI 5300808Z, 2026-11-06 — dokter menempel tabel di dalam sel "Obat Selama Rawat".
+
+Timpa di CSS print (inline style kalah dari `!important` di stylesheet, DomPDF mendukungnya):
+
+```css
+.resume-medis-content table    { width: 100% !important; height: auto !important; }
+.resume-medis-content table tr { height: auto !important; }
+.resume-medis-content table td { width: auto !important; height: auto !important; word-wrap: break-word; }
+```
+
+Konsekuensi `td { width: auto }`: lebar kolom label mengikuti teks terpanjang, bukan 200px dari
+template. Tanpa override `td width`, sel tempelan 600px tetap mendorong tabel keluar kertas (diuji).
+Dipakai di cetak Resume Medis RI, Ringkasan Pulang RI, bacaan Radiologi.
+
 ### Kenapa CSS inline `<style>` di print blade, bukan Tailwind class?
 
 TinyMCE output `<table>` dengan inline `border-collapse: collapse` di style attribute, tapi cell `<td>` tidak punya class. DomPDF perlu CSS rule `border: 1px solid ...` di `.resume-medis-content table td` supaya gridline visible. Tailwind class tidak bisa target child dari raw HTML user-typed.

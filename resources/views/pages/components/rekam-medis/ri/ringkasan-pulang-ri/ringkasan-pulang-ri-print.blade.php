@@ -95,8 +95,11 @@
         .rp-content i, .rp-content em { font-style: italic; }
         .rp-content u { text-decoration: underline; }
         .rp-content .text-muted { color: #6b7280; }
-        .rp-content table { width: 100%; border-collapse: collapse; margin: 4px 0; }
-        .rp-content table td, .rp-content table th { border: 1px solid #cbd5e1; padding: 3px 6px; vertical-align: top; }
+        /* Ukuran piksel sisa editor ditimpa (!important) — alasan: lihat resume-medis-ri-print. */
+        .rp-content table { width: 100% !important; height: auto !important; border-collapse: collapse; margin: 4px 0; }
+        .rp-content table tr { height: auto !important; }
+        .rp-content table td, .rp-content table th { width: auto !important; height: auto !important; border: 1px solid #cbd5e1; padding: 3px 6px; vertical-align: top; word-wrap: break-word; }
+        .rp-content table table { margin: 0; }
         .rp-content table th { background: #f3f4f6; font-weight: bold; text-align: center; }
     </style>
     <div class="rp-content mb-4 px-2">
