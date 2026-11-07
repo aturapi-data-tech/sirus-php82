@@ -12,18 +12,21 @@ new class extends Component {
 
 'arsitektur' => <<<'TXT'
   SIAP (penggajian, LAN RS)                         SIRUS (satu aplikasi, DB Oracle SIRUS)
-  ┌──────────────────────────────┐                  ┌──────────────────────────────────────────┐
+  ┌──────────────────────────────┐                  ┌───────────────────────────
   │ App\Support\GajiDokterSirus  │  POST /api/siap/token   ──►  Api\Siap\GajiDokterApiController@token
   │  token() → cache 45 menit    │  Bearer <jwt>                 ├─ Auth::validate (tabel users)
-  │  ambil(periode)              │  GET  /api/siap/dokter   ──►  ├─ role 'Api Siap' + active_status
-  │   ├ segarkanDokter()         │  GET  /api/siap/gaji-dokter/{thn}/{bln}            ─► rstxn_gajidoctorhdrs/dtls
-  │   ├ slip per bulan jasa      │  GET  /api/siap/gaji-dokter/{thn}/{bln}/lampiran   ─► GajiDokterLampiran::susun
-  │   └ lampiran                 │                  │                                          │
-  │  → snapshot BERVERSI di      │   ◄── JSON ──    │  middleware: throttle:siap-api (120/mnt) │
-  │    siaptxn_gdok_*            │                  │              AuthSiapApi (JWT + akun)    │
-  └──────────────────────────────┘                  └──────────────────────────────────────────┘
+  │  segarkanDokter()            │  GET  /api/siap/dokter   ──►  ├─ role 'Api Siap' + active_status
+  │  prosesSiap(periode)         │  GET  /api/siap/gaji-dokter/{thn}/{bln}/transaksi ─► RSVIEW_NEWDOCSALARIES
+  │   ├ transaksi mentah         │                  │              (GajiDokterLampiran::barisMassal — baris yang
+  │   ├ struktur gaji SIAP       │                  │               sama dengan layar Monitoring Jasa Dokter)
+  │   └ hitung slip (GajiDokter- │   ◄── JSON ──    │  middleware: throttle:siap-api (120/mnt)
+  │     Hitung) → snapshot       │                  │              AuthSiapApi (JWT + akun)
+  │     BERVERSI siaptxn_gdok_*  │                  │
+  └──────────────────────────────┘                  └───────────────────────────
 
   Tidak ada endpoint tulis. SIRUS tidak tahu-menahu apa yang SIAP simpan.
+  Slip TIDAK dihitung di SIRUS: tabel slip & kolom struktur gaji SIRUS dihapus 2026-11-07
+  (database/sql/2026_11_07_drop_gaji_dokter.sql).
 TXT,
 
 'banding' => <<<'TXT'
@@ -88,64 +91,43 @@ TXT,
 'dokter' => <<<'TXT'
 GET /api/siap/dokter
 → 200 { "dokter": [
-    { "dr_id": "088", "dr_name": "Dr. Deny Mory Aryawan, SpOT", "dr_nik": "3504…", "kd_dr_bpjs": "12345",
-      "aktif": true, "npwp_status": "Y", "skema_gaji_pokok": "A", "gaji_pokok": 0 }, … ] }
+    { "dr_id": "088", "dr_name": "Dr. Deny Mory Aryawan, SpOT", "dr_nik": "3504…", "kd_dr_bpjs": "12345", "aktif": true }, … ] }
 
 Sumber: rsmst_doctors (semua baris, aktif & nonaktif) — dipakai SIAP untuk memetakan dr_id ↔ emp_id.
+Field npwp_status / skema_gaji_pokok / gaji_pokok tidak ada lagi: struktur gaji dokter disetel di SIAP.
 TXT,
 
-'periode' => <<<'TXT'
-GET /api/siap/gaji-dokter/2026/07            tahun 4 digit, bulan 01–12 = BULAN JASA
-→ 200 {
-  "tahun_jasa": "2026", "bulan_jasa": "07", "jumlah": 36, "diambil_pada": "2026-11-06 13:29:00",
-  "slip": [ {
-     "gajidoctor_no": 21, "dr_id": "088", "dr_name": "Dr. Deny Mory Aryawan, SpOT", "dr_nik": "…", "kd_dr_bpjs": "…",
-     "tahun_jasa": "2026", "bulan_jasa": "07", "tahun_gaji": "2026", "bulan_gaji": "08",
-     "skema_gaji_pokok": "A", "nilai_gaji_pokok": 0,
-     "potongan_rs_basis": "T", "potongan_rs_persen": 10, "pph21_persen": 2.5, "npwp_status": "Y",
-     "jasa_total": 13505000, "total_gaji": 13505000, "potongan_rs": -1350500, "pph21": -303862,
-     "potongan_lain_total": 0, "tambahan_total": 0, "gaji_diterima": 11850638,
-     "gaji_status": "D",                       D = Draft, F = Final
-     "tanggal_bayar": null, "update_date": "2026-08-05 09:12:31",
-     "detail": [
-        { "jenis": "J", "kode": "JD RJ",  "label": "Jasa Dokter Rawat Jalan", "keterangan": "",
-          "nilai": 16075000, "nilai_manual": false, "jumlah_pasien": 303, "urutan": 1 },
-        { "jenis": "P", "kode": "RS",     "label": "Potongan RS 10%", … "nilai": -2110500, … },
-        { "jenis": "P", "kode": "PPH21",  "label": "PPh 21", … } ] } ] }
+'transaksi' => <<<'TXT'
+GET /api/siap/gaji-dokter/2026/07/transaksi             tahun 4 digit, bulan 01–12 = BULAN JASA; semua dokter (±1 MB, ±3 detik)
+GET /api/siap/gaji-dokter/2026/07/transaksi?dr_id=085   satu dokter
+→ 200 { "tahun_jasa": "2026", "bulan_jasa": "07", "jumlah_dokter": 35, "diambil_pada": "2026-11-07 09:00:00",
+  "dokter": [ {
+     "dr_id": "085", "dr_name": "dr. Nanda Agus Prasetya, SpOG", "aktif": true,
+     "baris": [
+        { "komponen": "UP RJ", "group": "RJ", "label": "Uang Periksa Rawat Jalan", "seq": 1, "tgl": "02/07/2026",
+          "reg_no": "097289Z", "nama": "BUDI ENDA APRIYANI", "keterangan": "", "klaim": "JKN MANDIRI",
+          "klaim_status": "BPJS", "no_sep": "0184R0060726V000223", "txn_no": "670903", "nominal": 50000, "pasien": 1 },
+        { "komponen": "VISIT", "group": "RI", "label": "Visite Rawat Inap", "seq": 9, "tgl": "28/06/2026", … } ] } ] }
 → 422 { "error": "Periode harus /{tahun 4 digit}/{bulan 01-12}." }
 
-Sumber: rstxn_gajidoctorhdrs + rstxn_gajidoctordtls (jenis J jasa / P potongan / T tambahan).
-Angka dikirim MENTAH seperti di tabel: potongan negatif. Label komponen dari GajiDokter::labelKomponen().
-TXT,
-
-'lampiran' => <<<'TXT'
-GET /api/siap/gaji-dokter/2026/07/lampiran              semua dokter (±1 MB, ±3 detik untuk 36 slip)
-GET /api/siap/gaji-dokter/2026/07/lampiran?dr_id=088    satu dokter
-→ 200 { "tahun_jasa": "2026", "bulan_jasa": "07", "jumlah_dokter": 36,
-  "lampiran": [ {
-     "gajidoctor_no": 21, "dr_id": "088", "dr_name": "…",
-     "grup_kapita": ["…"],                  grup yang dibayar lewat skema kapita (tidak masuk slip)
-     "angka": { … },                        ringkasan angka per komponen versi SIRUS
-     "baris": [
-        { "komponen": "JD RI", "group": "…", "label": "Jasa Dokter Rawat Inap", "tgl": "06/07/2026",
-          "reg_no": "112169Z", "nama": "ANIK M…", "keterangan": "ANAMNESE RAWAT INAP",
-          "klaim": "JKN MANDIRI", "klaim_status": "BPJS", "no_sep": "0184R…", "txn_no": "40071",
-          "nominal": 20000, "pasien": 1, "masuk_slip": true }, … ] } ] }
-
-Sumber: App\Support\GajiDokter\GajiDokterLampiran::susun() — rincian yang sama dengan cetak lampiran slip di SIRUS.
+Semua dokter yang punya baris di RSVIEW_NEWDOCSALARIES pada bulan jasa itu. komponen = DESC_DOC, group = GROUP_DOC
+(RJ, RJTRF, UGD, UGDTRF, RI, OK, RJK, RADRJ, RADUGD, RADRI), tgl = TANGGAL LAYANAN — baris rawat inap bisa bertanggal
+bulan sebelumnya karena jasanya masuk saat pasien pulang. SIAP menghitung slip dari baris ini (App\Support\GajiDokterHitung)
+dengan struktur gaji yang disetel di SIAP; dokter per kapita tanpa transaksi diambil SIAP dari struktur gajinya sendiri.
+Sumber: GajiDokterLampiran::barisMassal() — baris yang sama dengan modal Rincian di Monitoring Jasa Dokter SIRUS.
 TXT,
 
 'perjalanan' => <<<'TXT'
-Request SIAP:  GET https://sirus…/api/siap/gaji-dokter/2026/07   Authorization: Bearer <jwt>
+Request SIAP:  GET https://sirus…/api/siap/gaji-dokter/2026/07/transaksi   Authorization: Bearer <jwt>
 
 1. bootstrap/app.php → withRouting then:   if strlen(SIAP_API_JWT_SECRET) >= 32
                                               [Route::domain(SIAP_API_HOST) bila diisi]->prefix('api/siap')
                                               ->middleware([SubstituteBindings, throttle:siap-api])
-2. routes/api-siap.php                     /token (throttle:siap-token) · grup AuthSiapApi: /dokter, /gaji-dokter/…
+2. routes/api-siap.php                     /token (throttle:siap-token) · grup AuthSiapApi: /dokter, /gaji-dokter/{thn}/{bln}/transaksi
 3. Middleware\AuthSiapApi                  503 bila secret kosong → 404 bila lewat host Mobile JKN → 403 IP di luar whitelist →
                                            401 token tidak sah / kedaluwarsa (JwtSiap::verifikasi) →
                                            401 akun 'sub' tidak ada / nonaktif / tanpa role 'Api Siap'
-4. Api\Siap\GajiDokterApiController        periode(): query hdr + dtl → JSON; lampiran(): GajiDokterLampiran::susun
+4. Api\Siap\GajiDokterApiController        transaksi(): RSVIEW_NEWDOCSALARIES → GajiDokterLampiran::barisMassal → JSON
      ├─ Support\Api\JwtSiap                klaim iss/aud/exp, TTL, secret()
      └─ Support\Api\Jwt                    encode/decode HS256 (mesin bersama dengan Mobile JKN)
 5. Galat tak tertangkap                    JSON {message} standar Laravel (Accept: application/json) + laravel.log
@@ -162,9 +144,9 @@ T=$(curl -s -X POST $B/token -H 'Accept: application/json' \
 # master dokter
 curl -s $B/dokter -H "Authorization: Bearer $T" -H 'Accept: application/json' | head -c 300
 
-# slip satu bulan jasa + lampiran satu dokter
-curl -s $B/gaji-dokter/2026/07            -H "Authorization: Bearer $T" -H 'Accept: application/json' | head -c 300
-curl -s "$B/gaji-dokter/2026/07/lampiran?dr_id=088" -H "Authorization: Bearer $T" -H 'Accept: application/json' | head -c 300
+# transaksi satu bulan jasa (semua dokter) + satu dokter
+curl -s $B/gaji-dokter/2026/07/transaksi            -H "Authorization: Bearer $T" -H 'Accept: application/json' | head -c 300
+curl -s "$B/gaji-dokter/2026/07/transaksi?dr_id=088" -H "Authorization: Bearer $T" -H 'Accept: application/json' | head -c 300
 
 # yang HARUS ditolak
 curl -s -o /dev/null -w '%{http_code}\n' $B/dokter                                   # 401 tanpa token

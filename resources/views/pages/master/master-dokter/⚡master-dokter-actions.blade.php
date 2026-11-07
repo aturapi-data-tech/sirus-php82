@@ -30,13 +30,12 @@ new class extends Component {
     public string $activeStatus = '1';
     public string $rsAdmin = '0';
 
-    // Gaji pokok & parameter penggajian TIDAK di sini — punya modal sendiri,
-    // lihat master-dokter-penggajian-actions.blade.php. Dipisah karena diisi orang &
-    // momen yang berbeda: panel ini untuk petugas master saat dokter baru
-    // masuk, yang di sana untuk keuangan saat kesepakatan gaji berubah.
+    // Gaji pokok & parameter penggajian TIDAK di sini. Sejak 2026-11 struktur gaji
+    // dokter disetel di SIAP (penggajian diproses di SIAP); panel Struktur Gaji
+    // di Master Dokter sudah dihapus dan kolom gaji di RSMST_DOCTORS tidak lagi
+    // disunting dari SIRUS.
     // Catatan: rs_admin di atas BUKAN potongan gaji, melainkan tarif administrasi
-    // RS yang dibebankan ke pasien. Jangan tertukar dengan potongan RS di modal
-    // penggajian.
+    // RS yang dibebankan ke pasien.
 
     public array $renderVersions = [];
     protected array $renderAreas = ['modal'];
@@ -252,12 +251,9 @@ new class extends Component {
             'dr_uuid' => $data['drUuid'],
             'dr_nik' => $data['drNik'],
 
-            // basic_salary & parameter penggajian SENGAJA tidak ada di payload
-            // ini — diurus modal Parameter Penggajian. Menyertakannya di sini
-            // berarti tiap simpan data dokter ikut menulis ulang kolom gaji
-            // yang tidak sedang disunting. Pada mode create kolom-kolom itu
-            // tidak disebut sama sekali, jadi Oracle mengisinya dengan DEFAULT
-            // dari DDL (skema 'A', basis 'T', 10%, PPh 2,5%).
+            // basic_salary SENGAJA tidak ada di payload ini (disunting inline di
+            // daftar). Parameter penggajian lain tidak ada lagi di RSMST_DOCTORS:
+            // kolomnya dihapus 2026-11-07, struktur gaji dokter disetel di SIAP.
         ];
 
         if ($this->formMode === 'create') {

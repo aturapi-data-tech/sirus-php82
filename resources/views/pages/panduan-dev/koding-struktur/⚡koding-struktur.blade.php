@@ -60,7 +60,7 @@ app/
 │   ├── Clause/        (6)     #   teks legal berversi
 │   ├── Options/       (9)     #   daftar opsi & skala formulir EMR
 │   ├── Terminologi/   (8)     #   pemetaan SNOMED/KFA/LOINC/ICD/FHIR
-│   ├── GajiDokter/    (2)     #   modul slip gaji
+│   ├── GajiDokter/    (2)     #   jasa dokter: rekap monitoring + baris per pasien (pasokan API SIAP)
 │   ├── Downtime/      (2)     #   formulir & tarif waktu henti
 │   └── <11 berkas di akar>    #   pembantu tunggal per domain
 └── View/Components/           # AppLayout, GuestLayout

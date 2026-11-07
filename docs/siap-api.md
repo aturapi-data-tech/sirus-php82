@@ -1,7 +1,10 @@
 # API SIAP — Bridging Penggajian (SIRUS sebagai server)
 
-SIAP (Sistem Informasi Administrasi Pegawai) menarik **slip gaji dokter spesialis** yang dihitung modul Gaji Dokter SIRUS,
-per bulan jasa, lewat API **baca saja** ini. SIRUS tidak pernah memanggil SIAP dan tidak tahu apa yang SIAP simpan
+SIAP (Sistem Informasi Administrasi Pegawai) menghitung **slip gaji dokter spesialis**; struktur gaji disetel di SIAP, dan
+SIRUS memasok **transaksi jasa mentah** per bulan jasa lewat API **baca saja** ini (endpoint `/transaksi`). Endpoint slip
+(`/gaji-dokter/{tahun}/{bulan}` dan `/lampiran`) **dihapus 2026-11-07** bersama tabel `RSTXN_GAJIDOCTOR*` dan kolom
+parameter gaji di `RSMST_DOCTORS` (`database/sql/2026_11_07_drop_gaji_dokter.sql`). Di sisi layar, SIRUS menampilkan data
+yang dipasok itu di Manajemen → Monitoring Keuangan → **Monitoring Jasa Dokter**. SIRUS tidak pernah memanggil SIAP dan tidak tahu apa yang SIAP simpan
 (SIAP menyimpannya sebagai snapshot berversi — lihat panduan client di SIAP: Panduan → Bridging SIRUS).
 
 Versi web dokumen ini: menu Sistem → **Panduan API SIAP** (`/panduan-dev/siap-api`).
@@ -19,9 +22,9 @@ Versi web dokumen ini: menu Sistem → **Panduan API SIAP** (`/panduan-dev/siap-
 ```
 SIAP (LAN RS)                                  SIRUS
 App\Support\GajiDokterSirus   POST /api/siap/token        → token JWT (akun users ber-role 'Api Siap')
-  token() cache 45 mnt        GET  /api/siap/dokter       → rsmst_doctors
-  ambil(periode)              GET  /api/siap/gaji-dokter/{thn}/{bln}          → rstxn_gajidoctorhdrs + dtls
-                              GET  /api/siap/gaji-dokter/{thn}/{bln}/lampiran → GajiDokterLampiran::susun
+  token() cache 45 mnt        GET  /api/siap/dokter       → rsmst_doctors (identitas)
+  prosesSiap(periode)         GET  /api/siap/gaji-dokter/{thn}/{bln}/transaksi → RSVIEW_NEWDOCSALARIES
+                                   via GajiDokterLampiran::barisMassal (baris = layar Monitoring Jasa Dokter)
 ```
 
 | | Mobile JKN (BPJS → SIRUS) | API SIAP (SIAP → SIRUS) |
@@ -72,40 +75,27 @@ php artisan siap-api:akun siap-gaji --password=… # password ditentukan
 
 ### GET /api/siap/dokter
 ```json
-{"dokter":[{"dr_id":"088","dr_name":"Dr. Deny Mory Aryawan, SpOT","dr_nik":"…","kd_dr_bpjs":"…",
-            "aktif":true,"npwp_status":"Y","skema_gaji_pokok":"A","gaji_pokok":0}]}
+{"dokter":[{"dr_id":"088","dr_name":"Dr. Deny Mory Aryawan, SpOT","dr_nik":"…","kd_dr_bpjs":"…","aktif":true}]}
 ```
-Semua baris `rsmst_doctors` (aktif & nonaktif) — untuk pemetaan `dr_id` ↔ `emp_id` di SIAP.
+Semua baris `rsmst_doctors` (aktif & nonaktif) — untuk pemetaan `dr_id` ↔ `emp_id` di SIAP. Field `npwp_status`,
+`skema_gaji_pokok`, `gaji_pokok` yang dulu ikut dikirim dihapus bersama kolomnya; struktur gaji ada di SIAP.
 
-### GET /api/siap/gaji-dokter/{tahun}/{bulan}
+### GET /api/siap/gaji-dokter/{tahun}/{bulan}/transaksi[?dr_id=]
 `tahun` 4 digit, `bulan` 01–12 = **bulan jasa**. 422 bila tidak valid.
 ```json
-{"tahun_jasa":"2026","bulan_jasa":"07","jumlah":36,"diambil_pada":"2026-11-06 13:29:00",
- "slip":[{"gajidoctor_no":21,"dr_id":"088","dr_name":"…","dr_nik":"…","kd_dr_bpjs":"…",
-   "tahun_jasa":"2026","bulan_jasa":"07","tahun_gaji":"2026","bulan_gaji":"08",
-   "skema_gaji_pokok":"A","nilai_gaji_pokok":0,"potongan_rs_basis":"T","potongan_rs_persen":10,
-   "pph21_persen":2.5,"npwp_status":"Y",
-   "jasa_total":13505000,"total_gaji":13505000,"potongan_rs":-1350500,"pph21":-303862,
-   "potongan_lain_total":0,"tambahan_total":0,"gaji_diterima":11850638,
-   "gaji_status":"D","tanggal_bayar":null,"update_date":"2026-08-05 09:12:31",
-   "detail":[{"jenis":"J","kode":"JD RJ","label":"Jasa Dokter Rawat Jalan","keterangan":"",
-              "nilai":16075000,"nilai_manual":false,"jumlah_pasien":303,"urutan":1}]}]}
+{"tahun_jasa":"2026","bulan_jasa":"07","jumlah_dokter":35,"diambil_pada":"2026-11-07 09:00:00",
+ "dokter":[{"dr_id":"085","dr_name":"dr. Nanda Agus Prasetya, SpOG","aktif":true,
+   "baris":[{"komponen":"UP RJ","group":"RJ","label":"Uang Periksa Rawat Jalan","seq":1,"tgl":"02/07/2026",
+             "reg_no":"097289Z","nama":"BUDI ENDA APRIYANI","keterangan":"","klaim":"JKN MANDIRI","klaim_status":"BPJS",
+             "no_sep":"0184R0060726V000223","txn_no":"670903","nominal":50000,"pasien":1}]}]}
 ```
-Sumber `rstxn_gajidoctorhdrs` + `rstxn_gajidoctordtls` (`jenis` J jasa / P potongan / T tambahan). Angka mentah seperti
-di tabel (potongan negatif); `gaji_status` D Draft / F Final apa adanya; label dari `GajiDokter::labelKomponen()`.
+Semua dokter yang punya baris di `RSVIEW_NEWDOCSALARIES` bulan itu; `komponen` = `DESC_DOC`, `group` = `GROUP_DOC`,
+`tgl` = tanggal layanan (baris rawat inap bisa bertanggal bulan sebelumnya — jasanya masuk saat pasien pulang).
+Sumber `App\Support\GajiDokter\GajiDokterLampiran::barisMassal()` — baris yang sama dengan modal Rincian di layar
+Monitoring Jasa Dokter. Semua dokter ±1 MB / ±3 detik. Dokter per kapita tanpa transaksi tidak muncul di sini;
+daftarnya ada di struktur gaji SIAP. Field `struktur` dan `grup_kapita` yang dulu ikut dikirim sudah dihapus.
 
-### GET /api/siap/gaji-dokter/{tahun}/{bulan}/lampiran[?dr_id=]
-```json
-{"tahun_jasa":"2026","bulan_jasa":"07","jumlah_dokter":36,
- "lampiran":[{"gajidoctor_no":21,"dr_id":"088","dr_name":"…","grup_kapita":["…"],"angka":{},
-   "baris":[{"komponen":"JD RI","group":"…","label":"Jasa Dokter Rawat Inap","tgl":"06/07/2026",
-             "reg_no":"112169Z","nama":"…","keterangan":"ANAMNESE RAWAT INAP","klaim":"JKN MANDIRI",
-             "klaim_status":"BPJS","no_sep":"…","txn_no":"40071","nominal":20000,"pasien":1,"masuk_slip":true}]}]}
-```
-Sumber `App\Support\GajiDokter\GajiDokterLampiran::susun()` — sama dengan cetak lampiran slip. `masuk_slip=false` =
-grup kapita (dibayar lewat skema lain). Semua dokter ±1 MB / ±3 detik untuk 36 slip.
-
-> Bentuk JSON = kontrak dengan `App\Support\GajiDokterSirus::ambil()` di SIAP. Menambah field aman; mengganti
+> Bentuk JSON = kontrak dengan `App\Support\GajiDokterSirus::prosesSiap()` / `segarkanDokter()` di SIAP. Menambah field aman; mengganti
 > nama / arti field harus bersamaan di dua repo.
 
 ---
@@ -135,13 +125,13 @@ B=https://sirus.rsimadinah.local/api/siap
 T=$(curl -s -X POST $B/token -H 'Accept: application/json' -d 'username=siap-gaji&password=…' \
      | python3 -c 'import sys,json;print(json.load(sys.stdin)["token"])')
 curl -s $B/dokter -H "Authorization: Bearer $T" -H 'Accept: application/json' | head -c 300
-curl -s $B/gaji-dokter/2026/07 -H "Authorization: Bearer $T" -H 'Accept: application/json' | head -c 300
+curl -s $B/gaji-dokter/2026/07/transaksi -H "Authorization: Bearer $T" -H 'Accept: application/json' | head -c 300
 curl -s -o /dev/null -w '%{http_code}\n' $B/dokter                                        # 401
 curl -s -o /dev/null -w '%{http_code}\n' -X POST $B/token -d 'username=admin&password=x'  # 401
 ```
 
 Regresi minimal setelah mengubah kode: token akun API 200 · akun biasa 401 · akun nonaktif 401 · `/dokter` 200 ·
-periode berisi `jumlah` > 0 · bulan 13 → 422 · token Mobile JKN lama masih diterima (`TraitJWTRsiMadinah::cektoken`).
+`/transaksi` berisi `jumlah_dokter` > 0 · bulan 13 → 422 · token Mobile JKN lama masih diterima (`TraitJWTRsiMadinah::cektoken`).
 
 ---
 

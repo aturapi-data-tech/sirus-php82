@@ -3,7 +3,7 @@
                         <div class="ds-eyebrow mb-3">01 — Mulai</div>
                         <h1 class="ds-display-md mb-4">Apa itu API SIAP</h1>
                         <p class="ds-body-md mb-6" style="max-width:62ch">
-                            <strong>SIAP</strong> (Sistem Informasi Administrasi Pegawai) menghitung gaji karyawan. Gaji <strong>dokter spesialis</strong> (uang periksa, jasa tindakan, visite, operasi, kapita, potongan RS, PPh 21) dihitung di <strong>SIRUS</strong>, modul Gaji Dokter. Supaya Keuangan tidak menyalin angka dengan tangan, SIRUS membuka <strong>API baca-saja</strong> yang ditarik SIAP tiap bulan jasa.
+                            <strong>SIAP</strong> (Sistem Informasi Administrasi Pegawai) menghitung gaji karyawan, termasuk slip <strong>dokter spesialis</strong> (gaji pokok, tunjangan, potongan RS, PPh 21 &mdash; strukturnya disetel di SIAP). Yang hanya diketahui <strong>SIRUS</strong> adalah transaksi jasanya: uang periksa, jasa tindakan, visite, konsul, operasi, radiologi. Supaya Keuangan tidak menyalin angka dengan tangan, SIRUS membuka <strong>API baca-saja</strong> yang ditarik SIAP tiap bulan jasa; di layar, data yang sama dipantau lewat Manajemen &rarr; Monitoring Keuangan &rarr; <strong>Monitoring Jasa Dokter</strong>.
                         </p>
                         <p class="ds-body-md mb-6" style="max-width:62ch">
                             Di sini SIRUS adalah <strong>server</strong>: menjawab permintaan, tidak pernah memanggil SIAP. SIAP menyimpan hasilnya sebagai <em>snapshot berversi</em> — bila angka di SIRUS berubah sesudah ditarik, SIAP membuat versi baru dan membandingkannya; SIRUS tidak perlu tahu.
@@ -65,7 +65,7 @@
                             ['U3', 'Satu mesin JWT untuk dua pintu, dua rahasia.',
                              'App\Support\Api\Jwt dipakai Mobile JKN (TraitJWTRsiMadinah) dan SIAP (JwtSiap). Kuncinya berbeda (MOBILE_JKN_JWT_SECRET vs SIAP_API_JWT_SECRET) sehingga token satu pintu tidak pernah membuka pintu lain.'],
                             ['U4', 'Database sama dengan SIRUS, dibaca langsung.',
-                             'Controller membaca rsmst_doctors, rstxn_gajidoctorhdrs/dtls, dan menyusun lampiran lewat GajiDokterLampiran::susun — kelas yang sama dengan cetak lampiran slip, jadi angka API = angka cetakan.'],
+                             'Controller membaca rsmst_doctors dan RSVIEW_NEWDOCSALARIES lewat GajiDokterLampiran::barisMassal — kelas yang sama dengan modal Rincian di Monitoring Jasa Dokter, jadi angka API = angka layar.'],
                         ] as [$nomor, $judul, $keterangan])
                             <div class="ds-card-outline mb-3" style="padding:18px 20px">
                                 <div class="flex items-start gap-3">
@@ -108,15 +108,15 @@
                                             ['config/services.php → siap.*, mobile_jkn.jwt_secret', 'Membaca .env supaya aman dengan config:cache.', 'hampir tidak pernah'],
                                             ['bootstrap/app.php', 'Memuat routes/api-siap.php dengan prefix /api/siap (+ Route::domain bila SIAP_API_HOST diisi) + throttle:siap-api bila rahasia terisi.', 'prefix / host API diubah'],
                                             ['app/Providers/AppServiceProvider.php', 'Rate limiter siap-api (120/menit/IP) dan siap-token (10/menit/IP).', 'batas request diubah'],
-                                            ['routes/api-siap.php', 'Daftar endpoint: /token, /dokter, /gaji-dokter/{tahun}/{bulan}[/lampiran].', 'SIAP butuh data baru'],
-                                            ['app/Http/Controllers/Api/Siap/GajiDokterApiController.php', 'Terbitkan token; susun JSON master dokter, slip per bulan jasa, lampiran.', 'bentuk JSON berubah — WAJIB sesuaikan App\\Support\\GajiDokterSirus di SIAP'],
+                                            ['routes/api-siap.php', 'Daftar endpoint: /token, /dokter, /gaji-dokter/{tahun}/{bulan}/transaksi.', 'SIAP butuh data baru'],
+                                            ['app/Http/Controllers/Api/Siap/GajiDokterApiController.php', 'Terbitkan token; susun JSON master dokter dan transaksi mentah per bulan jasa.', 'bentuk JSON berubah — WAJIB sesuaikan App\\Support\\GajiDokterSirus di SIAP'],
                                             ['app/Http/Middleware/AuthSiapApi.php', 'Penjaga: secret ada → bukan host Mobile JKN → whitelist IP → Bearer JWT sah → akun sub ada, aktif, ber-role Api Siap.', 'aturan akun / whitelist'],
                                             ['app/Http/Middleware/BatasiHostMobileJkn.php', 'Halaman web SIRUS → 404 di host Mobile JKN dan di SIAP_API_HOST (bila diisi dan bukan host APP_URL).', 'hampir tidak pernah'],
                                             ['app/Support/Api/Jwt.php', 'Mesin HS256 bersama (encode/decode, base64url & base64 lama).', 'hampir tidak pernah — dipakai Mobile JKN juga'],
                                             ['app/Support/Api/JwtSiap.php', 'Klaim token SIAP (iss sirus, aud siap, sub, exp), TTL, rahasia.', 'umur token / klaim'],
                                             ['app/Console/Commands/BuatAkunApiSiap.php', 'php artisan siap-api:akun — buat / setel ulang akun API + role.', 'nama role / kebijakan akun'],
                                             ['app/Http/Requests/Auth/LoginRequest.php', 'Menolak akun ber-role Api Siap masuk ke web SIRUS.', 'hampir tidak pernah'],
-                                            ['app/Support/GajiDokter/GajiDokterLampiran.php', 'BUKAN bagian API: penyusun lampiran yang dipakai cetak slip DAN endpoint lampiran.', 'rumus lampiran berubah — angka API ikut'],
+                                            ['app/Support/GajiDokter/GajiDokterLampiran.php', 'BUKAN bagian API: penyusun baris per pasien yang dipakai Monitoring Jasa Dokter DAN endpoint transaksi.', 'rumus baris berubah — angka API ikut'],
                                             ['docs/siap-api.md', 'Referensi teknis (versi teks halaman ini).', 'ikut setiap perubahan di atas'],
                                         ] as [$berkas, $peran, $ubah])
                                             <tr>

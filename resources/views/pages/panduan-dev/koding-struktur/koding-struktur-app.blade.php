@@ -55,7 +55,7 @@
                                     <tr><td class="ds-td-class">Clause/ (6)</td><td>teks legal berversi</td></tr>
                                     <tr><td class="ds-td-class">Options/ (9)</td><td>daftar opsi &amp; skala formulir EMR</td></tr>
                                     <tr><td class="ds-td-class">Terminologi/ (8)</td><td>pemetaan kode standar SNOMED/KFA/LOINC/ICD/FHIR</td></tr>
-                                    <tr><td class="ds-td-class">GajiDokter/ (2)</td><td>modul slip gaji dokter</td></tr>
+                                    <tr><td class="ds-td-class">GajiDokter/ (2)</td><td>jasa dokter: rekap monitoring, baris per pasien (pasokan API SIAP)</td></tr>
                                     <tr><td class="ds-td-class">Downtime/ (2)</td><td>formulir &amp; tarif waktu henti</td></tr>
                                     <tr><td class="ds-td-class">(akar) (11)</td><td>pembantu tunggal per domain — nama sudah menjelaskan dirinya</td></tr>
                                 </tbody>
