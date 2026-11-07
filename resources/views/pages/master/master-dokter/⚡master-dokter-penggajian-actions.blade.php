@@ -18,7 +18,6 @@
 // Rumus yang memakainya ada di database/sql/2026_08_04_install_gaji_dokter.sql.
 
 use Livewire\Component;
-use App\Support\GajiDokter\ModePindahSiap;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use App\Support\GajiDokter\GajiDokter;
@@ -267,11 +266,6 @@ new class extends Component {
      =============================== */
     public function save(): void
     {
-        // Tahap 1 pemindahan ke SIAP: struktur gaji disetel di SIAP dan dikirim lewat API — panel ini jadi baca-saja.
-        if (ModePindahSiap::strukturDiSiap()) {
-            $this->dispatch('toast', type: 'warning', message: 'Struktur gaji dokter sekarang disetel di SIAP (Gaji Dokter → Struktur Gaji). Ubah di sana; SIRUS menerima salinannya otomatis.');
-            return;
-        }
         if ($this->drId === null) {
             $this->dispatch('toast', type: 'error', message: 'Dokter belum dipilih.');
             return;
@@ -390,11 +384,6 @@ new class extends Component {
             {{-- BODY --}}
             <div class="flex-1 px-4 py-4 bg-surface-soft dark:bg-gray-950/20">
                 <div class="max-w-full mx-auto space-y-4">
-                    @if (ModePindahSiap::strukturDiSiap())
-                        <div class="px-4 py-3 text-sm border rounded-xl bg-amber-50 border-amber-200 text-amber-900 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-200" role="status">
-                            <span class="font-semibold">Baca-saja.</span> Struktur gaji dokter sekarang disetel di <span class="font-semibold">SIAP → Gaji Dokter → Struktur Gaji</span> dan dikirim ke SIRUS otomatis. Nilai di bawah adalah salinan terakhir; tombol Simpan tidak berlaku.
-                        </div>
-                    @endif
 
                     {{-- PANDUAN — gaya biru-info standar, default TERTUTUP.
                          Lihat memory project_panduan_panel_blue_info_standard. --}}

@@ -60,7 +60,7 @@
                         <div class="ds-eyebrow mb-3">05 — Cara Kerja</div>
                         <h1 class="ds-display-md mb-4">Endpoint &amp; Bentuk Data</h1>
                         <p class="ds-body-md mb-6" style="max-width:62ch">
-                            Enam endpoint: empat baca (token, dokter + struktur gaji, slip per bulan jasa, lampiran), satu tulis (struktur gaji dokter — tahap 1 pemindahan ke SIAP), satu transaksi mentah (tahap 3). Endpoint data mengembalikan JSON yang bentuknya <strong>kontrak dengan SIAP</strong> (<span class="ds-code">App\Support\GajiDokterSirus::ambil()</span> membacanya kolom per kolom) — menambah field aman, mengganti nama / arti field harus disesuaikan di dua sisi.
+                            Empat endpoint. Tiga endpoint data mengembalikan JSON yang bentuknya <strong>kontrak dengan SIAP</strong> (<span class="ds-code">App\Support\GajiDokterSirus::ambil()</span> membacanya kolom per kolom) — menambah field aman, mengganti nama / arti field harus disesuaikan di dua sisi.
                         </p>
                         <div class="ds-card-outline mb-6" style="padding:0; overflow:hidden">
                             <div class="px-4 py-2.5" style="background:var(--surface-dark-soft)">
@@ -82,34 +82,14 @@
                         </div>
                         <div class="ds-card-outline mb-6" style="padding:0; overflow:hidden">
                             <div class="px-4 py-2.5" style="background:var(--surface-dark-soft)">
-                                <span class="ds-caption-up" style="color:var(--on-dark-soft)">PUT /api/siap/dokter/{dr_id}/struktur-gaji — tahap 1 (hanya bila mode SIAP = struktur disetel di SIAP, selain itu 409)</span>
+                                <span class="ds-caption-up" style="color:var(--on-dark-soft)">GET /api/siap/gaji-dokter/{tahun}/{bulan}/transaksi — transaksi mentah (opsional ?dr_id=)</span>
                             </div>
-                            <pre class="ds-code" style="margin:0; padding:20px 24px; color:var(--on-dark-soft); overflow-x:auto; line-height:1.6">{{ '{"basic_salary":6000000,"npwp_status":"Y","npwp":null,"skema_gaji_pokok":"A","potongan_rs_basis":"J","potongan_rs_persen":10,
- "potongan_rs_aturan":null,"pph21_persen":2.5,"tarif_per_kapita_ri":0,"tarif_per_kapita_rj":0,
- "tunjangan_struktural":0,"tunjangan_fungsional":0,"tunjangan_hadir":0,
- "potongan_idi":100000,"potongan_arisan":0,"potongan_koperasi":0,"potongan_angsuran":0,"potongan_bpjs":127600,"potongan_zariyah":0}
-→ {"ok":true,"dr_id":"085","struktur":{…},"ditulis_oleh":"siap-gaji","ditulis_pada":"2026-11-06 22:27:40"}
-Validasi = aturan form Struktur Gaji Master Dokter (skema A/G/N, basis T/J/N/B, aturan berjenjang lewat GajiDokter::validasiAturan).' }}</pre>
-                        </div>
-                        <div class="ds-card-outline mb-6" style="padding:0; overflow:hidden">
-                            <div class="px-4 py-2.5" style="background:var(--surface-dark-soft)">
-                                <span class="ds-caption-up" style="color:var(--on-dark-soft)">GET /api/siap/gaji-dokter/{tahun}/{bulan}/transaksi — tahap 3 (opsional ?dr_id=)</span>
-                            </div>
-                            <pre class="ds-code" style="margin:0; padding:20px 24px; color:var(--on-dark-soft); overflow-x:auto; line-height:1.6">{{ '{"tahun_jasa":"2026","bulan_jasa":"07","mode":{"struktur_gaji_dari_siap":true,"gaji_dokter_nonaktif":false},"jumlah_dokter":36,
- "dokter":[{"dr_id":"085","dr_name":"dr. Nanda Agus Prasetya, SpOG","aktif":true,"struktur":{…sama dengan PUT…},"grup_kapita":[],
+                            <pre class="ds-code" style="margin:0; padding:20px 24px; color:var(--on-dark-soft); overflow-x:auto; line-height:1.6">{{ '{"tahun_jasa":"2026","bulan_jasa":"07","jumlah_dokter":36,"diambil_pada":"2026-11-07 09:00:00",
+ "dokter":[{"dr_id":"085","dr_name":"dr. Nanda Agus Prasetya, SpOG","aktif":true,"struktur":{"basic_salary":6000000,"npwp_status":"Y",…},"grup_kapita":[],
    "baris":[{"komponen":"UP RJ","group":"RJ","label":"Uang Periksa Rawat Jalan","seq":1,"tgl":"02/07/2026","reg_no":"097289Z","nama":"BUDI ENDA APRIYANI",
              "keterangan":"","klaim":"JKN MANDIRI","klaim_status":"BPJS","no_sep":"0184R0060726V000223","txn_no":"670903","nominal":50000,"pasien":1}, …]}]}
-Langsung dari RSVIEW_NEWDOCSALARIES (+ dokter bertarif kapita) — TIDAK bergantung pada slip SIRUS, jadi tetap bekerja setelah
-Slip Gaji Dokter SIRUS dimatikan. SIAP menghitung slipnya sendiri (App\Support\GajiDokterHitung, salinan rumus GajiDokter) dari baris ini.' }}</pre>
-                        </div>
-                        <div class="ds-card-outline mb-6" style="padding:20px">
-                            <div class="ds-caption-up mb-2" style="color:var(--primary)">Pemindahan ke SIAP — mode disetel di SIAP, SIRUS mengikuti</div>
-                            <ul class="ds-body-sm space-y-1.5">
-                                <li>• Tidak ada saklar .env di SIRUS. Mode dibaca langsung dari tabel <span class="ds-code">SIAP.SIAPMST_PENGATURAN_GDOKS</span> (satu Oracle, beda skema) lewat <span class="ds-code">App\Support\GajiDokter\ModePindahSiap</span>; disetel di SIAP → Gaji Dokter → Struktur Gaji → Mode.</li>
-                                <li>• <b>Struktur disetel di SIAP</b> (tahap 1): panel Struktur Gaji di Master Dokter SIRUS jadi baca-saja dan PUT struktur-gaji diterima.</li>
-                                <li>• <b>Slip dihitung SIAP</b> (tahap 3): SIAP menghitung dari …/transaksi; di Slip Gaji Dokter SIRUS Proses/Final/Buka Kunci/Hapus ditutup (arsip tetap terbaca & tercetak).</li>
-                                <li>• Butuh hak baca sekali (SYSTEM): <span class="ds-code">GRANT SELECT ON siap.siapmst_pengaturan_gdoks TO sirus</span>. Tabel tak terbaca = tahap 0 (SIRUS sumber semuanya). Mode ikut dilaporkan di field <span class="ds-code">mode</span> pada GET /dokter dan …/transaksi.</li>
-                            </ul>
+Langsung dari RSVIEW_NEWDOCSALARIES (+ dokter bertarif kapita) — TIDAK bergantung pada slip SIRUS. Dipakai SIAP saat slip gaji dokter
+dihitung di SIAP (App\Support\GajiDokterHitung, salinan rumus GajiDokter) dengan struktur gaji yang disetel di SIAP; SIRUS tinggal pemasok transaksi.' }}</pre>
                         </div>
                         @foreach ([
                             ['D1', 'Satu bulan jasa = satu panggilan slip + satu panggilan lampiran.',
@@ -151,8 +131,8 @@ Slip Gaji Dokter SIRUS dimatikan. SIAP menghitung slipnya sendiri (App\Support\G
                              'Klaim iss sirus / aud siap / exp dicek; tanda tangan dibandingkan tahan timing attack. Token tidak disimpan di server (stateless) — pencabutan dilakukan lewat akun (P5).'],
                             ['P5', 'Akun diperiksa tiap request.',
                              'sub di token harus user yang masih ada, aktif, dan ber-role Api Siap. Nonaktifkan dari User Control = akses putus seketika.'],
-                            ['P6', 'Satu endpoint tulis yang bersaklar + tanpa sesi.',
-                             'Hanya PUT struktur gaji dokter yang menulis, dan itu pun ditolak 409 selama mode di SIAP belum "struktur disetel di SIAP". Tidak memakai cookie / CSRF, tidak menyentuh Auth::login. Password dibandingkan lewat Auth::validate (bcrypt) tanpa membuat sesi.'],
+                            ['P6', 'Baca saja + tanpa sesi.',
+                             'Tidak ada endpoint tulis, tidak memakai cookie / CSRF, tidak menyentuh Auth::login. Password dibandingkan lewat Auth::validate (bcrypt) tanpa membuat sesi.'],
                         ] as [$nomor, $judul, $keterangan])
                             <div class="ds-card-outline mb-3" style="padding:18px 20px">
                                 <div class="flex items-start gap-3">

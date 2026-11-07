@@ -7,7 +7,6 @@ use App\Http\Middleware\AuthSiapApi;
 use App\Models\User;
 use App\Support\Api\JwtSiap;
 use App\Support\GajiDokter\GajiDokter;
-use App\Support\GajiDokter\ModePindahSiap;
 use App\Support\GajiDokter\GajiDokterLampiran;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -15,17 +14,15 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 /**
- * API SIAP (penggajian) — untuk menarik slip gaji dokter SIRUS ke SIAP per bulan jasa, dan (bertahap) memindahkan
- * penggajian dokter ke SIAP.
+ * API SIAP (penggajian), baca-saja — SIAP menarik slip gaji dokter SIRUS per bulan jasa (snapshot) atau transaksi mentahnya
+ * (bila slip dihitung di SIAP; struktur gaji dokter disetel di SIAP). SIRUS hanya pemasok data operasional.
  *
  *   POST /api/siap/token                                   {username, password} → {token, expires_in}
- *   GET  /api/siap/dokter                                   master dokter + struktur gaji (pemetaan ke karyawan SIAP) + mode
+ *   GET  /api/siap/dokter                                   master dokter (pemetaan ke karyawan SIAP)
  *   GET  /api/siap/gaji-dokter/{tahun}/{bulan}               header + detail slip semua dokter periode jasa itu
  *   GET  /api/siap/gaji-dokter/{tahun}/{bulan}/lampiran      lampiran rincian pasien (opsional ?dr_id=)
- *   PUT  /api/siap/dokter/{dr_id}/struktur-gaji              tahap 1: SIAP menulis struktur gaji dokter ke RSMST_DOCTORS
- *                                                            (hanya bila mode SIAP: struktur disetel di SIAP; selain itu 409)
- *   GET  /api/siap/gaji-dokter/{tahun}/{bulan}/transaksi     tahap 3: transaksi mentah bulan jasa per dokter (langsung dari
- *                                                            RSVIEW_NEWDOCSALARIES, tanpa butuh slip SIRUS) + struktur gaji saat ini
+ *   GET  /api/siap/gaji-dokter/{tahun}/{bulan}/transaksi     transaksi mentah bulan jasa per dokter (langsung dari RSVIEW_NEWDOCSALARIES,
+ *                                                            tanpa butuh slip SIRUS) — dipakai SIAP saat slip dihitung di SIAP
  *
  * Akun API = user SIRUS (tabel users) dengan role services.siap.role ('Api Siap', buat lewat `php artisan siap-api:akun`);
  * admin bisa mengganti password / menonaktifkannya dari User Control. Rahasia JWT di .env SIAP_API_JWT_SECRET,
@@ -53,18 +50,8 @@ class GajiDokterApiController extends Controller
         return response()->json(['token' => JwtSiap::terbitkan($user->name), 'token_type' => 'Bearer', 'expires_in' => JwtSiap::ttl()]);
     }
 
-    /** Kolom struktur gaji di RSMST_DOCTORS yang dibaca GET /dokter dan ditulis PUT /dokter/{dr_id}/struktur-gaji. */
-    public const KOLOM_STRUKTUR = ['basic_salary', 'npwp_status', 'npwp', 'skema_gaji_pokok', 'potongan_rs_basis', 'potongan_rs_persen', 'potongan_rs_aturan',
-        'pph21_persen', 'tarif_per_kapita_ri', 'tarif_per_kapita_rj', 'tunjangan_struktural', 'tunjangan_fungsional', 'tunjangan_hadir',
-        'potongan_idi', 'potongan_arisan', 'potongan_koperasi', 'potongan_angsuran', 'potongan_bpjs', 'potongan_zariyah'];
-
-    /** Mode pemindahan gaji dokter — dibaca SIRUS dari tabel pengaturan SIAP (ModePindahSiap), dikirim bersama /dokter dan /transaksi. */
-    public static function mode(): array
-    {
-        return ModePindahSiap::ambil();
-    }
-
     /** Struktur gaji satu baris RSMST_DOCTORS sebagai array bernama (angka float, teks apa adanya, NULL → default). */
+    /** Struktur gaji dokter saat ini di RSMST_DOCTORS — ikut dikirim di /transaksi sebagai cadangan bila SIAP belum punya strukturnya. */
     public static function strukturDokter(object $dokter): array
     {
         return [
@@ -85,68 +72,19 @@ class GajiDokterApiController extends Controller
     {
         $rows = DB::table('rsmst_doctors')->orderBy('dr_name')->get();
 
-        return response()->json(['mode' => self::mode(), 'dokter' => $rows->map(fn($dokter) => [
+        return response()->json(['dokter' => $rows->map(fn($dokter) => [
             'dr_id' => (string) $dokter->dr_id, 'dr_name' => trim((string) $dokter->dr_name), 'dr_nik' => trim((string) ($dokter->dr_nik ?? '')),
             'kd_dr_bpjs' => trim((string) ($dokter->kd_dr_bpjs ?? '')), 'aktif' => (string) $dokter->active_status === '1',
-            // dua kunci lama dipertahankan (kontrak SIAP lama), struktur lengkap di bawahnya
             'npwp_status' => GajiDokter::statusNpwp($dokter), 'skema_gaji_pokok' => (string) ($dokter->skema_gaji_pokok ?? 'A'),
             'gaji_pokok' => (float) ($dokter->basic_salary ?? 0),
-            'struktur' => self::strukturDokter($dokter),
         ])->values()]);
     }
 
     /**
-     * Tahap 1 — SIAP menjadi tempat menyetel struktur gaji dokter; SIRUS menerima salinannya di sini dan tetap menghitung slip.
-     * Ditolak 409 bila mode di SIAP masih "struktur disetel di SIRUS" (ModePindahSiap), supaya dua sisi tidak saling menimpa. Aturan validasi = aturan form Struktur Gaji di Master Dokter.
-     */
-    public function strukturGaji(Request $request, string $drId): JsonResponse
-    {
-        if (!self::mode()['struktur_gaji_dari_siap']) {
-            return response()->json(['error' => 'SIRUS masih sumber struktur gaji dokter — ubah mode di SIAP (Gaji Dokter → Struktur Gaji) ke "disetel di SIAP" dulu.'], 409);
-        }
-        if (!DB::table('rsmst_doctors')->where('dr_id', $drId)->exists()) {
-            return response()->json(['error' => "Dokter {$drId} tidak ada di master SIRUS."], 404);
-        }
-        $validator = validator($request->all(), [
-            'basic_salary' => 'nullable|numeric|min:0', 'npwp_status' => 'required|in:Y,N', 'npwp' => 'nullable|string|max:30',
-            'skema_gaji_pokok' => 'required|in:A,G,N', 'potongan_rs_basis' => 'required|in:T,J,N,B',
-            'potongan_rs_persen' => 'nullable|numeric|min:0|max:100', 'potongan_rs_aturan' => 'nullable|string|max:1000',
-            'pph21_persen' => 'nullable|numeric|min:0|max:100',
-            'tarif_per_kapita_ri' => 'nullable|numeric|min:0', 'tarif_per_kapita_rj' => 'nullable|numeric|min:0',
-            'tunjangan_struktural' => 'nullable|numeric|min:0', 'tunjangan_fungsional' => 'nullable|numeric|min:0', 'tunjangan_hadir' => 'nullable|numeric|min:0',
-            'potongan_idi' => 'nullable|numeric|min:0', 'potongan_arisan' => 'nullable|numeric|min:0', 'potongan_koperasi' => 'nullable|numeric|min:0',
-            'potongan_angsuran' => 'nullable|numeric|min:0', 'potongan_bpjs' => 'nullable|numeric|min:0', 'potongan_zariyah' => 'nullable|numeric|min:0',
-        ]);
-        if ($validator->fails()) {
-            return response()->json(['error' => $validator->errors()->first(), 'errors' => $validator->errors()], 422);
-        }
-        $data = $validator->validated();
-        if ($data['potongan_rs_basis'] === 'B') {
-            $pesanAturan = GajiDokter::validasiAturan($data['potongan_rs_aturan'] ?? null);
-            if ($pesanAturan !== null) {
-                return response()->json(['error' => $pesanAturan], 422);
-            }
-        }
-        // Field kosong disimpan 0, bukan NULL — NULL dalam aritmetika Oracle membuat seluruh hasil hitung gaji NULL (lihat form master).
-        $payload = ['npwp_status' => $data['npwp_status'], 'npwp' => $data['npwp_status'] === 'N' ? null : (trim((string) ($data['npwp'] ?? '')) ?: null),
-            'skema_gaji_pokok' => $data['skema_gaji_pokok'], 'potongan_rs_basis' => $data['potongan_rs_basis'],
-            'potongan_rs_aturan' => $data['potongan_rs_basis'] === 'B' ? $data['potongan_rs_aturan'] : null];
-        foreach (['basic_salary', 'potongan_rs_persen', 'pph21_persen', 'tarif_per_kapita_ri', 'tarif_per_kapita_rj', 'tunjangan_struktural', 'tunjangan_fungsional',
-            'tunjangan_hadir', 'potongan_idi', 'potongan_arisan', 'potongan_koperasi', 'potongan_angsuran', 'potongan_bpjs', 'potongan_zariyah'] as $kolom) {
-            $payload[$kolom] = (float) ($data[$kolom] ?? 0);
-        }
-        DB::table('rsmst_doctors')->where('dr_id', $drId)->update($payload);
-        $dokter = DB::table('rsmst_doctors')->where('dr_id', $drId)->first();
-
-        return response()->json(['ok' => true, 'dr_id' => (string) $drId, 'struktur' => self::strukturDokter($dokter),
-            'ditulis_oleh' => (string) $request->attributes->get('siap_api_user', ''), 'ditulis_pada' => now()->toDateTimeString()]);
-    }
-
-    /**
-     * Tahap 3 — transaksi mentah satu bulan jasa untuk dihitung SIAP: semua dokter yang punya baris di RSVIEW_NEWDOCSALARIES
+     * Transaksi mentah satu bulan jasa untuk dihitung SIAP (mesin slip SIAP): semua dokter yang punya baris di RSVIEW_NEWDOCSALARIES
      * bulan itu ditambah dokter bertarif kapita (perlu slip walau tanpa baris). Tidak bergantung pada slip SIRUS, jadi tetap
-     * bekerja setelah Slip Gaji Dokter SIRUS dimatikan. Baris = bentuk yang sama dengan /lampiran (ditambah group); struktur
-     * = RSMST_DOCTORS saat ini (SIAP memakai strukturnya sendiri bila sudah jadi sumber, ini hanya pembanding).
+     * bekerja setelah Slip Gaji Dokter SIRUS tidak dipakai. Baris = bentuk yang sama dengan /lampiran (ditambah group); struktur
+     * = RSMST_DOCTORS saat ini (SIAP memakai struktur yang disetel di SIAP; ini hanya cadangan).
      */
     public function transaksi(Request $request, string $tahun, string $bulan): JsonResponse
     {
@@ -184,7 +122,7 @@ class GajiDokterApiController extends Controller
             ];
         })->filter()->sortBy('dr_name')->values();
 
-        return response()->json(['tahun_jasa' => $tahun, 'bulan_jasa' => $bulan, 'mode' => self::mode(), 'jumlah_dokter' => $hasil->count(),
+        return response()->json(['tahun_jasa' => $tahun, 'bulan_jasa' => $bulan, 'jumlah_dokter' => $hasil->count(),
             'diambil_pada' => now()->toDateTimeString(), 'dokter' => $hasil]);
     }
 

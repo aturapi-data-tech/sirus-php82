@@ -46,10 +46,6 @@ return [
         'jwt_secret' => env('SIAP_API_JWT_SECRET'),
         'token_ttl' => (int) env('SIAP_API_TOKEN_TTL', 3600),
         'ip_whitelist' => env('SIAP_API_IP_WHITELIST', ''),
-        // Skema Oracle SIAP di instance yang sama. Mode pemindahan gaji dokter (struktur disetel di SIAP / slip dihitung SIAP)
-        // TIDAK disetel di .env ini, melainkan dibaca dari tabel SIAP.SIAPMST_PENGATURAN_GDOKS (App\Support\GajiDokter\ModePindahSiap)
-        // supaya satu-satunya tempat menyetel adalah SIAP → Gaji Dokter → Struktur Gaji. Butuh GRANT SELECT tabel itu ke user sirus.
-        'schema' => env('SIAP_SCHEMA', 'SIAP'),
     ],
 
     'slack' => [
