@@ -549,7 +549,7 @@ new class extends Component {
         $jsonRaw = $jsonPerRjNo[$row->rj_no] ?? '';
         $json = json_decode($jsonRaw ?: '{}', true) ?? [];
 
-        // EMR completeness — weighted S15/O20/A25/P30/N10 (koding SNOMED terpisah). Logic ada di EmrCompletenessRJTrait.
+        // EMR completeness — weighted S15/O20/A25/P30/N10 (kode SNOMED keluhan utama ikut S; kode alergi terpisah). Logic ada di EmrCompletenessRJTrait.
         $pct = $this->calculateEmrPercentRJ($json);
         $row->emr_percent = $pct['emr'];
         $row->eresep_percent = isset($json['eresep']) || isset($json['eresepRacikan']) ? 100 : 0;

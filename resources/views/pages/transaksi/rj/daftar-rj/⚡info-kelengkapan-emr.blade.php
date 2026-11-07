@@ -28,7 +28,8 @@ new class extends Component {
 
     /**
      * Kesiapan Coding SATUSEHAT (Keluhan Utama & Alergi, termasuk daftar alergen layar Coding) —
-     * indikator TERPISAH, tidak masuk % EMR. Sumber: App\Support\KelengkapanEmr::kodingSatuSehat().
+     * indikator terpisah; kode Keluhan Utama juga dihitung di % EMR (butir Anamnesa), kode Alergi
+     * tidak. Sumber: App\Support\KelengkapanEmr::kodingSatuSehat().
      */
     private function collectSnomedStatus(array $json): array
     {
@@ -43,8 +44,9 @@ new class extends Component {
     Dibuka via event `open-info-kelengkapan-emr-rj` dengan parameter rjNo.
 
     Sumber bobot & field WAJIB: App\Http\Traits\Txn\Rj\EmrCompletenessRJTrait
-    Coding SATUSEHAT (Keluhan Utama & Alergi) TIDAK masuk emr_percent sejak 2026-10-28 — blok
-    "Coding SATUSEHAT" di bawah = indikator terpisah (App\Support\KelengkapanEmr).
+    Coding SATUSEHAT: kode SNOMED Keluhan Utama masuk emr_percent sebagai butir Anamnesa; kode
+    Alergi di luar %. Blok "Coding SATUSEHAT" di bawah = indikator terpisah
+    (App\Support\KelengkapanEmr) yang menampilkan keduanya.
 --}}
 
 <div>
@@ -63,7 +65,7 @@ new class extends Component {
                     <x-kelengkapan-emr.isi :pct="$pct" :checklist="$checklist" :snomed="$snomed"
                         :nama="['s' => 'Anamnesa', 'o' => 'Pemeriksaan', 'a' => 'Diagnosa', 'p' => 'Perencanaan', 'n' => 'Penilaian']">
                         <x-slot:catatan>
-                            <p><span class="font-semibold">Coding SATUSEHAT</span> (Keluhan Utama &amp; Alergi) <strong>tidak</strong> masuk persentase EMR sejak 28/10/2026 — kode diisi coder di layar Coding SATUSEHAT sesudah pelayanan.</p>
+                            <p><span class="font-semibold">Kode SNOMED untuk Keluhan Utama</span> <strong>ikut dihitung</strong> di bagian Anamnesa. Kodenya diisi coder di layar Coding SATUSEHAT sesudah pelayanan. Kode Alergi <strong>belum</strong> ikut dihitung; blok Coding SATUSEHAT di atas hanya menunjukkan mana yang sudah dikode.</p>
                             <p><span class="font-semibold">Kondisi Saat Pulang</span> (Perencanaan) dinilai untuk kunjungan mulai 28/10/2026.</p>
                             <p>Kolom bertanda <strong>opsional</strong> (keluhan penyerta, riwayat keluarga/pengobatan, status psikologis, prognosis) tampil sebagai pengingat — <strong>tidak dihitung</strong> ke persentase.</p>
                         </x-slot:catatan>

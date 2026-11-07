@@ -10,6 +10,8 @@ use Carbon\Carbon;
  * Perubahan 2026-10-28 (keputusan user):
  *   - Koding SNOMED TIDAK lagi masuk % EMR: kode diisi coder di layar Coding SATUSEHAT sesudah
  *     pelayanan, jadi bukan beban pengisi EMR. Ditampilkan terpisah lewat kodingSatuSehat().
+ *     Pengecualian: di RJ, kode SNOMED KELUHAN UTAMA dihitung sebagai butir Anamnesa
+ *     (EmrCompletenessRJTrait). UGD/RI tidak.
  *   - Kondisi Saat Pulang (wajib SATUSEHAT) dihitung di Perencanaan hanya untuk kunjungan
  *     mulai 28/10/2026 (RI: pasien PULANG mulai tanggal itu) — angka lama tidak bergeser.
  *   - Kolom tambahan opsional (keluhan penyerta, riwayat keluarga, riwayat pengobatan, status
@@ -67,7 +69,8 @@ final class KelengkapanEmr
     }
 
     /**
-     * Indikator kesiapan Coding SATUSEHAT RJ/UGD (TIDAK masuk % EMR): Keluhan Utama & Alergi yang
+     * Indikator kesiapan Coding SATUSEHAT RJ/UGD (terpisah dari % EMR; di RJ kode keluhan utama
+     * juga ikut % lewat Anamnesa): Keluhan Utama & Alergi yang
      * teksnya terisi — sudah dikode atau belum. Field kosong tidak dinilai (urusan EMR).
      *
      * @return array{persen: int|null, items: array<int, array{label: string, value: string, code: string, displayId: string, terkode: bool}>}
