@@ -170,6 +170,8 @@ new class extends Component {
             'dataPasien.pasien.pendidikan.pendidikanId' => ['required', 'numeric'],
             'dataPasien.pasien.pekerjaan.pekerjaanId' => ['required', 'numeric'],
             'dataPasien.pasien.identitas.nik' => ['required', 'string', 'regex:/^\d{16}$/'],
+            'dataPasien.pasien.bayi.nikIbu' => ['nullable', 'string', 'regex:/^\d{16}$/'],
+            'dataPasien.pasien.bayi.urutanLahir' => ['nullable', 'integer', 'min:0', 'max:9'],
             'dataPasien.pasien.identitas.alamat' => ['required', 'string', 'max:500'],
             'dataPasien.pasien.identitas.rt' => ['required', 'string', 'max:10'],
             'dataPasien.pasien.identitas.rw' => ['required', 'string', 'max:10'],
@@ -230,6 +232,8 @@ new class extends Component {
 
             // Identitas - NIK
             'dataPasien.pasien.identitas.nik.required' => 'NIK wajib diisi.',
+            'dataPasien.pasien.bayi.nikIbu.regex' => 'NIK Ibu harus 16 digit.',
+            'dataPasien.pasien.bayi.urutanLahir.integer' => 'Urutan Lahir harus angka.',
             'dataPasien.pasien.identitas.nik.regex' => 'NIK harus 16 digit angka.',
 
             // Identitas - Alamat
@@ -351,7 +355,7 @@ new class extends Component {
                     $incomingPasien = $this->dataPasien['pasien'] ?? [];
 
                     // ✅ (recommended) whitelist field master pasien saja
-                    $allowed = ['regName', 'gelarDepan', 'gelarBelakang', 'namaPanggilan', 'tempatLahir', 'tglLahir', 'thn', 'bln', 'hari', 'jenisKelamin', 'agama', 'statusPerkawinan', 'pendidikan', 'pekerjaan', 'golonganDarah', 'kewarganegaraan', 'suku', 'bahasa', 'status', 'domisil', 'identitas', 'kontak', 'hubungan', 'regDate', 'pasientidakdikenal', 'regDateStore'];
+                    $allowed = ['regName', 'gelarDepan', 'gelarBelakang', 'namaPanggilan', 'tempatLahir', 'tglLahir', 'thn', 'bln', 'hari', 'jenisKelamin', 'agama', 'statusPerkawinan', 'pendidikan', 'pekerjaan', 'golonganDarah', 'kewarganegaraan', 'suku', 'bahasa', 'status', 'domisil', 'identitas', 'bayi', 'kontak', 'hubungan', 'regDate', 'pasientidakdikenal', 'regDateStore'];
 
                     $incomingPasien = array_intersect_key($incomingPasien, array_flip($allowed));
                     //khusus array [] checkbox
@@ -634,6 +638,8 @@ new class extends Component {
             'nama' => $pasien['regName'] ?? '',
             'tanggalLahir' => $this->formatDateToYmd($pasien['tglLahir'] ?? ''),
             'nik' => $nik,
+            'nikIbu' => $pasien['bayi']['nikIbu'] ?? '',
+            'urutanLahir' => $pasien['bayi']['urutanLahir'] ?? 0,
             'jenisKelamin' => match ((int) ($pasien['jenisKelamin']['jenisKelaminId'] ?? 0)) {
                 1 => 'L',
                 2 => 'P',

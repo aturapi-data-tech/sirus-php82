@@ -17,8 +17,10 @@ use Illuminate\Support\Facades\Log;
  *  - NIK + nama + tanggal lahir: dicocokkan di server. Nama harus persis (huruf besar-kecil bebas);
  *    nama sebagian atau bergelar menghasilkan 0.
  *
- * Bayi tidak diproses: form Master Pasien mengisi NIK bayi dengan NIK ibu, sehingga NIK itu bisa
- * mengembalikan IHS ibunya. Pasien bayi punya alur sendiri lewat identifier nik-ibu.
+ * Bayi tidak pernah dicari lewat NIK biasa: form Master Pasien mengisi NIK bayi dengan NIK ibu, sehingga
+ * NIK itu bisa mengembalikan IHS ibunya. Bayi memakai identifier nik-ibu (lihat cariBayi). Perilaku yang
+ * diuji di staging: alamat wajib dengan kode desa asli; daftar dua kali ditolak (duplicate 20002), tidak
+ * mengembalikan IHS lama; pencarian nama nik-ibu tidak persis, jadi hasilnya dicocokkan lagi di sini.
  */
 class IhsPasienSatuSehat
 {
@@ -29,6 +31,8 @@ class IhsPasienSatuSehat
     public const DIDAFTARKAN = 'didaftarkan';
     public const NIK_TIDAK_VALID = 'nik_tidak_valid';
     public const BAYI = 'bayi';
+    public const IBU_BELUM = 'ibu_belum';
+    public const BAYI_KEMBAR = 'bayi_kembar';
     public const DATA_KURANG = 'data_kurang';
     public const TIDAK_COCOK = 'tidak_cocok';
     public const GANDA = 'ganda';
@@ -46,7 +50,9 @@ class IhsPasienSatuSehat
         self::DITEMUKAN => 'Ditemukan',
         self::DIDAFTARKAN => 'Didaftarkan baru',
         self::NIK_TIDAK_VALID => 'NIK tidak valid',
-        self::BAYI => 'Bayi (alur NIK ibu)',
+        self::BAYI => 'Bayi, NIK Ibu belum diisi',
+        self::IBU_BELUM => 'Ibu belum ber-IHS',
+        self::BAYI_KEMBAR => 'Kembar, urutan lahir belum diisi',
         self::DATA_KURANG => 'Data kurang',
         self::TIDAK_COCOK => 'Nama/tanggal lahir beda',
         self::GANDA => 'Lebih dari satu IHS',
@@ -63,7 +69,7 @@ class IhsPasienSatuSehat
     {
         $pasien = DB::table('rsmst_pasiens')
             ->where('reg_no', $regNo)
-            ->selectRaw("reg_no, reg_name, sex, TO_CHAR(birth_date, 'YYYY-MM-DD') AS tanggal_lahir, nik_bpjs, nokartu_bpjs, patient_uuid, phone, address, rt, rw, des_id, marital_status")
+            ->selectRaw("reg_no, reg_name, sex, TO_CHAR(birth_date, 'YYYY-MM-DD') AS tanggal_lahir, nik_bpjs, nokartu_bpjs, patient_uuid, phone, address, rt, rw, des_id, marital_status, meta_data_pasien_json")
             ->first();
 
         if (!$pasien) {
@@ -74,8 +80,12 @@ class IhsPasienSatuSehat
             return $this->hasil(self::SUDAH_ADA, '', trim((string) $pasien->patient_uuid));
         }
 
+        $dataBayi = json_decode((string) $pasien->meta_data_pasien_json, true)['pasien']['bayi'] ?? [];
+
         $hasil = $this->cari([
             'regNo' => $regNo,
+            'nikIbu' => $dataBayi['nikIbu'] ?? '',
+            'urutanLahir' => $dataBayi['urutanLahir'] ?? 0,
             'nama' => $pasien->reg_name,
             'tanggalLahir' => $pasien->tanggal_lahir,
             'nik' => $pasien->nik_bpjs,
@@ -108,7 +118,7 @@ class IhsPasienSatuSehat
      * Mencari lalu mendaftarkan dari identitas yang diberikan, tanpa menyimpan apa pun di SIRUS.
      *
      * @param array $identitas regNo, nama, tanggalLahir (Y-m-d), nik, jenisKelamin (L/P), telepon, bpjs,
-     *                         alamat, rt, rw, desaId, statusNikah
+     *                         alamat, rt, rw, desaId, statusNikah, nikIbu, urutanLahir
      * @return array{status: string, pesan: string, ihs: ?string}
      */
     public function cari(array $identitas): array
@@ -116,12 +126,20 @@ class IhsPasienSatuSehat
         $nik = trim((string) ($identitas['nik'] ?? ''));
         $nama = trim((string) ($identitas['nama'] ?? ''));
         $tanggalLahir = trim((string) ($identitas['tanggalLahir'] ?? ''));
+        $nikIbu = trim((string) ($identitas['nikIbu'] ?? ''));
 
-        if (!preg_match('/^\d{16}$/', $nik)) {
-            return $this->hasil(self::NIK_TIDAK_VALID, 'NIK harus 16 digit.');
+        // Data lama: form meminta NIK bayi diisi NIK ibu, jadi NIK pasien bernama bayi = NIK ibunya.
+        if ($nikIbu === '' && self::namaBayi($nama) && preg_match('/^\d{16}$/', $nik)) {
+            $nikIbu = $nik;
+        }
+        if ($nikIbu !== '') {
+            return $this->cariBayi($identitas, $nikIbu, $nama, $tanggalLahir);
         }
         if (self::namaBayi($nama)) {
-            return $this->hasil(self::BAYI, 'Pasien bayi tidak bisa memakai NIK biasa, karena NIK ibu akan mengembalikan IHS ibunya.');
+            return $this->hasil(self::BAYI, 'Pasien bayi butuh NIK Ibu. Isi NIK Ibu di Master Pasien.');
+        }
+        if (!preg_match('/^\d{16}$/', $nik)) {
+            return $this->hasil(self::NIK_TIDAK_VALID, 'NIK harus 16 digit.');
         }
         if ($nama === '' || $tanggalLahir === '') {
             return $this->hasil(self::DATA_KURANG, 'Nama dan tanggal lahir wajib diisi.');
@@ -157,6 +175,154 @@ class IhsPasienSatuSehat
         return (bool) preg_match('/^(BAYI|BYI|BY[\s.])/', mb_strtoupper(trim($nama)));
     }
 
+    /** Alur bayi baru lahir: ibu harus ber-IHS, cari bayi lewat nik-ibu, daftarkan bila belum ada. */
+    private function cariBayi(array $identitas, string $nikIbu, string $nama, string $tanggalLahir): array
+    {
+        $urutan = (int) ($identitas['urutanLahir'] ?? 0);
+
+        if (!preg_match('/^\d{16}$/', $nikIbu)) {
+            return $this->hasil(self::NIK_TIDAK_VALID, 'NIK Ibu harus 16 digit.');
+        }
+        if ($nama === '' || $tanggalLahir === '') {
+            return $this->hasil(self::DATA_KURANG, 'Nama dan tanggal lahir bayi wajib diisi.');
+        }
+        $gender = $this->kodeGender((string) ($identitas['jenisKelamin'] ?? ''));
+        if ($gender === null) {
+            return $this->hasil(self::DATA_KURANG, 'Jenis kelamin bayi belum diisi.');
+        }
+
+        $regNo = trim((string) ($identitas['regNo'] ?? ''));
+        if ($urutan === 0 && $this->adaSaudaraSeLahir($nikIbu, $tanggalLahir, $regNo)) {
+            return $this->hasil(self::BAYI_KEMBAR, 'Ada pasien lain dengan NIK dan tanggal lahir yang sama. Kalau kembar, isi Urutan Lahir (1, 2, dan seterusnya).');
+        }
+
+        try {
+            $this->siapkan();
+
+            $pesanIbu = $this->pastikanIbu($nikIbu);
+            if ($pesanIbu !== null) {
+                return $this->hasil(self::IBU_BELUM, $pesanIbu);
+            }
+
+            $bundle = $this->panggilCari([
+                'identifier' => 'https://fhir.kemkes.go.id/id/nik-ibu|' . $nikIbu,
+                'name' => $nama,
+                'birthdate' => $tanggalLahir,
+            ]);
+            $cocok = $this->bayiCocok($bundle, $nama, $tanggalLahir, $urutan);
+            if (count($cocok) === 1) {
+                return $this->hasil(self::DITEMUKAN, 'IHS bayi ditemukan: NIK ibu, nama, tanggal lahir, dan urutan lahir cocok.', $cocok[0]);
+            }
+            if (count($cocok) > 1) {
+                return $this->hasil(self::GANDA, 'Ada lebih dari satu IHS untuk bayi ini: ' . implode(', ', $cocok) . '.');
+            }
+        } catch (\Throwable $e) {
+            return $this->hasil(self::GAGAL, 'Pencarian gagal: ' . $this->ringkasError($e));
+        }
+
+        [$desaId, $sumberAlamat] = $this->alamatBayi($identitas, $nikIbu);
+        if ($desaId === null) {
+            return $this->hasil(self::WILAYAH_LAMA, 'Kode desa bayi dan ibu masih format lama. Perbarui desa di Master Pasien.');
+        }
+
+        try {
+            $respons = $this->createPatient([
+                'name' => $nama,
+                'nik_ibu' => $nikIbu,
+                'birth_date' => $tanggalLahir,
+                'gender' => $gender,
+                'phone' => $identitas['telepon'] ?? '',
+                'marital_status' => 'S',
+                'multiple_birth' => $urutan,
+                'address' => $this->alamat($sumberAlamat, $desaId),
+            ]);
+        } catch (\Throwable $e) {
+            if (str_contains($e->getMessage(), '"duplicate"')) {
+                return $this->hasil(self::GANDA, 'SATUSEHAT menganggap bayi ini sudah ada, tetapi nama, tanggal lahir, atau urutan lahirnya tidak persis sama. Periksa datanya.');
+            }
+
+            return str_contains($e->getMessage(), 'OperationOutcome')
+                ? $this->hasil(self::DITOLAK, 'Ditolak SATUSEHAT: ' . $this->ringkasError($e))
+                : $this->hasil(self::GAGAL, 'Pendaftaran gagal: ' . $this->ringkasError($e));
+        }
+
+        return filled($respons['id'] ?? null)
+            ? $this->hasil(self::DIDAFTARKAN, 'Bayi baru terdaftar di SATUSEHAT.', (string) $respons['id'])
+            : $this->hasil(self::GAGAL, 'Pendaftaran gagal: respons tanpa nomor IHS.');
+    }
+
+    /** Null bila ibu sudah ber-IHS. Ibu yang punya RM di sini dicoba dicari/didaftarkan dulu. */
+    private function pastikanIbu(string $nikIbu): ?string
+    {
+        if ($this->daftarIhs($this->panggilCari(['identifier' => 'https://fhir.kemkes.go.id/id/nik|' . $nikIbu])) !== []) {
+            return null;
+        }
+
+        $rmIbu = DB::table('rsmst_pasiens')
+            ->whereRaw('TRIM(nik_bpjs) = ?', [$nikIbu])
+            ->whereRaw("NOT REGEXP_LIKE(UPPER(TRIM(reg_name)), '^(BAYI|BYI|BY[ .])')")
+            ->value('reg_no');
+        if (!$rmIbu) {
+            return 'Ibu belum terdaftar di SATUSEHAT dan tidak punya RM di sini. Daftarkan ibu dulu.';
+        }
+
+        $hasilIbu = $this->pastikanDariMaster((string) $rmIbu);
+
+        return filled($hasilIbu['ihs']) ? null : "Ibu (RM {$rmIbu}) belum ber-IHS: {$hasilIbu['pesan']}";
+    }
+
+    /** @return list<string> IHS bayi yang nama, tanggal lahir, dan urutannya sama persis. */
+    private function bayiCocok(array $bundle, string $nama, string $tanggalLahir, int $urutan): array
+    {
+        $daftar = [];
+        foreach ($bundle['entry'] ?? [] as $entri) {
+            $bayi = $entri['resource'] ?? [];
+            $namaSama = mb_strtoupper(trim((string) ($bayi['name'][0]['text'] ?? ''))) === mb_strtoupper($nama);
+            if ($namaSama && ($bayi['birthDate'] ?? '') === $tanggalLahir && (int) ($bayi['multipleBirthInteger'] ?? 0) === $urutan) {
+                $daftar = [...$daftar, ...$this->daftarIhs(['entry' => [$entri]])];
+            }
+        }
+
+        return array_values(array_unique($daftar));
+    }
+
+    private function adaSaudaraSeLahir(string $nikIbu, string $tanggalLahir, string $regNo): bool
+    {
+        return DB::table('rsmst_pasiens')
+            ->whereRaw('TRIM(nik_bpjs) = ?', [$nikIbu])
+            ->whereRaw("TO_CHAR(birth_date, 'YYYY-MM-DD') = ?", [$tanggalLahir])
+            ->when($regNo !== '', fn($query) => $query->where('reg_no', '<>', $regNo))
+            ->exists();
+    }
+
+    /** Alamat bayi; bila kode desanya lama, pakai alamat ibu yang punya RM di sini. @return array{0: ?string, 1: array} */
+    private function alamatBayi(array $identitas, string $nikIbu): array
+    {
+        $desaBayi = trim((string) ($identitas['desaId'] ?? ''));
+        if (preg_match('/^\d{10}$/', $desaBayi)) {
+            return [$desaBayi, $identitas];
+        }
+
+        $ibu = DB::table('rsmst_pasiens')
+            ->whereRaw('TRIM(nik_bpjs) = ?', [$nikIbu])
+            ->whereRaw("REGEXP_LIKE(TRIM(des_id), '^[0-9]{10}$')")
+            ->select('address', 'rt', 'rw', 'des_id')
+            ->first();
+
+        return $ibu
+            ? [trim((string) $ibu->des_id), ['alamat' => $ibu->address, 'rt' => $ibu->rt, 'rw' => $ibu->rw]]
+            : [null, []];
+    }
+
+    private function kodeGender(string $jenisKelamin): ?string
+    {
+        return match (mb_strtoupper(trim($jenisKelamin))) {
+            'L' => 'male',
+            'P' => 'female',
+            default => null,
+        };
+    }
+
     private function daftarkan(array $identitas, string $nik, string $nama, string $tanggalLahir): array
     {
         $regNo = trim((string) ($identitas['regNo'] ?? ''));
@@ -168,11 +334,7 @@ class IhsPasienSatuSehat
             return $this->hasil(self::NIK_KEMBAR, 'NIK ini juga dipakai pasien lain di SIRUS, jadi tidak didaftarkan otomatis.');
         }
 
-        $gender = match (mb_strtoupper(trim((string) ($identitas['jenisKelamin'] ?? '')))) {
-            'L' => 'male',
-            'P' => 'female',
-            default => null,
-        };
+        $gender = $this->kodeGender((string) ($identitas['jenisKelamin'] ?? ''));
         if ($gender === null) {
             return $this->hasil(self::DATA_KURANG, 'Jenis kelamin belum diisi.');
         }

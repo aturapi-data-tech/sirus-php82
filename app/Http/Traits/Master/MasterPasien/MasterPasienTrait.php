@@ -324,6 +324,11 @@ trait MasterPasienTrait
                     "propinsiName" => "JAWA TIMUR",
                     "negara" => "ID"
                 ],
+                // Bayi baru lahir: disimpan di JSON saja, dipakai untuk mendaftarkan IHS lewat nik-ibu.
+                "bayi" => [
+                    "nikIbu" => "",
+                    "urutanLahir" => 0,
+                ],
                 "kontak" => [
                     "kodenegara" => "62",
                     "nomerTelponSelulerPasien" => "",

@@ -51,6 +51,15 @@ trait PatientTrait
                 'value'  => $nik,
             ];
         }
+        // Bayi baru lahir tanpa NIK sendiri didaftarkan dengan NIK ibunya.
+        $nikIbu = trim((string) ($data['nik_ibu'] ?? ''));
+        if ($nikIbu !== '' && strlen($nikIbu) === 16 && ctype_digit($nikIbu)) {
+            $identifier[] = [
+                'use'    => 'official',
+                'system' => 'https://fhir.kemkes.go.id/id/nik-ibu',
+                'value'  => $nikIbu,
+            ];
+        }
         $bpjs = trim((string) ($data['bpjs_number'] ?? ''));
         if ($bpjs !== '' && strlen($bpjs) === 13 && ctype_digit($bpjs)) {
             $identifier[] = [
