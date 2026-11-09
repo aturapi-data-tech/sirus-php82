@@ -98,6 +98,9 @@ Route::middleware(['auth'])->group(function () {
     Route::livewire('/master/poli', 'pages::master.master-poli.master-poli')
         ->name('master.poli');
 
+    Route::livewire('/master/mapping-satusehat', 'pages::master.master-mapping-satusehat.master-mapping-satusehat')
+        ->name('master.mapping-satusehat');
+
     Route::livewire('/master/karyawan', 'pages::master.master-karyawan.master-karyawan')
         ->name('master.karyawan');
 

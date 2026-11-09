@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Cakupan IHS (Practitioner) pada master dokter: dasar badge topbar dan filter "belum IHS" di Master Dokter.
+ * Cakupan IHS (Practitioner) pada master dokter: dasar halaman Mapping SATUSEHAT dan filter "belum IHS" di Master Dokter.
  *
  * Dua angka sengaja dipisah. Persen master = dokter aktif yang sudah punya dr_uuid. Persen pakai =
  * kunjungan 90 hari terakhir yang dokternya punya dr_uuid; yang kosong tak bisa dikirim ke SATUSEHAT.
@@ -38,8 +38,8 @@ class CakupanIhsDokter
     }
 
     /**
-     * Ringkasan tersimpan sejam. Null bila gagal dihitung: badge disembunyikan, karena topbar
-     * ada di semua halaman dan tidak boleh ikut rusak gara-gara angka ini.
+     * Ringkasan tersimpan sejam. Null bila gagal dihitung: halaman Mapping SATUSEHAT
+     * menandai baris ini saja, baris lain tetap tampil.
      *
      * @return array{total: int, berkode: int, persen: float, pakaiTotal: int, pakaiBerkode: int, persenPakai: float}|null
      */
@@ -54,7 +54,7 @@ class CakupanIhsDokter
         }
     }
 
-    /** Dipanggil saat master disimpan, supaya badge langsung mengikuti. */
+    /** Dipanggil saat master disimpan, supaya angkanya langsung mengikuti. */
     public static function lupakan(): void
     {
         Cache::forget(self::KUNCI_CACHE);

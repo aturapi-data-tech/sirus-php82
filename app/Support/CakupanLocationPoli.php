@@ -7,10 +7,10 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Cakupan Location pada master poli: dasar badge topbar dan filter "belum Location" di Master Poli.
+ * Cakupan Location pada master poli: dasar halaman Mapping SATUSEHAT dan filter "belum Location" di Master Poli.
  *
  * Master berisi juga unit yang bukan tempat kunjungan RJ (Rontgen, Laboratorium, OK), jadi angka yang
- * ditampilkan badge = persen pakai: kunjungan RJ 90 hari terakhir yang poli-nya punya poli_uuid.
+ * lebih bermakna = persen pakai: kunjungan RJ 90 hari terakhir yang poli-nya punya poli_uuid.
  * UGD tidak dihitung karena Location IGD tidak diambil dari master ini.
  */
 class CakupanLocationPoli
@@ -36,8 +36,8 @@ class CakupanLocationPoli
     }
 
     /**
-     * Ringkasan tersimpan sejam. Null bila gagal dihitung: badge disembunyikan, karena topbar
-     * ada di semua halaman dan tidak boleh ikut rusak gara-gara angka ini.
+     * Ringkasan tersimpan sejam. Null bila gagal dihitung: halaman Mapping SATUSEHAT
+     * menandai baris ini saja, baris lain tetap tampil.
      *
      * @return array{total: int, berkode: int, persen: float, pakaiTotal: int, pakaiBerkode: int, persenPakai: float}|null
      */
@@ -52,7 +52,7 @@ class CakupanLocationPoli
         }
     }
 
-    /** Dipanggil saat master disimpan, supaya badge langsung mengikuti. */
+    /** Dipanggil saat master disimpan, supaya angkanya langsung mengikuti. */
     public static function lupakan(): void
     {
         Cache::forget(self::KUNCI_CACHE);

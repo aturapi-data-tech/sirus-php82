@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Cakupan mapping KFA pada master obat: dasar badge topbar dan filter "belum KFA" di Master Obat.
+ * Cakupan mapping KFA pada master obat: dasar halaman Mapping SATUSEHAT dan filter "belum KFA" di Master Obat.
  *
  * Dua angka sengaja dipisah. Persen master = obat aktif yang sudah ber-KFA. Persen pakai = baris
  * resep 90 hari terakhir yang obatnya ber-KFA, yaitu yang menentukan isi kiriman SATUSEHAT.
@@ -42,8 +42,8 @@ class CakupanKfa
     }
 
     /**
-     * Ringkasan tersimpan sejam. Null bila gagal dihitung: badge disembunyikan, karena topbar
-     * ada di semua halaman dan tidak boleh ikut rusak gara-gara angka ini.
+     * Ringkasan tersimpan sejam. Null bila gagal dihitung: halaman Mapping SATUSEHAT
+     * menandai baris ini saja, baris lain tetap tampil.
      *
      * @return array{total: int, berkode: int, persen: float, pakaiTotal: int, pakaiBerkode: int, persenPakai: float}|null
      */
@@ -58,7 +58,7 @@ class CakupanKfa
         }
     }
 
-    /** Dipanggil saat master obat disimpan, supaya badge langsung mengikuti. */
+    /** Dipanggil saat master obat disimpan, supaya angkanya langsung mengikuti. */
     public static function lupakan(): void
     {
         Cache::forget(self::KUNCI_CACHE);

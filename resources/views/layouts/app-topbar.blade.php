@@ -10,24 +10,6 @@
                 </a>
             </nav>
 
-            @hasanyrole('Admin|Apoteker')
-                <x-cakupan-kfa.badge />
-            @endhasanyrole
-            @hasanyrole('Admin|Laboratorium')
-                <x-cakupan-loinc-lab.badge />
-            @endhasanyrole
-            @hasanyrole('Admin|Radiologi')
-                <x-cakupan-loinc-radiologi.badge />
-            @endhasanyrole
-            @hasanyrole('Admin')
-                <x-cakupan-ihs-dokter.badge />
-                <x-cakupan-location-poli.badge />
-                <x-cakupan-location-kamar.badge />
-            @endhasanyrole
-            @hasanyrole('Admin|Mr')
-                <x-cakupan-ihs-pasien.badge />
-            @endhasanyrole
-
             <x-panduan-penulisan-rm.tombol />
 
             <x-theme-toggle />

@@ -113,6 +113,8 @@ class AppMenu
             $entry(['group' => 'Master Pelayanan', 'groupOrder' => 1, 'order' => 14, 'route' => 'master.jasa-medis', 'title' => 'Master Jasa Medis', 'desc' => 'Kelola tarif jasa medis (Umum & BPJS) + paket bundling obat / lain-lain', 'roles' => $masterRoles, 'badge' => 'Pelayanan']),
             $entry(['group' => 'Master Pelayanan', 'groupOrder' => 1, 'order' => 15, 'route' => 'master.jasa-dokter', 'title' => 'Master Jasa Dokter', 'desc' => 'Kelola tarif jasa dokter (Umum & BPJS) + paket bundling obat / lain-lain', 'roles' => $masterRoles, 'badge' => 'Pelayanan']),
 
+            $entry(['group' => 'Master Pelayanan', 'groupOrder' => 1, 'order' => 19, 'route' => 'master.mapping-satusehat', 'title' => 'Mapping SATUSEHAT', 'desc' => 'Cakupan KFA, LOINC, IHS dan Location pada master, dengan tautan ke yang belum terisi', 'roles' => ['admin', 'apoteker', 'laboratorium', 'radiologi', 'mr'], 'badge' => 'SATUSEHAT']),
+
             // ── Master Laboratorium ──────────────────────────────────
             $entry(['group' => 'Master Laboratorium', 'groupOrder' => 2, 'order' => 1, 'route' => 'master.laborat', 'title' => 'Master Laboratorium', 'desc' => 'Kelola kategori lab & item pemeriksaan', 'roles' => $masterRoles, 'badge' => 'Lab']),
             $entry(['group' => 'Master Laboratorium', 'groupOrder' => 2, 'order' => 2, 'route' => 'master.loinc', 'title' => 'Master LOINC', 'desc' => 'Kode LOINC pemeriksaan lab & observasi — LOV + pengiriman SATUSEHAT', 'roles' => $masterRoles, 'badge' => 'SATUSEHAT']),

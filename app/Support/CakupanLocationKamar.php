@@ -7,11 +7,11 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Cakupan Location pada kamar rawat inap: dasar badge topbar dan filter "belum Location" di Master Kamar.
+ * Cakupan Location pada kamar rawat inap: dasar halaman Mapping SATUSEHAT dan filter "belum Location" di Master Kamar.
  *
  * Dua angka sengaja dipisah. Persen master = kamar aktif yang sudah punya room_uuid. Persen pakai = masuk
  * rawat 90 hari terakhir yang kamarnya punya room_uuid; yang kosong tak bisa memulai Encounter RI.
- * Kolom room_uuid butuh migrasi 2026_07_14_100000: bila belum jalan, badge tersembunyi.
+ * Kolom room_uuid butuh migrasi 2026_07_14_100000: bila belum jalan, ringkasan null.
  */
 class CakupanLocationKamar
 {
@@ -36,8 +36,8 @@ class CakupanLocationKamar
     }
 
     /**
-     * Ringkasan tersimpan sejam. Null bila gagal dihitung: badge disembunyikan, karena topbar
-     * ada di semua halaman dan tidak boleh ikut rusak gara-gara angka ini.
+     * Ringkasan tersimpan sejam. Null bila gagal dihitung: halaman Mapping SATUSEHAT
+     * menandai baris ini saja, baris lain tetap tampil.
      *
      * @return array{total: int, berkode: int, persen: float, pakaiTotal: int, pakaiBerkode: int, persenPakai: float}|null
      */
@@ -52,7 +52,7 @@ class CakupanLocationKamar
         }
     }
 
-    /** Dipanggil saat master disimpan, supaya badge langsung mengikuti. */
+    /** Dipanggil saat master disimpan, supaya angkanya langsung mengikuti. */
     public static function lupakan(): void
     {
         Cache::forget(self::KUNCI_CACHE);

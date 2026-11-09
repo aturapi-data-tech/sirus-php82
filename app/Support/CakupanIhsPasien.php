@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Cakupan IHS pada pasien yang berkunjung: dasar badge topbar dan filter "belum IHS" di Master Pasien.
+ * Cakupan IHS pada pasien yang berkunjung: dasar halaman Mapping SATUSEHAT dan filter "belum IHS" di Master Pasien.
  *
  * Sengaja tidak memakai seluruh rsmst_pasiens: sebagian besar pasien lama tak datang lagi, jadi angkanya
  * menyesatkan. Persen = pasien berkunjung 90 hari terakhir yang punya patient_uuid. Persen pakai =
@@ -39,8 +39,8 @@ class CakupanIhsPasien
     }
 
     /**
-     * Ringkasan tersimpan sejam. Null bila gagal dihitung: badge disembunyikan, karena topbar
-     * ada di semua halaman dan tidak boleh ikut rusak gara-gara angka ini.
+     * Ringkasan tersimpan sejam. Null bila gagal dihitung: halaman Mapping SATUSEHAT
+     * menandai baris ini saja, baris lain tetap tampil.
      *
      * @return array{total: int, berkode: int, persen: float, pakaiTotal: int, pakaiBerkode: int, persenPakai: float}|null
      */
@@ -55,7 +55,7 @@ class CakupanIhsPasien
         }
     }
 
-    /** Dipanggil saat master disimpan, supaya badge langsung mengikuti. */
+    /** Dipanggil saat master disimpan, supaya angkanya langsung mengikuti. */
     public static function lupakan(): void
     {
         Cache::forget(self::KUNCI_CACHE);

@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Cakupan LOINC pada master item lab: dasar badge topbar dan filter "belum LOINC" di Master Lab.
+ * Cakupan LOINC pada master item lab: dasar halaman Mapping SATUSEHAT dan filter "belum LOINC" di Master Lab.
  *
  * Dua angka sengaja dipisah. Persen master = item yang sudah ber-LOINC. Persen pakai = hasil lab
  * 90 hari terakhir yang itemnya ber-LOINC, yaitu yang menentukan isi kiriman SATUSEHAT.
@@ -46,8 +46,8 @@ class CakupanLoincLab
     }
 
     /**
-     * Ringkasan tersimpan sejam. Null bila gagal dihitung: badge disembunyikan, karena topbar
-     * ada di semua halaman dan tidak boleh ikut rusak gara-gara angka ini.
+     * Ringkasan tersimpan sejam. Null bila gagal dihitung: halaman Mapping SATUSEHAT
+     * menandai baris ini saja, baris lain tetap tampil.
      *
      * @return array{total: int, berkode: int, persen: float, pakaiTotal: int, pakaiBerkode: int, persenPakai: float}|null
      */
@@ -62,7 +62,7 @@ class CakupanLoincLab
         }
     }
 
-    /** Dipanggil saat master item lab disimpan, supaya badge langsung mengikuti. */
+    /** Dipanggil saat master item lab disimpan, supaya angkanya langsung mengikuti. */
     public static function lupakan(): void
     {
         Cache::forget(self::KUNCI_CACHE);
