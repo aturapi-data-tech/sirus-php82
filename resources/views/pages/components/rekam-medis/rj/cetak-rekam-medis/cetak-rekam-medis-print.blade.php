@@ -354,7 +354,7 @@
             <td class="border border-black px-1.5 py-0.5 align-top">
                 <span class="font-bold">Anatomi :</span><br>
                 @if (!empty($dataDaftarTxn['pemeriksaan']['anatomi']))
-                    @foreach ($dataDaftarTxn['pemeriksaan']['anatomi'] as $key => $pAnatomi)
+                    @foreach (\App\Support\AnatomiPemeriksaan::rapikanKunci($dataDaftarTxn['pemeriksaan']['anatomi']) as $key => $pAnatomi)
                         @php $kelainan = $pAnatomi['kelainan'] ?? false; @endphp
                         @if ($kelainan && $kelainan !== 'Tidak Diperiksa')
                             <span class="font-semibold">{{ strtoupper($key) }}</span>:

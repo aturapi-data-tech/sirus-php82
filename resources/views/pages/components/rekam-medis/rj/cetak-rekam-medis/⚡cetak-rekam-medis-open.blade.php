@@ -681,7 +681,7 @@ new class extends Component {
 
                             <x-border-form title="Anatomi">
                                 @if (!empty($dataDaftarTxn['pemeriksaan']['anatomi']))
-                                    @foreach ($dataDaftarTxn['pemeriksaan']['anatomi'] as $key => $pAnatomi)
+                                    @foreach (\App\Support\AnatomiPemeriksaan::rapikanKunci($dataDaftarTxn['pemeriksaan']['anatomi']) as $key => $pAnatomi)
                                         @if (!empty($pAnatomi['kelainan']) && $pAnatomi['kelainan'] !== 'Tidak Diperiksa')
                                             <p class="text-base text-body dark:text-gray-300">
                                                 <span class="font-semibold">{{ strtoupper($key) }}</span>:

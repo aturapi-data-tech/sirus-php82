@@ -2,6 +2,7 @@
 // resources/views/pages/transaksi/ri/emr-ri/pengkajian-dokter/rm-pengkajian-dokter-ri-actions.blade.php
 
 use Livewire\Component;
+use App\Support\AnatomiPemeriksaan;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Http\Traits\Txn\Ri\RekonsiliasiObatRITrait;
 use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
@@ -54,6 +55,9 @@ new class extends Component {
     private function muatDariDokumen(array $data): void
     {
         $this->pengkajianDokter = $data['pengkajianDokter'] ?? [];
+        if (isset($this->pengkajianDokter['anatomi'])) {
+            $this->pengkajianDokter['anatomi'] = AnatomiPemeriksaan::rapikanKunci((array) $this->pengkajianDokter['anatomi']);
+        }
         $this->regNoPasien = (string) ($data['regNo'] ?? '');
         // data_get + default: helper ini juga dipanggil open(), saat node pengkajianDokter belum tentu ada.
         $this->rekonsiliasiObatSaatDibuka = (array) data_get($data, 'pengkajianDokter.anamnesa.rekonsiliasiObat', []);
@@ -213,7 +217,7 @@ new class extends Component {
         // JANGAN `??=`. Modal Rekonsiliasi Obat (titik-3 Daftar RI) bisa menulis
         // duluan lewat data_set(), yang membuat node pengkajianDokter ADA tapi
         // PARSIAL — cuma anamnesa.rekonsiliasiObat. Dengan `??=`, kerangka default
-        // di bawah tidak pernah terpasang: keluhanUtama, 29 bagian anatomi, dan
+        // di bawah tidak pernah terpasang: keluhanUtama, bagian anatomi, dan
         // tandaTanganDokter hilang semua. array_replace_recursive memasang yang
         // kurang saja; nilai yang sudah ada TIDAK ditimpa.
         $strukturDefaultPengkajianDokter = [

@@ -2,6 +2,8 @@
 
 namespace App\Support\Options;
 
+use App\Support\AnatomiPemeriksaan;
+
 /**
  * Opsi & peta label Pengkajian Medis (Dokter) Rawat Inap (node JSON pengkajianDokter).
  * SATU sumber untuk form EMR (rm-pengkajian-dokter-ri) + cetak (RM-03.12).
@@ -55,11 +57,12 @@ class PengkajianDokterRiOptions
     ];
 
     /**
-     * Bagian anatomi yang DIPERIKSA (kelainan ≠ "Tidak Diperiksa") — untuk cetak, supaya 29 baris
+     * Bagian anatomi yang DIPERIKSA (kelainan ≠ "Tidak Diperiksa") — untuk cetak, supaya puluhan baris
      * "Tidak Diperiksa" tidak memenuhi kertas. @return list<array{label: string, kelainan: string, deskripsi: string}>
      */
     public static function anatomiDiperiksa(array $anatomi): array
     {
+        $anatomi = AnatomiPemeriksaan::rapikanKunci($anatomi);
         $hasil = [];
         foreach (self::ANATOMI as $kunci => $label) {
             $kelainan = (string) data_get($anatomi, "{$kunci}.kelainan", 'Tidak Diperiksa');
