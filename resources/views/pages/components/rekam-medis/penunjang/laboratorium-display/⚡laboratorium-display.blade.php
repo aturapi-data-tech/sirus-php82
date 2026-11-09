@@ -9,6 +9,7 @@ use Carbon\Carbon;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 use App\Support\PenanggungJawabPenunjang;
+use App\Support\HasilLab;
 
 new class extends Component {
     use WithPagination, WithRenderVersioningTrait;
@@ -329,7 +330,7 @@ new class extends Component {
                 $this->selectedRows[] = [
                     'id' => $id,
                     'desc' => trim($item->clabitem_desc ?? ''),
-                    'hasil' => $item->lab_result ?? '',
+                    'hasil' => HasilLab::teksTampil($item->lab_result ?? '', $item->unit_convert ?? null, $item->lowhigh_status ?? null),
                     'unit' => $item->unit_desc ?? '',
                 ];
             }
