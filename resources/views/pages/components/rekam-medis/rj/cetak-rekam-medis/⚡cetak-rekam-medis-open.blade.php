@@ -495,16 +495,24 @@ new class extends Component {
                                             class="flex gap-3 text-base leading-relaxed pb-1.5 border-b border-hairline-soft dark:border-gray-800 last:border-0">
                                             <span class="w-56 shrink-0 text-right text-muted">Tekanan Darah :</span>
                                             <span class="text-base font-semibold text-ink dark:text-gray-200">
-                                                {{ ($tandaVital['sistolik'] ?? '-') . ' / ' . ($tandaVital['distolik'] ?? '-') }}
-                                                <span class="text-sm font-normal text-muted-soft">mmHg</span>
+                                                @if (filled($tandaVital['sistolik'] ?? null) || filled($tandaVital['distolik'] ?? null))
+                                                    {{ (filled($tandaVital['sistolik'] ?? null) ? $tandaVital['sistolik'] : '-') . ' / ' . (filled($tandaVital['distolik'] ?? null) ? $tandaVital['distolik'] : '-') }}
+                                                    <span class="text-sm font-normal text-muted-soft">mmHg</span>
+                                                @else
+                                                    Tidak diperiksa
+                                                @endif
                                             </span>
                                         </p>
                                         <p
                                             class="flex gap-3 text-base leading-relaxed pb-1.5 border-b border-hairline-soft dark:border-gray-800 last:border-0">
                                             <span class="w-56 shrink-0 text-right text-muted">Nadi :</span>
                                             <span class="text-base font-semibold text-ink dark:text-gray-200">
-                                                {{ $tandaVital['frekuensiNadi'] ?? '-' }}
-                                                <span class="text-sm font-normal text-muted-soft">x/mnt</span>
+                                                @if (filled($tandaVital['frekuensiNadi'] ?? null))
+                                                    {{ $tandaVital['frekuensiNadi'] }}
+                                                    <span class="text-sm font-normal text-muted-soft">x/mnt</span>
+                                                @else
+                                                    Tidak diperiksa
+                                                @endif
                                             </span>
                                         </p>
                                         <p

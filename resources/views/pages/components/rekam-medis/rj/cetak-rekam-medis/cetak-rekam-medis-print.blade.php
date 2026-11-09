@@ -230,14 +230,18 @@
 
                 <p class="font-bold mb-0.5">TANDA VITAL :</p>
                 <table cellpadding="0" cellspacing="0" class="w-full text-[10px]">
+                    @php
+                        $sistolikCetak = $dataDaftarTxn['pemeriksaan']['tandaVital']['sistolik'] ?? null;
+                        $distolikCetak = $dataDaftarTxn['pemeriksaan']['tandaVital']['distolik'] ?? null;
+                        $nadiCetak = $dataDaftarTxn['pemeriksaan']['tandaVital']['frekuensiNadi'] ?? null;
+                    @endphp
                     <tr>
                         <td class="w-20">TD</td>
-                        <td>:&nbsp;{{ $dataDaftarTxn['pemeriksaan']['tandaVital']['sistolik'] ?? '-' }} /
-                            {{ $dataDaftarTxn['pemeriksaan']['tandaVital']['distolik'] ?? '-' }} mmhg</td>
+                        <td>:&nbsp;{{ filled($sistolikCetak) || filled($distolikCetak) ? (filled($sistolikCetak) ? $sistolikCetak : '-') . ' / ' . (filled($distolikCetak) ? $distolikCetak : '-') . ' mmhg' : 'Tidak diperiksa' }}</td>
                     </tr>
                     <tr>
                         <td>Nadi</td>
-                        <td>:&nbsp;{{ $dataDaftarTxn['pemeriksaan']['tandaVital']['frekuensiNadi'] ?? '-' }} x/mnt</td>
+                        <td>:&nbsp;{{ filled($nadiCetak) ? $nadiCetak . ' x/mnt' : 'Tidak diperiksa' }}</td>
                     </tr>
                     <tr>
                         <td>Suhu</td>

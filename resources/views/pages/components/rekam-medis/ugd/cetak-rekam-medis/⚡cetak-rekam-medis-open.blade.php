@@ -488,7 +488,8 @@ new class extends Component {
                         <x-border-form title="Tanda Vital">
                             @php $tandaVital = $dataDaftarTxn['pemeriksaan']['tandaVital'] ?? []; @endphp
                             <div class="space-y-2.5">
-                                @foreach ([['Tekanan Darah', ($tandaVital['sistolik'] ?? '-') . ' / ' . ($tandaVital['distolik'] ?? '-'), 'mmHg'], ['Nadi', $tandaVital['frekuensiNadi'] ?? '-', 'x/mnt'], ['Suhu', $tandaVital['suhu'] ?? '-', '°C'], ['Pernafasan', $tandaVital['frekuensiNafas'] ?? '-', 'x/mnt'], ['SPO2', $tandaVital['spo2'] ?? '-', '%'], ['GDA', filled($tandaVital['gda'] ?? null) ? $tandaVital['gda'] : 'Tidak diperiksa', filled($tandaVital['gda'] ?? null) ? 'mg/dL' : ''], ['GCS', 'E' . ($tandaVital['e'] ?? '-') . ' V' . ($tandaVital['v'] ?? '-') . ' M' . ($tandaVital['m'] ?? '-') . ' (' . ($tandaVital['gcs'] ?? '-') . ')', '']] as [$label, $nilai, $unit])
+                                @php $tekananDarahTerisi = filled($tandaVital['sistolik'] ?? null) || filled($tandaVital['distolik'] ?? null); @endphp
+                                @foreach ([['Tekanan Darah', $tekananDarahTerisi ? (filled($tandaVital['sistolik'] ?? null) ? $tandaVital['sistolik'] : '-') . ' / ' . (filled($tandaVital['distolik'] ?? null) ? $tandaVital['distolik'] : '-') : 'Tidak diperiksa', $tekananDarahTerisi ? 'mmHg' : ''], ['Nadi', filled($tandaVital['frekuensiNadi'] ?? null) ? $tandaVital['frekuensiNadi'] : 'Tidak diperiksa', filled($tandaVital['frekuensiNadi'] ?? null) ? 'x/mnt' : ''], ['Suhu', $tandaVital['suhu'] ?? '-', '°C'], ['Pernafasan', $tandaVital['frekuensiNafas'] ?? '-', 'x/mnt'], ['SPO2', $tandaVital['spo2'] ?? '-', '%'], ['GDA', filled($tandaVital['gda'] ?? null) ? $tandaVital['gda'] : 'Tidak diperiksa', filled($tandaVital['gda'] ?? null) ? 'mg/dL' : ''], ['GCS', 'E' . ($tandaVital['e'] ?? '-') . ' V' . ($tandaVital['v'] ?? '-') . ' M' . ($tandaVital['m'] ?? '-') . ' (' . ($tandaVital['gcs'] ?? '-') . ')', '']] as [$label, $nilai, $unit])
                                     <p
                                         class="flex gap-3 text-base leading-relaxed pb-1.5 border-b border-hairline-soft dark:border-gray-800 last:border-0">
                                         <span
@@ -731,8 +732,20 @@ new class extends Component {
                                         </td>
                                         <td class="px-2 py-1 align-top">
                                             <div class="flex flex-wrap items-center gap-x-3">
-                                                <span>Tekanan darah <b>{{ ($entriObservasi['sistolik'] ?? '-') . '/' . ($entriObservasi['distolik'] ?? '-') }}</b> <span class="text-xs text-muted-soft">mmHg</span>{!! $ewsSkorSel('sistolik') !!}{!! $ewsSkorSel('distolik') !!}</span>
-                                                <span>Nadi <b>{{ $entriObservasi['frekuensiNadi'] ?? '-' }}</b> <span class="text-xs text-muted-soft">x/mnt</span>{!! $ewsSkorSel('frekuensiNadi') !!}</span>
+                                                <span>Tekanan darah
+                                                    @if (filled($entriObservasi['sistolik'] ?? null) || filled($entriObservasi['distolik'] ?? null))
+                                                        <b>{{ (filled($entriObservasi['sistolik'] ?? null) ? $entriObservasi['sistolik'] : '-') . '/' . (filled($entriObservasi['distolik'] ?? null) ? $entriObservasi['distolik'] : '-') }}</b> <span class="text-xs text-muted-soft">mmHg</span>
+                                                    @else
+                                                        <b>Tidak diperiksa</b>
+                                                    @endif
+                                                    {!! $ewsSkorSel('sistolik') !!}{!! $ewsSkorSel('distolik') !!}</span>
+                                                <span>Nadi
+                                                    @if (filled($entriObservasi['frekuensiNadi'] ?? null))
+                                                        <b>{{ $entriObservasi['frekuensiNadi'] }}</b> <span class="text-xs text-muted-soft">x/mnt</span>
+                                                    @else
+                                                        <b>Tidak diperiksa</b>
+                                                    @endif
+                                                    {!! $ewsSkorSel('frekuensiNadi') !!}</span>
                                                 <span>Nafas <b>{{ $entriObservasi['frekuensiNafas'] ?? '-' }}</b> <span class="text-xs text-muted-soft">x/mnt</span>{!! $ewsSkorSel('frekuensiNafas') !!}</span>
                                             </div>
                                             <div class="flex flex-wrap items-center gap-x-3">
