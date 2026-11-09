@@ -390,8 +390,10 @@ new class extends Component {
                                             @if (!empty($row->nokartu_bpjs))
                                                 <span>BPJS: <span class="font-mono text-gray-700 dark:text-gray-300">{{ $row->nokartu_bpjs }}</span></span>
                                             @endif
-                                            @if (!empty($row->patient_uuid))
+                                            @if (trim($row->patient_uuid ?? '') !== '')
                                                 <span>UUID: <span class="font-mono text-gray-700 dark:text-gray-300">{{ $row->patient_uuid }}</span></span>
+                                            @else
+                                                <span>UUID: <x-badge variant="danger">Belum</x-badge></span>
                                             @endif
                                         </div>
                                     </td>

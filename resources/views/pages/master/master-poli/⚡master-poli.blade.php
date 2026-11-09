@@ -185,7 +185,7 @@ new class extends Component {
                                 <th>ID</th>
                                 <th>Poli</th>
                                 <th>BPJS</th>
-                                <th>UUID</th>
+                                <th>Location (UUID)</th>
                                 <th>Status</th>
                                 <th class="ds-c">Aksi</th>
                             </tr>
@@ -204,7 +204,13 @@ new class extends Component {
                                         @endif
                                     </td>
                                     <td class="ds-td-token">{{ $row->kd_poli_bpjs }}</td>
-                                    <td class="ds-td-token">{{ $row->poli_uuid }}</td>
+                                    <td class="ds-td-token">
+                                        @if (trim($row->poli_uuid ?? '') !== '')
+                                            {{ $row->poli_uuid }}
+                                        @else
+                                            <x-badge variant="danger">Belum</x-badge>
+                                        @endif
+                                    </td>
 
                                     <td class="px-6 py-4">
                                         <x-badge :variant="(string) $row->spesialis_status === '1' ? 'success' : 'gray'">

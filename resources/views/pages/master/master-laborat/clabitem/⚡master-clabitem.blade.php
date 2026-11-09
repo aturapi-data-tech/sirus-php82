@@ -279,12 +279,19 @@ new class extends Component {
                                                         class="font-mono text-gray-600 dark:text-gray-300">{{ $item->item_code }}</span>
                                                 </div>
                                             @endif
-                                            @if ($item->loinc_code)
+                                            {{-- Paket & item tersembunyi tidak dihitung cakupan LOINC, jadi kosongnya bukan "Belum". --}}
+                                            @if (trim($item->loinc_code ?? '') !== '')
                                                 <div class="flex items-center gap-1.5">
                                                     <span
                                                         class="px-1.5 py-0.5 rounded font-mono text-[10px] font-bold bg-teal-50 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300">LOINC</span>
                                                     <span
                                                         class="font-mono text-gray-600 dark:text-gray-300">{{ $item->loinc_code }}</span>
+                                                </div>
+                                            @elseif (!$isGroup && !in_array($item->hidden_status, ['Y', '1'], true))
+                                                <div class="flex items-center gap-1.5">
+                                                    <span
+                                                        class="px-1.5 py-0.5 rounded font-mono text-[10px] font-bold bg-teal-50 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300">LOINC</span>
+                                                    <x-badge variant="danger">Belum</x-badge>
                                                 </div>
                                             @endif
                                         </div>

@@ -6,6 +6,7 @@ use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use App\Support\CakupanLocationKamar;
 
 new class extends Component {
@@ -205,11 +206,16 @@ new class extends Component {
             return null;
         }
 
+        // Kolom butuh migrasi 2026_07_14_100000: di DB yang belum menjalankannya daftar kamar tetap harus terbuka.
+        $punyaRoomUuid = Schema::hasColumn('rsmst_rooms', 'room_uuid');
+        $kolomRoomUuid = $punyaRoomUuid ? 'r.room_uuid' : 'NULL';
+
         $q = DB::table(DB::raw('rsmst_rooms r'))
             ->selectRaw(
                 "
                 r.room_id,
                 r.room_name,
+                {$kolomRoomUuid} AS room_uuid,
                 r.class_id,
                 c.class_desc,
                 r.aplic_kodekelas,
@@ -228,6 +234,10 @@ new class extends Component {
             ->orderByDesc('r.active_status')
             ->orderBy('r.room_name');
 
+        if ($punyaRoomUuid) {
+            $q->groupBy('r.room_uuid');
+        }
+
         if ($this->filterLocation === 'belum') {
             $q->reorder()
                 ->leftJoin(DB::raw('(' . CakupanLocationKamar::sqlPemakaian() . ') pakai'), 'pakai.room_id_pakai', '=', 'r.room_id')
@@ -235,7 +245,7 @@ new class extends Component {
                 ->groupBy('pakai.jumlah_pakai')
                 ->where('r.active_status', '1')
                 ->whereRaw('TRIM(r.room_name) IS NOT NULL')
-                ->whereRaw('TRIM(r.room_uuid) IS NULL')
+                ->when($punyaRoomUuid, fn($subQuery) => $subQuery->whereRaw('TRIM(r.room_uuid) IS NULL'))
                 ->orderByRaw('NVL(pakai.jumlah_pakai, 0) DESC')
                 ->orderBy('r.room_name');
         } else {
@@ -427,6 +437,11 @@ new class extends Component {
                                                             <span>{{ number_format($room->jumlah_pakai ?? 0, 0, ',', '.') }} masuk rawat dalam {{ CakupanLocationKamar::HARI_PEMAKAIAN }} hari</span>
                                                         @endif
                                                         <span>{{ $room->class_desc ?? 'Kelas ' . $room->class_id }}</span>
+                                                        @if (trim($room->room_uuid ?? '') !== '')
+                                                            <span class="px-1.5 py-0.5 rounded font-mono text-[10px] font-bold bg-teal-50 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300" title="Location SATUSEHAT">Location {{ $room->room_uuid }}</span>
+                                                        @else
+                                                            <x-badge variant="danger">Location belum</x-badge>
+                                                        @endif
                                                         @if ($room->aplic_kodekelas)
                                                             <span class="px-1.5 py-0.5 rounded font-mono text-[10px] font-bold bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300" title="Kode kelas Aplicares BPJS">BPJS {{ $room->aplic_kodekelas }}</span>
                                                         @endif

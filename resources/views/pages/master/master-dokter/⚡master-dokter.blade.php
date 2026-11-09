@@ -488,28 +488,28 @@ new class extends Component {
                                             @endif
                                         </div>
 
-                                        @if (!empty($row->dr_nik) || !empty($row->kd_dr_bpjs) || !empty($row->dr_uuid))
-                                            <div class="mt-2 pt-1.5 border-t border-hairline dark:border-gray-700 space-y-1 text-sm">
-                                                @if (!empty($row->dr_nik))
-                                                    <div>
-                                                        <span class="text-muted dark:text-gray-300">NIK Dokter:</span>
-                                                        <span class="ml-1 font-mono text-ink dark:text-gray-100">{{ $row->dr_nik }}</span>
-                                                    </div>
-                                                @endif
-                                                @if (!empty($row->kd_dr_bpjs))
-                                                    <div>
-                                                        <span class="text-muted dark:text-gray-300">Kode Dokter BPJS:</span>
-                                                        <span class="ml-1 font-mono text-ink dark:text-gray-100">{{ $row->kd_dr_bpjs }}</span>
-                                                    </div>
-                                                @endif
-                                                @if (!empty($row->dr_uuid))
-                                                    <div>
-                                                        <span class="text-muted dark:text-gray-300">UUID Satusehat:</span>
-                                                        <span class="ml-1 font-mono text-ink dark:text-gray-100">{{ $row->dr_uuid }}</span>
-                                                    </div>
+                                        <div class="mt-2 pt-1.5 border-t border-hairline dark:border-gray-700 space-y-1 text-sm">
+                                            @if (!empty($row->dr_nik))
+                                                <div>
+                                                    <span class="text-muted dark:text-gray-300">NIK Dokter:</span>
+                                                    <span class="ml-1 font-mono text-ink dark:text-gray-100">{{ $row->dr_nik }}</span>
+                                                </div>
+                                            @endif
+                                            @if (!empty($row->kd_dr_bpjs))
+                                                <div>
+                                                    <span class="text-muted dark:text-gray-300">Kode Dokter BPJS:</span>
+                                                    <span class="ml-1 font-mono text-ink dark:text-gray-100">{{ $row->kd_dr_bpjs }}</span>
+                                                </div>
+                                            @endif
+                                            <div>
+                                                <span class="text-muted dark:text-gray-300">UUID Satusehat:</span>
+                                                @if (trim($row->dr_uuid ?? '') !== '')
+                                                    <span class="ml-1 font-mono text-ink dark:text-gray-100">{{ $row->dr_uuid }}</span>
+                                                @else
+                                                    <x-badge variant="danger" class="ml-1">Belum</x-badge>
                                                 @endif
                                             </div>
-                                        @endif
+                                        </div>
 
                                         {{-- Kontak (gabung di kolom ini, hemat lebar tabel) --}}
                                         <div class="mt-2 pt-1.5 border-t border-hairline dark:border-gray-700 space-y-1 text-sm">
