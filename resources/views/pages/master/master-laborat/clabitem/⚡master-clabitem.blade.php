@@ -287,6 +287,9 @@ new class extends Component {
                                                     <span
                                                         class="font-mono text-gray-600 dark:text-gray-300">{{ $item->loinc_code }}</span>
                                                 </div>
+                                                @if (filled($item->loinc_display))
+                                                    <div class="font-normal text-muted dark:text-gray-400">{{ $item->loinc_display }}</div>
+                                                @endif
                                             @elseif (!$isGroup && !in_array($item->hidden_status, ['Y', '1'], true))
                                                 <div class="flex items-center gap-1.5">
                                                     <span
