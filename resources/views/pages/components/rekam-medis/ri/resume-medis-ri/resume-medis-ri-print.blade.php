@@ -204,6 +204,15 @@
             word-wrap: break-word;
         }
 
+        /* Template 3-kolom: label & kode ICD sempit, sisanya untuk teks bebas dokter (form RM 41). */
+        .resume-medis-content table td.resume-medis-label {
+            width: 20% !important;
+        }
+
+        .resume-medis-content table td.resume-medis-icd {
+            width: 16% !important;
+        }
+
         /* Tabel yang ditempel dokter di dalam sel: tanpa jarak ganda. */
         .resume-medis-content table table {
             margin: 0;

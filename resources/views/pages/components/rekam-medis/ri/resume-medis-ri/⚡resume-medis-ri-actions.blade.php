@@ -348,17 +348,6 @@ new class extends Component {
             ->filter(fn($p) => $p['desc'] !== '')
             ->values();
 
-        $tindakanHtml = '';
-        if ($procList->isNotEmpty()) {
-            foreach ($procList as $p) {
-                $tindakanHtml .= '<li>' . e($p['desc']);
-                if ($p['icd'] !== '') $tindakanHtml .= ' &nbsp;&nbsp;<em>ICD-9CM:</em> ' . e($p['icd']);
-                $tindakanHtml .= '</li>';
-            }
-        } else {
-            $tindakanHtml = '<li>&nbsp;&nbsp;<em>ICD-9CM:</em> </li><li>&nbsp;&nbsp;<em>ICD-9CM:</em> </li>';
-        }
-
         // ── 8) Riwayat Alergi ← pengkajianDokter.anamnesa.jenisAlergi ───────
         // DULU membaca `pengkajianAwalPasienRawatInap.bagian2RiwayatAlergi.{alergiObat,
         // alergiMakanan, alergiLain}.desc` — node itu TIDAK PERNAH DITULIS siapa pun
@@ -425,22 +414,37 @@ new class extends Component {
         $tempatKontrol = e(trim($poliKontrol . ($drKontrol !== '' ? ' — ' . $drKontrol : '')));
         $pengobatanLanjutanCell = 'Poliklinik: ' . $tempatKontrol . ' &nbsp;&nbsp;<strong>Tanggal Kontrol:</strong> ' . $kontrolHariTgl;
 
-        // ── Build final HTML — pakai <table> 2-kolom (Label | Value) ────
+        // ── Build final HTML — <table> 3-kolom: Label | Isi | ICD (sempit, mepet kanan) ────
+        // Baris tanpa kode ICD: kolom Isi di-colspan sampai tepi kanan. Baris ber-ICD mengikuti
+        // form kertas RM 41: teks bebas dokter di tengah, kode di kolom sempit. Lebar kolom saat
+        // cetak dipegang kelas `resume-medis-label` & `resume-medis-icd` (lihat CSS
+        // resume-medis-ri-print) karena CSS cetak menimpa width inline semua sel.
         // Tema diselaraskan dgn header identitas pasien (Tailwind): label
         // pakai `text-muted` (abu, normal — bukan <strong>), ukuran font
         // ikut wrapper `.resume-medis-content` (11px) di template cetak.
         // Border tipis #cbd5e1 inline (border-gray Tailwind rawan purge di PDF).
+        $gayaSel = 'border: 1px solid #cbd5e1; padding: 3px 6px;';
+        $selLabel = fn(string $label, int $rowspan = 1) =>
+            '<td class="resume-medis-label text-muted align-top"' . ($rowspan > 1 ? " rowspan=\"{$rowspan}\"" : '') . " style=\"width: 200px; {$gayaSel}\">{$label}</td>";
+        $selIcd = fn(string $jenisIcd, string $kode) =>
+            "<td class=\"resume-medis-icd align-top\" style=\"width: 130px; {$gayaSel}\"><em>{$jenisIcd}:</em> {$kode}</td>";
         $row = fn(string $label, string $value) =>
-            "<tr><td class=\"text-muted align-top\" style=\"width: 200px; border: 1px solid #cbd5e1; padding: 3px 6px;\">{$label}</td>" .
-            "<td class=\"align-top\" style=\"border: 1px solid #cbd5e1; padding: 3px 6px;\">{$value}</td></tr>";
+            '<tr>' . $selLabel($label) . "<td class=\"align-top\" colspan=\"2\" style=\"{$gayaSel}\">{$value}</td></tr>";
+        $rowIcd = fn(string $label, string $value, string $kode) =>
+            '<tr>' . $selLabel($label) . "<td class=\"align-top\" style=\"{$gayaSel}\">{$value}</td>" . $selIcd('ICD-10', $kode) . '</tr>';
 
-        $tindakanCell = $procList->isNotEmpty()
-            ? '<ol style="margin:0; padding-left: 18px;">' . $tindakanHtml . '</ol>'
-            : '<ol style="margin:0; padding-left: 18px;"><li>ICD-9CM: </li><li>ICD-9CM: </li></ol>';
+        // Tindakan: satu baris per tindakan dgn kode sendiri; minimal 2 baris kosong seperti form kertas.
+        $tindakanList = $procList->all();
+        while (count($tindakanList) < 2) {
+            $tindakanList[] = ['desc' => '', 'icd' => ''];
+        }
+        $tindakanRows = '';
+        foreach ($tindakanList as $urutan => $tindakan) {
+            $tindakanRows .= '<tr>' . ($urutan === 0 ? $selLabel('Tindakan / Operasi', count($tindakanList)) : '')
+                . "<td class=\"align-top\" style=\"{$gayaSel}\">" . ($urutan + 1) . '. ' . e($tindakan['desc']) . '</td>'
+                . $selIcd('ICD-9CM', e($tindakan['icd'])) . '</tr>';
+        }
 
-        $diagAkhirCell = $diagAkhirText . ($diagAkhirIcd !== '' ? ' &nbsp;&nbsp;<em>ICD-10:</em> ' . $diagAkhirIcd : ' &nbsp;&nbsp;<em>ICD-10:</em> ');
-        $komplikasiCell = $komplikasiText . ($komplikasiIcd !== '' ? ' &nbsp;&nbsp;<em>ICD-10:</em> ' . $komplikasiIcd : ' &nbsp;&nbsp;<em>ICD-10:</em> ');
-        $komorbidCell = $komorbidText . ($komorbidIcd !== '' ? ' &nbsp;&nbsp;<em>ICD-10:</em> ' . $komorbidIcd : ' &nbsp;&nbsp;<em>ICD-10:</em> ');
         $dirujukCell = $dirujukKe . ' &nbsp;&nbsp;<strong>Alasan:</strong> ' . $alasanRujuk;
 
         $rows = implode("\n", [
@@ -450,10 +454,10 @@ new class extends Component {
             $row('Pemeriksaan Fisik', $pemFisik),
             $row('Pemeriksaan Penunjang', $penunjang),
             $row('Obat Selama Rawat', ''),
-            $row('Diagnosa Akhir', $diagAkhirCell),
-            $row('Komplikasi', $komplikasiCell),
-            $row('Komorbid', $komorbidCell),
-            $row('Tindakan / Operasi', $tindakanCell),
+            $rowIcd('Diagnosa Akhir', $diagAkhirText, $diagAkhirIcd),
+            $rowIcd('Komplikasi', $komplikasiText, $komplikasiIcd),
+            $rowIcd('Komorbid', $komorbidText, $komorbidIcd),
+            $tindakanRows,
             $row('Riwayat Alergi', $alergi),
             $row('Obat / Terapi Pulang', ''),
             $row('Kondisi Saat Pulang', $kondisiPulang),
