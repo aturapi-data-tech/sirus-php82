@@ -5,7 +5,9 @@ use Livewire\Component;
 use Livewire\WithPagination;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Url;
 use Illuminate\Support\Facades\DB;
+use App\Support\CakupanIhsDokter;
 
 new class extends Component {
     use WithPagination;
@@ -15,6 +17,15 @@ new class extends Component {
      =============================== */
     public string $searchKeyword = '';
     public int $itemsPerPage = 10;
+
+    /** 'belum' = dokter aktif tanpa IHS, urut dari kunjungan terbanyak. */
+    #[Url(as: 'ihs')]
+    public string $filterIhs = '';
+
+    public function updatedFilterIhs(): void
+    {
+        $this->resetPage();
+    }
 
     /* -------------------- PANEL TARIF V&K PER KELAS (klik baris → panel kanan) -------------------- */
     public ?string $selectedDrId = null;
@@ -38,7 +49,7 @@ new class extends Component {
 
     public function resetFilters(): void
     {
-        $this->reset(['searchKeyword']);
+        $this->reset(['searchKeyword', 'filterIhs']);
         $this->itemsPerPage = 10;
         $this->resetPage();
     }
@@ -325,6 +336,17 @@ new class extends Component {
             ->orderBy('b.poli_desc', 'asc')
             ->orderBy('a.dr_name', 'asc');
 
+        if ($this->filterIhs === 'belum') {
+            $queryBuilder
+                ->reorder()
+                ->leftJoin(DB::raw('(' . CakupanIhsDokter::sqlPemakaian() . ') pakai'), 'pakai.dr_id_pakai', '=', 'a.dr_id')
+                ->addSelect(DB::raw('NVL(pakai.jumlah_pakai, 0) AS jumlah_pakai'))
+                ->where('a.active_status', '1')
+                ->whereRaw('TRIM(a.dr_uuid) IS NULL')
+                ->orderByRaw('NVL(pakai.jumlah_pakai, 0) DESC')
+                ->orderBy('a.dr_name', 'asc');
+        }
+
         if ($searchKeyword !== '') {
             $upper = mb_strtoupper($searchKeyword);
 
@@ -385,6 +407,12 @@ new class extends Component {
                     </div>
 
                     <div class="flex items-center justify-end gap-2">
+                        <div class="w-48">
+                            <x-select-input wire:model.live="filterIhs" aria-label="Filter IHS">
+                                <option value="">Semua dokter</option>
+                                <option value="belum">Aktif belum IHS</option>
+                            </x-select-input>
+                        </div>
                         <div class="w-28">
                             <x-select-input wire:model.live="itemsPerPage">
                                 <option value="5">5</option>
@@ -430,6 +458,11 @@ new class extends Component {
 
                                     {{-- DOKTER & POLI: setiap data ada label-nya biar jelas --}}
                                     <td class="px-6 py-4 align-top">
+                                        @if ($filterIhs === 'belum')
+                                            <div class="mb-2 text-xs text-muted">
+                                                {{ number_format($row->jumlah_pakai ?? 0, 0, ',', '.') }} kunjungan dalam {{ CakupanIhsDokter::HARI_PEMAKAIAN }} hari
+                                            </div>
+                                        @endif
                                         {{-- ID + toggle status sebaris (hemat kolom STATUS) --}}
                                         <div class="text-sm text-muted dark:text-gray-300">ID Dokter</div>
                                         @php $isActive = (string) $row->active_status === '1'; @endphp

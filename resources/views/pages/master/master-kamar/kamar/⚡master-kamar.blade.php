@@ -4,7 +4,9 @@ use Livewire\Component;
 use Livewire\WithPagination;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Url;
 use Illuminate\Support\Facades\DB;
+use App\Support\CakupanLocationKamar;
 
 new class extends Component {
     use WithPagination;
@@ -61,6 +63,15 @@ new class extends Component {
     public string $searchKamar = '';
     public int $itemsPerPageKamar = 10;
 
+    /** 'belum' = kamar aktif tanpa Location lintas bangsal, urut dari yang paling sering dipakai. */
+    #[Url(as: 'location')]
+    public string $filterLocation = '';
+
+    public function updatedFilterLocation(): void
+    {
+        $this->resetPage('pageKamar');
+    }
+
     /* --- Kamar terpilih (panel kanan: tarif + bed) --- */
     public ?string $selectedRoomId = null;
     public string $selectedRoomName = '';
@@ -81,7 +92,7 @@ new class extends Component {
 
     public function resetFilters(): void
     {
-        $this->reset(['searchKamar']);
+        $this->reset(['searchKamar', 'filterLocation']);
         $this->itemsPerPageKamar = 10;
         $this->resetPage('pageKamar');
     }
@@ -93,6 +104,7 @@ new class extends Component {
         $this->selectedBangsalId = $bangsalId;
         $this->selectedBangsalName = $bangsalName;
         $this->searchKamar = '';
+        $this->filterLocation = '';
         $this->resetSelectedRoom();
         $this->resetPage('pageKamar');
     }
@@ -189,7 +201,7 @@ new class extends Component {
     #[Computed]
     public function rooms()
     {
-        if (!$this->selectedBangsalId) {
+        if (!$this->selectedBangsalId && $this->filterLocation !== 'belum') {
             return null;
         }
 
@@ -212,10 +224,23 @@ new class extends Component {
             )
             ->leftJoin(DB::raw('rsmst_class c'), 'r.class_id', '=', 'c.class_id')
             ->leftJoin(DB::raw('rsmst_beds bd'), 'r.room_id', '=', 'bd.room_id')
-            ->where('r.bangsal_id', $this->selectedBangsalId)
             ->groupBy('r.room_id', 'r.room_name', 'r.class_id', 'c.class_desc', 'r.aplic_kodekelas', 'r.sirs_id_tt', 'r.sirs_id_t_tt', 'r.room_price', 'r.perawatan_price', 'r.common_service', 'r.active_status')
             ->orderByDesc('r.active_status')
             ->orderBy('r.room_name');
+
+        if ($this->filterLocation === 'belum') {
+            $q->reorder()
+                ->leftJoin(DB::raw('(' . CakupanLocationKamar::sqlPemakaian() . ') pakai'), 'pakai.room_id_pakai', '=', 'r.room_id')
+                ->addSelect(DB::raw('NVL(pakai.jumlah_pakai, 0) AS jumlah_pakai'))
+                ->groupBy('pakai.jumlah_pakai')
+                ->where('r.active_status', '1')
+                ->whereRaw('TRIM(r.room_name) IS NOT NULL')
+                ->whereRaw('TRIM(r.room_uuid) IS NULL')
+                ->orderByRaw('NVL(pakai.jumlah_pakai, 0) DESC')
+                ->orderBy('r.room_name');
+        } else {
+            $q->where('r.bangsal_id', $this->selectedBangsalId);
+        }
 
         if (trim($this->searchKamar) !== '') {
             $kw = mb_strtoupper(trim($this->searchKamar));
@@ -280,7 +305,7 @@ new class extends Component {
 ?>
 
 <div class="flex flex-col h-full min-h-0">
-    @if ($selectedBangsalId)
+    @if ($selectedBangsalId || $filterLocation === 'belum')
         <div wire:loading.class="opacity-60" wire:target="onBangsalSelected" class="flex flex-col flex-1 min-h-0">
 
             {{-- Toolbar Kamar --}}
@@ -291,6 +316,12 @@ new class extends Component {
                             placeholder="Cari kamar..." class="block w-full" />
                     </div>
                     <div class="flex items-center justify-end gap-2">
+                        <div class="w-48">
+                            <x-select-input wire:model.live="filterLocation" aria-label="Filter Location">
+                                <option value="">{{ $selectedBangsalId ? 'Bangsal terpilih' : 'Pilih bangsal' }}</option>
+                                <option value="belum">Semua belum Location</option>
+                            </x-select-input>
+                        </div>
                         <div class="w-28">
                             <x-select-input wire:model.live="itemsPerPageKamar">
                                 <option value="5">5</option>
@@ -299,9 +330,11 @@ new class extends Component {
                                 <option value="20">20</option>
                             </x-select-input>
                         </div>
-                        <x-primary-button type="button" wire:click="openCreateKamar">
-                            + Tambah Data Kamar Baru
-                        </x-primary-button>
+                        @if ($selectedBangsalId)
+                            <x-primary-button type="button" wire:click="openCreateKamar">
+                                + Tambah Data Kamar Baru
+                            </x-primary-button>
+                        @endif
                         <x-toolbar-refresh-reset :label="null" />
                     </div>
                 </div>
@@ -390,6 +423,9 @@ new class extends Component {
                                                     <div class="text-base font-semibold text-ink dark:text-white">{{ $room->room_name }}</div>
                                                     <div class="flex flex-wrap items-center mt-1 gap-x-2 gap-y-1 text-xs text-muted dark:text-gray-400">
                                                         <span class="font-mono">{{ $room->room_id }}</span>
+                                                        @if ($filterLocation === 'belum')
+                                                            <span>{{ number_format($room->jumlah_pakai ?? 0, 0, ',', '.') }} masuk rawat dalam {{ CakupanLocationKamar::HARI_PEMAKAIAN }} hari</span>
+                                                        @endif
                                                         <span>{{ $room->class_desc ?? 'Kelas ' . $room->class_id }}</span>
                                                         @if ($room->aplic_kodekelas)
                                                             <span class="px-1.5 py-0.5 rounded font-mono text-[10px] font-bold bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300" title="Kode kelas Aplicares BPJS">BPJS {{ $room->aplic_kodekelas }}</span>

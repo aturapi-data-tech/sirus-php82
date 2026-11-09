@@ -19,6 +19,14 @@
             @hasanyrole('Admin|Radiologi')
                 <x-cakupan-loinc-radiologi.badge />
             @endhasanyrole
+            @hasanyrole('Admin')
+                <x-cakupan-ihs-dokter.badge />
+                <x-cakupan-location-poli.badge />
+                <x-cakupan-location-kamar.badge />
+            @endhasanyrole
+            @hasanyrole('Admin|Mr')
+                <x-cakupan-ihs-pasien.badge />
+            @endhasanyrole
 
             <x-panduan-penulisan-rm.tombol />
 

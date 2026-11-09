@@ -8,6 +8,7 @@ use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\QueryException;
+use App\Support\CakupanIhsPasien;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
 use App\Http\Traits\SATUSEHAT\PatientTrait;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
@@ -378,6 +379,7 @@ new class extends Component {
                 $this->formMode = 'edit';
             }
 
+            CakupanIhsPasien::lupakan();
             $this->dispatch('master.pasien.saved');
         } catch (LockTimeoutException $e) {
             $this->dispatch('toast', type: 'error', message: 'Sistem sibuk, gagal memperoleh lock. Coba lagi.');
@@ -408,6 +410,7 @@ new class extends Component {
             }
 
             $this->dispatch('toast', type: 'success', message: 'Data pasien berhasil dihapus.');
+            CakupanIhsPasien::lupakan();
             $this->dispatch('master.pasien.saved');
         } catch (QueryException $e) {
             if (str_contains($e->getMessage(), 'ORA-02292')) {

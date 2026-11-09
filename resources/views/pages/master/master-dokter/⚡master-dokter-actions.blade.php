@@ -5,6 +5,7 @@ use Livewire\Component;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\QueryException;
+use App\Support\CakupanIhsDokter;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 use App\Http\Traits\SATUSEHAT\PractitionerTrait;
 
@@ -264,6 +265,7 @@ new class extends Component {
 
         $this->dispatch('toast', type: 'success', message: 'Data dokter berhasil disimpan.');
         $this->closeModal();
+        CakupanIhsDokter::lupakan();
         $this->dispatch('master.dokter.saved');
     }
 
@@ -288,6 +290,7 @@ new class extends Component {
             }
 
             $this->dispatch('toast', type: 'success', message: 'Data dokter berhasil dihapus.');
+            CakupanIhsDokter::lupakan();
             $this->dispatch('master.dokter.saved');
         } catch (QueryException $e) {
             // ORA-02292: constraint violation — data masih dipakai di tabel lain

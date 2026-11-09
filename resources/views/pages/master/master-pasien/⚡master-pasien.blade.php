@@ -6,7 +6,9 @@ use Livewire\Component;
 use Livewire\WithPagination;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Url;
 use Illuminate\Support\Facades\DB;
+use App\Support\CakupanIhsPasien;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
 
 new class extends Component {
@@ -17,6 +19,15 @@ new class extends Component {
      * ------------------------- */
     public string $searchKeyword = '';
     public int $itemsPerPage = 10;
+
+    /** 'belum' = pasien berkunjung 90 hari tanpa IHS, urut dari kunjungan terbanyak. */
+    #[Url(as: 'ihs')]
+    public string $filterIhs = '';
+
+    public function updatedFilterIhs(): void
+    {
+        $this->resetPage();
+    }
 
     public function updatedSearchKeyword(): void
     {
@@ -30,7 +41,7 @@ new class extends Component {
 
     public function resetFilters(): void
     {
-        $this->reset(['searchKeyword']);
+        $this->reset(['searchKeyword', 'filterIhs']);
         $this->itemsPerPage = 10;
         $this->resetPage();
     }
@@ -76,6 +87,16 @@ new class extends Component {
         $queryBuilder = DB::table('rsmst_pasiens')
             ->select(['reg_no', 'reg_name', 'sex', 'birth_date', 'address', 'phone', 'blood', 'marital_status', 'nik_bpjs', 'nokartu_bpjs', 'patient_uuid', 'no_jkn', 'reg_date'])
             ->orderBy('reg_name', 'asc');
+
+        if ($this->filterIhs === 'belum') {
+            $queryBuilder
+                ->reorder()
+                ->join(DB::raw('(' . CakupanIhsPasien::sqlPemakaian() . ') pakai'), 'pakai.reg_no_pakai', '=', 'rsmst_pasiens.reg_no')
+                ->addSelect(DB::raw('pakai.jumlah_pakai AS jumlah_pakai'))
+                ->whereRaw('TRIM(patient_uuid) IS NULL')
+                ->orderByRaw('pakai.jumlah_pakai DESC')
+                ->orderBy('reg_name', 'asc');
+        }
 
         if ($searchKeyword !== '') {
             $uppercaseKeyword = mb_strtoupper($searchKeyword);
@@ -136,6 +157,13 @@ new class extends Component {
                             <x-outline-button type="button">Pendaftaran Rawat Inap</x-outline-button>
                         </a>
 
+                        <div class="w-56">
+                            <x-input-label for="filterIhs" value="Filter IHS" class="sr-only" />
+                            <x-select-input id="filterIhs" wire:model.live="filterIhs">
+                                <option value="">Semua pasien</option>
+                                <option value="belum">Berkunjung belum IHS</option>
+                            </x-select-input>
+                        </div>
                         <div class="w-28">
                             <x-input-label for="itemsPerPage" value="Per halaman" class="sr-only" />
                             <x-select-input id="itemsPerPage" wire:model.live="itemsPerPage">
@@ -179,7 +207,14 @@ new class extends Component {
                         <tbody>
                             @forelse($rows as $row)
                                 <tr wire:key="pasien-row-{{ $row->reg_no }}">
-                                    <td class="ds-td-token">{{ $row->reg_no }}</td>
+                                    <td class="ds-td-token">
+                                        {{ $row->reg_no }}
+                                        @if ($filterIhs === 'belum')
+                                            <div class="text-xs font-normal" style="color:var(--muted)">
+                                                {{ number_format($row->jumlah_pakai ?? 0, 0, ',', '.') }} kunjungan dalam {{ CakupanIhsPasien::HARI_PEMAKAIAN }} hari
+                                            </div>
+                                        @endif
+                                    </td>
                                     <td class="px-6 py-4">
                                         <div class="font-medium text-gray-900 dark:text-white">{{ $row->reg_name }}</div>
                                         <div class="text-xs" style="color:var(--muted)">

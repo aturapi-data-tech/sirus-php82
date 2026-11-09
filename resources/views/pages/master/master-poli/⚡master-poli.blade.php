@@ -4,7 +4,9 @@ use Livewire\Component;
 use Livewire\WithPagination;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Url;
 use Illuminate\Support\Facades\DB;
+use App\Support\CakupanLocationPoli;
 
 new class extends Component {
     use WithPagination;
@@ -14,6 +16,15 @@ new class extends Component {
      * ------------------------- */
     public string $searchKeyword = '';
     public int $itemsPerPage = 10;
+
+    /** 'belum' = poli tanpa Location, urut dari kunjungan terbanyak. */
+    #[Url(as: 'location')]
+    public string $filterLocation = '';
+
+    public function updatedFilterLocation(): void
+    {
+        $this->resetPage();
+    }
 
     public function updatedSearchKeyword(): void
     {
@@ -27,7 +38,7 @@ new class extends Component {
 
     public function resetFilters(): void
     {
-        $this->reset(['searchKeyword']);
+        $this->reset(['searchKeyword', 'filterLocation']);
         $this->itemsPerPage = 10;
         $this->resetPage();
     }
@@ -71,6 +82,17 @@ new class extends Component {
         $searchKeyword = trim($this->searchKeyword);
 
         $queryBuilder = DB::table('rsmst_polis')->select('poli_id', 'poli_desc', 'kd_poli_bpjs', 'poli_uuid', 'spesialis_status')->orderBy('poli_desc', 'asc');
+
+        if ($this->filterLocation === 'belum') {
+            $queryBuilder
+                ->reorder()
+                ->leftJoin(DB::raw('(' . CakupanLocationPoli::sqlPemakaian() . ') pakai'), 'pakai.poli_id_pakai', '=', 'rsmst_polis.poli_id')
+                ->addSelect(DB::raw('NVL(pakai.jumlah_pakai, 0) AS jumlah_pakai'))
+                ->whereRaw('TRIM(poli_desc) IS NOT NULL')
+                ->whereRaw('TRIM(poli_uuid) IS NULL')
+                ->orderByRaw('NVL(pakai.jumlah_pakai, 0) DESC')
+                ->orderBy('poli_desc', 'asc');
+        }
 
         if ($searchKeyword !== '') {
             $uppercaseKeyword = mb_strtoupper($searchKeyword);
@@ -122,6 +144,13 @@ new class extends Component {
 
                     {{-- RIGHT ACTIONS --}}
                     <div class="flex items-center justify-end gap-2">
+                        <div class="w-48">
+                            <x-input-label for="filterLocation" value="Filter Location" class="sr-only" />
+                            <x-select-input id="filterLocation" wire:model.live="filterLocation">
+                                <option value="">Semua poli</option>
+                                <option value="belum">Belum Location</option>
+                            </x-select-input>
+                        </div>
                         <div class="w-28">
                             <x-input-label for="itemsPerPage" value="Per halaman" class="sr-only" />
                             <x-select-input id="itemsPerPage" wire:model.live="itemsPerPage">
@@ -166,7 +195,14 @@ new class extends Component {
                             @forelse($this->rows as $row)
                                 <tr wire:key="poli-row-{{ $row->poli_id }}">
                                     <td class="ds-td-token">{{ $row->poli_id }}</td>
-                                    <td class="ds-td-strong">{{ $row->poli_desc }}</td>
+                                    <td class="ds-td-strong">
+                                        {{ $row->poli_desc }}
+                                        @if ($filterLocation === 'belum')
+                                            <div class="text-xs font-normal" style="color:var(--muted)">
+                                                {{ number_format($row->jumlah_pakai ?? 0, 0, ',', '.') }} kunjungan dalam {{ CakupanLocationPoli::HARI_PEMAKAIAN }} hari
+                                            </div>
+                                        @endif
+                                    </td>
                                     <td class="ds-td-token">{{ $row->kd_poli_bpjs }}</td>
                                     <td class="ds-td-token">{{ $row->poli_uuid }}</td>
 
