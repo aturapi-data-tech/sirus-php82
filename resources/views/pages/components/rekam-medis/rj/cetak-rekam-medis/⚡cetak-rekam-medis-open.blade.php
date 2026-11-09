@@ -534,8 +534,12 @@ new class extends Component {
                                         <p class="flex justify-between">
                                             <span class="w-56 shrink-0 text-right text-muted">GDA :</span>
                                             <span class="text-base font-semibold text-ink dark:text-gray-200">
-                                                {{ $tandaVital['gda'] ?? '-' }}
-                                                <span class="text-sm font-normal text-muted-soft">mg/dL</span>
+                                                @if (filled($tandaVital['gda'] ?? null))
+                                                    {{ $tandaVital['gda'] }}
+                                                    <span class="text-sm font-normal text-muted-soft">mg/dL</span>
+                                                @else
+                                                    Tidak diperiksa
+                                                @endif
                                             </span>
                                         </p>
                                     </div>

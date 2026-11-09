@@ -218,7 +218,7 @@
                 <td class="{{ $kelasLabel }}">Suhu / SpO2</td>
                 <td class="{{ $kelasNilai }}">{{ $nilaiAtauStrip($tandaVital['suhu'] ?? null) }} °C / {{ $nilaiAtauStrip($tandaVital['spo2'] ?? null) }} %</td>
                 <td class="{{ $kelasLabel }}">GDA</td>
-                <td class="{{ $kelasNilai }}">{{ $nilaiAtauStrip($tandaVital['gda'] ?? null) }} mg/dL</td>
+                <td class="{{ $kelasNilai }}">{{ filled($tandaVital['gda'] ?? null) ? $tandaVital['gda'] . ' mg/dL' : 'Tidak diperiksa' }}</td>
             </tr>
             <tr>
                 <td class="{{ $kelasLabel }}">Berat / Tinggi Badan</td>

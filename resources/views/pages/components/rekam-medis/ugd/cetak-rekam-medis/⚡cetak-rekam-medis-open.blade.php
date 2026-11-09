@@ -488,7 +488,7 @@ new class extends Component {
                         <x-border-form title="Tanda Vital">
                             @php $tandaVital = $dataDaftarTxn['pemeriksaan']['tandaVital'] ?? []; @endphp
                             <div class="space-y-2.5">
-                                @foreach ([['Tekanan Darah', ($tandaVital['sistolik'] ?? '-') . ' / ' . ($tandaVital['distolik'] ?? '-'), 'mmHg'], ['Nadi', $tandaVital['frekuensiNadi'] ?? '-', 'x/mnt'], ['Suhu', $tandaVital['suhu'] ?? '-', '°C'], ['Pernafasan', $tandaVital['frekuensiNafas'] ?? '-', 'x/mnt'], ['SPO2', $tandaVital['spo2'] ?? '-', '%'], ['GDA', $tandaVital['gda'] ?? '-', 'mg/dL'], ['GCS', 'E' . ($tandaVital['e'] ?? '-') . ' V' . ($tandaVital['v'] ?? '-') . ' M' . ($tandaVital['m'] ?? '-') . ' (' . ($tandaVital['gcs'] ?? '-') . ')', '']] as [$label, $nilai, $unit])
+                                @foreach ([['Tekanan Darah', ($tandaVital['sistolik'] ?? '-') . ' / ' . ($tandaVital['distolik'] ?? '-'), 'mmHg'], ['Nadi', $tandaVital['frekuensiNadi'] ?? '-', 'x/mnt'], ['Suhu', $tandaVital['suhu'] ?? '-', '°C'], ['Pernafasan', $tandaVital['frekuensiNafas'] ?? '-', 'x/mnt'], ['SPO2', $tandaVital['spo2'] ?? '-', '%'], ['GDA', filled($tandaVital['gda'] ?? null) ? $tandaVital['gda'] : 'Tidak diperiksa', filled($tandaVital['gda'] ?? null) ? 'mg/dL' : ''], ['GCS', 'E' . ($tandaVital['e'] ?? '-') . ' V' . ($tandaVital['v'] ?? '-') . ' M' . ($tandaVital['m'] ?? '-') . ' (' . ($tandaVital['gcs'] ?? '-') . ')', '']] as [$label, $nilai, $unit])
                                     <p
                                         class="flex gap-3 text-base leading-relaxed pb-1.5 border-b border-hairline-soft dark:border-gray-800 last:border-0">
                                         <span
@@ -739,7 +739,11 @@ new class extends Component {
                                                 <span>Suhu <b>{{ $entriObservasi['suhu'] ?? '-' }}</b> <span class="text-xs text-muted-soft">°C</span>{!! $ewsSkorSel('suhu') !!}</span>
                                                 <span>SpO₂ <b>{{ $entriObservasi['spo2'] ?? '-' }}</b> <span class="text-xs text-muted-soft">%</span>@if (filled($entriObservasi['spo2Skala2'] ?? null)) <span class="text-xs text-muted-soft" title="SpO₂ skala 2">(S2 {{ $entriObservasi['spo2Skala2'] }})</span>@endif{!! $ewsSkorSel('spo2') !!}{!! $ewsSkorSel('spo2Skala2') !!}
                                                     · @if (($entriObservasi['oksigen'] ?? '') === 'O2') O₂ {{ $entriObservasi['alatOksigen'] ?? '' }} @elseif (($entriObservasi['oksigen'] ?? '') === 'ROOM_AIR') Room air @else - @endif{!! $ewsSkorSel('oksigen') !!}</span>
-                                                <span>GDA <b>{{ filled($entriObservasi['gda'] ?? null) ? $entriObservasi['gda'] : '-' }}</b> <span class="text-xs text-muted-soft">mg/dL</span></span>
+                                                @if (filled($entriObservasi['gda'] ?? null))
+                                                    <span>GDA <b>{{ $entriObservasi['gda'] }}</b> <span class="text-xs text-muted-soft">mg/dL</span></span>
+                                                @else
+                                                    <span>GDA <b>Tidak diperiksa</b></span>
+                                                @endif
                                                 <span>GCS <b>{{ filled($entriObservasi['gcs'] ?? null) ? $entriObservasi['gcs'] : '-' }}</b> · {{ filled($entriObservasi['kesadaran'] ?? null) ? $entriObservasi['kesadaran'] : '-' }}{!! $ewsSkorSel('kesadaran') !!}</span>
                                             </div>
                                         </td>

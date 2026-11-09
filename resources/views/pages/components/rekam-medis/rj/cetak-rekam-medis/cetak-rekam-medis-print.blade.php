@@ -254,7 +254,7 @@
                     </tr>
                     <tr>
                         <td>GDA</td>
-                        <td>:&nbsp;{{ $dataDaftarTxn['pemeriksaan']['tandaVital']['gda'] ?? '-' }} mg/dL</td>
+                        <td>:&nbsp;{{ filled($dataDaftarTxn['pemeriksaan']['tandaVital']['gda'] ?? null) ? $dataDaftarTxn['pemeriksaan']['tandaVital']['gda'] . ' mg/dL' : 'Tidak diperiksa' }}</td>
                     </tr>
                 </table>
 
