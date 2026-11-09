@@ -39,7 +39,7 @@ new class extends Component {
         'S' => ['Subjective — Anamnesa', 'bg-blue-100 dark:border-blue-700', 'text-blue-700 bg-blue-100 dark:bg-blue-900/40 dark:text-blue-300',
             ['chief-complaint', 'keluhan-penyerta', 'riwayat-penyakit', 'riwayat-keluarga', 'riwayat-pengobatan', 'riwayat-perjalanan', 'allergy', 'status-psikologis']],
         'O' => ['Objective — Pemeriksaan', 'bg-emerald-100 dark:border-emerald-700', 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
-            ['observation', 'observasi-lanjutan', 'penilaian', 'lab', 'radiologi']],
+            ['observation', 'head-to-toe', 'observasi-lanjutan', 'penilaian', 'lab', 'radiologi']],
         'A' => ['Assessment — Diagnosis', 'bg-amber-100 dark:border-amber-700', 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
             ['condition', 'procedure', 'cppt']],
         'P' => ['Plan — Perencanaan', 'bg-rose-100 dark:border-rose-700', 'bg-rose-100 text-error dark:bg-rose-900/40 dark:text-rose-300',
