@@ -235,8 +235,10 @@ new class extends Component {
         $header = collect(
             DB::select(
                 "
-            SELECT DISTINCT a.emp_id, a.checkup_no, checkup_date, a.reg_no, reg_name,
-                   a.dr_id, dr_name, sex, birth_date, c.address, emp_name,
+            SELECT DISTINCT a.emp_id, a.checkup_no,
+                   to_char(checkup_date,'dd/mm/yyyy hh24:mi:ss') AS checkup_date,
+                   a.reg_no, reg_name,
+                   a.dr_id, dr_name, sex, to_char(birth_date,'dd/mm/yyyy') AS birth_date, c.address, emp_name,
                    waktu_selesai_pelayanan, checkup_kesimpulan
             FROM lbtxn_checkuphdrs a
             JOIN rsmst_pasiens c ON a.reg_no = c.reg_no
@@ -349,8 +351,9 @@ new class extends Component {
             return;
         }
 
-        // Format teks: "HAEMOGLOBIN (11.7 g/dL)\nERITROSIT (4,900,000 /uL)"
-        $text = collect($this->selectedRows)
+        // Format teks: tanggal sekali di baris pertama, item terpilih di bawahnya:
+        // "Hasil Lab 09/11/2026 09:17:21\nHAEMOGLOBIN (11.7 g/dL)\nERITROSIT (4,900,000 /uL)"
+        $daftarItem = collect($this->selectedRows)
             ->map(function ($r) {
                 $desc = trim($r['desc']);
                 $hasil = $r['hasil'];
@@ -359,6 +362,9 @@ new class extends Component {
                 return $hasil !== '' && $hasil !== null ? "{$desc} ({$hasil} {$unit})" : "{$desc} ( )";
             })
             ->implode("\n");
+
+        // checkup_date sudah dd/mm/yyyy hh24:mi:ss dari query openDetail()
+        $text = 'Hasil Lab ' . ($this->detailHeader['checkup_date'] ?? '-') . "\n" . $daftarItem;
 
         // Kirim event ke parent saja (->up() agar tidak broadcast global dan tidak double)
         $this->dispatch('laborat-kirim-penunjang', text: $text);
