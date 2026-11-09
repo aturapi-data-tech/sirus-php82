@@ -4,7 +4,9 @@ use Livewire\Component;
 use Livewire\WithPagination;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Url;
 use Illuminate\Support\Facades\DB;
+use App\Support\CakupanLoincLab;
 
 new class extends Component {
     use WithPagination;
@@ -16,6 +18,15 @@ new class extends Component {
     /* --- Filter --- */
     public string $searchItem = '';
     public int $itemsPerPage = 10;
+
+    /** 'belum' = item tanpa LOINC lintas kategori, urut dari yang paling sering dipakai. */
+    #[Url(as: 'loinc')]
+    public string $filterLoinc = '';
+
+    public function updatedFilterLoinc(): void
+    {
+        $this->resetPage('pageItem');
+    }
 
     public function updatedSearchItem(): void
     {
@@ -29,7 +40,7 @@ new class extends Component {
 
     public function resetFilters(): void
     {
-        $this->reset(['searchItem']);
+        $this->reset(['searchItem', 'filterLoinc']);
         $this->itemsPerPage = 10;
         $this->resetPage('pageItem');
     }
@@ -41,6 +52,7 @@ new class extends Component {
         $this->selectedClabId = $clabId;
         $this->selectedClabDesc = $clabDesc;
         $this->searchItem = '';
+        $this->filterLoinc = '';
         $this->resetPage('pageItem');
     }
 
@@ -77,11 +89,12 @@ new class extends Component {
     #[Computed]
     public function clabitems()
     {
-        if (!$this->selectedClabId) {
+        if (!$this->selectedClabId && $this->filterLoinc !== 'belum') {
             return null;
         }
 
-        $q = DB::table('lbmst_clabitems')->select('clabitem_id', 'clabitem_desc', 'clab_id', 'product_id', 'is_group', 'clabitem_group', 'price', 'dosage', 'unit_desc', 'item_seq', 'item_code', 'normal_m', 'normal_f', 'low_limit_m', 'high_limit_m', 'low_limit_f', 'high_limit_f', 'low_limit_k', 'high_limit_k', 'critical_low_m', 'critical_high_m', 'critical_low_f', 'critical_high_f', 'critical_low_k', 'critical_high_k', 'unit_convert', 'lowhigh_status', 'hidden_status', 'status', 'loinc_code', 'loinc_display', 'nilai_kritis')->where('clab_id', $this->selectedClabId)->orderBy('item_seq')->orderBy('clabitem_desc');
+        $q = DB::table('lbmst_clabitems')->select('clabitem_id', 'clabitem_desc', 'clab_id', 'product_id', 'is_group', 'clabitem_group', 'price', 'dosage', 'unit_desc', 'item_seq', 'item_code', 'normal_m', 'normal_f', 'low_limit_m', 'high_limit_m', 'low_limit_f', 'high_limit_f', 'low_limit_k', 'high_limit_k', 'critical_low_m', 'critical_high_m', 'critical_low_f', 'critical_high_f', 'critical_low_k', 'critical_high_k', 'unit_convert', 'lowhigh_status', 'hidden_status', 'status', 'loinc_code', 'loinc_display', 'nilai_kritis');
+        $this->terapkanCakupan($q);
 
         if (trim($this->searchItem) !== '') {
             $kw = mb_strtoupper(trim($this->searchItem));
@@ -94,11 +107,28 @@ new class extends Component {
 
         return $q->paginate($this->itemsPerPage, ['*'], 'pageItem');
     }
+
+    /** Mode biasa = item satu kategori; mode "belum LOINC" = lintas kategori, terbanyak dipakai dulu. */
+    protected function terapkanCakupan($q): void
+    {
+        if ($this->filterLoinc === 'belum') {
+            $q->leftJoin(DB::raw('(' . CakupanLoincLab::sqlPemakaian() . ') pakai'), 'pakai.clabitem_id_pakai', '=', 'lbmst_clabitems.clabitem_id')
+                ->addSelect(DB::raw('NVL(pakai.jumlah_pakai, 0) AS jumlah_pakai'))
+                ->whereRaw(CakupanLoincLab::syaratItem())
+                ->whereRaw('TRIM(loinc_code) IS NULL')
+                ->orderByRaw('NVL(pakai.jumlah_pakai, 0) DESC')
+                ->orderBy('clabitem_desc');
+
+            return;
+        }
+
+        $q->where('clab_id', $this->selectedClabId)->orderBy('item_seq')->orderBy('clabitem_desc');
+    }
 };
 ?>
 
 <div class="flex flex-col h-full min-h-0">
-    @if ($selectedClabId)
+    @if ($selectedClabId || $filterLoinc === 'belum')
         <div wire:loading.class="opacity-60" wire:target="onClabSelected" class="flex flex-col flex-1 min-h-0">
 
             {{-- Toolbar --}}
@@ -110,6 +140,12 @@ new class extends Component {
                             placeholder="Cari pemeriksaan..." class="block w-full" />
                     </div>
                     <div class="flex items-center justify-end gap-2">
+                        <div class="w-48">
+                            <x-select-input wire:model.live="filterLoinc" aria-label="Filter LOINC">
+                                <option value="">{{ $selectedClabId ? 'Kategori terpilih' : 'Pilih kategori' }}</option>
+                                <option value="belum">Semua belum LOINC</option>
+                            </x-select-input>
+                        </div>
                         <div class="w-28">
                             <x-select-input wire:model.live="itemsPerPage">
                                 <option value="10">10</option>
@@ -118,9 +154,11 @@ new class extends Component {
                                 <option value="50">50</option>
                             </x-select-input>
                         </div>
-                        <x-primary-button type="button" wire:click="openCreateClabitem">
-                            + Tambah Pemeriksaan
-                        </x-primary-button>
+                        @if ($selectedClabId)
+                            <x-primary-button type="button" wire:click="openCreateClabitem">
+                                + Tambah Pemeriksaan
+                            </x-primary-button>
+                        @endif
                         <x-toolbar-refresh-reset :label="null" />
                     </div>
                 </div>
@@ -223,6 +261,11 @@ new class extends Component {
                                                 </span>
                                             @endif
                                         </div>
+                                        @if ($filterLoinc === 'belum')
+                                            <div class="text-xs font-normal text-muted">
+                                                Dipakai {{ number_format($item->jumlah_pakai ?? 0, 0, ',', '.') }}x dalam {{ CakupanLoincLab::HARI_PEMAKAIAN }} hari
+                                            </div>
+                                        @endif
                                     </td>
 
                                     {{-- MAPPING --}}

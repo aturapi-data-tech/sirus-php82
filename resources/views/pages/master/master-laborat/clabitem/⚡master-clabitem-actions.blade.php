@@ -4,6 +4,7 @@ use Livewire\Component;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\QueryException;
+use App\Support\CakupanLoincLab;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 
 new class extends Component {
@@ -142,6 +143,7 @@ new class extends Component {
             }
 
             $this->dispatch('toast', type: 'success', message: 'Pemeriksaan berhasil dihapus.');
+            CakupanLoincLab::lupakan();
             $this->dispatch('master.laborat.saved', entity: 'clabitem');
         } catch (QueryException $e) {
             if (str_contains($e->getMessage(), 'ORA-02292')) {
@@ -249,6 +251,7 @@ new class extends Component {
 
         $this->dispatch('toast', type: 'success', message: 'Data pemeriksaan berhasil disimpan.');
         $this->closeModal();
+        CakupanLoincLab::lupakan();
         $this->dispatch('master.laborat.saved', entity: 'clabitem');
     }
 

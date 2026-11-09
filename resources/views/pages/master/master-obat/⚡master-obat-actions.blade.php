@@ -5,6 +5,7 @@ use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Database\QueryException;
+use App\Support\CakupanKfa;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 
 new class extends Component {
@@ -426,6 +427,7 @@ new class extends Component {
             DB::table('immst_products')->where('product_id', $data['productId'])->update($payload);
         }
 
+        CakupanKfa::lupakan();
         $this->dispatch('toast', type: 'success', message: 'Data obat berhasil disimpan.');
         $this->closeModal();
         $this->dispatch('master.obat.saved');
@@ -454,6 +456,7 @@ new class extends Component {
             }
 
             $this->dispatch('toast', type: 'success', message: 'Data obat berhasil dihapus.');
+            CakupanKfa::lupakan();
             $this->dispatch('master.obat.saved');
         } catch (QueryException $e) {
             // Handle foreign key constraint error
