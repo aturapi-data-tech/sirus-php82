@@ -15,6 +15,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
+use App\Support\IhsPasienSatuSehat;
 use App\Http\Traits\SATUSEHAT\EncounterTrait;
 use App\Http\Traits\SATUSEHAT\RujukanRawatInapTrait;
 use App\Support\Terminologi\DischargeDisposition;
@@ -143,6 +144,13 @@ new class extends Component {
             $regNo = $dataRI['regNo'] ?? '';
             $patientId = $regNo ? (string) (DB::table('rsmst_pasiens')->where('reg_no', $regNo)->value('patient_uuid') ?? '') : '';
 
+            // IHS kosong: coba cari/daftarkan dulu, dengan aturan pengaman yang sama dengan Master Pasien.
+            $hasilIhs = null;
+            if (empty($patientId) && $regNo) {
+                $hasilIhs = (new IhsPasienSatuSehat())->pastikanDariMaster((string) $regNo);
+                $patientId = (string) ($hasilIhs['ihs'] ?? '');
+            }
+
             $drId = $dataRI['drId'] ?? '';
             $practitionerId = $drId ? (string) (DB::table('rsmst_doctors')->where('dr_id', $drId)->value('dr_uuid') ?? '') : '';
 
@@ -151,7 +159,7 @@ new class extends Component {
 
             if (empty($patientId)) {
                 $this->dispatch('toast', type: 'error',
-                    message: 'Patient IHS Number kosong. Daftarkan pasien ke SATUSEHAT dulu via Master Pasien (tombol "Update patientUuid").');
+                    message: 'Patient IHS Number kosong. ' . ($hasilIhs['pesan'] ?? 'Daftarkan pasien ke SATUSEHAT dulu via Master Pasien.'));
                 return;
             }
             if (empty($practitionerId)) {

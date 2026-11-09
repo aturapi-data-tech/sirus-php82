@@ -9,6 +9,8 @@ use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
 use Illuminate\Support\Facades\DB;
 use App\Support\CakupanIhsPasien;
+use App\Support\IhsPasienSatuSehat;
+use Illuminate\Support\Facades\Cache;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
 
 new class extends Component {
@@ -120,6 +122,113 @@ new class extends Component {
     {
         return $this->baseQuery()->paginate($this->itemsPerPage);
     }
+
+    /* -------------------------
+     | Ambil IHS massal: pasien berkunjung 90 hari tanpa IHS, kunjungan terbanyak dulu.
+     | Antrean & daftar laporan di Cache (bukan properti publik: bisa ribuan baris). Tiap putaran
+     | dipicu wire:poll dan dibatasi waktunya supaya tidak timeout. Staging dibatasi 5 pasien.
+     * ------------------------- */
+    private const IHS_DETIK_PER_PUTARAN = 15;
+    public const IHS_BATAS_STAGING = 5;
+    private const IHS_BATAS_LAPORAN = 300;
+
+    public bool $ihsBerjalan = false;
+    public int $ihsTotal = 0;
+    public int $ihsSelesai = 0;
+    public array $ihsRekap = [];
+
+    public function bolehAmbilIhs(): bool
+    {
+        return (bool) auth()->user()?->hasAnyRole(['Admin', 'Mr']);
+    }
+
+    public function ihsDiStaging(): bool
+    {
+        return str_contains((string) env('SATUSEHAT_BASE_URL'), '-stg');
+    }
+
+    private function kunciIhs(string $bagian): string
+    {
+        return 'ihs-massal.' . auth()->id() . '.' . $bagian;
+    }
+
+    public function mulaiAmbilIhs(): void
+    {
+        if (!$this->bolehAmbilIhs() || $this->ihsBerjalan) {
+            return;
+        }
+
+        $antrean = DB::table('rsmst_pasiens')
+            ->join(DB::raw('(' . CakupanIhsPasien::sqlPemakaian() . ') pakai'), 'pakai.reg_no_pakai', '=', 'rsmst_pasiens.reg_no')
+            ->whereRaw('TRIM(patient_uuid) IS NULL')
+            ->orderByRaw('pakai.jumlah_pakai DESC')
+            ->orderBy('reg_no')
+            ->pluck('reg_no')
+            ->all();
+
+        if ($this->ihsDiStaging()) {
+            $antrean = array_slice($antrean, 0, self::IHS_BATAS_STAGING);
+        }
+
+        Cache::put($this->kunciIhs('antrean'), $antrean, now()->addHours(6));
+        Cache::put($this->kunciIhs('laporan'), [], now()->addHours(6));
+        $this->ihsTotal = count($antrean);
+        $this->ihsSelesai = 0;
+        $this->ihsRekap = [];
+        $this->ihsBerjalan = $antrean !== [];
+    }
+
+    public function hentikanAmbilIhs(): void
+    {
+        $this->ihsBerjalan = false;
+        Cache::forget($this->kunciIhs('antrean'));
+        unset($this->rows);
+    }
+
+    public function putaranAmbilIhs(): void
+    {
+        if (!$this->ihsBerjalan || !$this->bolehAmbilIhs()) {
+            return;
+        }
+
+        // Poll berikutnya bisa datang saat putaran ini belum selesai: yang kedua langsung pulang.
+        $kunci = Cache::lock($this->kunciIhs('kunci'), self::IHS_DETIK_PER_PUTARAN + 30);
+        if (!$kunci->get()) {
+            return;
+        }
+
+        try {
+            $antrean = Cache::get($this->kunciIhs('antrean'), []);
+            $laporan = Cache::get($this->kunciIhs('laporan'), []);
+            $layanan = new IhsPasienSatuSehat();
+            $mulai = microtime(true);
+
+            while ($antrean !== [] && microtime(true) - $mulai < self::IHS_DETIK_PER_PUTARAN) {
+                $regNo = array_shift($antrean);
+                $hasil = $layanan->pastikanDariMaster((string) $regNo);
+                $this->ihsSelesai++;
+                $this->ihsRekap[$hasil['status']] = ($this->ihsRekap[$hasil['status']] ?? 0) + 1;
+
+                if (!in_array($hasil['status'], IhsPasienSatuSehat::BERHASIL, true) && count($laporan) < self::IHS_BATAS_LAPORAN) {
+                    $laporan[] = ['regNo' => $regNo, 'status' => $hasil['status'], 'pesan' => $hasil['pesan']];
+                }
+            }
+
+            Cache::put($this->kunciIhs('antrean'), $antrean, now()->addHours(6));
+            Cache::put($this->kunciIhs('laporan'), $laporan, now()->addHours(6));
+            $this->ihsBerjalan = $antrean !== [];
+            unset($this->rows);
+        } finally {
+            $kunci->release();
+        }
+    }
+
+    /** Pasien yang tidak berhasil pada proses terakhir, untuk dibereskan petugas. */
+    #[Computed]
+    public function ihsLaporan(): array
+    {
+        return Cache::get($this->kunciIhs('laporan'), []);
+    }
 };
 ?>
 
@@ -185,6 +294,57 @@ new class extends Component {
             </div>
 
             @php($rows = $this->rows)
+
+
+            {{-- Ambil IHS massal --}}
+            @if ($filterIhs === 'belum' && $this->bolehAmbilIhs())
+                <div class="px-4 py-3 mt-3 border rounded-xl bg-canvas border-hairline dark:bg-gray-900 dark:border-gray-700"
+                    @if ($ihsBerjalan) wire:poll.1s="putaranAmbilIhs" @endif>
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <div class="text-sm text-body dark:text-gray-300">
+                            <span class="font-semibold text-ink dark:text-gray-100">Ambil IHS massal</span>:
+                            cari lewat NIK + nama + tanggal lahir, daftarkan bila NIK belum terdaftar. Bayi dilewati.
+                            @if ($this->ihsDiStaging())
+                                <span class="font-semibold text-amber-700">Mode staging: dibatasi {{ $this::IHS_BATAS_STAGING }} pasien.</span>
+                            @endif
+                        </div>
+                        @if ($ihsBerjalan)
+                            <x-secondary-button type="button" wire:click="hentikanAmbilIhs">Hentikan</x-secondary-button>
+                        @else
+                            <x-primary-button type="button" wire:click="mulaiAmbilIhs" wire:loading.attr="disabled"
+                                wire:target="mulaiAmbilIhs"
+                                wire:confirm="Cari dan daftarkan IHS untuk pasien di daftar ini ke SATUSEHAT?">
+                                Ambil IHS
+                            </x-primary-button>
+                        @endif
+                    </div>
+
+                    @if ($ihsTotal > 0)
+                        <div class="mt-2 text-sm text-body dark:text-gray-300">
+                            <span class="font-semibold">{{ number_format($ihsSelesai, 0, ',', '.') }} dari {{ number_format($ihsTotal, 0, ',', '.') }}</span>
+                            @if ($ihsBerjalan) <x-loading /> @endif
+                            @foreach ($ihsRekap as $status => $jumlah)
+                                <span class="ml-2 text-muted">{{ IhsPasienSatuSehat::LABEL[$status] ?? $status }}: {{ number_format($jumlah, 0, ',', '.') }}</span>
+                            @endforeach
+                        </div>
+                    @endif
+
+                    @if (!$ihsBerjalan && $this->ihsLaporan !== [])
+                        <details class="mt-2 text-sm">
+                            <summary class="cursor-pointer text-brand">Lihat {{ count($this->ihsLaporan) }} pasien yang perlu dibereskan</summary>
+                            <ul class="mt-2 space-y-1 overflow-y-auto max-h-48">
+                                @foreach ($this->ihsLaporan as $barisLaporan)
+                                    <li wire:key="ihs-laporan-{{ $barisLaporan['regNo'] }}">
+                                        <span class="font-mono">{{ $barisLaporan['regNo'] }}</span>
+                                        <span class="font-semibold">{{ IhsPasienSatuSehat::LABEL[$barisLaporan['status']] ?? $barisLaporan['status'] }}</span>:
+                                        <span class="text-muted">{{ $barisLaporan['pesan'] }}</span>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        </details>
+                    @endif
+                </div>
+            @endif
 
             {{-- TABLE WRAPPER: card --}}
             <div

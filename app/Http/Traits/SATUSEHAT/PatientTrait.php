@@ -110,6 +110,14 @@ trait PatientTrait
             ]],
         ];
 
+        // Create tak boleh membawa id, dan elemen tanpa isi jangan dikirim (validator SATUSEHAT menolaknya).
+        if ($id === null) {
+            unset($payload['id']);
+        }
+        if (trim((string) ($data['phone'] ?? '')) === '') {
+            unset($payload['telecom']);
+        }
+
         return $payload;
     }
 

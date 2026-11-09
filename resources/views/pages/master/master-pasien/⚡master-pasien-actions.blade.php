@@ -9,14 +9,14 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\QueryException;
 use App\Support\CakupanIhsPasien;
+use App\Support\IhsPasienSatuSehat;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
-use App\Http\Traits\SATUSEHAT\PatientTrait;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 use App\Http\Traits\Concerns\WithValidationToastTrait;
 use Carbon\Carbon;
 
 new class extends Component {
-    use MasterPasienTrait, PatientTrait, WithRenderVersioningTrait, WithValidationToastTrait;
+    use MasterPasienTrait, WithRenderVersioningTrait, WithValidationToastTrait;
 
     public string $formMode = 'create'; // create|edit
     public string $regNo = '';
@@ -619,99 +619,51 @@ new class extends Component {
 
 
     /**
-     * Update atau generate UUID Pasien dari SATUSEHAT berdasarkan NIK
+     * Ambil IHS dari SATUSEHAT memakai isi form saat ini (belum tersimpan pun ikut). Aturan pengaman ada
+     * di App\Support\IhsPasienSatuSehat: bayi ditolak, NIK + nama + tanggal lahir harus cocok, dan
+     * pendaftaran baru hanya bila NIK belum terdaftar sama sekali.
      */
     public function UpdatepatientUuid(string $nik = ''): void
     {
-        // Validasi NIK
-        if (empty($nik)) {
-            $this->dispatch('toast', type: 'warning', message: 'NIK pasien wajib diisi terlebih dahulu.');
+        $pasien = $this->dataPasien['pasien'] ?? [];
+        $identitas = $pasien['identitas'] ?? [];
+        $uuidLama = trim((string) ($identitas['patientUuid'] ?? ''));
+
+        $hasil = (new IhsPasienSatuSehat())->cari([
+            'regNo' => $this->regNo,
+            'nama' => $pasien['regName'] ?? '',
+            'tanggalLahir' => $this->formatDateToYmd($pasien['tglLahir'] ?? ''),
+            'nik' => $nik,
+            'jenisKelamin' => match ((int) ($pasien['jenisKelamin']['jenisKelaminId'] ?? 0)) {
+                1 => 'L',
+                2 => 'P',
+                default => '',
+            },
+            'telepon' => $pasien['kontak']['nomerTelponSelulerPasien'] ?? '',
+            'bpjs' => $identitas['idbpjs'] ?? null,
+            'alamat' => $identitas['alamat'] ?? '',
+            'rt' => $identitas['rt'] ?? '',
+            'rw' => $identitas['rw'] ?? '',
+            'desaId' => $identitas['desaId'] ?? '',
+            'statusNikah' => $this->mapMaritalStatusToSatusehat((int) ($pasien['statusPerkawinan']['statusPerkawinanId'] ?? 0)),
+        ]);
+
+        if (blank($hasil['ihs'])) {
+            $tipe = $hasil['status'] === IhsPasienSatuSehat::GAGAL ? 'error' : 'warning';
+            $this->dispatch('toast', type: $tipe, message: $hasil['pesan']);
+
             return;
         }
 
-        if (strlen($nik) !== 16) {
-            $this->dispatch('toast', type: 'warning', message: 'NIK harus 16 digit.');
+        if ($uuidLama !== '' && $uuidLama !== $hasil['ihs']) {
+            $this->dispatch('toast', type: 'warning', message: "IHS tersimpan ({$uuidLama}) berbeda dengan hasil SATUSEHAT ({$hasil['ihs']}). Tidak diganti otomatis, periksa dulu.");
+
             return;
         }
 
-        try {
-            // 1. Inisialisasi koneksi SATUSEHAT
-            $this->initializeSatuSehat();
-
-            // 2. Cari Patient berdasarkan NIK
-            $searchResult = $this->searchPatient(['nik' => $nik]);
-            $entries = collect($searchResult['entry'] ?? []);
-
-            // 3. Jika tidak ada, buat pasien baru
-            if ($entries->isEmpty()) {
-                $this->dispatch('toast', type: 'warning', message: "Tidak ada pasien ditemukan dengan NIK: {$nik}. Persiapan create pasien baru.");
-
-                // Siapkan data untuk create patient
-                $patientData = [
-                    'name' => $this->dataPasien['pasien']['regName'] ?? '',
-                    'given_name' => $this->dataPasien['pasien']['regName'] ?? '',
-                    'family_name' => '',
-                    'birth_date' => $this->formatDateToYmd($this->dataPasien['pasien']['tglLahir'] ?? ''),
-                    'gender' => $this->mapGenderToSatusehat($this->dataPasien['pasien']['jenisKelamin']['jenisKelaminId'] ?? 0),
-                    'phone' => $this->dataPasien['pasien']['kontak']['nomerTelponSelulerPasien'] ?? '',
-                    'nik' => $nik,
-                    'bpjs_number' => $this->dataPasien['pasien']['identitas']['idbpjs'] ?? null,
-                    'marital_status' => $this->mapMaritalStatusToSatusehat($this->dataPasien['pasien']['statusPerkawinan']['statusPerkawinanId'] ?? 1),
-                    'address' => $this->buildAddressPayload($this->dataPasien['pasien']['identitas'] ?? []),
-                ];
-
-                // Create patient ke SATUSEHAT
-                $result = $this->createPatient($patientData);
-                $createdUuid = $result['id'] ?? null;
-
-                if ($createdUuid) {
-                    // Simpan UUID ke data pasien
-                    $this->dataPasien['pasien']['identitas']['patientUuid'] = $createdUuid;
-                    $this->pasienUuid = $createdUuid;
-
-                    $this->dispatch('toast', type: 'success', message: "Pasien baru berhasil dibuat di SATUSEHAT (UUID: {$createdUuid})");
-                } else {
-                    $this->dispatch('toast', type: 'error', message: 'Gagal membuat pasien baru di SATUSEHAT.');
-                }
-
-                return;
-            }
-
-            // 4. Ambil UUID Patient pertama dari hasil pencarian
-            $newUuid = $entries->pluck('resource.id')->first();
-            $currentUuid = $this->dataPasien['pasien']['identitas']['patientUuid'] ?? null;
-
-            // 5. Jika belum ada UUID tersimpan, set dan notify
-            if (empty($currentUuid)) {
-                $this->dataPasien['pasien']['identitas']['patientUuid'] = $newUuid;
-                $this->pasienUuid = $newUuid;
-
-                $this->dispatch('toast', type: 'success', message: "patientUuid di-set ke {$newUuid}");
-                return;
-            }
-
-            // 6. Jika UUID sudah sama, beri info
-            if ($currentUuid === $newUuid) {
-                $this->dispatch('toast', type: 'info', message: 'patientUuid sudah sesuai dengan data terbaru');
-                return;
-            }
-
-            // 7. Jika berbeda, cek apakah UUID lama masih ada dalam hasil pencarian
-            $oldStillExists = $entries->pluck('resource.id')->contains($currentUuid);
-
-            if ($oldStillExists) {
-                $this->dispatch('toast', type: 'success', message: "patientUuid lama ({$currentUuid}) masih ditemukan");
-            } else {
-                $this->dispatch('toast', type: 'warning', message: "patientUuid lama ({$currentUuid}) tidak ada di hasil terbaru, disarankan update ke UUID baru: {$newUuid}");
-
-                // Optional: Auto update ke UUID baru
-                // $this->dataPasien['pasien']['identitas']['patientUuid'] = $newUuid;
-                // $this->pasienUuid = $newUuid;
-            }
-        } catch (\Exception $e) {
-            $this->dispatch('toast', type: 'error', message: 'Error saat memproses UUID: ' . $e->getMessage());
-            \Log::error('Error UpdatepatientUuid: ' . $e->getMessage());
-        }
+        $this->dataPasien['pasien']['identitas']['patientUuid'] = $hasil['ihs'];
+        $this->pasienUuid = $hasil['ihs'];
+        $this->dispatch('toast', type: 'success', message: "{$hasil['pesan']} IHS: {$hasil['ihs']}. Tekan Simpan untuk menyimpan.");
     }
 
     /**
@@ -736,18 +688,6 @@ new class extends Component {
     }
 
     /**
-     * Map gender ID ke kode SATUSEHAT
-     */
-    private function mapGenderToSatusehat(int $genderId): string
-    {
-        return match ($genderId) {
-            1 => 'male',
-            2 => 'female',
-            default => 'unknown',
-        };
-    }
-
-    /**
      * Map status perkawinan ID ke kode SATUSEHAT
      */
     private function mapMaritalStatusToSatusehat(int $statusId): string
@@ -759,43 +699,6 @@ new class extends Component {
             4 => 'W', // Cerai Mati -> Widowed
             default => 'U', // Unknown
         };
-    }
-
-    /**
-     * Build address payload untuk SATUSEHAT
-     */
-    private function buildAddressPayload(array $identitas): array
-    {
-        $address = [];
-
-        if (!empty($identitas['alamat'])) {
-            $address['line'] = [$identitas['alamat']];
-        }
-
-        if (!empty($identitas['desaName'])) {
-            $address['city'] = $identitas['desaName'];
-        }
-
-        if (!empty($identitas['kecamatanName'])) {
-            $address['district'] = $identitas['kecamatanName'];
-        }
-
-        if (!empty($identitas['kotaName'])) {
-            $address['city'] = $identitas['kotaName'];
-        }
-
-        if (!empty($identitas['propinsiName'])) {
-            $address['state'] = $identitas['propinsiName'];
-        }
-
-        if (!empty($identitas['kodepos'])) {
-            $address['postalCode'] = $identitas['kodepos'];
-        }
-
-        $address['country'] = 'ID';
-        $address['use'] = 'home';
-
-        return $address;
     }
 };
 
