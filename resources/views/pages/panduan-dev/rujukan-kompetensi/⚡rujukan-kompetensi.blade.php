@@ -576,7 +576,7 @@ SATUSEHAT_ORGANIZATION_ID="100027469"</pre>
                                         <strong>Tiga jebakan pemetaan</strong> (ketiganya pernah terjadi):
                                         <span class="block mt-1">1. Nama faskes ada di <code>nmppk</code>. <code>nmkc</code> itu nama kota — dipakai sebagai nama membuat semua baris tampil sama ("TULUNGAGUNG").</span>
                                         <span class="block">2. <code>kodeFaskesSatuSehat</code> datang berawalan <code>Organization/</code>, sedangkan kode milik kita dikirim polos. Buang awalannya sebelum dipakai sebagai <code>kdppkSatuSehatTujuanRujukan</code>, kalau tidak BPJS menolak "PPK tidak ditemukan di pemetaan".</span>
-                                        <span class="block">3. Tidak ada field <code>jadwal</code> di response ini. Yang tersedia untuk membantu pemilihan: <code>kelas</code>, <code>distance</code> (km), dan beban <code>jmlRujuk</code>/<code>kapasitas</code>.</span>
+                                        <span class="block">3. Field <code>jadwal</code> ADA (teks, mis. <code>"Selasa: 09:00-10:50; 16:00-18:00"</code>) — jadwal praktik poli tujuan pada tanggal rencana. <code>jadwal: null</code> = poli tak praktik hari itu (<code>kapasitas</code>/<code>jmlRujuk</code> ikut null), padahal RS-nya tetap jadi kandidat; tabel menandainya "Jadwal kosong dd/mm/yyyy" (tanggal = tanggal rencana saat pencarian). Kapasitas tampil sesudah jadwal: "Jadwal Selasa: 07:30-13:00 · kapasitas 55, terpakai 0". Sampel di atas kebetulan null — catatan lama "tak ada field jadwal" keliru (dicek dari log 10/11/26).</span>
                                         <span class="block mt-1"><code>kdppk</code> bisa berisi string <code>"null"</code> = RS non-BPJS, tak boleh jadi tujuan rujukan BPJS.</span>
                                     </div>
                                 </div>
@@ -855,7 +855,15 @@ SATUSEHAT_ORGANIZATION_ID="100027469"</pre>
           { "url": "estimated-time", "valueQuantity": { "value": 12,  "code": "minute" } },
           { "url": "strata",         "valueString": "madya" },
           { "url": "bpjs-code",      "valueString": "0342R074" },
-          { "url": "kemkes-code",    "valueString": "100027550" }
+          { "url": "kemkes-code",    "valueCode": "3504056" },
+          { "url": "bed-availability", "extension": [
+              { "url": "category",  "valueString": "Non Intensif" },
+              { "url": "name",      "valueString": "Kelas I" },
+              { "url": "total",     "valueInteger": 12 },
+              { "url": "occupied",  "valueInteger": 1 },
+              { "url": "available", "valueInteger": 11 } ] }
+          // bed-availability BERULANG per jenis ruang (VIP, Kelas I–III, ICU, Isolasi…);
+          // tak ada ruang berlabel KRIS di log staging. Hanya sebagian kandidat membawanya.
       ] } ] }
   ]
 }</pre>@endverbatim

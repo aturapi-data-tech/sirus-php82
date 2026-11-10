@@ -548,7 +548,15 @@ trait SatuSehatRujukanTrait
     /**
      * Parse kandidat faskes dari Task.output[] — tiap kandidat membawa extension
      * providerAtribute (distance, estimated-time, strata, bpjs-code, kemkes-code,
-     * info tempat tidur utk ranap). Parser toleran terhadap variasi bentuk.
+     * bed-availability). Parser toleran terhadap variasi bentuk.
+     *
+     * `bed-availability` BERULANG, satu per jenis ruang, dan bersarang satu lapis
+     * lebih dalam dari atribut lain (log staging 10/11/26):
+     *   { url: bed-availability, extension: [ category "Non Intensif"|"Intensif"|"isolasi",
+     *     name "Kelas I"|"ICU"|..., total, occupied, available (valueInteger) ] }
+     * Dulu dibaca sebagai nilai tunggal sehingga selalu kosong. Nama ruang masih
+     * kelas lama (VIP/Kelas I–III/ICU…); TIDAK ada ruang berlabel KRIS di log.
+     * Hanya sebagian kandidat membawanya (19 dari 209 output di log 30 hari).
      */
     protected function rujukanParseKandidat(?array $task): array
     {
@@ -565,13 +573,17 @@ trait SatuSehatRujukanTrait
                 'estimatedTime' => '',
                 'strata' => '',
                 'bpjsCode' => '',
-                'bed' => '',
+                'tempatTidur' => [],
             ];
             $extensions = array_merge($output['extension'] ?? [], $referensi['extension'] ?? []);
             foreach ($extensions as $extension) {
                 $daftar = isset($extension['extension']) && is_array($extension['extension']) ? $extension['extension'] : [$extension];
                 foreach ($daftar as $subExtension) {
                     $urlKey = strtolower((string) ($subExtension['url'] ?? ''));
+                    if ($urlKey === 'bed-availability' && is_array($subExtension['extension'] ?? null)) {
+                        $kandidat['tempatTidur'][] = $this->rujukanParseTempatTidur($subExtension['extension']);
+                        continue;
+                    }
                     $nilai = $subExtension['valueString']
                         ?? ($subExtension['valueCode'] ?? ($subExtension['valueDecimal'] ?? ($subExtension['valueInteger'] ?? ($subExtension['valueQuantity']['value'] ?? null))));
                     if ($nilai === null) {
@@ -585,8 +597,6 @@ trait SatuSehatRujukanTrait
                         $kandidat['strata'] = (string) $nilai;
                     } elseif (str_contains($urlKey, 'bpjs')) {
                         $kandidat['bpjsCode'] = (string) $nilai;
-                    } elseif (str_contains($urlKey, 'bed') || str_contains($urlKey, 'tempat-tidur')) {
-                        $kandidat['bed'] = (string) $nilai;
                     }
                 }
             }
@@ -595,6 +605,32 @@ trait SatuSehatRujukanTrait
             }
         }
         return $kandidatList;
+    }
+
+    /**
+     * Satu entri bed-availability → [kategori, nama, total, terisi, tersedia].
+     * Angka yang tak dikirim dibiarkan null (bukan 0) supaya "tidak tahu" tak
+     * terbaca sebagai "penuh".
+     */
+    private function rujukanParseTempatTidur(array $atributList): array
+    {
+        $tempatTidur = ['kategori' => '', 'nama' => '', 'total' => null, 'terisi' => null, 'tersedia' => null];
+        $petaAngka = ['total' => 'total', 'occupied' => 'terisi', 'available' => 'tersedia'];
+        foreach ($atributList as $atribut) {
+            $urlKey = strtolower((string) ($atribut['url'] ?? ''));
+            $nilai = $atribut['valueString'] ?? ($atribut['valueInteger'] ?? ($atribut['valueDecimal'] ?? null));
+            if ($nilai === null) {
+                continue;
+            }
+            if ($urlKey === 'category') {
+                $tempatTidur['kategori'] = trim((string) $nilai);
+            } elseif ($urlKey === 'name') {
+                $tempatTidur['nama'] = trim((string) $nilai);
+            } elseif (isset($petaAngka[$urlKey]) && is_numeric($nilai)) {
+                $tempatTidur[$petaAngka[$urlKey]] = (int) $nilai;
+            }
+        }
+        return $tempatTidur;
     }
 
     /* ═══════════════════════════════════════

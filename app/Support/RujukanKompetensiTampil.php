@@ -46,8 +46,8 @@ final class RujukanKompetensiTampil
      * menjadi satu bentuk baku untuk ditampilkan:
      *
      *   SISRUTE (BPJS)     kdppk, kodeFaskesSatuSehat, nmppk->nama, alamat, kota,
-     *                      kelas, strata (strataSatuSehat), distance, jmlRujuk/kapasitas
-     *   FHIR (SATUSEHAT)   bpjsCode, orgId, nama, strata, distance, estimatedTime, bed
+     *                      kelas, strata (strataSatuSehat), distance, jmlRujuk/kapasitas, jadwal
+     *   FHIR (SATUSEHAT)   bpjsCode, orgId, nama, strata, distance, estimatedTime, tempatTidur[]
      *
      * Dipusatkan di sini supaya keenam panel rujukan memakai sebutan yang sama
      * untuk angka yang sama — "Kode BPJS" dan "Org ID", bukan PPK/SATUSEHAT di
@@ -85,10 +85,52 @@ final class RujukanKompetensiTampil
             'strata' => self::strata($kandidat['strata'] ?? ''),
             'jarak' => $kandidat['distance'] ?? '',
             'estimasi' => $kandidat['estimatedTime'] ?? '',
-            // Beban hanya berarti kalau kapasitasnya diketahui — "0/" bukan informasi.
-            'beban' => $jmlRujuk !== '' && $kapasitas !== '' ? $jmlRujuk . '/' . $kapasitas : '',
-            'bed' => trim((string) ($kandidat['bed'] ?? '')),
+            // kapasitas = kuota rujukan poli tujuan di tanggal rencana (terisi hanya bila
+            // ada jadwal; satu angka untuk semua sesi), jmlRujuk = yang sudah terpakai.
+            // Tafsiran dari pola log 10/11/26, belum dikonfirmasi BPJS. Terpakai tanpa
+            // kapasitas tidak berarti apa-apa, jadi ikut kosong.
+            'kapasitas' => $kapasitas,
+            'terpakai' => $kapasitas !== '' ? $jmlRujuk : '',
+            // null = sumber ini tak membawa jadwal sama sekali (jalur FHIR, atau draft
+            // lama sebelum field ini disalin) → tidak tampil apa-apa. '' = BPJS
+            // mengirim null: poli tujuan TIDAK praktik pada tanggal rencana.
+            'jadwal' => array_key_exists('jadwal', $kandidat) ? trim((string) $kandidat['jadwal']) : null,
+            // Tanggal rencana yang dipakai saat pencarian (dd/mm/yyyy); kosong di draft lama.
+            'tglJadwal' => trim((string) ($kandidat['tglJadwal'] ?? '')),
+            'tempatTidur' => self::tempatTidurList($kandidat['tempatTidur'] ?? []),
         ];
+    }
+
+    /**
+     * Ketersediaan tempat tidur per jenis ruang (jalur FHIR, bed-availability).
+     * Entri tanpa nama dibuang — angka tanpa nama ruang tak bisa dibaca dokter.
+     */
+    public static function tempatTidurList(mixed $tempatTidurList): array
+    {
+        if (!is_array($tempatTidurList)) {
+            return [];
+        }
+
+        return array_values(array_filter(
+            array_map(
+                fn($tempatTidur) => is_array($tempatTidur)
+                    ? [
+                        'kategori' => trim((string) ($tempatTidur['kategori'] ?? '')),
+                        'nama' => trim((string) ($tempatTidur['nama'] ?? '')),
+                        'total' => is_numeric($tempatTidur['total'] ?? null) ? (int) $tempatTidur['total'] : null,
+                        'tersedia' => is_numeric($tempatTidur['tersedia'] ?? null) ? (int) $tempatTidur['tersedia'] : null,
+                    ]
+                    : null,
+                $tempatTidurList,
+            ),
+            fn($tempatTidur) => $tempatTidur !== null && $tempatTidur['nama'] !== '',
+        ));
+    }
+
+    /** "4/5" (tersedia/total); bagian yang tak dikirim ditulis "?". */
+    public static function angkaTempatTidur(array $tempatTidur): string
+    {
+        return ($tempatTidur['tersedia'] ?? '?') . '/' . ($tempatTidur['total'] ?? '?');
     }
 
     /** "dasar" / "DASAR" / " Dasar " -> "Dasar"; kosong -> ''. */

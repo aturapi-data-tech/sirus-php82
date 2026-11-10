@@ -646,6 +646,13 @@ new class extends Component {
                     'persentase' => (string) ($faskes['persentase'] ?? ''),
                     'kapasitas' => (string) ($faskes['kapasitas'] ?? ''),
                     'jmlRujuk' => (string) ($faskes['jmlRujuk'] ?? ''),
+                    // Jadwal praktik poli tujuan pada tanggal rencana, mis. "Selasa: 09:00-10:50; 16:00-18:00".
+                    // null dari BPJS = poli tak praktik hari itu (kapasitas/jmlRujuk ikut null) — RS-nya
+                    // tetap muncul sebagai kandidat, jadi kosong WAJIB ditandai, bukan disembunyikan.
+                    'jadwal' => trim((string) ($faskes['jadwal'] ?? '')),
+                    // Tanggal yang DIPAKAI saat mencari — jadwal & kapasitas berlaku untuk
+                    // tanggal ini, bukan tanggal rencana di form bila diubah sesudahnya.
+                    'tglJadwal' => $tglRencana->format('d/m/Y'),
                 ],
             )
             ->values()
