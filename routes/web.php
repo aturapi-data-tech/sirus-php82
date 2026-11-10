@@ -328,6 +328,12 @@ Route::middleware(['auth'])->group(function () {
     Route::livewire('/casemix', 'pages::transaksi.casemix.casemix')
         ->name('casemix');
 
+    // ===========================================
+    // DINKESTA — Satu Data Kesehatan Tulungagung (kewajiban daerah, di luar Casemix)
+    // ===========================================
+    Route::livewire('/dinkesta/kirim-rj', 'pages::transaksi.dinkesta.kirim-dinkesta-rj.kirim-dinkesta-rj')
+        ->name('dinkesta.kirim-rj');
+
     // Direct route — Antrian Apotek RI (tanpa wrapper tab)
     Route::livewire('/ri-resep/antrian', 'pages::transaksi.ri-resep.antrian-ri-resep.antrian-ri-resep')
         ->name('ri-resep.antrian');

@@ -156,6 +156,9 @@ class AppMenu
             $entry(['group' => 'Casemix', 'groupOrder' => 8, 'order' => 5, 'route' => 'casemix', 'params' => ['tab' => 'rekap-rj'], 'title' => 'Rekap iDRG Rawat Jalan', 'desc' => 'Rekap klaim iDRG/INA-CBG pasien rawat jalan per SEP (get_claim_data)', 'roles' => ['admin', 'manager umum', 'casemix', 'tu'], 'badge' => 'IDRG-RJ']),
             $entry(['group' => 'Casemix', 'groupOrder' => 8, 'order' => 6, 'route' => 'casemix', 'params' => ['tab' => 'rekap'], 'title' => 'Rekap iDRG Rawat Inap', 'desc' => 'Rekap klaim iDRG/INA-CBG pasien rawat inap per SEP (get_claim_data)', 'roles' => ['admin', 'manager umum', 'casemix', 'tu'], 'badge' => 'IDRG-RI']),
 
+            // ── DINKESTA (Dinas Kesehatan Tulungagung — kewajiban daerah) ──
+            $entry(['group' => 'Dinas Kesehatan Tulungagung', 'groupOrder' => 8, 'order' => 1, 'route' => 'dinkesta.kirim-rj', 'title' => 'Kirim DINKESTA Rawat Jalan', 'desc' => 'Kirim bulk diagnosis ICD-10 kunjungan RJ per bulan ke Portal Satu Data Kesehatan Tulungagung', 'roles' => ['admin', 'casemix', 'tu'], 'badge' => 'DINKES']),
+
             // ── Apotek (transaksi) ──────────────────────────────────
             $entry(['group' => 'Apotek', 'groupOrder' => 9, 'order' => 1, 'route' => 'apotek', 'title' => 'Antrian Apotek', 'desc' => 'Telaah resep & pelayanan kefarmasian — tab RJ, UGD, RI', 'roles' => ['admin', 'apoteker', 'manager medis'], 'badge' => 'APT']),
             $entry(['group' => 'Apotek', 'groupOrder' => 9, 'order' => 2, 'route' => 'rj.antrian-apotek', 'title' => 'Antrian Apotek RJ', 'desc' => 'Antrian apotek khusus pasien rawat jalan', 'roles' => ['admin', 'apoteker', 'manager medis'], 'badge' => 'APT-RJ']),
