@@ -53,7 +53,17 @@ new class extends Component {
     public function poliBreakdown()
     {
         [$start, $end] = $this->periodeRange();
-        return $this->poliBreakdownRJ($start, $end);
+        return $this->poliBreakdownPerBulanRJ($start, $end);
+    }
+
+    #[Computed]
+    public function bulanSingkatList(): array
+    {
+        $bulanList = [];
+        for ($m = 1; $m <= 12; $m++) {
+            $bulanList[$m] = $this->bulanSingkatLabel($m);
+        }
+        return $bulanList;
     }
 
     #[Computed]
@@ -238,8 +248,11 @@ new class extends Component {
                     <tr class="text-xs font-semibold tracking-wide text-muted uppercase dark:text-gray-300">
                         <th class="px-4 py-3 text-left w-12">#</th>
                         <th class="px-3 py-3 text-left">Poli</th>
+                        @foreach ($this->bulanSingkatList as $bulanSingkat)
+                            <th class="px-2 py-3 text-right">{{ $bulanSingkat }}</th>
+                        @endforeach
                         <th class="px-3 py-3 text-right">Total Kunjungan</th>
-                        <th class="px-3 py-3 text-left w-1/3">Persentase</th>
+                        <th class="px-3 py-3 text-left min-w-[180px]">Persentase</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -247,7 +260,10 @@ new class extends Component {
                         @php $pct = $tot['total'] > 0 ? ($poli->total / $tot['total']) * 100 : 0; @endphp
                         <tr class="border-t border-hairline-soft dark:border-gray-800 hover:bg-surface-soft dark:hover:bg-gray-800/50">
                             <td class="px-4 py-2.5 font-bold text-muted-soft">{{ $i + 1 }}</td>
-                            <td class="px-3 py-2.5 font-medium text-ink dark:text-gray-100">{{ $poli->poli_desc ?? '(Tanpa Poli)' }}</td>
+                            <td class="px-3 py-2.5 font-medium text-ink dark:text-gray-100 whitespace-nowrap">{{ $poli->poli_desc ?? '(Tanpa Poli)' }}</td>
+                            @foreach ($poli->per_bulan as $jumlahBulan)
+                                <td @class(['px-2 py-2.5 text-right tabular-nums', 'text-muted-soft' => $jumlahBulan === 0, 'text-body dark:text-gray-300' => $jumlahBulan > 0])>{{ number_format($jumlahBulan) }}</td>
+                            @endforeach
                             <td class="px-3 py-2.5 text-right tabular-nums font-semibold">{{ number_format($poli->total) }}</td>
                             <td class="px-3 py-2.5">
                                 <div class="flex items-center gap-2">
@@ -259,7 +275,7 @@ new class extends Component {
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="4" class="px-6 py-12">
+                        <tr><td colspan="16" class="px-6 py-12">
                                         <div class="flex flex-col items-center justify-center gap-3">
                                             <svg class="w-12 h-12 text-muted-soft" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" /></svg>
                                             <p class="text-base font-medium text-muted dark:text-gray-400">Belum ada data</p>
@@ -267,6 +283,19 @@ new class extends Component {
                                     </td></tr>
                     @endforelse
                 </tbody>
+                @if (count($this->poliBreakdown) > 0)
+                    <tfoot class="sticky bottom-0 bg-surface-soft dark:bg-gray-800 border-t-2 border-gray-300 dark:border-gray-600">
+                        <tr class="text-sm font-bold text-ink dark:text-gray-100">
+                            <td class="px-4 py-3"></td>
+                            <td class="px-3 py-3">TOTAL</td>
+                            @foreach ($this->rows as $rowBulan)
+                                <td class="px-2 py-3 text-right tabular-nums">{{ number_format($rowBulan['total']) }}</td>
+                            @endforeach
+                            <td class="px-3 py-3 text-right tabular-nums">{{ number_format($tot['total']) }}</td>
+                            <td class="px-3 py-3"></td>
+                        </tr>
+                    </tfoot>
+                @endif
             </table>
         </div>
     </div>
