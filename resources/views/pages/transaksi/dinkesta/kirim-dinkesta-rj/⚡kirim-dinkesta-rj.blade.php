@@ -690,7 +690,11 @@ new class extends Component {
                         </div>
                         @hasanyrole('Admin|Casemix|Tu')
                             @if ($this->tabelKirimTersedia)
-                                <x-primary-button type="button" x-on:click="siapkan()" x-bind:disabled="tahap !== 'siap'">
+                                <x-primary-button type="button" x-on:click="siapkan()" x-bind:disabled="tahap !== 'siap'"
+                                    title="Kirim semua kunjungan sesuai filter bulan, klaim, dokter & pencarian (bukan hanya halaman ini)">
+                                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+                                    </svg>
                                     Kirim Bulk {{ $filterBulan }}
                                 </x-primary-button>
                             @endif
@@ -708,8 +712,18 @@ new class extends Component {
                             <b x-text="total"></b> kunjungan masih punya ICD-10 yang belum terkirim.
                             ICD yang sudah sukses atau berstatus tidak pasti tidak dikirim ulang.
                         </span>
-                        <x-primary-button type="button" x-on:click="mulai()" x-bind:disabled="total === 0">Mulai Kirim</x-primary-button>
-                        <x-secondary-button type="button" x-on:click="tutup()">Batal</x-secondary-button>
+                        <x-primary-button type="button" x-on:click="mulai()" x-bind:disabled="total === 0">
+                            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" />
+                            </svg>
+                            Mulai Kirim
+                        </x-primary-button>
+                        <x-secondary-button type="button" x-on:click="tutup()">
+                            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                            Batal
+                        </x-secondary-button>
                     </div>
 
                     <div x-show="tahap === 'berjalan' || tahap === 'selesai'" class="space-y-2">
@@ -720,9 +734,20 @@ new class extends Component {
                             <span class="text-muted">Sudah sebelumnya: <b x-text="sudah"></b></span>
                             <span class="text-amber-700 dark:text-amber-400">Tidak pasti: <b x-text="tidakPastiList.length"></b></span>
                             <span class="text-red-700 dark:text-red-400">Gagal: <b x-text="gagalList.length"></b></span>
-                            <x-secondary-button type="button" x-show="tahap === 'berjalan'" x-on:click="dimintaBerhenti = true"
-                                x-text="dimintaBerhenti ? 'Menghentikan…' : 'Hentikan'"></x-secondary-button>
-                            <x-secondary-button type="button" x-show="tahap === 'selesai'" x-on:click="tutup()">Tutup</x-secondary-button>
+                            {{-- Berhenti setelah kunjungan yang sedang diproses selesai; ICD yang sudah terkirim tetap tercatat. --}}
+                            <x-danger-button type="button" x-show="tahap === 'berjalan'" x-on:click="dimintaBerhenti = true"
+                                x-bind:disabled="dimintaBerhenti">
+                                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 7.5A2.25 2.25 0 017.5 5.25h9a2.25 2.25 0 012.25 2.25v9a2.25 2.25 0 01-2.25 2.25h-9a2.25 2.25 0 01-2.25-2.25v-9z" />
+                                </svg>
+                                <span x-text="dimintaBerhenti ? 'Menghentikan…' : 'Hentikan Kirim'"></span>
+                            </x-danger-button>
+                            <x-secondary-button type="button" x-show="tahap === 'selesai'" x-on:click="tutup()">
+                                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                                Tutup
+                            </x-secondary-button>
                         </div>
                         <div class="w-full h-2 overflow-hidden rounded-full bg-surface-soft dark:bg-gray-700">
                             <div class="h-2 transition-all bg-brand dark:bg-brand-lime" x-bind:style="'width:' + (total ? (diproses / total * 100) : 0) + '%'"></div>
@@ -820,17 +845,24 @@ new class extends Component {
                                     <td class="px-6 py-4 text-center align-top">
                                         @hasanyrole('Admin|Casemix|Tu')
                                             @if ($this->tabelKirimTersedia && in_array($row->status_kirim, ['belum', 'gagal', 'sebagian'], true) && !empty($row->status_icd))
-                                                <x-secondary-button type="button" wire:click="kirimSatu({{ $row->rj_no }})"
-                                                    wire:loading.attr="disabled" wire:target="kirimSatu">
+                                                <x-outline-button type="button" wire:click="kirimSatu({{ $row->rj_no }})"
+                                                    wire:loading.attr="disabled" wire:target="kirimSatu" class="whitespace-nowrap">
+                                                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+                                                    </svg>
                                                     <span wire:loading.remove wire:target="kirimSatu">Kirim</span>
                                                     <span wire:loading wire:target="kirimSatu">Mengirim…</span>
-                                                </x-secondary-button>
+                                                </x-outline-button>
                                             @elseif ($this->tabelKirimTersedia && $row->status_kirim === 'tidak_pasti')
-                                                <x-secondary-button type="button" wire:click="kirimSatu({{ $row->rj_no }}, true)"
-                                                    wire:confirm="Status kiriman ICD kuning tidak pasti: data mungkin SUDAH masuk portal DINKESTA. Kirim ulang hanya bila sudah dicek di portal dan memang belum ada. Lanjutkan?"
-                                                    wire:loading.attr="disabled" wire:target="kirimSatu">
-                                                    Kirim ulang
-                                                </x-secondary-button>
+                                                <x-confirm-button variant="warning-soft" :action="'kirimSatu(' . $row->rj_no . ', true)'"
+                                                    title="Kirim Ulang ke DINKESTA"
+                                                    message="Status ICD kuning tidak pasti: data mungkin SUDAH masuk portal DINKESTA. Kirim ulang hanya bila sudah dicek di portal dan memang belum ada."
+                                                    confirmText="Ya, kirim ulang" cancelText="Batal">
+                                                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.993m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                                                    </svg>
+                                                    Kirim Ulang
+                                                </x-confirm-button>
                                             @endif
                                         @endhasanyrole
                                     </td>
