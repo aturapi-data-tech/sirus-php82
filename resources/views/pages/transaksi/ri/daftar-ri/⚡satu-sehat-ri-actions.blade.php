@@ -32,7 +32,7 @@ new class extends Component {
      * kodingSatuSehat) — dulu dimatikan menunggu LOV SNOMED di Pengkajian Dokter.
      */
     private const URUTAN_KIRIM = [
-        'encounter', 'episode', 'condition', 'procedure', 'observation', 'medication-request',
+        'encounter', 'episode', 'condition', 'procedure', 'observation', 'head-to-toe', 'medication-request',
         'chief-complaint', 'keluhan-penyerta', 'riwayat-penyakit', 'riwayat-keluarga',
         'riwayat-pengobatan', 'riwayat-perjalanan', 'allergy', 'medication-dispense',
         'observasi-lanjutan', 'lab', 'radiologi', 'cppt', 'penilaian', 'status-psikologis', 'diet',
@@ -270,6 +270,8 @@ new class extends Component {
                         wire:key="ss-procedure-ri-{{ $riHdrNo ?? 'none' }}" />
                     <livewire:pages::transaksi.ri.satu-sehat.kirim-observation :riHdrNo="$riHdrNo"
                         wire:key="ss-observation-ri-{{ $riHdrNo ?? 'none' }}" />
+                    <livewire:pages::transaksi.ri.satu-sehat.kirim-head-to-toe :riHdrNo="$riHdrNo"
+                        wire:key="ss-head-to-toe-ri-{{ $riHdrNo ?? 'none' }}" />
                     <livewire:pages::transaksi.ri.satu-sehat.kirim-medication-request :riHdrNo="$riHdrNo"
                         wire:key="ss-medication-request-ri-{{ $riHdrNo ?? 'none' }}" />
                     <livewire:pages::transaksi.ri.satu-sehat.kirim-chief-complaint :riHdrNo="$riHdrNo"

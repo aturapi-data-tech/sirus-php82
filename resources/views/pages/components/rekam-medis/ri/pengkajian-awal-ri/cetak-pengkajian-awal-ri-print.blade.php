@@ -210,15 +210,15 @@
         <table class="w-full border-collapse text-[10px]">
             <tr>
                 <td class="{{ $kelasLabel }}">Tekanan Darah</td>
-                <td class="{{ $kelasNilai }}">{{ $nilaiAtauStrip($tandaVital['sistolik'] ?? null) }} / {{ $nilaiAtauStrip($tandaVital['distolik'] ?? null) }} mmHg</td>
+                <td class="{{ $kelasNilai }}">{{ filled($tandaVital['sistolik'] ?? null) || filled($tandaVital['distolik'] ?? null) ? $nilaiAtauStrip($tandaVital['sistolik'] ?? null) . ' / ' . $nilaiAtauStrip($tandaVital['distolik'] ?? null) . ' mmHg' : 'Tidak diperiksa' }}</td>
                 <td class="{{ $kelasLabel }}">Nadi / Nafas</td>
-                <td class="{{ $kelasNilai }}">{{ $nilaiAtauStrip($tandaVital['frekuensiNadi'] ?? null) }} / {{ $nilaiAtauStrip($tandaVital['frekuensiNafas'] ?? null) }} x/mnt</td>
+                <td class="{{ $kelasNilai }}">{{ filled($tandaVital['frekuensiNadi'] ?? null) ? $tandaVital['frekuensiNadi'] : 'Tidak diperiksa' }} / {{ $nilaiAtauStrip($tandaVital['frekuensiNafas'] ?? null) }} x/mnt</td>
             </tr>
             <tr>
                 <td class="{{ $kelasLabel }}">Suhu / SpO2</td>
                 <td class="{{ $kelasNilai }}">{{ $nilaiAtauStrip($tandaVital['suhu'] ?? null) }} °C / {{ $nilaiAtauStrip($tandaVital['spo2'] ?? null) }} %</td>
                 <td class="{{ $kelasLabel }}">GDA</td>
-                <td class="{{ $kelasNilai }}">{{ $nilaiAtauStrip($tandaVital['gda'] ?? null) }} mg/dL</td>
+                <td class="{{ $kelasNilai }}">{{ filled($tandaVital['gda'] ?? null) ? $tandaVital['gda'] . ' mg/dL' : 'Tidak diperiksa' }}</td>
             </tr>
             <tr>
                 <td class="{{ $kelasLabel }}">Berat / Tinggi Badan</td>

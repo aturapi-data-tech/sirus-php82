@@ -4,6 +4,7 @@ use Livewire\Component;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\QueryException;
+use App\Support\CakupanLocationKamar;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 use App\Http\Traits\BPJS\AplicaresTrait;
 use App\Http\Traits\SIRS\SirsTrait;
@@ -174,6 +175,7 @@ new class extends Component {
         DB::table('rsmst_rooms')->where('room_id', $roomId)->update(['active_status' => $next]);
         $this->dispatch('toast', type: 'success',
             message: 'Status kamar → ' . ($next === '1' ? 'Aktif' : 'Non Aktif'));
+        CakupanLocationKamar::lupakan();
         $this->dispatch('master.kamar.saved', entity: 'kamar');
     }
 
@@ -200,6 +202,7 @@ new class extends Component {
             }
 
             $this->dispatch('toast', type: 'success', message: 'Kamar berhasil dihapus.');
+            CakupanLocationKamar::lupakan();
             $this->dispatch('master.kamar.saved', entity: 'kamar');
         } catch (QueryException $e) {
             if (str_contains($e->getMessage(), 'ORA-02292')) {
@@ -265,6 +268,7 @@ new class extends Component {
 
         $this->dispatch('toast', type: 'success', message: 'Data kamar berhasil disimpan.');
         $this->closeModal();
+        CakupanLocationKamar::lupakan();
         $this->dispatch('master.kamar.saved', entity: 'kamar');
     }
 
@@ -389,6 +393,7 @@ new class extends Component {
             if ($code == 1) {
                 DB::table('rsmst_rooms')->where('room_id', $roomId)->update(['aplic_kodekelas' => $this->kodekelas]);
                 $this->formKamar['aplic_kodekelas'] = $this->kodekelas;
+                CakupanLocationKamar::lupakan();
                 $this->dispatch('master.kamar.saved', entity: 'kamar');
                 $this->dispatch('toast', type: 'success', message: 'Ruangan berhasil didaftarkan ke Aplicares & disimpan.');
                 return;
@@ -401,6 +406,7 @@ new class extends Component {
             if ($codeUpd == 1) {
                 DB::table('rsmst_rooms')->where('room_id', $roomId)->update(['aplic_kodekelas' => $this->kodekelas]);
                 $this->formKamar['aplic_kodekelas'] = $this->kodekelas;
+                CakupanLocationKamar::lupakan();
                 $this->dispatch('master.kamar.saved', entity: 'kamar');
                 $this->dispatch('toast', type: 'success', message: 'Data ruangan di Aplicares diperbarui & disimpan.');
             } else {
@@ -482,6 +488,7 @@ new class extends Component {
                 if ($status === '200') {
                     DB::table('rsmst_rooms')->where('room_id', $roomId)->update(['sirs_id_tt' => $this->idTt]);
                     $this->formKamar['sirs_id_tt'] = $this->idTt;
+                    CakupanLocationKamar::lupakan();
                     $this->dispatch('master.kamar.saved', entity: 'kamar');
                     $this->dispatch('toast', type: 'success', message: 'Data tempat tidur SIRS diperbarui & disimpan.');
                     return;
@@ -524,6 +531,7 @@ new class extends Component {
                             ->update(['sirs_id_tt' => $this->idTt, 'sirs_id_t_tt' => $idTTt]);
                         $this->formKamar['sirs_id_tt']   = $this->idTt;
                         $this->formKamar['sirs_id_t_tt'] = $idTTt;
+                        CakupanLocationKamar::lupakan();
                         $this->dispatch('master.kamar.saved', entity: 'kamar');
                         $this->dispatch('toast', type: 'success', message: 'Data sudah ada di SIRS — berhasil diperbarui & disimpan.');
                     } else {
@@ -542,6 +550,7 @@ new class extends Component {
                 DB::table('rsmst_rooms')->where('room_id', $roomId)
                     ->update(['sirs_id_tt' => $this->idTt, 'sirs_id_t_tt' => $idTTt ?: null]);
                 $this->formKamar['sirs_id_tt'] = $this->idTt;
+                CakupanLocationKamar::lupakan();
                 $this->dispatch('master.kamar.saved', entity: 'kamar');
                 $this->dispatch('toast', type: 'success', message: 'Tempat tidur berhasil didaftarkan ke SIRS & disimpan.');
             } else {

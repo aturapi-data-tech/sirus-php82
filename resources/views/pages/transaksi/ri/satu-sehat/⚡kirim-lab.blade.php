@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Http\Traits\SATUSEHAT\ServiceRequestTrait;
 use App\Support\PenanggungJawabPenunjang;
+use App\Support\HasilLab;
 use App\Http\Traits\SATUSEHAT\SpecimenTrait;
 use App\Http\Traits\SATUSEHAT\PenunjangKirimTrait;
 use App\Http\Traits\SATUSEHAT\ObservationTrait;
@@ -203,7 +204,7 @@ new class extends Component {
                     ->where('b.checkup_no', $checkup->checkup_no)
                     ->whereRaw("nvl(d.hidden_status,'N') = 'N'")
                     ->whereRaw("nvl(d.is_group,'N') <> 'Y'")
-                    ->select('d.clabitem_desc', 'd.loinc_code', 'd.loinc_display', 'd.unit_desc', 'b.lab_result')
+                    ->select('d.clabitem_desc', 'd.loinc_code', 'd.loinc_display', 'd.unit_desc', 'd.unit_convert', 'd.lowhigh_status', 'b.lab_result')
                     ->get();
 
                 $itemsWithLoinc = $itemList->filter(fn ($itemLab) => trim((string) ($itemLab->loinc_code ?? '')) !== '');
@@ -290,9 +291,11 @@ new class extends Component {
                             'specimen' => $specimenId ? "Specimen/{$specimenId}" : null,
                             'issued' => $waktu,
                         ];
-                        if (is_numeric(str_replace(',', '.', $result))) {
+                        // Nilai yang dikirim = hasil × unit_convert, sama dengan yang dibaca dokter di layar.
+                        $nilaiKirim = HasilLab::nilaiKirim($result, $item->unit_convert ?? null, $item->lowhigh_status ?? null);
+                        if ($nilaiKirim !== null) {
                             $unit = trim((string) ($item->unit_desc ?? '')) ?: '1';
-                            $obsData['valueQuantity'] = ['value' => (float) str_replace(',', '.', $result), 'unit' => $unit, 'system' => 'http://unitsofmeasure.org', 'code' => $unit];
+                            $obsData['valueQuantity'] = ['value' => $nilaiKirim, 'unit' => $unit, 'system' => 'http://unitsofmeasure.org', 'code' => $unit];
                         } else {
                             $obsData['valueString'] = $result;
                         }

@@ -213,6 +213,7 @@ new class extends Component {
             'riwayatPengobatan' => $ref('MedicationStatement', $satuSehat['riwayatPengobatanIds'] ?? []),
             'riwayatAlergi' => array_merge($ref('AllergyIntolerance', $satuSehat['allergyId'] ?? []), $ref('AllergyIntolerance', $satuSehat['allergyIds'] ?? [])),
             'tandaVital' => $ref('Observation', $satuSehat['observationIds'] ?? []),
+            'headToToe' => $ref('Observation', $satuSehat['headToToeIds'] ?? []),
             // Risiko jatuh & skrining gizi = asesmen fungsional berskala; playbook
             // mencontohkan status psikologis, tapi slot LOINC 47420-5 inilah rumahnya.
             'pemeriksaanFungsional' => array_merge(

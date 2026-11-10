@@ -21,6 +21,7 @@ trait ObservationTrait
      *   - valueString     (string)  optional
      *   - valueCodeableConcept (array) ['system'=>...,'code'=>...,'display'=>...] optional
      *   - components      (array)   list of buildVitalSignComponent(...) items
+     *   - bodySite        (array)   ['system'=>...,'code'=>...,'display'=>...] optional
      *
      * @return array  decoded JSON response
      * @throws \Exception on HTTP error
@@ -73,6 +74,11 @@ trait ObservationTrait
         // Opsional (aditif): catatan bebas — mis. asal surat rujukan (Playbook IGD 3b).
         if (filled($data['note'] ?? null)) {
             $payload['note'] = [['text' => (string) $data['note']]];
+        }
+
+        // Opsional (aditif): lokasi tubuh — Head to Toe, mis. Tonsil 91636008. Hanya disertakan bila ada.
+        if (!empty($data['bodySite'])) {
+            $payload['bodySite'] = ['coding' => [$data['bodySite']], 'text' => $data['bodySite']['display']];
         }
 
         // Either a single valueQuantity...

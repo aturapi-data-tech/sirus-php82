@@ -142,7 +142,7 @@
                     <div class="pt-2">
                         <p class="mb-1 font-semibold text-ink dark:text-gray-100">Tanda Vital Awal</p>
                         <div class="flex flex-wrap gap-2">
-                            @foreach ([['TD', ($tandaVitalAwal['sistolik'] ?? '-') . '/' . ($tandaVitalAwal['distolik'] ?? '-') . ' mmHg'], ['Nadi', ($tandaVitalAwal['frekuensiNadi'] ?? '-') . ' x/mnt'], ['Nafas', ($tandaVitalAwal['frekuensiNafas'] ?? '-') . ' x/mnt'], ['Suhu', ($tandaVitalAwal['suhu'] ?? '-') . ' °C'], ['SpO₂', ($tandaVitalAwal['spo2'] ?? '-') . ' %'], ['GDA', ($tandaVitalAwal['gda'] ?? '-') . ' mg/dL'], ['TB/BB', ($tandaVitalAwal['tb'] ?? '-') . ' cm / ' . ($tandaVitalAwal['bb'] ?? '-') . ' kg']] as [$judul, $nilai])
+                            @foreach ([['TD', filled($tandaVitalAwal['sistolik'] ?? null) || filled($tandaVitalAwal['distolik'] ?? null) ? (filled($tandaVitalAwal['sistolik'] ?? null) ? $tandaVitalAwal['sistolik'] : '-') . '/' . (filled($tandaVitalAwal['distolik'] ?? null) ? $tandaVitalAwal['distolik'] : '-') . ' mmHg' : 'Tidak diperiksa'], ['Nadi', filled($tandaVitalAwal['frekuensiNadi'] ?? null) ? $tandaVitalAwal['frekuensiNadi'] . ' x/mnt' : 'Tidak diperiksa'], ['Nafas', ($tandaVitalAwal['frekuensiNafas'] ?? '-') . ' x/mnt'], ['Suhu', ($tandaVitalAwal['suhu'] ?? '-') . ' °C'], ['SpO₂', ($tandaVitalAwal['spo2'] ?? '-') . ' %'], ['GDA', filled($tandaVitalAwal['gda'] ?? null) ? $tandaVitalAwal['gda'] . ' mg/dL' : 'Tidak diperiksa'], ['TB/BB', ($tandaVitalAwal['tb'] ?? '-') . ' cm / ' . ($tandaVitalAwal['bb'] ?? '-') . ' kg']] as [$judul, $nilai])
                                 <span class="px-3 py-1 rounded-lg bg-surface-soft dark:bg-gray-800">
                                     <span class="text-muted">{{ $judul }}:</span>
                                     <span class="font-medium text-ink dark:text-gray-100">{{ $nilai }}</span>
@@ -428,15 +428,31 @@
                             </td>
                             <td class="whitespace-nowrap">
                                 <div class="flex flex-wrap items-center gap-x-3">
-                                    <span>Tekanan darah <b>{{ ($tandaVital['sistolik'] ?? '-') . '/' . ($tandaVital['distolik'] ?? '-') }}</b> <span class="text-xs text-muted-soft">mmHg</span>{!! $ewsSkorSel('sistolik') !!}{!! $ewsSkorSel('distolik') !!}</span>
-                                    <span>Nadi <b>{{ $tandaVital['frekuensiNadi'] ?? '-' }}</b> <span class="text-xs text-muted-soft">x/mnt</span>{!! $ewsSkorSel('frekuensiNadi') !!}</span>
+                                    <span>Tekanan darah
+                                        @if (filled($tandaVital['sistolik'] ?? null) || filled($tandaVital['distolik'] ?? null))
+                                            <b>{{ (filled($tandaVital['sistolik'] ?? null) ? $tandaVital['sistolik'] : '-') . '/' . (filled($tandaVital['distolik'] ?? null) ? $tandaVital['distolik'] : '-') }}</b> <span class="text-xs text-muted-soft">mmHg</span>
+                                        @else
+                                            <b>Tidak diperiksa</b>
+                                        @endif
+                                        {!! $ewsSkorSel('sistolik') !!}{!! $ewsSkorSel('distolik') !!}</span>
+                                    <span>Nadi
+                                        @if (filled($tandaVital['frekuensiNadi'] ?? null))
+                                            <b>{{ $tandaVital['frekuensiNadi'] }}</b> <span class="text-xs text-muted-soft">x/mnt</span>
+                                        @else
+                                            <b>Tidak diperiksa</b>
+                                        @endif
+                                        {!! $ewsSkorSel('frekuensiNadi') !!}</span>
                                     <span>Nafas <b>{{ $tandaVital['frekuensiNafas'] ?? '-' }}</b> <span class="text-xs text-muted-soft">x/mnt</span>{!! $ewsSkorSel('frekuensiNafas') !!}</span>
                                 </div>
                                 <div class="flex flex-wrap items-center gap-x-3">
                                     <span>Suhu <b>{{ $tandaVital['suhu'] ?? '-' }}</b> <span class="text-xs text-muted-soft">°C</span>{!! $ewsSkorSel('suhu') !!}</span>
                                     <span>SpO₂ <b>{{ $tandaVital['spo2'] ?? '-' }}</b> <span class="text-xs text-muted-soft">%</span>@if (filled($tandaVital['spo2Skala2'] ?? null)) <span class="text-xs text-muted-soft" title="SpO₂ skala 2">(S2 {{ $tandaVital['spo2Skala2'] }})</span>@endif{!! $ewsSkorSel('spo2') !!}{!! $ewsSkorSel('spo2Skala2') !!}
                                         · @if (($tandaVital['oksigen'] ?? '') === 'O2') O₂ {{ $tandaVital['alatOksigen'] ?? '' }} @elseif (($tandaVital['oksigen'] ?? '') === 'ROOM_AIR') Room air @else - @endif{!! $ewsSkorSel('oksigen') !!}</span>
-                                    <span>GDA <b>{{ filled($tandaVital['gda'] ?? null) ? $tandaVital['gda'] : '-' }}</b> <span class="text-xs text-muted-soft">mg/dL</span></span>
+                                    @if (filled($tandaVital['gda'] ?? null))
+                                        <span>GDA <b>{{ $tandaVital['gda'] }}</b> <span class="text-xs text-muted-soft">mg/dL</span></span>
+                                    @else
+                                        <span>GDA <b>Tidak diperiksa</b></span>
+                                    @endif
                                     <span>GCS <b>{{ filled($tandaVital['gcs'] ?? null) ? $tandaVital['gcs'] : '-' }}</b> · {{ filled($tandaVital['kesadaran'] ?? null) ? $tandaVital['kesadaran'] : '-' }}{!! $ewsSkorSel('kesadaran') !!}</span>
                                 </div>
                             </td>

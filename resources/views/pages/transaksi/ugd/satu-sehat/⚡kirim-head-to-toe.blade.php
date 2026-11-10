@@ -1,0 +1,258 @@
+<?php
+// resources/views/pages/transaksi/ugd/satu-sehat/kirim-head-to-toe.blade.php
+// Kirim Pemeriksaan Fisik Head to Toe (Observation kategori exam) — Playbook IGD bab Hasil Pemeriksaan Fisik.
+// Sumber: pemeriksaan.anatomi → App\Support\Terminologi\HeadToToeMap: satu Observation per bagian yang
+// diperiksa, nilai teks di valueString. Hasil: satusehat.headToToeIds = [kunci anatomi => id]. OPSIONAL.
+
+use Livewire\Component;
+use Livewire\Attributes\On;
+use Livewire\Attributes\Computed;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
+use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
+use App\Http\Traits\SATUSEHAT\ObservationTrait;
+use App\Support\Terminologi\HeadToToeMap;
+
+new class extends Component {
+    use EmrUGDTrait, ObservationTrait;
+
+    public ?string $rjNo = null;
+
+    /** Mode pratinjau saja (layar Coding SATUSEHAT): tombol Kirim disembunyikan, kirim ditolak. */
+    public bool $hanyaPratinjau = false;
+    public bool $hasEncounter = false;
+    public int $count = 0;
+    public int $jumlahTarget = 0;
+
+    /** Pratinjau dihitung hanya saat dibuka — jangan bebani muat halaman belasan kartu. */
+    public bool $pratinjauTerbuka = false;
+
+    public function togglePratinjau(): void
+    {
+        $this->pratinjauTerbuka = !$this->pratinjauTerbuka;
+    }
+
+    /** Isi yang AKAN dikirim, dari sumber yang SAMA dengan kirim(). */
+    #[Computed]
+    public function pratinjau(): array
+    {
+        if (empty($this->rjNo)) {
+            return [];
+        }
+
+        $data = $this->findDataUGD($this->rjNo);
+        $anatomi = $this->anatomiDari($data);
+        $terkirim = $data['satusehat']['headToToeIds'] ?? [];
+
+        $baris = collect(HeadToToeMap::target($anatomi))
+            ->map(fn($peta, $kunci) => [
+                'label' => $peta['label'],
+                'nilai' => $peta['nilai'],
+                'ket' => 'LOINC ' . $peta['code']['code'] . (isset($terkirim[$kunci]) ? ' — sudah terkirim' : ' — akan dikirim'),
+            ])
+            ->values()
+            ->all();
+
+        foreach (HeadToToeMap::takTerpetakan($anatomi) as $label) {
+            $baris[] = ['label' => $label, 'nilai' => 'Tidak dikirim', 'ket' => 'Tidak ada di daftar Head to Toe playbook'];
+        }
+
+        return $baris;
+    }
+
+    public function mount(?string $rjNo = null, bool $hanyaPratinjau = false): void
+    {
+        $this->hanyaPratinjau = $hanyaPratinjau;
+        $this->pratinjauTerbuka = $hanyaPratinjau;
+        $this->rjNo = $rjNo;
+        $this->reloadState();
+    }
+
+    #[On('ugd-satu-sehat.refresh')]
+    public function onRefresh(string $rjNo): void
+    {
+        if ((string) $this->rjNo !== $rjNo) {
+            return;
+        }
+        $this->reloadState();
+    }
+
+    private function reloadState(): void
+    {
+        if (empty($this->rjNo)) {
+            return;
+        }
+        $data = $this->findDataUGD($this->rjNo);
+        if (empty($data)) {
+            return;
+        }
+        $satuSehat = $data['satusehat'] ?? [];
+        $this->hasEncounter = !empty($satuSehat['encounterId']);
+        $this->count = count($satuSehat['headToToeIds'] ?? []);
+        $this->jumlahTarget = count(HeadToToeMap::target($this->anatomiDari($data)));
+    }
+
+    public function kirimForCurrent(): void
+    {
+        if ($this->hanyaPratinjau) {
+            return;
+        }
+        if (empty($this->rjNo)) {
+            return;
+        }
+        $this->kirim($this->rjNo);
+        $this->reloadState();
+    }
+
+    /**
+     * Pembungkus untuk rantai "Kirim Semua": apa pun hasilnya langkah ini WAJIB memberi
+     * kabar, supaya orkestrator bisa melanjutkan ke langkah berikutnya.
+     */
+    #[On('ss-head-to-toe-ugd.kirim')]
+    public function kirim(string $rjNo): void
+    {
+        if ($this->hanyaPratinjau) {
+            return;
+        }
+        $this->kirimInti($rjNo);
+        $this->dispatch('ugd-satu-sehat.langkah-selesai', langkah: 'head-to-toe');
+    }
+
+    public function kirimInti(string $rjNo): void
+    {
+        try {
+            $this->initializeSatuSehat();
+            $dataUGD = $this->findDataUGD($rjNo);
+            if (empty($dataUGD)) { $this->dispatch('toast', type: 'error', message: 'Data UGD tidak ditemukan.'); return; }
+
+            $satuSehat = $dataUGD['satusehat'] ?? [];
+            if (empty($satuSehat['encounterId'])) { $this->dispatch('toast', type: 'error', message: 'Kirim Encounter terlebih dahulu.'); return; }
+
+            $anatomi = $this->anatomiDari($dataUGD);
+            $target = HeadToToeMap::target($anatomi);
+            $terkirim = $satuSehat['headToToeIds'] ?? [];
+            $belumTerkirim = array_diff_key($target, $terkirim);
+            $tanpaKode = HeadToToeMap::takTerpetakan($anatomi);
+            $catatanTanpaKode = $tanpaKode === [] ? '' : ' Tidak dikirim (tak ada di playbook): ' . implode(', ', $tanpaKode) . '.';
+
+            if ($target === []) { $this->dispatch('toast', type: 'info', message: 'Belum ada bagian anatomi yang diperiksa di EMR (opsional).' . $catatanTanpaKode); return; }
+            if ($belumTerkirim === []) { $this->dispatch('toast', type: 'info', message: 'Head to Toe sudah pernah dikirim.' . $catatanTanpaKode); return; }
+
+            $patientId = $this->getPatientIHS($dataUGD['regNo'] ?? '');
+            if (empty($patientId)) { $this->dispatch('toast', type: 'error', message: 'Patient IHS Number kosong.'); return; }
+
+            $performerId = $this->getDoctorIHS($dataUGD['drId'] ?? '');
+            $waktuIso = $this->parseDate($dataUGD['rjDate'] ?? '')->toIso8601String();
+
+            $gagalList = [];
+            foreach ($belumTerkirim as $kunci => $peta) {
+                try {
+                    $respons = $this->createObservation([
+                        'patientId'     => $patientId,
+                        'encounterId'   => $satuSehat['encounterId'],
+                        'performerId'   => $performerId,
+                        'effectiveDate' => $waktuIso,
+                        'category'      => HeadToToeMap::KATEGORI,
+                        'code'          => $peta['code'],
+                        'bodySite'      => $peta['bodySite'],
+                        'valueString'   => $peta['nilai'],
+                    ]);
+                    if (empty($respons['id'])) {
+                        $gagalList[] = $peta['label'] . ' (respons tanpa id)';
+                        continue;
+                    }
+                    $terkirim[$kunci] = $respons['id'];
+                } catch (\Throwable $e) {
+                    $gagalList[] = $peta['label'] . ' (' . $e->getMessage() . ')';
+                }
+            }
+
+            // Yang berhasil tetap disimpan walau sebagian gagal — kirim ulang tak menggandakan.
+            $satuSehat['headToToeIds'] = $terkirim;
+            $this->saveResult($rjNo, $satuSehat);
+
+            empty($gagalList)
+                ? $this->dispatch('toast', type: 'success', message: 'Head to Toe berhasil dikirim (' . count($terkirim) . ').' . $catatanTanpaKode)
+                : $this->dispatch('toast', type: 'error', message: 'Sebagian Head to Toe gagal: ' . implode('; ', $gagalList));
+            $this->dispatch('ugd-satu-sehat.refresh', rjNo: $rjNo);
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', message: 'Head to Toe gagal: ' . $e->getMessage());
+        }
+    }
+
+    private function anatomiDari(array $data): array
+    {
+        return (array) ($data['pemeriksaan']['anatomi'] ?? []);
+    }
+
+    private function getPatientIHS(string $regNo): string
+    {
+        if (empty($regNo)) return '';
+        return (string) (DB::table('rsmst_pasiens')->where('reg_no', $regNo)->value('patient_uuid') ?? '');
+    }
+
+    private function getDoctorIHS(string $drId): string
+    {
+        if (empty($drId)) return '';
+        return (string) (DB::table('rsmst_doctors')->where('dr_id', $drId)->value('dr_uuid') ?? '');
+    }
+
+    private function saveResult(string $rjNo, array $satuSehat): void
+    {
+        DB::transaction(function () use ($rjNo, $satuSehat) {
+            $this->lockUGDRow($rjNo);
+            $data = $this->findDataUGD($rjNo);
+            $data['satusehat'] = $satuSehat;
+            $this->updateJsonUGD($rjNo, $data);
+        });
+    }
+
+    private function parseDate(string $teksTanggal): Carbon
+    {
+        if (empty($teksTanggal)) throw new \RuntimeException('tanggal sumber kosong — lengkapi datanya di EMR dulu (tidak diisi jam sekarang).');
+        try { return Carbon::createFromFormat('d/m/Y H:i:s', $teksTanggal); } catch (\Throwable) {
+            try { return Carbon::parse($teksTanggal); } catch (\Throwable) { throw new \RuntimeException("tanggal '{$teksTanggal}' tidak terbaca — betulkan datanya di EMR dulu (tidak diisi jam sekarang)."); }
+        }
+    }
+};
+?>
+
+<div class="{{ $hanyaPratinjau
+    ? 'p-3 border border-brand-green/30 rounded-xl bg-brand-green/5 dark:bg-brand-green/10 dark:border-brand-green/50'
+    : 'p-4 bg-canvas border border-hairline shadow-sm rounded-xl dark:bg-gray-900 dark:border-gray-700' }}">
+    <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            @unless ($hanyaPratinjau)
+            <div
+                class="flex items-center justify-center w-8 h-8 rounded-full {{ $count > 0 ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-surface-soft text-muted-soft dark:bg-gray-800 dark:text-gray-500' }}">
+                <span class="text-sm font-bold">4b</span>
+            </div>
+            @endunless
+            <div>
+                <div class="{{ $hanyaPratinjau ? 'text-xs font-semibold tracking-wide uppercase text-brand-green dark:text-brand-lime' : 'font-semibold text-ink dark:text-gray-100' }}">Head to Toe</div>
+                <div class="text-xs text-muted dark:text-gray-400">Pemeriksaan fisik per bagian tubuh (anatomi EMR), opsional.</div>
+                @if ($count > 0)
+                    <div class="mt-1 font-mono text-xs text-success dark:text-success">
+                        {{ $count }}/{{ $jumlahTarget }} terkirim
+                    </div>
+                @endif
+            </div>
+        </div>
+        @unless ($hanyaPratinjau)
+        <x-primary-button type="button" wire:click="kirimForCurrent" wire:loading.attr="disabled" :disabled="!$hasEncounter"
+            class="!bg-teal-600 hover:!bg-teal-700 {{ $count > 0 && $count >= $jumlahTarget ? '!bg-emerald-600' : '' }}">
+            <span wire:loading.remove wire:target="kirimForCurrent,kirim">
+                <span class="inline-flex items-center gap-1.5">
+                    <x-satu-sehat.ikon-tombol :selesai="$count > 0 && $count >= $jumlahTarget" jenis="kirim" />
+                    {{ $count > 0 && $count >= $jumlahTarget ? 'Terkirim' : 'Kirim' }}
+                </span>
+            </span>
+            <span wire:loading wire:target="kirimForCurrent,kirim"><x-loading />...</span>
+        </x-primary-button>
+        @endunless
+    </div>
+
+    <x-satu-sehat.pratinjau :terbuka="$pratinjauTerbuka" :ringkas="$hanyaPratinjau"
+        :baris="$pratinjauTerbuka ? $this->pratinjau : []"
+        kosong="Belum ada bagian anatomi yang diperiksa di EMR (opsional)." />
+</div>

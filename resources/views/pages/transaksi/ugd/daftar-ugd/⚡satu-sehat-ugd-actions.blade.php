@@ -29,7 +29,7 @@ new class extends Component {
      * Mengubah urutan di sini berarti mengubah perilaku kirim, bukan tata letak.
      */
     private const URUTAN_KIRIM = [
-        'encounter', 'kedatangan', 'condition', 'observation', 'procedure', 'medication-request',
+        'encounter', 'kedatangan', 'condition', 'observation', 'head-to-toe', 'procedure', 'medication-request',
         'chief-complaint', 'riwayat-penyakit', 'riwayat-keluarga', 'riwayat-pengobatan',
         'riwayat-perjalanan', 'allergy', 'medication-dispense', 'pemberian-obat', 'lab', 'radiologi',
         'clinical-impression', 'penilaian', 'nyeri-kesadaran', 'status-psikologis', 'telaah-resep',
@@ -260,6 +260,8 @@ new class extends Component {
                         wire:key="ss-condition-ugd-{{ $rjNo ?? 'none' }}" />
                     <livewire:pages::transaksi.ugd.satu-sehat.kirim-observation :rjNo="$rjNo"
                         wire:key="ss-observation-ugd-{{ $rjNo ?? 'none' }}" />
+                    <livewire:pages::transaksi.ugd.satu-sehat.kirim-head-to-toe :rjNo="$rjNo"
+                        wire:key="ss-head-to-toe-ugd-{{ $rjNo ?? 'none' }}" />
                     <livewire:pages::transaksi.ugd.satu-sehat.kirim-procedure :rjNo="$rjNo"
                         wire:key="ss-procedure-ugd-{{ $rjNo ?? 'none' }}" />
                     <livewire:pages::transaksi.ugd.satu-sehat.kirim-medication-request :rjNo="$rjNo"

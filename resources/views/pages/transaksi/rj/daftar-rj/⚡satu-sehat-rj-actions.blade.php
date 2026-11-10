@@ -28,7 +28,7 @@ new class extends Component {
      * Mengubah urutan di sini berarti mengubah perilaku kirim, bukan tata letak.
      */
     private const URUTAN_KIRIM = [
-        'encounter', 'condition', 'observation', 'procedure', 'medication-request',
+        'encounter', 'condition', 'observation', 'head-to-toe', 'procedure', 'medication-request',
         'chief-complaint', 'keluhan-penyerta', 'riwayat-penyakit', 'riwayat-keluarga', 'riwayat-pengobatan', 'riwayat-perjalanan', 'allergy', 'medication-dispense', 'lab', 'radiologi',
         'clinical-impression', 'penilaian', 'nyeri-kesadaran', 'status-psikologis', 'telaah-resep', 'prognosis', 'rencana-tindak-lanjut', 'kondisi-pulang',
         'encounter-selesai', 'resume-medis',
@@ -255,6 +255,8 @@ new class extends Component {
                         wire:key="ss-condition-rj-{{ $rjNo ?? 'none' }}" />
                     <livewire:pages::transaksi.rj.satu-sehat.kirim-observation :rjNo="$rjNo"
                         wire:key="ss-observation-rj-{{ $rjNo ?? 'none' }}" />
+                    <livewire:pages::transaksi.rj.satu-sehat.kirim-head-to-toe :rjNo="$rjNo"
+                        wire:key="ss-head-to-toe-rj-{{ $rjNo ?? 'none' }}" />
                     <livewire:pages::transaksi.rj.satu-sehat.kirim-procedure :rjNo="$rjNo"
                         wire:key="ss-procedure-rj-{{ $rjNo ?? 'none' }}" />
                     <livewire:pages::transaksi.rj.satu-sehat.kirim-medication-request :rjNo="$rjNo"

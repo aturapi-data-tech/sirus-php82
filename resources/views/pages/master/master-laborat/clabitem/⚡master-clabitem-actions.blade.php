@@ -4,12 +4,15 @@ use Livewire\Component;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\QueryException;
+use App\Support\CakupanLoincLab;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
+use App\Http\Traits\SATUSEHAT\LoincTrait;
 
 new class extends Component {
-    use WithRenderVersioningTrait;
+    use WithRenderVersioningTrait, LoincTrait;
 
     public string $formMode = 'create';
+    public ?array $hasilCekLoinc = null;
     public array $renderVersions = [];
     protected array $renderAreas = ['modal'];
 
@@ -142,6 +145,7 @@ new class extends Component {
             }
 
             $this->dispatch('toast', type: 'success', message: 'Pemeriksaan berhasil dihapus.');
+            CakupanLoincLab::lupakan();
             $this->dispatch('master.laborat.saved', entity: 'clabitem');
         } catch (QueryException $e) {
             if (str_contains($e->getMessage(), 'ORA-02292')) {
@@ -249,6 +253,7 @@ new class extends Component {
 
         $this->dispatch('toast', type: 'success', message: 'Data pemeriksaan berhasil disimpan.');
         $this->closeModal();
+        CakupanLoincLab::lupakan();
         $this->dispatch('master.laborat.saved', entity: 'clabitem');
     }
 
@@ -269,6 +274,7 @@ new class extends Component {
     {
         $this->formClabitem['loinc_code'] = $payload['loinc_code'] ?? '';
         $this->formClabitem['loinc_display'] = $payload['display'] ?? '';
+        $this->hasilCekLoinc = null;
     }
 
     #[On('lov.cleared.loincLab')]
@@ -276,6 +282,26 @@ new class extends Component {
     {
         $this->formClabitem['loinc_code'] = '';
         $this->formClabitem['loinc_display'] = '';
+        $this->hasilCekLoinc = null;
+    }
+
+    /**
+     * Cek kode ke LOINC (tx.fhir.org) dan tampilkan artinya untuk dicocokkan dengan pemeriksaan ini.
+     *
+     * SATUSEHAT tidak punya API terminologi, dan rsmst_loinc_codes bukan bukti untuk lab: isinya seed
+     * manual ditambah hasil cari LOV. Jadi yang bisa dipastikan di sini hanya kodenya ada dan artinya apa.
+     */
+    public function cekLoincKeSatuSehat(): void
+    {
+        $kode = trim($this->formClabitem['loinc_code'] ?? '');
+
+        if ($kode === '') {
+            $this->dispatch('toast', type: 'info', message: 'Isi kode LOINC dulu sebelum dicek.');
+            return;
+        }
+
+        $this->initializeLoincFhir();
+        $this->hasilCekLoinc = ['kode' => $kode, ...$this->periksaKodeLoinc($kode)];
     }
 
     public function closeModal(): void
@@ -324,6 +350,7 @@ new class extends Component {
         $this->oldClabitemId = '';
         $this->oldClabId = '';
         $this->oldProductId = '';
+        $this->hasilCekLoinc = null;
         $this->resetValidation();
     }
 };
@@ -335,7 +362,7 @@ new class extends Component {
             name="master-laborat-clabitem"
             event="master.laborat.saved"
             label="Item Pemeriksaan Lab"
-            wrapperClass="flex flex-col min-h-0"
+            wrapperClass="flex flex-col min-h-full"
             :wireKey="$this->renderKey('modal', [$formMode])">
 
             {{-- HEADER --}}
@@ -352,7 +379,7 @@ new class extends Component {
             </x-modul-dokumen.header>
 
             {{-- BODY --}}
-            <div class="flex-1 px-4 py-4 overflow-y-auto bg-surface-soft dark:bg-gray-950/20 max-h-[calc(100dvh-300px)]" x-enter-chain
+            <div class="flex-1 px-4 py-4 bg-surface-soft dark:bg-gray-950/20" x-enter-chain
                 x-data
                 x-on:focus-clabitem-id.window="$nextTick(() => setTimeout(() => $refs.inputClabitemId?.focus(), 150))"
                 x-on:focus-clabitem-desc.window="$nextTick(() => setTimeout(() => $refs.inputClabitemDesc?.focus(), 150))">
@@ -477,8 +504,38 @@ new class extends Component {
                                 <livewire:lov.loinc.lov-loinc target="loincLab" label="Kode LOINC (Satu Sehat)"
                                     placeholder="Ketik nama pemeriksaan / kode LOINC..." :initialLoincCode="$formClabitem['loinc_code'] ?: null"
                                     :disabled="false" wire:key="lov-loinc-{{ $renderVersions['modal'] ?? 0 }}" />
-                                <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">Cari kode LOINC dari database
-                                    lokal atau FHIR server. Dipakai untuk kirim ke Satu Sehat</p>
+
+                                <div class="flex flex-wrap items-center gap-2 mt-2">
+                                    <x-outline-button type="button" wire:click="cekLoincKeSatuSehat"
+                                        :disabled="trim($formClabitem['loinc_code'] ?? '') === ''" wire:loading.attr="disabled"
+                                        wire:target="cekLoincKeSatuSehat">
+                                        <span wire:loading.remove wire:target="cekLoincKeSatuSehat">Cek Kode LOINC</span>
+                                        <span wire:loading wire:target="cekLoincKeSatuSehat">Mengecek...</span>
+                                    </x-outline-button>
+                                </div>
+
+                                @if ($hasilCekLoinc)
+                                    <div class="mt-2 text-xs text-ink dark:text-gray-200">
+                                        @if ($hasilCekLoinc['status'] === 'ada')
+                                            <x-badge variant="success">Kode ada di LOINC</x-badge>
+                                            <p class="mt-1">Arti kode {{ $hasilCekLoinc['kode'] }}: <span class="font-semibold">{{ $hasilCekLoinc['display'] ?? 'tidak tersedia' }}</span></p>
+                                            @if (filled($formClabitem['loinc_display']) && filled($hasilCekLoinc['display']) && mb_strtolower(trim($formClabitem['loinc_display'])) !== mb_strtolower(trim($hasilCekLoinc['display'])))
+                                                <p class="mt-1">Nama tersimpan berbeda: {{ $formClabitem['loinc_display'] }}</p>
+                                            @endif
+                                            <p class="mt-1 text-muted dark:text-gray-400">Pastikan artinya sama dengan pemeriksaan ini. Kode yang artinya salah tetap bisa terkirim sebagai pemeriksaan lain.</p>
+                                        @elseif ($hasilCekLoinc['status'] === 'tidak_ada')
+                                            <x-badge variant="danger">Kode tidak ada di LOINC</x-badge>
+                                            <p class="mt-1">Kode {{ $hasilCekLoinc['kode'] }} tidak dikenal, kemungkinan besar ditolak saat kirim. Ganti dengan kode yang benar.</p>
+                                        @else
+                                            <x-badge variant="warning">Belum bisa dicek</x-badge>
+                                            <p class="mt-1">Server tx.fhir.org tidak merespons. Coba lagi beberapa saat.</p>
+                                        @endif
+                                    </div>
+                                @endif
+
+                                <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">Cek ini memastikan kodenya ada dan
+                                    menampilkan artinya. Satu Sehat tidak menyediakan cek kode, jadi diterima atau tidaknya
+                                    baru pasti saat kirim.</p>
                             </div>
                         </div>
 
@@ -669,8 +726,8 @@ new class extends Component {
                     <div class="flex justify-end gap-2">
                         <x-secondary-button type="button" x-on:click="tryClose()">Batal</x-secondary-button>
                         <x-primary-button type="button" wire:click="save" wire:loading.attr="disabled">
-                            <span wire:loading.remove>Simpan</span>
-                            <span wire:loading>Saving...</span>
+                            <span wire:loading.remove wire:target="save">Simpan</span>
+                            <span wire:loading wire:target="save">Saving...</span>
                         </x-primary-button>
                     </div>
                 </div>

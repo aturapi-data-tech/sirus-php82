@@ -8,12 +8,13 @@ use App\Support\KelengkapanEmr;
  * Hitung persentase kelengkapan EMR RJ dari JSON datadaftarpolirj_json.
  *
  * Bobot section (weighted) — sejak 2026-10-28 (lihat App\Support\KelengkapanEmr):
- *   S — Anamnesa       15%
+ *   S — Anamnesa       15%  (termasuk kode SNOMED Keluhan Utama)
  *   O — Pemeriksaan    20%
  *   A — Diagnosa       25%
  *   P — Perencanaan    30%  (+ Kondisi Saat Pulang untuk kunjungan mulai 28/10/2026)
  *   N — Penilaian      10%
- * Koding SNOMED TIDAK masuk % — indikator terpisah 'koding' (KelengkapanEmr::kodingSatuSehat).
+ * Koding SNOMED: kode KELUHAN UTAMA dihitung sebagai butir ke-6 Anamnesa (bobot S tetap 15%);
+ * kode alergi di luar %. Indikator 'koding' (KelengkapanEmr::kodingSatuSehat) menampilkan keduanya.
  *
  * Aturan "terisi":
  *   - Field "screening" (alergi, riwayat penyakit dahulu) — boleh berisi
@@ -50,16 +51,18 @@ trait EmrCompletenessRJTrait
                 'p' => (int) round($p),
                 'n' => (int) round($n),
             ],
-            // Kesiapan Coding SATUSEHAT — terpisah, TIDAK masuk 'emr'. null = belum ada teks yang bisa dikode.
+            // Kesiapan Coding SATUSEHAT (Keluhan Utama & Alergi) — indikator terpisah; hanya kode
+            // keluhan utama yang juga ikut 'emr' lewat S. null = belum ada teks yang bisa dikode.
             'koding' => KelengkapanEmr::kodingSatuSehat($json['anamnesa'] ?? [])['persen'],
         ];
     }
 
     /**
-     * S — Anamnesa: 5 field wajib.
+     * S — Anamnesa: 6 field wajib.
      *   - keluhanUtama, RPS  → konten klinis (harus berisi konten real)
      *   - alergi, RPD        → screening (boleh "Tidak ada", asal NON-EMPTY)
      *   - jamDatang          → audit trail (waktu pasien datang)
+     *   - snomedCode keluhan utama → kode SNOMED dari layar Coding SATUSEHAT
      */
     private function scoreAnamnesaRJ(array $a): int
     {
@@ -73,6 +76,7 @@ trait EmrCompletenessRJTrait
             filled($a['alergi']['alergi'] ?? null) || filled($a['alergi']['adaAlergi'] ?? null),
             filled($a['riwayatPenyakitDahulu']['riwayatPenyakitDahulu'] ?? null),
             filled($a['pengkajianPerawatan']['jamDatang'] ?? null),
+            filled($a['keluhanUtama']['snomedCode'] ?? null),
         ];
 
         return (int) round((array_sum($checks) / count($checks)) * 100);
@@ -182,6 +186,7 @@ trait EmrCompletenessRJTrait
                     ['label' => 'Alergi (boleh "Tidak ada")', 'filled' => filled($a['alergi']['alergi'] ?? null) || filled($a['alergi']['adaAlergi'] ?? null)],
                     ['label' => 'Riwayat penyakit dahulu (boleh "Tidak ada")', 'filled' => filled($a['riwayatPenyakitDahulu']['riwayatPenyakitDahulu'] ?? null)],
                     ['label' => 'Waktu datang', 'filled' => filled($a['pengkajianPerawatan']['jamDatang'] ?? null)],
+                    ['label' => 'Kode SNOMED keluhan utama (layar Coding SATUSEHAT)', 'filled' => filled($a['keluhanUtama']['snomedCode'] ?? null)],
                     // Opsional — tampil, TIDAK dihitung ke persentase.
                     ['label' => 'Keluhan penyerta', 'filled' => filled($a['keluhanPenyerta']['keluhanPenyerta'] ?? null), 'opsional' => true],
                     ['label' => 'Riwayat penyakit keluarga', 'filled' => filled($a['riwayatPenyakitKeluarga']['riwayatPenyakitKeluarga'] ?? null), 'opsional' => true],

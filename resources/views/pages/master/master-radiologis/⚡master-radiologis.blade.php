@@ -4,7 +4,9 @@ use Livewire\Component;
 use Livewire\WithPagination;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Url;
 use Illuminate\Support\Facades\DB;
+use App\Support\CakupanLoincRadiologi;
 
 new class extends Component {
     use WithPagination;
@@ -14,6 +16,15 @@ new class extends Component {
      * ========================= */
     public string $searchKeyword = '';
     public int $itemsPerPage = 10;
+
+    /** 'belum' = tindakan aktif tanpa LOINC, urut dari yang paling sering diminta. */
+    #[Url(as: 'loinc')]
+    public string $filterLoinc = '';
+
+    public function updatedFilterLoinc(): void
+    {
+        $this->resetPage();
+    }
 
     // ==================== UPDATE SEARCH KEYWORD ====================
     public function updatedSearchKeyword(): void
@@ -30,7 +41,7 @@ new class extends Component {
     // ==================== RESET FILTERS ====================
     public function resetFilters(): void
     {
-        $this->reset(['searchKeyword']);
+        $this->reset(['searchKeyword', 'filterLoinc']);
         $this->itemsPerPage = 10;
         $this->resetPage();
     }
@@ -118,8 +129,19 @@ new class extends Component {
                 'r.rad_jd', 'r.rad_jm', 'r.loinc_code', 'r.loinc_display',
                 DB::raw('c.loinc_code AS loinc_terdaftar'),
                 DB::raw('c.display_id AS loinc_nama_id'),
-            )
-            ->orderBy('r.rad_desc', 'asc');
+            );
+
+        if ($this->filterLoinc === 'belum') {
+            $queryBuilder
+                ->leftJoin(DB::raw('(' . CakupanLoincRadiologi::sqlPemakaian() . ') pakai'), 'pakai.rad_id_pakai', '=', 'r.rad_id')
+                ->addSelect(DB::raw('NVL(pakai.jumlah_pakai, 0) AS jumlah_pakai'))
+                ->where('r.active_status', '1')
+                ->whereRaw('TRIM(r.rad_desc) IS NOT NULL')
+                ->whereRaw('TRIM(r.loinc_code) IS NULL')
+                ->orderByRaw('NVL(pakai.jumlah_pakai, 0) DESC');
+        }
+
+        $queryBuilder->orderBy('r.rad_desc', 'asc');
 
         if ($searchKeyword !== '') {
             $uppercaseKeyword = mb_strtoupper($searchKeyword);
@@ -245,6 +267,14 @@ new class extends Component {
                             </x-select-input>
                         </div>
 
+                        <div class="w-56">
+                            <x-input-label for="filterLoinc" value="Filter LOINC" class="sr-only" />
+                            <x-select-input id="filterLoinc" wire:model.live="filterLoinc">
+                                <option value="">Semua tindakan</option>
+                                <option value="belum">Aktif belum LOINC</option>
+                            </x-select-input>
+                        </div>
+
                         <x-outline-button type="button" wire:click="cekStatusLoinc"
                             wire:loading.attr="disabled" wire:target="cekStatusLoinc">
                             <span wire:loading.remove wire:target="cekStatusLoinc">Cek Status LOINC</span>
@@ -292,6 +322,11 @@ new class extends Component {
                                         @if ($this->namaLengkap($row->rad_desc) !== trim((string) $row->rad_desc))
                                             <div class="text-xs font-normal" style="color:var(--muted)">
                                                 {{ $row->rad_desc }}</div>
+                                        @endif
+                                        @if ($filterLoinc === 'belum')
+                                            <div class="text-xs font-normal" style="color:var(--muted)">
+                                                Diminta {{ number_format($row->jumlah_pakai ?? 0, 0, ',', '.') }}x dalam {{ CakupanLoincRadiologi::HARI_PEMAKAIAN }} hari
+                                            </div>
                                         @endif
                                     </td>
                                     <td class="px-6 py-4">{{ $this->formatRupiah($row->rad_price) }}</td>

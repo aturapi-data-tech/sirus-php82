@@ -1,6 +1,7 @@
 <?php
 
 use Livewire\Component;
+use App\Support\AnatomiPemeriksaan;
 use App\Http\Traits\Txn\Rj\EmrRJTrait;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 use App\Http\Traits\Concerns\WithValidationToastTrait;
@@ -78,6 +79,7 @@ new class extends Component {
     public function rendering(): void
     {
         $default = $this->getDefaultPemeriksaan();
+        $this->pemeriksaan['anatomi'] = AnatomiPemeriksaan::rapikanKunci((array) ($this->pemeriksaan['anatomi'] ?? []));
         $this->pemeriksaan = array_replace_recursive($default, $this->pemeriksaan);
     }
 
@@ -167,7 +169,7 @@ new class extends Component {
             // Status Psikiatri — bentuk & opsi di App\Support\Options\PsikiatriOptions.
             'pemeriksaanPsikiatri' => PsikiatriOptions::defaultForm(),
 
-            'anatomi' => collect(['kepala', 'mata', 'telinga', 'hidung', 'rambut', 'bibir', 'gigiGeligi', 'lidah', 'langitLangit', 'leher', 'tenggorokan', 'tonsil', 'dada', 'payudarah', 'punggung', 'perut', 'genital', 'anus', 'lenganAtas', 'lenganBawah', 'jariTangan', 'kukuTangan', 'persendianTangan', 'tungkaiAtas', 'tungkaiBawah', 'jariKaki', 'kukuKaki', 'persendianKaki', 'faring'])
+            'anatomi' => collect(['kepala', 'mata', 'telinga', 'hidung', 'rambut', 'bibir', 'gigiGeligi', 'lidah', 'langitLangit', 'leher', 'tenggorokan', 'tonsil', 'dada', 'payudara', 'punggung', 'perut', 'genital', 'anus', 'lenganAtas', 'lenganBawah', 'jariTangan', 'kukuTangan', 'persendianTangan', 'tungkaiAtas', 'tungkaiBawah', 'jariKaki', 'kukuKaki', 'persendianKaki', 'faring'])
                 ->mapWithKeys(
                     fn($part) => [
                         $part => [

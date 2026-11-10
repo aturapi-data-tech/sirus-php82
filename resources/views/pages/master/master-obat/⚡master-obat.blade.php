@@ -4,7 +4,9 @@ use Livewire\Component;
 use Livewire\WithPagination;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Url;
 use Illuminate\Support\Facades\DB;
+use App\Support\CakupanKfa;
 
 new class extends Component {
     use WithPagination;
@@ -14,6 +16,10 @@ new class extends Component {
      * ------------------------- */
     public string $searchKeyword = '';
     public int $itemsPerPage = 10;
+
+    /** 'belum' = obat aktif tanpa kode KFA, urut dari yang paling sering diresepkan. */
+    #[Url(as: 'kfa')]
+    public string $filterKfa = '';
 
     /* -------------------------
      | Update Search Keyword
@@ -33,13 +39,18 @@ new class extends Component {
         $this->resetPage();
     }
 
+    public function updatedFilterKfa(): void
+    {
+        $this->resetPage();
+    }
+
     /* -------------------------
      | Reset Filters
              * Fungsi: Reset keyword pencarian & per-halaman ke default
      * ------------------------- */
     public function resetFilters(): void
     {
-        $this->reset(['searchKeyword']);
+        $this->reset(['searchKeyword', 'filterKfa']);
         $this->itemsPerPage = 10;
         $this->resetPage();
     }
@@ -115,8 +126,19 @@ new class extends Component {
                 'c.cat_desc as cat_name',
                 'g.grp_name',
                 's.supp_name',
-            )
-            ->orderBy('p.product_name', 'asc');
+            );
+
+        if ($this->filterKfa === 'belum') {
+            $queryBuilder
+                ->leftJoin(DB::raw('(' . CakupanKfa::sqlPemakaian() . ') pakai'), 'pakai.product_id_pakai', '=', 'p.product_id')
+                ->addSelect(DB::raw('NVL(pakai.jumlah_pakai, 0) AS jumlah_pakai'))
+                ->where('p.active_status', '1')
+                ->whereIn('p.cat_id', CakupanKfa::KATEGORI_OBAT)
+                ->whereRaw('TRIM(p.product_id_satusehat) IS NULL')
+                ->orderByRaw('NVL(pakai.jumlah_pakai, 0) DESC');
+        }
+
+        $queryBuilder->orderBy('p.product_name', 'asc');
 
         // Filter berdasarkan keyword pencarian
         if ($searchKeyword !== '') {
@@ -216,6 +238,15 @@ new class extends Component {
 
                     {{-- RIGHT ACTIONS --}}
                     <div class="flex items-center justify-end gap-2">
+                        {{-- Filter cakupan KFA --}}
+                        <div class="w-56">
+                            <x-input-label for="filterKfa" value="Filter KFA" class="sr-only" />
+                            <x-select-input id="filterKfa" wire:model.live="filterKfa">
+                                <option value="">Semua produk</option>
+                                <option value="belum">Obat aktif belum KFA</option>
+                            </x-select-input>
+                        </div>
+
                         {{-- Per Page Selector --}}
                         <div class="w-28">
                             <x-input-label for="itemsPerPage" value="Per halaman" class="sr-only" />
@@ -252,6 +283,7 @@ new class extends Component {
                             <tr class="text-left">
                                 <th class="min-w-[60px]">No</th>
                                 <th class="min-w-[260px]">Produk</th>
+                                <th class="min-w-[120px]">Kode KFA</th>
                                 <th class="min-w-[100px]">Satuan</th>
                                 <th class="min-w-[150px]">Kategori</th>
                                 <th class="min-w-[180px]">Supplier</th>
@@ -274,14 +306,20 @@ new class extends Component {
                                         <div class="font-mono text-xs" style="color:var(--muted)">
                                             {{ $row->product_id }}@if (!empty($row->kode)) · {{ $row->kode }}@endif
                                         </div>
-                                        @if (!empty($row->product_id_satusehat))
-                                            <div class="mt-1">
-                                                <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded font-mono text-[10px] font-bold bg-teal-50 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300"
-                                                    title="Kode Satu Sehat (KFA)">
-                                                    Satu Sehat
-                                                    <span class="font-mono">{{ $row->product_id_satusehat }}</span>
-                                                </span>
+                                        @if ($filterKfa === 'belum')
+                                            <div class="mt-1 text-xs" style="color:var(--muted)">
+                                                Diresepkan {{ number_format($row->jumlah_pakai ?? 0, 0, ',', '.') }}x dalam {{ CakupanKfa::HARI_PEMAKAIAN }} hari
                                             </div>
+                                        @endif
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        {{-- Alkes dkk tidak dihitung cakupan KFA, jadi kosongnya bukan "Belum". --}}
+                                        @if (trim($row->product_id_satusehat ?? '') !== '')
+                                            <span class="ds-td-token">{{ $row->product_id_satusehat }}</span>
+                                        @elseif (in_array((string) $row->cat_id, CakupanKfa::KATEGORI_OBAT, true))
+                                            <x-badge variant="danger">Belum</x-badge>
+                                        @else
+                                            <span style="color:var(--muted)">-</span>
                                         @endif
                                     </td>
                                     <td class="px-6 py-4">{{ $row->uom_name ?? '-' }}</td>
@@ -308,7 +346,7 @@ new class extends Component {
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="7" class="px-6 py-10 text-center" style="color:var(--muted)">
+                                    <td colspan="8" class="px-6 py-10 text-center" style="color:var(--muted)">
                                         <div class="flex flex-col items-center justify-center gap-2">
                                             <svg class="w-12 h-12 text-gray-300 dark:text-gray-600" fill="none"
                                                 stroke="currentColor" viewBox="0 0 24 24">

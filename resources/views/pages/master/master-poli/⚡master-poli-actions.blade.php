@@ -4,6 +4,7 @@ use Livewire\Component;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\QueryException;
+use App\Support\CakupanLocationPoli;
 
 // Deklarasi Render Versioning Trait //
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
@@ -147,6 +148,7 @@ new class extends Component {
         $this->dispatch('toast', type: 'success', message: 'Data poli berhasil disimpan.');
         $this->closeModal();
 
+        CakupanLocationPoli::lupakan();
         $this->dispatch('master.poli.saved');
     }
 
@@ -231,6 +233,7 @@ new class extends Component {
             }
 
             $this->dispatch('toast', type: 'success', message: 'Data poli berhasil dihapus.');
+            CakupanLocationPoli::lupakan();
             $this->dispatch('master.poli.saved');
         } catch (QueryException $e) {
             if (str_contains($e->getMessage(), 'ORA-02292')) {

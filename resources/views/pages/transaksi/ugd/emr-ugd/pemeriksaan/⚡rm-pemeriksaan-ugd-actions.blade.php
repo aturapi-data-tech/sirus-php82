@@ -1,6 +1,7 @@
 <?php
 
 use Livewire\Component;
+use App\Support\AnatomiPemeriksaan;
 use Livewire\Attributes\On;
 use Livewire\WithFileUploads;
 use Illuminate\Support\Facades\DB;
@@ -64,6 +65,7 @@ new class extends Component {
     public function rendering(): void
     {
         $default = $this->getDefaultPemeriksaan();
+        $this->pemeriksaan['anatomi'] = AnatomiPemeriksaan::rapikanKunci((array) ($this->pemeriksaan['anatomi'] ?? []));
         $this->pemeriksaan = array_replace_recursive($default, $this->pemeriksaan);
     }
 
@@ -657,7 +659,7 @@ new class extends Component {
 
     private function defaultAnatomi(): array
     {
-        $parts = ['kepala', 'mata', 'telinga', 'hidung', 'rambut', 'bibir', 'gigiGeligi', 'lidah', 'langitLangit', 'leher', 'tenggorokan', 'tonsil', 'dada', 'payudarah', 'punggung', 'perut', 'genital', 'anus', 'lenganAtas', 'lenganBawah', 'jariTangan', 'kukuTangan', 'persendianTangan', 'tungkaiAtas', 'tungkaiBawah', 'jariKaki', 'kukuKaki', 'persendianKaki', 'faring'];
+        $parts = ['kepala', 'mata', 'telinga', 'hidung', 'rambut', 'bibir', 'gigiGeligi', 'lidah', 'langitLangit', 'leher', 'tenggorokan', 'tonsil', 'dada', 'payudara', 'punggung', 'perut', 'genital', 'anus', 'lenganAtas', 'lenganBawah', 'jariTangan', 'kukuTangan', 'persendianTangan', 'tungkaiAtas', 'tungkaiBawah', 'jariKaki', 'kukuKaki', 'persendianKaki', 'faring'];
 
         $opts = [['kelainan' => 'Tidak Diperiksa'], ['kelainan' => 'Tidak Ada Kelainan'], ['kelainan' => 'Ada']];
 

@@ -5,6 +5,7 @@ use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Database\QueryException;
+use App\Support\CakupanLoincRadiologi;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 
 new class extends Component {
@@ -185,6 +186,7 @@ new class extends Component {
             $this->dispatch('toast', type: 'success', message: 'Data radiologis berhasil disimpan.');
             $this->closeModal();
 
+            CakupanLoincRadiologi::lupakan();
             $this->dispatch('master.radiologis.saved');
         } catch (QueryException $e) {
             $this->dispatch('toast', type: 'error', message: 'Terjadi kesalahan database: ' . $e->getMessage());
@@ -252,6 +254,7 @@ new class extends Component {
         DB::table('rsmst_radiologis')->where('rad_id', $radId)->update(['active_status' => $next]);
         $this->dispatch('toast', type: 'success',
             message: 'Status radiologis → ' . ($next === '1' ? 'Aktif' : 'Tidak Aktif'));
+        CakupanLoincRadiologi::lupakan();
         $this->dispatch('master.radiologis.saved');
     }
 
@@ -277,6 +280,7 @@ new class extends Component {
             }
 
             $this->dispatch('toast', type: 'success', message: 'Data radiologis berhasil dihapus.');
+            CakupanLoincRadiologi::lupakan();
             $this->dispatch('master.radiologis.saved');
         } catch (QueryException $e) {
             // Handle Oracle foreign key constraint error

@@ -220,6 +220,7 @@ new class extends Component {
             'riwayatPenyakitKeluarga' => $ref('FamilyMemberHistory', $satuSehat['riwayatPenyakitKeluargaIds'] ?? []),
             'riwayatPengobatan' => $ref('MedicationStatement', $satuSehat['riwayatPengobatanIds'] ?? []),
             'riwayatAlergi' => array_merge($ref('AllergyIntolerance', $satuSehat['allergyId'] ?? []), $ref('AllergyIntolerance', $satuSehat['allergyIds'] ?? [])),
+            'headToToe' => $ref('Observation', $satuSehat['headToToeIds'] ?? []),
             'tandaVital' => array_merge(
                 $ref('Observation', $satuSehat['observationIds'] ?? []),
                 $ref('Observation', collect($satuSehat['observasiLanjutanIds'] ?? [])->flatten()->all()), // 5e berulang

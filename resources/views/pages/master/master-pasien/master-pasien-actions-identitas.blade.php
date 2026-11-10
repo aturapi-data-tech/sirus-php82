@@ -41,8 +41,25 @@
             </div>
         </div>
 
+        {{-- Bayi baru lahir: tanpa NIK sendiri, IHS didaftarkan lewat NIK ibu --}}
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-5">
+            <div class="sm:col-span-2">
+                <x-input-label value="NIK Ibu (bayi baru lahir)" />
+                <x-text-input wire:model.live="dataPasien.pasien.bayi.nikIbu" placeholder="16 digit, kosongkan bila bukan bayi"
+                    class="w-full mt-1" />
+            </div>
+            <div>
+                <x-input-label value="Urutan Lahir" />
+                <x-text-input type="number" min="0" wire:model.live="dataPasien.pasien.bayi.urutanLahir" placeholder="0"
+                    class="w-full mt-1" />
+                <p class="mt-1 text-xs text-muted">0 = tidak kembar; kembar: 1, 2, dst.</p>
+            </div>
+        </div>
+
         {{-- Catatan (buka/tutup) — aksen brand biar terkesan bisa diklik --}}
+        {{-- Terbuka sendiri saat nama pasien diawali Bayi, supaya langkah bayi tidak terlewat. --}}
         <div x-data="{ open: false }"
+            x-effect="if (/^(BAYI|BYI|BY[\s.])/i.test(($wire.dataPasien?.pasien?.regName ?? '').trim())) open = true"
             class="overflow-hidden border rounded-lg border-brand-green/30 dark:border-brand-lime/30">
             <button type="button" x-on:click="open = !open"
                 class="flex items-center justify-between w-full gap-2 px-3 py-2 transition-colors bg-brand-green/5 text-brand-green hover:bg-brand-green/10 dark:bg-brand-lime/10 dark:text-brand-lime dark:hover:bg-brand-lime/20">
@@ -60,9 +77,16 @@
             <div x-show="open" x-collapse x-cloak class="px-3 py-2 text-sm text-body dark:text-gray-300">
                 1. Jika Pasien (Tidak dikenal) NIK diisi Kosong<br>
                 2. Isi alamat sesuai dengan ditemukannya pasien<br>
-                3. Untuk Pasien Bayi Baru lahir:<br>
-                &nbsp;&nbsp;&nbsp;- Isi NIK dengan "NIK Ibu bayi"<br>
-                &nbsp;&nbsp;&nbsp;- Nama bayi dengan format "Bayi Ny(Nama Ibu)"
+
+                <p class="mt-2 font-semibold">3. Daftar Bayi Baru Lahir (RM sendiri, bukan RM ibu)</p>
+                <ol class="pl-5 mt-1 space-y-1 list-decimal">
+                    <li>Nama: "Bayi Ny (Nama Ibu)". Tanggal lahir dan jenis kelamin milik bayi.</li>
+                    <li>Isi kolom NIK dan NIK Ibu dengan NIK ibu bayi. Bayi yang sudah punya nama (tanpa kata "Bayi") wajib mengisi NIK Ibu.</li>
+                    <li>Urutan Lahir: 0 bila tidak kembar. Bayi kembar punya RM masing-masing, isi 1, 2, dst dan bedakan namanya (Bayi A Ny..., Bayi B Ny...).</li>
+                    <li>Alamat memakai alamat ibu, dan desa dipilih dari daftar. Lalu tekan Simpan.</li>
+                    <li>IHS bayi didapat otomatis saat Kirim Encounter. Bila ingin sekarang, tekan tombol di samping Patient UUID, lalu tekan Simpan lagi.</li>
+                    <li>Ibu harus punya IHS. Bila ibu punya RM di sini, IHS ibu diambil otomatis. Bila tidak punya RM dan belum terdaftar di SATUSEHAT, daftarkan ibu dulu sebagai pasien.</li>
+                </ol>
             </div>
         </div>
     </div>

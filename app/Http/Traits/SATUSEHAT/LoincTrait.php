@@ -65,4 +65,33 @@ trait LoincTrait
 
         return $display ? ['code' => $code, 'display' => $display] : null;
     }
+
+    /**
+     * Periksa kode ke LOINC. Beda dari lookupLoincCode(): kode tak dikenal dibedakan dari server gagal,
+     * supaya gangguan tx.fhir.org tidak terbaca sebagai kode salah.
+     *
+     * @return array{status: 'ada'|'tidak_ada'|'gagal', display: ?string}
+     */
+    protected function periksaKodeLoinc(string $code): array
+    {
+        try {
+            $response = Http::withHeaders(['Accept' => 'application/fhir+json'])
+                ->timeout(8)
+                ->get("{$this->loincFhirBaseUrl}/CodeSystem/\$lookup", ['system' => 'http://loinc.org', 'code' => $code]);
+        } catch (\Throwable $e) {
+            return ['status' => 'gagal', 'display' => null];
+        }
+
+        if (in_array($response->status(), [400, 404, 422], true)) {
+            return ['status' => 'tidak_ada', 'display' => null];
+        }
+
+        if (! $response->successful()) {
+            return ['status' => 'gagal', 'display' => null];
+        }
+
+        $display = collect($response->json('parameter') ?? [])->firstWhere('name', 'display')['valueString'] ?? null;
+
+        return ['status' => 'ada', 'display' => $display];
+    }
 }

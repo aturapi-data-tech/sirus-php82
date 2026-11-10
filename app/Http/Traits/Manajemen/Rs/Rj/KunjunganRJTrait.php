@@ -78,6 +78,46 @@ trait KunjunganRJTrait
     }
 
     /**
+     * Breakdown per poli dengan rincian per bulan (laporan bulanan, rentang 1 tahun).
+     * Satu query group by poli + bulan, dirakit di PHP: tiap poli punya total & per_bulan[1..12].
+     * Sorted desc by total — urutan sama dgn poliBreakdownRJ().
+     */
+    protected function poliBreakdownPerBulanRJ($start, $end)
+    {
+        $bulanSql = "to_char(h.rj_date, 'MM')";
+
+        $hitunganList = DB::table('rstxn_rjhdrs as h')
+            ->leftJoin('rsmst_polis as p', 'p.poli_id', '=', 'h.poli_id')
+            ->select([
+                'h.poli_id',
+                DB::raw("{$bulanSql} as bulan"),
+                DB::raw('MAX(p.poli_desc) as poli_desc'),
+                DB::raw('COUNT(DISTINCT h.rj_no) as total'),
+            ])
+            ->whereBetween('h.rj_date', [$start, $end])
+            ->where('h.klaim_id', '!=', 'KR')
+            ->groupBy('h.poli_id', DB::raw($bulanSql))
+            ->get();
+
+        return $hitunganList
+            ->groupBy(fn($row) => (string) $row->poli_id)
+            ->map(function ($rowsPoli) {
+                $perBulan = array_fill(1, 12, 0);
+                foreach ($rowsPoli as $row) {
+                    $perBulan[(int) $row->bulan] = (int) $row->total;
+                }
+                return (object) [
+                    'poli_id'   => $rowsPoli->first()->poli_id,
+                    'poli_desc' => $rowsPoli->pluck('poli_desc')->filter()->first(),
+                    'total'     => array_sum($perBulan),
+                    'per_bulan' => $perBulan,
+                ];
+            })
+            ->sortByDesc('total')
+            ->values();
+    }
+
+    /**
      * Fill 1 row dari aggregate hasil buildKunjunganRJAggregate.
      * Pakai null-coalescing supaya periode tanpa data tetap 0 (bukan null).
      */
@@ -135,6 +175,14 @@ trait KunjunganRJTrait
             'baru'   => array_column($rows, 'baru'),
             'lama'   => array_column($rows, 'lama'),
         ];
+    }
+
+    protected function bulanSingkatLabel(int $m): string
+    {
+        return [
+            1 => 'Jan', 2 => 'Feb', 3 => 'Mar', 4 => 'Apr', 5 => 'Mei', 6 => 'Jun',
+            7 => 'Jul', 8 => 'Agu', 9 => 'Sep', 10 => 'Okt', 11 => 'Nov', 12 => 'Des',
+        ][$m] ?? (string) $m;
     }
 
     protected function bulanLabel(int $m): string

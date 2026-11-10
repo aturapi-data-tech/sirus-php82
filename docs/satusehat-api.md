@@ -444,7 +444,7 @@ Sub-section ditulis di `section[i].section[j]`:
 | | | | Riwayat Penyakit Keluarga | 10157-6 | FamilyMemberHistory |
 | | | | Riwayat Pengobatan | 10160-0 | MedicationStatement |
 | 2 | Pemeriksaan Fisik | TK000007 | Tanda Vital | 8716-3 | Observation (TTV, kesadaran, antropometri) |
-| | | | Head to Toe | 10187-3 | Observation |
+| | | | Head to Toe | 10187-3 | Observation kategori `exam` (kartu `kirim-head-to-toe`, peta `HeadToToeMap`, id di `satusehat.headToToeIds`; hanya bagian yang diperiksa, Faring tak ada di playbook jadi tidak dikirim) |
 | 3 | Pemeriksaan Fungsional | 47420-5 | — | — | Observation (status psikologis) |
 | 4 | Perencanaan Perawatan | 18776-5 | — | — | ClinicalImpression, Goal, CarePlan |
 | 5 | Pemeriksaan Penunjang | TK000009 | Hasil Lab | 11502-2 | ServiceRequest, Procedure, Specimen, Observation, DiagnosticReport |

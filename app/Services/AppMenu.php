@@ -113,6 +113,8 @@ class AppMenu
             $entry(['group' => 'Master Pelayanan', 'groupOrder' => 1, 'order' => 14, 'route' => 'master.jasa-medis', 'title' => 'Master Jasa Medis', 'desc' => 'Kelola tarif jasa medis (Umum & BPJS) + paket bundling obat / lain-lain', 'roles' => $masterRoles, 'badge' => 'Pelayanan']),
             $entry(['group' => 'Master Pelayanan', 'groupOrder' => 1, 'order' => 15, 'route' => 'master.jasa-dokter', 'title' => 'Master Jasa Dokter', 'desc' => 'Kelola tarif jasa dokter (Umum & BPJS) + paket bundling obat / lain-lain', 'roles' => $masterRoles, 'badge' => 'Pelayanan']),
 
+            $entry(['group' => 'Master Pelayanan', 'groupOrder' => 1, 'order' => 19, 'route' => 'master.mapping-satusehat', 'title' => 'Mapping SATUSEHAT', 'desc' => 'Cakupan KFA, LOINC, IHS dan Location pada master, dengan tautan ke yang belum terisi', 'roles' => ['admin', 'apoteker', 'laboratorium', 'radiologi', 'mr'], 'badge' => 'SATUSEHAT']),
+
             // ── Master Laboratorium ──────────────────────────────────
             $entry(['group' => 'Master Laboratorium', 'groupOrder' => 2, 'order' => 1, 'route' => 'master.laborat', 'title' => 'Master Laboratorium', 'desc' => 'Kelola kategori lab & item pemeriksaan', 'roles' => $masterRoles, 'badge' => 'Lab']),
             $entry(['group' => 'Master Laboratorium', 'groupOrder' => 2, 'order' => 2, 'route' => 'master.loinc', 'title' => 'Master LOINC', 'desc' => 'Kode LOINC pemeriksaan lab & observasi — LOV + pengiriman SATUSEHAT', 'roles' => $masterRoles, 'badge' => 'SATUSEHAT']),
@@ -153,6 +155,9 @@ class AppMenu
             $entry(['group' => 'Casemix', 'groupOrder' => 8, 'order' => 7, 'route' => 'manajemen.rs.rekam-medis.arsip-modul-dokumen', 'title' => 'Arsip Modul Dokumen', 'desc' => 'Kunjungan RJ/UGD/RI per bulan — buka Rekam Medis untuk lihat & cetak modul dokumen', 'roles' => ['admin', 'manager umum', 'casemix', 'tu'], 'badge' => 'Casemix']),
             $entry(['group' => 'Casemix', 'groupOrder' => 8, 'order' => 5, 'route' => 'casemix', 'params' => ['tab' => 'rekap-rj'], 'title' => 'Rekap iDRG Rawat Jalan', 'desc' => 'Rekap klaim iDRG/INA-CBG pasien rawat jalan per SEP (get_claim_data)', 'roles' => ['admin', 'manager umum', 'casemix', 'tu'], 'badge' => 'IDRG-RJ']),
             $entry(['group' => 'Casemix', 'groupOrder' => 8, 'order' => 6, 'route' => 'casemix', 'params' => ['tab' => 'rekap'], 'title' => 'Rekap iDRG Rawat Inap', 'desc' => 'Rekap klaim iDRG/INA-CBG pasien rawat inap per SEP (get_claim_data)', 'roles' => ['admin', 'manager umum', 'casemix', 'tu'], 'badge' => 'IDRG-RI']),
+
+            // ── DINKESTA (Dinas Kesehatan Tulungagung — kewajiban daerah) ──
+            $entry(['group' => 'Dinas Kesehatan Tulungagung', 'groupOrder' => 8, 'order' => 1, 'route' => 'dinkesta.kirim-rj', 'title' => 'Kirim DINKESTA Rawat Jalan', 'desc' => 'Kirim bulk diagnosis ICD-10 kunjungan RJ per bulan ke Portal Satu Data Kesehatan Tulungagung', 'roles' => ['admin', 'casemix', 'tu'], 'badge' => 'DINKES']),
 
             // ── Apotek (transaksi) ──────────────────────────────────
             $entry(['group' => 'Apotek', 'groupOrder' => 9, 'order' => 1, 'route' => 'apotek', 'title' => 'Antrian Apotek', 'desc' => 'Telaah resep & pelayanan kefarmasian — tab RJ, UGD, RI', 'roles' => ['admin', 'apoteker', 'manager medis'], 'badge' => 'APT']),

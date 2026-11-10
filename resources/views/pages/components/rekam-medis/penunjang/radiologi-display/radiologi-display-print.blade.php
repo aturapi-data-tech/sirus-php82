@@ -149,6 +149,25 @@
         .rad-hasil-bacaan .ql-indent-3 {
             padding-left: 72px;
         }
+
+        /* Ukuran piksel sisa editor ditimpa (!important) — alasan: lihat resume-medis-ri-print. */
+        .rad-hasil-bacaan table {
+            width: 100% !important;
+            height: auto !important;
+            border-collapse: collapse;
+        }
+
+        .rad-hasil-bacaan table tr {
+            height: auto !important;
+        }
+
+        .rad-hasil-bacaan table td,
+        .rad-hasil-bacaan table th {
+            width: auto !important;
+            height: auto !important;
+            vertical-align: top;
+            word-wrap: break-word;
+        }
     </style>
     <div class="rad-hasil-bacaan mb-6 px-2">
         {!! !empty($header->hasil_bacaan) ? $header->hasil_bacaan : '<p>-</p>' !!}

@@ -230,14 +230,18 @@
 
                 <p class="font-bold mb-0.5">TANDA VITAL :</p>
                 <table cellpadding="0" cellspacing="0" class="w-full text-[10px]">
+                    @php
+                        $sistolikCetak = $dataDaftarTxn['pemeriksaan']['tandaVital']['sistolik'] ?? null;
+                        $distolikCetak = $dataDaftarTxn['pemeriksaan']['tandaVital']['distolik'] ?? null;
+                        $nadiCetak = $dataDaftarTxn['pemeriksaan']['tandaVital']['frekuensiNadi'] ?? null;
+                    @endphp
                     <tr>
                         <td class="w-20">TD</td>
-                        <td>:&nbsp;{{ $dataDaftarTxn['pemeriksaan']['tandaVital']['sistolik'] ?? '-' }} /
-                            {{ $dataDaftarTxn['pemeriksaan']['tandaVital']['distolik'] ?? '-' }} mmhg</td>
+                        <td>:&nbsp;{{ filled($sistolikCetak) || filled($distolikCetak) ? (filled($sistolikCetak) ? $sistolikCetak : '-') . ' / ' . (filled($distolikCetak) ? $distolikCetak : '-') . ' mmhg' : 'Tidak diperiksa' }}</td>
                     </tr>
                     <tr>
                         <td>Nadi</td>
-                        <td>:&nbsp;{{ $dataDaftarTxn['pemeriksaan']['tandaVital']['frekuensiNadi'] ?? '-' }} x/mnt</td>
+                        <td>:&nbsp;{{ filled($nadiCetak) ? $nadiCetak . ' x/mnt' : 'Tidak diperiksa' }}</td>
                     </tr>
                     <tr>
                         <td>Suhu</td>
@@ -253,7 +257,7 @@
                     </tr>
                     <tr>
                         <td>GDA</td>
-                        <td>:&nbsp;{{ $dataDaftarTxn['pemeriksaan']['tandaVital']['gda'] ?? '-' }} mg/dL</td>
+                        <td>:&nbsp;{{ filled($dataDaftarTxn['pemeriksaan']['tandaVital']['gda'] ?? null) ? $dataDaftarTxn['pemeriksaan']['tandaVital']['gda'] . ' mg/dL' : 'Tidak diperiksa' }}</td>
                     </tr>
                     <tr>
                         <td>GCS</td>
@@ -351,7 +355,7 @@
             <td class="border border-black px-1.5 py-0.5 align-top">
                 <span class="font-bold">Anatomi :</span><br>
                 @if (!empty($dataDaftarTxn['pemeriksaan']['anatomi']))
-                    @foreach ($dataDaftarTxn['pemeriksaan']['anatomi'] as $key => $pAnatomi)
+                    @foreach (\App\Support\AnatomiPemeriksaan::rapikanKunci($dataDaftarTxn['pemeriksaan']['anatomi']) as $key => $pAnatomi)
                         @php $kelainan = $pAnatomi['kelainan'] ?? false; @endphp
                         @if ($kelainan && $kelainan !== 'Tidak Diperiksa')
                             <span class="font-semibold">{{ strtoupper($key) }}</span>: {{ $kelainan }} &mdash;
