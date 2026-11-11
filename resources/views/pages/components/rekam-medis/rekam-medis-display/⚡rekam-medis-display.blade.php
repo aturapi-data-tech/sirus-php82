@@ -136,6 +136,14 @@ new class extends Component {
                     $to['eresep'] = $eresepFrom;
 
                     foreach ($to['eresep'] as $key => $item) {
+                        // qty lama bisa berisi salah ketik (mis. "`14") → ORA-01722; ambil angkanya saja
+                        $qty = preg_match('/\d+/', (string) ($item['qty'] ?? ''), $m) ? (int) $m[0] : 0;
+                        if ($qty < 1) {
+                            throw new \Exception('Jumlah obat ' . ($item['productName'] ?? '-') . ' pada resep sumber tidak valid ("' . ($item['qty'] ?? '') . '"). Perbaiki dulu di e-resep kunjungan sumber.');
+                        }
+                        $item['qty'] = $qty;
+                        $to['eresep'][$key]['qty'] = $qty;
+
                         $maxDtl++;
 
                         $productPrice = DB::table('immst_products')->where('product_id', $item['productId'])->value('sales_price') ?? 0;
@@ -173,6 +181,10 @@ new class extends Component {
                         if (!isset($item['jenisKeterangan'])) {
                             continue;
                         }
+
+                        // qty racikan boleh kosong; bila terisi, ambil angkanya saja
+                        $item['qty'] = preg_match('/\d+/', (string) ($item['qty'] ?? ''), $m) ? (int) $m[0] : null;
+                        $to['eresepRacikan'][$key]['qty'] = $item['qty'];
 
                         $maxDtlRacikan++;
 

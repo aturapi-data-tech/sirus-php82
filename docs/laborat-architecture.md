@@ -43,7 +43,7 @@ lbtxn_checkuphdrs  (PK checkup_no; checkup_status, status_rjri, ref_no, reg_no, 
         ├── lbtxn_checkupoutdtls  (pemeriksaan LUAR: labout_result, labout_normal, labout_price)
         └── lbtxn_checkupobats    (obat/bahan: price, qty)
 
-lbmst_clabs (PK clab_id)  1:N  lbmst_clabitems (PK clabitem_id+clab_id+product_id)
+lbmst_clabs (PK clab_id)  1:N  lbmst_clabitems (PK clabitem_id; FK clab_id)
         (master item: rentang normal/kritis, unit, mapping alat/LOINC, paket)
 
 Biaya di-POST saat P→C ke SATU baris agregat sesuai status_rjri:
@@ -176,7 +176,11 @@ Route `/master/laborat` → `master-laborat/clab` (kategori) + `master-laborat/c
 
 **`lbmst_clabs`**: `clab_id` (PK), `clab_desc`, `app_seq`.
 
-**`lbmst_clabitems`** (PK `clabitem_id`+`clab_id`+`product_id`) — kolom kunci:
+**`lbmst_clabitems`** (PK **hanya** `clabitem_id`; FK `clab_id` → `lbmst_clabs`) — kolom kunci:
+
+`product_id` = produk/reagen dari `immst_products` (NOT NULL, bukan bagian PK, tidak dibaca kode aplikasi baru
+— warisan Oracle 6i). `'0'` = tanpa produk (103 dari 228 item per 2026-11-11). Form: LOV opsional
+"Produk/Reagen", kosong disimpan `'0'`; boleh diganti saat Edit.
 
 | Grup | Kolom |
 |---|---|
