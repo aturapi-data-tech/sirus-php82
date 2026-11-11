@@ -134,20 +134,20 @@ new class extends Component {
             {{-- Toolbar --}}
             <div
                 class="sticky z-30 px-4 py-3 bg-surface-soft border-b border-hairline top-20 dark:bg-gray-900 dark:border-gray-700">
-                <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-                    <div class="flex items-center gap-3 w-full lg:max-w-xs">
+                <div class="flex items-center gap-2">
+                    <div class="flex-1 min-w-0">
                         <x-text-input type="text" wire:model.live.debounce.300ms="searchItem"
                             placeholder="Cari pemeriksaan..." class="block w-full" />
                     </div>
-                    <div class="flex items-center justify-end gap-2">
-                        <div class="w-48">
+                    <div class="flex items-center gap-2 shrink-0">
+                        <div class="w-40">
                             <x-select-input wire:model.live="filterLoinc" aria-label="Filter LOINC">
                                 <option value="">{{ $selectedClabId ? 'Kategori terpilih' : 'Pilih kategori' }}</option>
                                 <option value="belum">Semua belum LOINC</option>
                             </x-select-input>
                         </div>
-                        <div class="w-28">
-                            <x-select-input wire:model.live="itemsPerPage">
+                        <div class="w-20">
+                            <x-select-input wire:model.live="itemsPerPage" aria-label="Baris per halaman">
                                 <option value="10">10</option>
                                 <option value="15">15</option>
                                 <option value="20">20</option>
@@ -155,7 +155,7 @@ new class extends Component {
                             </x-select-input>
                         </div>
                         @if ($selectedClabId)
-                            <x-primary-button type="button" wire:click="openCreateClabitem">
+                            <x-primary-button type="button" wire:click="openCreateClabitem" class="whitespace-nowrap">
                                 + Tambah Pemeriksaan
                             </x-primary-button>
                         @endif

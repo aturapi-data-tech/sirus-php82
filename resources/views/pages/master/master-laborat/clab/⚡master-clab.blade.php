@@ -180,29 +180,29 @@ new class extends Component {
         <div class="flex flex-col flex-1 min-h-0 px-6 pt-2 pb-6 space-y-6">
 
             {{-- ══ GRID: CLAB (kiri) + CLABITEM (kanan) ══════════════ --}}
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-2 flex-1 min-h-0">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-2 flex-1 min-h-0">
 
                 {{-- ── CLAB ─────────────────────────────────────── --}}
-                <div class="flex flex-col min-h-0">
+                <div class="flex flex-col min-h-0 lg:col-span-5">
                     {{-- Toolbar CLAB --}}
                     <div class="sticky z-30 px-4 py-3 bg-surface-soft border-b border-hairline top-20 dark:bg-gray-900 dark:border-gray-700">
-                        <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-                            <div class="w-full lg:max-w-xs">
+                        <div class="flex items-center gap-2">
+                            <div class="flex-1 min-w-0">
                                 <x-input-label for="searchClab" value="Cari Kategori" class="sr-only" />
                                 <x-text-input id="searchClab" type="text"
                                     wire:model.live.debounce.300ms="searchClab" placeholder="Cari kategori lab..."
                                     class="block w-full" />
                             </div>
-                            <div class="flex items-center justify-end gap-2">
-                                <div class="w-28">
-                                    <x-select-input wire:model.live="itemsPerPage">
+                            <div class="flex items-center gap-2 shrink-0">
+                                <div class="w-20">
+                                    <x-select-input wire:model.live="itemsPerPage" aria-label="Baris per halaman">
                                         <option value="10">10</option>
                                         <option value="15">15</option>
                                         <option value="20">20</option>
                                         <option value="50">50</option>
                                     </x-select-input>
                                 </div>
-                                <x-primary-button type="button" wire:click="openCreateClab">
+                                <x-primary-button type="button" wire:click="openCreateClab" class="whitespace-nowrap">
                                     + Tambah Kategori
                                 </x-primary-button>
                                 <x-toolbar-refresh-reset :label="null" />
@@ -288,7 +288,7 @@ new class extends Component {
                 </div>
 
                 {{-- ── CLABITEM (child component) ───────────────── --}}
-                <div class="flex flex-col min-h-0">
+                <div class="flex flex-col min-h-0 lg:col-span-7">
                     <livewire:pages::master.master-laborat.clabitem.master-clabitem wire:key="master-clabitem" />
                 </div>
 
