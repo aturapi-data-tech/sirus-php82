@@ -163,7 +163,7 @@ new class extends Component {
                 'formClabitem.clabitem_id' => 'required|string|max:10',
                 'formClabitem.clabitem_desc' => 'required|string|max:100',
                 'formClabitem.clab_id' => 'required|string|max:5',
-                'formClabitem.product_id' => 'required|string|max:10',
+                'formClabitem.product_id' => 'nullable|string|max:10|exists:immst_products,product_id',
                 'formClabitem.is_group' => 'nullable|string|max:10',
                 'formClabitem.clabitem_group' => 'nullable|string|max:10',
                 'formClabitem.price' => 'nullable|integer|min:0',
@@ -193,19 +193,24 @@ new class extends Component {
                 'formClabitem.nilai_kritis' => 'nullable|in:Y,N',
                 'formClabitem.status' => 'nullable|string|max:10',
             ],
-            [],
+            [
+                'formClabitem.product_id.exists' => 'Produk/Reagen tidak ditemukan di master obat & barang.',
+            ],
             [
                 'formClabitem.clabitem_id' => 'Kode Pemeriksaan',
                 'formClabitem.clabitem_desc' => 'Nama Pemeriksaan',
                 'formClabitem.clab_id' => 'Kategori Lab',
-                'formClabitem.product_id' => 'Kode Produk',
+                'formClabitem.product_id' => 'Produk/Reagen',
                 'formClabitem.price' => 'Tarif Pemeriksaan',
                 'formClabitem.unit_desc' => 'Satuan Hasil',
             ],
         );
 
+        // product_id = produk/reagen dari immst_products; bukan bagian PK (PK hanya clabitem_id).
+        // Kosong disimpan '0' seperti mayoritas item lama (kolom NOT NULL, '0' = tanpa produk).
         $payload = [
             'clabitem_desc' => $this->formClabitem['clabitem_desc'],
+            'product_id' => trim($this->formClabitem['product_id'] ?? '') ?: '0',
             'is_group' => $this->formClabitem['is_group'] ?: null,
             'clabitem_group' => $this->formClabitem['clabitem_group'] ?: null,
             'price' => (int) ($this->formClabitem['price'] ?: 0),
@@ -237,10 +242,14 @@ new class extends Component {
         ];
 
         if ($this->formMode === 'create') {
+            if (DB::table('lbmst_clabitems')->where('clabitem_id', $this->formClabitem['clabitem_id'])->exists()) {
+                $this->addError('formClabitem.clabitem_id', 'Kode Pemeriksaan sudah dipakai.');
+                return;
+            }
+
             DB::table('lbmst_clabitems')->insert([
                 'clabitem_id' => $this->formClabitem['clabitem_id'],
                 'clab_id' => $this->formClabitem['clab_id'],
-                'product_id' => $this->formClabitem['product_id'],
                 ...$payload,
             ]);
         } else {
@@ -264,6 +273,24 @@ new class extends Component {
     public function onClabitemGroupSelected(string $target, ?array $payload): void
     {
         $this->formClabitem['clabitem_group'] = $payload['clabitem_id'] ?? '';
+    }
+
+    /* =========================================================
+     * LOV — Produk/Reagen (opsional)
+     * ========================================================= */
+    #[On('lov.selected.clabitemProduct')]
+    public function onClabitemProductSelected(string $target, ?array $payload): void
+    {
+        $this->formClabitem['product_id'] = $payload['product_id'] ?? '';
+        $this->resetValidation('formClabitem.product_id');
+    }
+
+    // lov-product tidak mengirim event saat Ubah/kosongkan, jadi "tanpa produk" lewat tombol sendiri
+    public function kosongkanProduk(): void
+    {
+        $this->formClabitem['product_id'] = '';
+        $this->resetValidation('formClabitem.product_id');
+        $this->incrementVersion('modal');
     }
 
     /* =========================================================
@@ -709,6 +736,29 @@ new class extends Component {
                                 <option value="1">Sembunyikan</option>
                             </x-select-input>
                             <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">Sembunyi = tidak di cetakan</p>
+                        </div>
+                    </div>
+
+                    @php
+                        $produkTerpilih = trim($formClabitem['product_id'] ?? '');
+                    @endphp
+                    <div class="grid grid-cols-1 gap-4 mt-4 sm:grid-cols-2 items-start">
+                        <div>
+                            <livewire:lov.product.lov-product target="clabitemProduct" label="Produk/Reagen (opsional)"
+                                placeholder="Ketik nama/kode produk reagen..."
+                                :initialProductId="$produkTerpilih !== '' && $produkTerpilih !== '0' ? $produkTerpilih : null"
+                                wire:key="lov-clabitem-product-{{ $renderVersions['modal'] ?? 0 }}" />
+                            <x-input-error :messages="$errors->get('formClabitem.product_id')" class="mt-1" />
+                            <div class="flex flex-wrap items-center gap-2 mt-1 text-xs text-gray-400 dark:text-gray-500">
+                                <span>Tersimpan:
+                                    <span class="font-semibold text-ink dark:text-gray-200">{{ $produkTerpilih === '' || $produkTerpilih === '0' ? 'tanpa produk' : $produkTerpilih }}</span></span>
+                                @if ($produkTerpilih !== '' && $produkTerpilih !== '0')
+                                    <button type="button" wire:click="kosongkanProduk"
+                                        class="font-medium text-brand-green hover:underline dark:text-brand-lime">Kosongkan</button>
+                                @endif
+                            </div>
+                            <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">Reagen/BHP dari master obat &amp;
+                                barang. Boleh dikosongkan.</p>
                         </div>
                     </div>
                 </x-border-form>
