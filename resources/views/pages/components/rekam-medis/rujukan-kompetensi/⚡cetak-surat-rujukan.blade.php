@@ -104,6 +104,7 @@ new class extends Component {
 
             'pasien' => [
                 'nama' => (string) ($pasien['pasien']['regName'] ?? ''),
+                'noRm' => (string) ($kunjungan['regNo'] ?? ''),
                 'nik' => (string) ($identitas['nik'] ?? ''),
                 'umur' => $this->umur($pasien),
                 'jenisKelamin' => (string) ($pasien['pasien']['jenisKelamin']['jenisKelaminDesc'] ?? ''),
@@ -137,6 +138,9 @@ new class extends Component {
                     'spo2' => $this->satuan($tandaVital['spo2'] ?? '', '%'),
                 ],
                 'kelainan' => trim((string) ($kunjungan['pemeriksaan']['fisik'] ?? '')),
+                'alergi' => $this->alergiTeks($kunjungan),
+                // Teks bebas tab Penunjang EMR (Laborat / Foto / EKG / lain-lain).
+                'penunjang' => trim((string) ($kunjungan['pemeriksaan']['penunjang'] ?? '')),
                 'diagnosa' => $this->daftarDiagnosa($kunjungan, $rujukan),
                 'kriteria' => $this->daftarKriteria($rujukan),
                 'tindakan' => $this->daftarTindakan($kunjungan),
@@ -217,20 +221,14 @@ new class extends Component {
     }
 
     /**
-     * Diagnosa EMR: icdX bila ada, jatuh ke diagId (lihat skill diagnosa-flow).
-     * Bila EMR belum mencatat diagnosa, pakai diagnosa yang dikirim bersama rujukan —
-     * halaman 1 (Diagnosa Sementara) dan halaman 2 (IV Diagnosa) harus sejalan.
+     * IV Diagnosa — konsep sama dengan Rekam Medis Open: teks bebas dokter
+     * (diagnosisFreeText) diutamakan; bila kosong, keterangan ICD-10 tanpa kode.
+     * Bila EMR belum mencatat apa pun, pakai diagnosa yang dikirim bersama rujukan
+     * agar halaman 1 (Diagnosis Rujukan) dan halaman 2 tetap sejalan.
      */
     private function daftarDiagnosa(array $kunjungan, array $rujukan): array
     {
-        $daftar = collect($kunjungan['diagnosis'] ?? [])
-            ->map(function ($baris) {
-                $kode = trim((string) ($baris['icdX'] ?? ($baris['diagId'] ?? '')));
-                $desc = trim((string) ($baris['diagDesc'] ?? ''));
-                return trim($kode . ' ' . $desc);
-            })
-            ->filter()->values()->all();
-
+        $daftar = $this->freeTextAtauKeterangan($kunjungan, 'diagnosisFreeText', 'diagnosis', 'diagDesc');
         if ($daftar !== []) {
             return $daftar;
         }
@@ -240,14 +238,29 @@ new class extends Component {
         return $diagnosaRujukan === '' ? [] : [$diagnosaRujukan];
     }
 
+    /**
+     * VIII Tindakan Medis — konsep sama dengan Rekam Medis Open: Free Text Procedure
+     * diutamakan (dokter sering menulis tindakan tanpa memilih kode ICD-9-CM);
+     * bila kosong, keterangan ICD-9-CM tanpa kode.
+     */
     private function daftarTindakan(array $kunjungan): array
     {
-        return collect($kunjungan['procedure'] ?? [])
-            ->map(function ($baris) {
-                $kode = trim((string) ($baris['procedureId'] ?? ''));
-                $desc = trim((string) ($baris['procedureDesc'] ?? ''));
-                return trim($kode . ' ' . $desc);
-            })
+        return $this->freeTextAtauKeterangan($kunjungan, 'procedureFreeText', 'procedure', 'procedureDesc');
+    }
+
+    /** Teks bebas dipecah per baris; bila kosong, kolom keterangan dari daftar terkode. */
+    private function freeTextAtauKeterangan(array $kunjungan, string $kunciFreeText, string $kunciDaftar, string $kolomKeterangan): array
+    {
+        $freeText = collect(preg_split('/\r\n|\r|\n/', (string) ($kunjungan[$kunciFreeText] ?? '')))
+            ->map(fn($baris) => trim($baris))
+            ->filter()->values()->all();
+
+        if ($freeText !== []) {
+            return $freeText;
+        }
+
+        return collect($kunjungan[$kunciDaftar] ?? [])
+            ->map(fn($baris) => trim((string) ($baris[$kolomKeterangan] ?? '')))
             ->filter()->values()->all();
     }
 
@@ -315,6 +328,24 @@ new class extends Component {
         $teks = trim((string) ($terpilih['text'] ?? ''));
 
         return $teks === '' ? [] : [$teks . $keteranganIcd9];
+    }
+
+    /**
+     * Butir "Alergi (Ada/Tidak) Sebutkan". Ada/Tidak ditentukan HANYA oleh pilihan
+     * adaAlergi (Ya/Tidak) — teks bebas alergi sering berisi "Tidak ada alergi",
+     * jadi isi teks tidak boleh dianggap tanda ada alergi. Teks dicetak apa adanya.
+     */
+    private function alergiTeks(array $kunjungan): string
+    {
+        $alergi = $kunjungan['anamnesa']['alergi'] ?? [];
+        $teks = trim((string) ($alergi['alergi'] ?? ''));
+
+        return match (trim((string) ($alergi['adaAlergi'] ?? ''))) {
+            'Ya' => $teks !== '' ? 'Ada — ' . $teks : 'Ada',
+            'Tidak' => 'Tidak ada',
+            // Pilihan belum diisi (data lama): cetak teks apa adanya tanpa menebak.
+            default => $teks,
+        };
     }
 
     private function terapiTeks(array $kunjungan): string
