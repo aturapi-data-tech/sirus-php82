@@ -363,8 +363,17 @@ new class extends Component {
                                     </td>
                                     <td class="px-6 py-4">{{ $row->supp_name ?? '-' }}</td>
                                     <td class="px-6 py-4 text-right">
-                                        <div class="font-medium text-gray-900 dark:text-white">Rp {{ number_format($row->sales_price ?? 0, 0, ',', '.') }}</div>
-                                        <div class="text-xs" style="color:var(--muted)">Beli: Rp {{ number_format($row->cost_price ?? 0, 0, ',', '.') }}</div>
+                                        <div class="font-medium text-gray-900 dark:text-white"><span class="text-xs font-normal" style="color:var(--muted)">Harga Jual:</span> Rp {{ number_format($row->sales_price ?? 0, 0, ',', '.') }}</div>
+                                        <div class="text-xs" style="color:var(--muted)">Harga Beli: Rp {{ number_format($row->cost_price ?? 0, 0, ',', '.') }}</div>
+                                        @if ((float) ($row->cost_price ?? 0) > 0 && (float) ($row->sales_price ?? 0) > 0)
+                                            <div @class([
+                                                'text-xs font-medium',
+                                                'text-success-deep dark:text-green-300' => $row->sales_price > $row->cost_price,
+                                                'text-error-deep dark:text-red-300' => $row->sales_price < $row->cost_price,
+                                            ]) style="{{ $row->sales_price == $row->cost_price ? 'color:var(--muted)' : '' }}">
+                                                {{ number_format(($row->sales_price - $row->cost_price) / $row->cost_price * 100, 1, ',', '.') }}% dari harga beli
+                                            </div>
+                                        @endif
                                     </td>
 
                                     <td class="ds-c px-6 py-4">

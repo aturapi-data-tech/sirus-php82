@@ -526,6 +526,25 @@ new class extends Component {
         $this->resetValidation('suppId');
     }
 
+    /**
+     * Selisih harga jual terhadap harga beli, untuk ditampilkan di bawah isian harga.
+     * Persentase = (jual - beli) / beli × 100 (markup dari harga beli). Null bila salah satu belum terisi.
+     */
+    public function selisihHarga(): ?array
+    {
+        $hargaBeli = (float) ($this->costPrice ?? 0);
+        $hargaJual = (float) ($this->salesPrice ?? 0);
+
+        if ($hargaBeli <= 0 || $hargaJual <= 0) {
+            return null;
+        }
+
+        return [
+            'selisih' => $hargaJual - $hargaBeli,
+            'persen' => ($hargaJual - $hargaBeli) / $hargaBeli * 100,
+        ];
+    }
+
     /* -------------------------
      | KFA (API KFA v2 Kemkes)
      * ------------------------- */
@@ -758,6 +777,38 @@ new class extends Component {
                                         <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">Harga yang ditagihkan ke pasien.</p>
                                     </div>
                                 </div>
+
+                                {{-- Ringkasan: beli, jual, selisih & persentase (diperbarui saat isian harga ditinggalkan) --}}
+                                @php $selisihHarga = $this->selisihHarga(); @endphp
+                                <div class="grid grid-cols-3 gap-2 p-3 text-sm border rounded-lg border-hairline bg-surface-soft dark:bg-gray-800 dark:border-gray-700">
+                                    <div>
+                                        <div class="text-xs text-gray-600 dark:text-gray-400">Harga Beli</div>
+                                        <div class="font-mono text-gray-900 dark:text-gray-100">Rp {{ number_format((float) ($costPrice ?? 0), 0, ',', '.') }}</div>
+                                    </div>
+                                    <div>
+                                        <div class="text-xs text-gray-600 dark:text-gray-400">Harga Jual</div>
+                                        <div class="font-mono text-gray-900 dark:text-gray-100">Rp {{ number_format((float) ($salesPrice ?? 0), 0, ',', '.') }}</div>
+                                    </div>
+                                    <div>
+                                        <div class="text-xs text-gray-600 dark:text-gray-400">Selisih / Persentase</div>
+                                        @if ($selisihHarga)
+                                            <div @class([
+                                                'font-mono font-semibold',
+                                                'text-success-deep dark:text-green-300' => $selisihHarga['selisih'] > 0,
+                                                'text-error-deep dark:text-red-300' => $selisihHarga['selisih'] < 0,
+                                                'text-gray-900 dark:text-gray-100' => $selisihHarga['selisih'] == 0,
+                                            ])>
+                                                Rp {{ number_format($selisihHarga['selisih'], 0, ',', '.') }}
+                                                ({{ number_format($selisihHarga['persen'], 1, ',', '.') }}%)
+                                            </div>
+                                        @else
+                                            <div class="text-gray-600 dark:text-gray-400">-</div>
+                                        @endif
+                                    </div>
+                                </div>
+                                @if ($selisihHarga && $selisihHarga['selisih'] < 0)
+                                    <p class="text-xs text-error-deep dark:text-red-300">Harga jual lebih rendah dari harga beli.</p>
+                                @endif
                             </div>
                         </div>
 
