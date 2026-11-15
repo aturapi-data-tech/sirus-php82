@@ -4,7 +4,9 @@ use Livewire\Component;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\QueryException;
+use Illuminate\Validation\ValidationException;
 use App\Support\CakupanLoincLab;
+use App\Support\KategoriNilaiRujukanLab;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 use App\Http\Traits\SATUSEHAT\LoincTrait;
 
@@ -13,6 +15,28 @@ new class extends Component {
 
     public string $formMode = 'create';
     public ?array $hasilCekLoinc = null;
+
+    /**
+     * Baris kategori untuk Jenis Nilai Rujukan Kategori (lowhigh_status 'K'), mis. TUBEX:
+     * [['nilaiMin' => '0', 'nilaiMax' => '2', 'label' => 'NEGATIF', 'status' => 'N', 'kritis' => false], ...].
+     * Disimpan ke LBMST_CLABITEM_KATEGORIS; lihat App\Support\KategoriNilaiRujukanLab.
+     */
+    public array $kategoriList = [];
+
+    /**
+     * Kode Pemeriksaan dibuat otomatis dari nama selama true (hanya saat Tambah). Mengetik kode sendiri
+     * mematikannya; tombol Generate menyalakannya lagi.
+     */
+    public bool $kodeOtomatis = true;
+
+    /**
+     * Item ini anggota panel/paket = punya induk (clabitem_group). BUKAN is_group: di sistem is_group='Y'
+     * berarti item header panel (dibuang kirim-lab SATUSEHAT), dan datanya '0' di hampir semua item.
+     */
+    public bool $bagianPanel = false;
+
+    /** Jenis tersimpan saat form dibuka — untuk peringatan "baris kategori akan dihapus" saat jenis diganti. */
+    public string $jenisAwal = '';
     public array $renderVersions = [];
     protected array $renderAreas = ['modal'];
 
@@ -73,9 +97,11 @@ new class extends Component {
         $this->resetAll();
         $this->formMode = 'create';
         $this->formClabitem['clab_id'] = $clabId;
+        $this->kodeOtomatis = true;
         $this->incrementVersion('modal');
         $this->dispatch('open-modal', name: 'master-laborat-clabitem');
-        $this->dispatch('focus-clabitem-id');
+        // Kode mengikuti nama, jadi isian pertama yang diketik adalah Nama Pemeriksaan.
+        $this->dispatch('focus-clabitem-desc');
     }
 
     #[On('master.laborat.openEditClabitem')]
@@ -89,6 +115,7 @@ new class extends Component {
 
         $this->resetAll();
         $this->formMode = 'edit';
+        $this->kodeOtomatis = false;
         $this->oldClabitemId = $clabitemId;
         $this->oldClabId = $clabId;
         $this->oldProductId = $productId;
@@ -128,9 +155,169 @@ new class extends Component {
             'status' => (string) ($row->status ?? ''),
         ];
 
+        $this->bagianPanel = trim((string) ($row->clabitem_group ?? '')) !== '';
+        $this->jenisAwal = $this->formClabitem['lowhigh_status'];
+        if ($this->jenisAwal === KategoriNilaiRujukanLab::JENIS) {
+            KategoriNilaiRujukanLab::lupakan($clabitemId);
+            $this->kategoriList = array_map(fn(array $kategori) => [
+                'nilaiMin' => $kategori['nilaiMin'] === null ? '' : (string) (0 + $kategori['nilaiMin']),
+                'nilaiMax' => $kategori['nilaiMax'] === null ? '' : (string) (0 + $kategori['nilaiMax']),
+                'label' => $kategori['label'],
+                'status' => $kategori['status'],
+                'kritis' => $kategori['kritis'],
+            ], KategoriNilaiRujukanLab::untukItem($clabitemId));
+        }
+
         $this->incrementVersion('modal');
         $this->dispatch('open-modal', name: 'master-laborat-clabitem');
         $this->dispatch('focus-clabitem-desc');
+    }
+
+    /* =========================================================
+     * KODE PEMERIKSAAN OTOMATIS
+     * Pola kode lama (198 dari 228 item): 2 karakter awal nama + nomor urut 5 digit, mis. TU00211
+     * (TUBEX), S.00022 (S.TYPHY O). Nomor = terbesar di pola itu + 1, lalu dicek sampai tak terpakai.
+     * ========================================================= */
+    public function updatedFormClabitemClabitemDesc(): void
+    {
+        if ($this->formMode === 'create' && $this->kodeOtomatis) {
+            $this->formClabitem['clabitem_id'] = $this->buatKodePemeriksaan();
+        }
+    }
+
+    public function updatedFormClabitemClabitemId(): void
+    {
+        // Diketik sendiri → jangan ditimpa lagi saat nama berubah.
+        $this->kodeOtomatis = false;
+        $this->formClabitem['clabitem_id'] = mb_strtoupper(trim($this->formClabitem['clabitem_id']));
+    }
+
+    public function generateKodePemeriksaan(): void
+    {
+        if ($this->formMode !== 'create') {
+            return;
+        }
+        $this->kodeOtomatis = true;
+        $this->formClabitem['clabitem_id'] = $this->buatKodePemeriksaan();
+        $this->resetValidation('formClabitem.clabitem_id');
+    }
+
+    private function buatKodePemeriksaan(): string
+    {
+        // 2 karakter awal nama (huruf/angka/titik), tanpa awalan "*", "-", spasi; kurang → diisi X.
+        $nama = mb_strtoupper(trim((string) ($this->formClabitem['clabitem_desc'] ?? '')));
+        $awalan = substr(preg_replace('/[^A-Z0-9.]/', '', ltrim($nama, " *-")), 0, 2);
+        $awalan = str_pad($awalan, 2, 'X');
+
+        $terbesar = (int) DB::table('lbmst_clabitems')
+            ->whereRaw("REGEXP_LIKE(clabitem_id, '^..[0-9]{5}$')")
+            ->max(DB::raw('TO_NUMBER(SUBSTR(clabitem_id, 3, 5))'));
+
+        for ($nomor = $terbesar + 1; $nomor < $terbesar + 1000; $nomor++) {
+            $kode = $awalan . str_pad((string) $nomor, 5, '0', STR_PAD_LEFT);
+            if (!DB::table('lbmst_clabitems')->where('clabitem_id', $kode)->exists()) {
+                return $kode;
+            }
+        }
+
+        return $awalan . str_pad((string) ($terbesar + 1), 5, '0', STR_PAD_LEFT);
+    }
+
+    /* =========================================================
+     * JENIS NILAI RUJUKAN KATEGORI
+     * ========================================================= */
+    public function updatedFormClabitemLowhighStatus(string $jenis): void
+    {
+        // Pindah ke Kategori dengan daftar kosong → siapkan satu baris supaya langsung bisa diisi.
+        if ($jenis === KategoriNilaiRujukanLab::JENIS && $this->kategoriList === []) {
+            $this->tambahKategori();
+        }
+    }
+
+    public function tambahKategori(): void
+    {
+        $this->kategoriList[] = ['nilaiMin' => '', 'nilaiMax' => '', 'label' => '', 'status' => 'N', 'kritis' => false];
+    }
+
+    public function hapusKategori(int $index): void
+    {
+        unset($this->kategoriList[$index]);
+        $this->kategoriList = array_values($this->kategoriList);
+        $this->resetValidation();
+    }
+
+    /** Kategori bentuk numerik (untuk teks normal & simpan). Baris kosong total dilewati. */
+    private function kategoriTerisi(): array
+    {
+        $daftar = [];
+        foreach ($this->kategoriList as $baris) {
+            $min = trim((string) ($baris['nilaiMin'] ?? ''));
+            $max = trim((string) ($baris['nilaiMax'] ?? ''));
+            $label = mb_strtoupper(trim((string) ($baris['label'] ?? '')));
+            if ($min === '' && $max === '' && $label === '') {
+                continue;
+            }
+            $daftar[] = [
+                'nilaiMin' => is_numeric($min) ? (float) $min : null,
+                'nilaiMax' => is_numeric($max) ? (float) $max : null,
+                'label' => $label,
+                'status' => in_array($baris['status'] ?? '', ['N', 'B', 'A'], true) ? $baris['status'] : 'N',
+                'kritis' => (bool) ($baris['kritis'] ?? false),
+            ];
+        }
+
+        return $daftar;
+    }
+
+    /** Validasi baris kategori; error ditaruh per baris (kategoriList.{i}.{kolom}). */
+    private function kategoriValid(array $kategoriSimpan): bool
+    {
+        $this->resetValidation('kategoriList');
+        $valid = true;
+
+        if ($kategoriSimpan === []) {
+            $this->addError('kategoriList', 'Isi minimal satu kategori.');
+            return false;
+        }
+
+        foreach ($this->kategoriList as $index => $baris) {
+            $min = trim((string) ($baris['nilaiMin'] ?? ''));
+            $max = trim((string) ($baris['nilaiMax'] ?? ''));
+            $label = trim((string) ($baris['label'] ?? ''));
+            if ($min === '' && $max === '' && $label === '') {
+                continue;
+            }
+            if ($label === '' || mb_strlen($label) > 50) {
+                $this->addError("kategoriList.{$index}.label", 'Label wajib diisi, maks. 50 karakter.');
+                $valid = false;
+            }
+            foreach (['nilaiMin' => $min, 'nilaiMax' => $max] as $kolom => $nilai) {
+                if ($nilai !== '' && !is_numeric($nilai)) {
+                    $this->addError("kategoriList.{$index}.{$kolom}", 'Harus angka.');
+                    $valid = false;
+                }
+            }
+            if ($min === '' && $max === '') {
+                $this->addError("kategoriList.{$index}.nilaiMin", 'Isi minimal salah satu: Min atau Max.');
+                $valid = false;
+            } elseif (is_numeric($min) && is_numeric($max) && (float) $min > (float) $max) {
+                $this->addError("kategoriList.{$index}.nilaiMax", 'Max tidak boleh lebih kecil dari Min.');
+                $valid = false;
+            }
+        }
+
+        if ($valid && mb_strlen(KategoriNilaiRujukanLab::teksNormal($kategoriSimpan)) > 100) {
+            $this->addError('kategoriList', 'Teks nilai rujukan hasil gabungan kategori melebihi 100 karakter. Persingkat labelnya.');
+            $valid = false;
+        }
+
+        return $valid;
+    }
+
+    /** Pratinjau teks nilai rujukan yang akan ditulis ke normal_m/normal_f. */
+    public function teksNormalKategori(): string
+    {
+        return KategoriNilaiRujukanLab::teksNormal($this->kategoriTerisi());
     }
 
     #[On('master.laborat.deleteClabitem')]
@@ -144,6 +331,13 @@ new class extends Component {
                 return;
             }
 
+            try {
+                DB::table('lbmst_clabitem_kategoris')->where('clabitem_id', $clabitemId)->delete();
+            } catch (QueryException) {
+                // Tabel kategori belum dibuat di database ini: tidak ada yang perlu dihapus.
+            }
+            KategoriNilaiRujukanLab::lupakan($clabitemId);
+
             $this->dispatch('toast', type: 'success', message: 'Pemeriksaan berhasil dihapus.');
             CakupanLoincLab::lupakan();
             $this->dispatch('master.laborat.saved', entity: 'clabitem');
@@ -156,8 +350,29 @@ new class extends Component {
         }
     }
 
+    /** Tab form tempat sebuah isian berada — untuk membuka tab yang memuat error saat Simpan gagal. */
+    private function tabUntukIsian(string $kunci): string
+    {
+        return match (true) {
+            str_starts_with($kunci, 'kategoriList') => 'nilai-rujukan',
+            (bool) preg_match('/\.(unit_desc|lowhigh_status|normal_[mf]|low_limit_|high_limit_|critical_|unit_convert|nilai_kritis)/', $kunci) => 'nilai-rujukan',
+            (bool) preg_match('/\.(price|status|product_id|dosage)$/', $kunci) => 'tarif',
+            (bool) preg_match('/\.(item_code|loinc_)/', $kunci) => 'mapping',
+            default => 'pemeriksaan',
+        };
+    }
+
+    private function bukaTabError(array $kunciError): void
+    {
+        if ($kunciError === []) {
+            return;
+        }
+        $this->dispatch('master-lab-buka-tab', tab: $this->tabUntukIsian((string) $kunciError[0]));
+    }
+
     public function save(): void
     {
+        try {
         $this->validate(
             [
                 'formClabitem.clabitem_id' => 'required|string|max:10',
@@ -194,17 +409,59 @@ new class extends Component {
                 'formClabitem.status' => 'nullable|string|max:10',
             ],
             [
-                'formClabitem.product_id.exists' => 'Produk/Reagen tidak ditemukan di master obat & barang.',
+                'formClabitem.product_id.exists' => 'Reagen / BHP tidak ditemukan di master obat & barang.',
+                'required' => ':attribute wajib diisi.',
+                'integer' => ':attribute harus bilangan bulat.',
+                'numeric' => ':attribute harus berupa angka.',
+                'min' => ':attribute minimal :min.',
+                'max' => ':attribute maksimal :max karakter.',
+                'in' => 'Pilihan :attribute tidak valid.',
             ],
             [
                 'formClabitem.clabitem_id' => 'Kode Pemeriksaan',
-                'formClabitem.clabitem_desc' => 'Nama Pemeriksaan',
+                'formClabitem.clabitem_desc' => 'Nama Pemeriksaan (Parameter)',
                 'formClabitem.clab_id' => 'Kategori Lab',
-                'formClabitem.product_id' => 'Produk/Reagen',
+                'formClabitem.product_id' => 'Reagen / BHP',
                 'formClabitem.price' => 'Tarif Pemeriksaan',
-                'formClabitem.unit_desc' => 'Satuan Hasil',
+                'formClabitem.unit_desc' => 'Satuan Hasil (UCUM)',
+                'formClabitem.dosage' => 'Kebutuhan Reagen per Tes',
+                'formClabitem.item_seq' => 'Urutan di Hasil',
+                'formClabitem.item_code' => 'Kode Parameter Alat',
+                'formClabitem.normal_m' => 'Nilai Rujukan Laki-laki',
+                'formClabitem.normal_f' => 'Nilai Rujukan Perempuan',
+                'formClabitem.low_limit_m' => 'Batas Bawah Laki-laki',
+                'formClabitem.high_limit_m' => 'Batas Atas Laki-laki',
+                'formClabitem.low_limit_f' => 'Batas Bawah Perempuan',
+                'formClabitem.high_limit_f' => 'Batas Atas Perempuan',
+                'formClabitem.low_limit_k' => 'Batas Bawah Anak',
+                'formClabitem.high_limit_k' => 'Batas Atas Anak',
+                'formClabitem.critical_low_m' => 'Batas Kritis Bawah Laki-laki',
+                'formClabitem.critical_high_m' => 'Batas Kritis Atas Laki-laki',
+                'formClabitem.critical_low_f' => 'Batas Kritis Bawah Perempuan',
+                'formClabitem.critical_high_f' => 'Batas Kritis Atas Perempuan',
+                'formClabitem.critical_low_k' => 'Batas Kritis Bawah Anak',
+                'formClabitem.critical_high_k' => 'Batas Kritis Atas Anak',
+                'formClabitem.unit_convert' => 'Faktor Konversi Satuan Alat',
+                'formClabitem.loinc_code' => 'Kode LOINC',
+                'formClabitem.loinc_display' => 'Nama LOINC',
             ],
         );
+        } catch (ValidationException $e) {
+            $this->bukaTabError(array_keys($e->errors()));
+            $this->dispatch('toast', type: 'error', message: $e->validator->errors()->first() . ' Periksa isian yang ditandai merah.');
+            throw $e;
+        }
+
+        $jenisKategori = ($this->formClabitem['lowhigh_status'] ?? '') === KategoriNilaiRujukanLab::JENIS;
+        $kategoriSimpan = [];
+        if ($jenisKategori) {
+            $kategoriSimpan = $this->kategoriTerisi();
+            if (!$this->kategoriValid($kategoriSimpan)) {
+                $this->dispatch('master-lab-buka-tab', tab: 'nilai-rujukan');
+                $this->dispatch('toast', type: 'error', message: 'Periksa baris Kategori Hasil yang ditandai merah.');
+                return;
+            }
+        }
 
         // product_id = produk/reagen dari immst_products; bukan bagian PK (PK hanya clabitem_id).
         // Kosong disimpan '0' seperti mayoritas item lama (kolom NOT NULL, '0' = tanpa produk).
@@ -212,7 +469,7 @@ new class extends Component {
             'clabitem_desc' => $this->formClabitem['clabitem_desc'],
             'product_id' => trim($this->formClabitem['product_id'] ?? '') ?: '0',
             'is_group' => $this->formClabitem['is_group'] ?: null,
-            'clabitem_group' => $this->formClabitem['clabitem_group'] ?: null,
+            'clabitem_group' => $this->bagianPanel ? ($this->formClabitem['clabitem_group'] ?: null) : null,
             'price' => (int) ($this->formClabitem['price'] ?: 0),
             'dosage' => (int) ($this->formClabitem['dosage'] ?: 0),
             'unit_desc' => $this->formClabitem['unit_desc'] ?: null,
@@ -220,8 +477,9 @@ new class extends Component {
             'item_code' => $this->formClabitem['item_code'] ?: null,
             'normal_m' => $this->formClabitem['normal_m'] ?: null,
             'normal_f' => $this->formClabitem['normal_f'] ?: null,
-            'lowhigh_status' => in_array($this->formClabitem['lowhigh_status'], ['Y', '1']) ? 'Y' : null,
-            'hidden_status' => $this->formClabitem['hidden_status'] ?: null,
+            'lowhigh_status' => $jenisKategori ? KategoriNilaiRujukanLab::JENIS : (in_array($this->formClabitem['lowhigh_status'], ['Y', '1']) ? 'Y' : null),
+            // Nilai baku pembaca: 'Y' = sembunyi, 'N'/kosong = tampil (data lama form ini sempat menulis '1').
+            'hidden_status' => in_array($this->formClabitem['hidden_status'], ['Y', '1'], true) ? 'Y' : 'N',
             'low_limit_m' => $this->formClabitem['low_limit_m'] !== '' ? (float) $this->formClabitem['low_limit_m'] : null,
             'high_limit_m' => $this->formClabitem['high_limit_m'] !== '' ? (float) $this->formClabitem['high_limit_m'] : null,
             'low_limit_f' => $this->formClabitem['low_limit_f'] !== '' ? (float) $this->formClabitem['low_limit_f'] : null,
@@ -241,25 +499,78 @@ new class extends Component {
             'status' => $this->formClabitem['status'] ?: null,
         ];
 
-        if ($this->formMode === 'create') {
-            if (DB::table('lbmst_clabitems')->where('clabitem_id', $this->formClabitem['clabitem_id'])->exists()) {
-                $this->addError('formClabitem.clabitem_id', 'Kode Pemeriksaan sudah dipakai.');
-                return;
-            }
-
-            DB::table('lbmst_clabitems')->insert([
-                'clabitem_id' => $this->formClabitem['clabitem_id'],
-                'clab_id' => $this->formClabitem['clab_id'],
+        if ($jenisKategori) {
+            // Jenis Kategori: rentang & kritis ada di tabel kategori. Teks rujukan diisi otomatis supaya
+            // cetakan, aplikasi 6i, dan kode yang belum mengenal 'K' tetap menampilkan keterangan benar.
+            $teksNormal = KategoriNilaiRujukanLab::teksNormal($kategoriSimpan);
+            $payload = [
                 ...$payload,
-            ]);
-        } else {
-            DB::table('lbmst_clabitems')
-                ->where('clabitem_id', $this->oldClabitemId)
-                ->where('clab_id', $this->oldClabId)
-                ->where('product_id', $this->oldProductId)
-                ->update($payload);
+                'normal_m' => $teksNormal,
+                'normal_f' => $teksNormal,
+                'low_limit_m' => null, 'high_limit_m' => null,
+                'low_limit_f' => null, 'high_limit_f' => null,
+                'low_limit_k' => null, 'high_limit_k' => null,
+                'critical_low_m' => null, 'critical_high_m' => null,
+                'critical_low_f' => null, 'critical_high_f' => null,
+                'critical_low_k' => null, 'critical_high_k' => null,
+                'nilai_kritis' => collect($kategoriSimpan)->contains(fn($kategori) => $kategori['kritis']) ? 'Y' : 'N',
+            ];
         }
 
+        if ($this->formMode === 'create' && DB::table('lbmst_clabitems')->where('clabitem_id', $this->formClabitem['clabitem_id'])->exists()) {
+            if (!$this->kodeOtomatis) {
+                $this->addError('formClabitem.clabitem_id', 'Kode Pemeriksaan sudah dipakai.');
+                $this->dispatch('master-lab-buka-tab', tab: 'pemeriksaan');
+                return;
+            }
+            // Kode otomatis keburu dipakai pengguna lain sejak form diisi → buat yang baru.
+            $this->formClabitem['clabitem_id'] = $this->buatKodePemeriksaan();
+        }
+
+        $clabitemId = $this->formMode === 'create' ? $this->formClabitem['clabitem_id'] : $this->oldClabitemId;
+
+        try {
+            DB::transaction(function () use ($payload, $jenisKategori, $kategoriSimpan, $clabitemId) {
+                if ($this->formMode === 'create') {
+                    DB::table('lbmst_clabitems')->insert([
+                        'clabitem_id' => $this->formClabitem['clabitem_id'],
+                        'clab_id' => $this->formClabitem['clab_id'],
+                        ...$payload,
+                    ]);
+                } else {
+                    DB::table('lbmst_clabitems')
+                        ->where('clabitem_id', $this->oldClabitemId)
+                        ->where('clab_id', $this->oldClabId)
+                        ->where('product_id', $this->oldProductId)
+                        ->update($payload);
+                }
+
+                // Baris kategori hanya disentuh bila item ini Kategori sekarang ATAU sebelumnya, supaya
+                // item lama tetap bisa disimpan di environment yang belum menjalankan DDL tabel kategori.
+                if ($jenisKategori || $this->jenisAwal === KategoriNilaiRujukanLab::JENIS) {
+                    DB::table('lbmst_clabitem_kategoris')->where('clabitem_id', $clabitemId)->delete();
+                    foreach (array_values($kategoriSimpan) as $urutan => $kategori) {
+                        DB::table('lbmst_clabitem_kategoris')->insert([
+                            'clabitem_id' => $clabitemId,
+                            'urut' => $urutan + 1,
+                            'nilai_min' => $kategori['nilaiMin'],
+                            'nilai_max' => $kategori['nilaiMax'],
+                            'label' => $kategori['label'],
+                            'status' => $kategori['status'],
+                            'kritis' => $kategori['kritis'] ? 'Y' : 'N',
+                        ]);
+                    }
+                }
+            });
+        } catch (QueryException $e) {
+            if (str_contains($e->getMessage(), 'ORA-00942')) {
+                $this->dispatch('toast', type: 'error', message: 'Tabel kategori nilai rujukan belum dibuat di database ini. Jalankan docs/ddl-lab-kategori-nilai-rujukan.sql dulu.');
+                return;
+            }
+            throw $e;
+        }
+
+        KategoriNilaiRujukanLab::lupakan($clabitemId);
         $this->dispatch('toast', type: 'success', message: 'Data pemeriksaan berhasil disimpan.');
         $this->closeModal();
         CakupanLoincLab::lupakan();
@@ -378,6 +689,10 @@ new class extends Component {
         $this->oldClabId = '';
         $this->oldProductId = '';
         $this->hasilCekLoinc = null;
+        $this->kategoriList = [];
+        $this->jenisAwal = '';
+        $this->kodeOtomatis = true;
+        $this->bagianPanel = false;
         $this->resetValidation();
     }
 };
@@ -406,207 +721,205 @@ new class extends Component {
             </x-modul-dokumen.header>
 
             {{-- BODY --}}
+            {{-- BODY — bertab (pola Master Pasien: Alpine, instan tanpa reload). Simpan yang gagal validasi
+                 membuka tab berisi error pertama lewat event master-lab-buka-tab. --}}
             <div class="flex-1 px-4 py-4 bg-surface-soft dark:bg-gray-950/20" x-enter-chain
-                x-data
-                x-on:focus-clabitem-id.window="$nextTick(() => setTimeout(() => $refs.inputClabitemId?.focus(), 150))"
-                x-on:focus-clabitem-desc.window="$nextTick(() => setTimeout(() => $refs.inputClabitemDesc?.focus(), 150))">
+                x-data="{ activeTab: 'pemeriksaan' }"
+                x-on:master-lab-buka-tab.window="activeTab = $event.detail.tab"
+                x-on:focus-clabitem-id.window="activeTab = 'pemeriksaan'; $nextTick(() => setTimeout(() => $refs.inputClabitemId?.focus(), 150))"
+                x-on:focus-clabitem-desc.window="activeTab = 'pemeriksaan'; $nextTick(() => setTimeout(() => $refs.inputClabitemDesc?.focus(), 150))">
+
+                <x-tabs variant="underline" class="mb-4">
+                    <x-tab active-expr="activeTab === 'pemeriksaan'" x-on:click="activeTab = 'pemeriksaan'">Pemeriksaan</x-tab>
+                    <x-tab active-expr="activeTab === 'nilai-rujukan'" x-on:click="activeTab = 'nilai-rujukan'">Nilai Rujukan</x-tab>
+                    <x-tab active-expr="activeTab === 'tarif'" x-on:click="activeTab = 'tarif'">Tarif &amp; Reagen</x-tab>
+                    <x-tab active-expr="activeTab === 'mapping'" x-on:click="activeTab = 'mapping'">Mapping Alat &amp; SATUSEHAT</x-tab>
+                </x-tabs>
 
                 {{-- ═══ SECTION 1: Pemeriksaan ═══ --}}
-                <x-border-form title="Pemeriksaan" class="mb-4">
+                <div x-show="activeTab === 'pemeriksaan'" x-cloak x-transition.opacity.duration.200ms>
+                <x-border-form title="Pemeriksaan">
                     <div class="space-y-4">
 
-                        {{-- Kode Pemeriksaan + Nama Pemeriksaan + Paket? --}}
+                        {{-- Baris 1: Kode Pemeriksaan + Nama Pemeriksaan --}}
                         <div class="grid grid-cols-1 gap-4 sm:grid-cols-6 items-start">
-                            <div>
+                            <div class="sm:col-span-2">
                                 <x-input-label value="Kode Pemeriksaan" />
-                                <x-text-input wire:model.live="formClabitem.clabitem_id" x-ref="inputClabitemId"
-                                    :disabled="$formMode === 'edit'" maxlength="10" :error="$errors->has('formClabitem.clabitem_id')" class="w-full mt-1 uppercase"
-                                    x-on:keydown.enter.prevent="$refs.inputClabitemDesc?.focus()" />
+                                <div class="flex gap-1 mt-1">
+                                    <x-text-input wire:model.blur="formClabitem.clabitem_id" x-ref="inputClabitemId"
+                                        :disabled="$formMode === 'edit'" maxlength="10" :error="$errors->has('formClabitem.clabitem_id')" class="w-full uppercase"
+                                        x-on:keydown.enter.prevent="$refs.inputClabitemDesc?.focus()" />
+                                    @if ($formMode === 'create')
+                                        <x-outline-button type="button" wire:click="generateKodePemeriksaan" wire:loading.attr="disabled"
+                                            wire:target="generateKodePemeriksaan" class="!px-3 shrink-0" title="Buat kode unik dari nama pemeriksaan">
+                                            Generate
+                                        </x-outline-button>
+                                    @endif
+                                </div>
                                 <x-input-error :messages="$errors->get('formClabitem.clabitem_id')" class="mt-1" />
-                                <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">Kode unik pemeriksaan</p>
+                                <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">
+                                    @if ($formMode === 'create')
+                                        {{ $kodeOtomatis ? 'Otomatis dari nama (2 huruf + nomor urut), boleh diubah.' : 'Diisi manual. Tekan Generate untuk kode otomatis.' }}
+                                    @else
+                                        Kode unik pemeriksaan, tidak bisa diubah.
+                                    @endif
+                                </p>
                             </div>
                             <div class="sm:col-span-4">
-                                <x-input-label value="Nama Pemeriksaan" />
+                                <x-input-label value="Nama Pemeriksaan (Parameter)" />
                                 <x-text-input wire:model.live="formClabitem.clabitem_desc" x-ref="inputClabitemDesc"
                                     maxlength="100" :error="$errors->has('formClabitem.clabitem_desc')" class="w-full mt-1"
-                                    x-on:keydown.enter.prevent="$refs.inputIsGroup?.focus()" />
+                                    x-on:keydown.enter.prevent="$refs.inputItemSeq?.focus()" />
                                 <x-input-error :messages="$errors->get('formClabitem.clabitem_desc')" class="mt-1" />
-                                <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">Nama yang tampil di hasil lab
+                                <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">Nama yang tampil di hasil lab
                                     pasien</p>
-                            </div>
-                            <div>
-                                <x-input-label value="Bagian dari Paket?" />
-                                <x-select-input wire:model.live="formClabitem.is_group" x-ref="inputIsGroup"
-                                    class="w-full mt-1" x-on:keydown.enter.prevent="$refs.inputUnitDesc?.focus()">
-                                    <option value="">Tidak</option>
-                                    <option value="1">Ya</option>
-                                </x-select-input>
-                                <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">Jika Ya, pilih paket induk di
-                                    bawah. Item otomatis ikut saat paket induk dipilih di transaksi</p>
                             </div>
                         </div>
 
-                        {{-- Paket Induk LOV (muncul jika Ya - bagian dari paket) --}}
-                        @if ($formClabitem['is_group'] === '1')
-                            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 items-start">
-                                <div>
+                        {{-- Baris 2: posisi di hasil lab — Panel/Paket, Urutan, Tampil --}}
+                        <div class="grid grid-cols-1 gap-4 sm:grid-cols-6 items-start">
+                            <div>
+                                <x-input-label value="Bagian dari Panel / Paket" />
+                                <div class="mt-2">
+                                    <x-toggle wire:model.live="bagianPanel" :trueValue="true" :falseValue="false"
+                                        :label="$bagianPanel ? 'Ya' : 'Tidak'" />
+                                </div>
+                                <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">Jika Ya, pilih paket induk. Item
+                                    otomatis ikut saat paket induk dipilih di transaksi</p>
+                            </div>
+                            @if ($bagianPanel)
+                                <div class="sm:col-span-3">
                                     <livewire:lov.clabitem-group.lov-clabitem-group target="clabitemGroup"
-                                        label="Paket Induk" placeholder="Ketik nama paket pemeriksaan..."
+                                        label="Panel / Paket Induk" placeholder="Ketik nama panel / paket pemeriksaan..."
                                         :clabId="$formClabitem['clab_id']" :initialClabitemId="$formClabitem['clabitem_group'] ?: null" :disabled="false"
                                         wire:key="lov-clabgrp-{{ $formClabitem['clab_id'] }}-{{ $renderVersions['modal'] ?? 0 }}" />
-                                    <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">Pilih paket induk yang
-                                        menaungi pemeriksaan ini</p>
+                                    <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">Paket induk yang menaungi
+                                        pemeriksaan ini</p>
                                 </div>
+                            @endif
+                            <div>
+                                <x-input-label value="Urutan di Hasil" />
+                                <x-text-input-number wire:model="formClabitem.item_seq" x-ref="inputItemSeq"
+                                    :error="$errors->has('formClabitem.item_seq')" class="mt-1"
+                                    x-on:keydown.enter.prevent="$refs.inputLowHighStatus?.focus()" />
+                                <x-input-error :messages="$errors->get('formClabitem.item_seq')" class="mt-1" />
+                                <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">Posisi baris di hasil lab (layar &amp; cetakan)</p>
                             </div>
-                        @endif
+                            <div>
+                                @php $disembunyikan = in_array($formClabitem['hidden_status'] ?? '', ['Y', '1'], true); @endphp
+                                <x-input-label value="Tampil di Hasil" />
+                                <div class="mt-2">
+                                    <x-toggle :current="$disembunyikan ? 'N' : 'Y'" trueValue="Y" falseValue="N"
+                                        wireClick="$set('formClabitem.hidden_status', '{{ $disembunyikan ? 'N' : 'Y' }}')"
+                                        :label="$disembunyikan ? 'Disembunyikan' : 'Tampil'" />
+                                </div>
+                                <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">Mati = tidak tampil di hasil &amp; cetakan</p>
+                            </div>
+                        </div>
 
                     </div>
                 </x-border-form>
 
+                </div>
+
                 {{-- ═══ SECTION 2: Nilai Rujukan ═══ --}}
-                <x-border-form title="Nilai Rujukan" class="mb-4">
+                <div x-show="activeTab === 'nilai-rujukan'" x-cloak x-transition.opacity.duration.200ms>
+                <x-border-form title="Satuan & Nilai Rujukan">
                     <div class="space-y-4">
 
-                        {{-- Satuan Hasil, Volume Reagen, Kode Analyzer, LOINC, Jenis Nilai Rujukan --}}
-                        <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                        {{-- Jenis Hasil | Nilai Kritis — 1 baris. Satuan Hasil ada di baris nilai rujukan tiap jenis (di bawah). --}}
+                        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                             <div>
-                                <x-input-label value="Satuan Hasil" />
-                                <x-text-input wire:model.live="formClabitem.unit_desc" x-ref="inputUnitDesc"
-                                    maxlength="50" :error="$errors->has('formClabitem.unit_desc')" class="w-full mt-1" placeholder="g/dL, mg/dL, %"
-                                    x-on:keydown.enter.prevent="$refs.inputDosage?.focus()" />
-                                <x-input-error :messages="$errors->get('formClabitem.unit_desc')" class="mt-1" />
-                                <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">Tampil di belakang angka hasil,
-                                    misal: 12.5 <strong>g/dL</strong></p>
-                            </div>
-                            <div>
-                                <x-input-label value="Volume Reagen" />
-                                <x-text-input-number wire:model="formClabitem.dosage" x-ref="inputDosage"
-                                    :error="$errors->has('formClabitem.dosage')" class="mt-1"
-                                    x-on:keydown.enter.prevent="$refs.inputItemCode?.focus()" />
-                                <x-input-error :messages="$errors->get('formClabitem.dosage')" class="mt-1" />
-                                <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">Kebutuhan reagen per
-                                    pemeriksaan, untuk perhitungan stok</p>
-                            </div>
-                            <div>
-                                <x-input-label value="Jenis Nilai Rujukan" />
+                                <x-input-label value="Jenis Hasil & Nilai Rujukan" />
                                 <x-select-input wire:model.live="formClabitem.lowhigh_status" x-ref="inputLowHighStatus"
                                     class="w-full mt-1"
                                     x-on:keydown.enter.prevent="$refs.inputNormalM?.focus() || $refs.inputLowM?.focus()">
-                                    <option value="">Teks Deskriptif</option>
-                                    <option value="Y">Rentang Angka (Low-High)</option>
+                                    <option value="">Kualitatif (teks, mis. NEGATIF / POSITIF)</option>
+                                    <option value="Y">Kuantitatif (rentang angka bawah - atas)</option>
+                                    <option value="K">Semikuantitatif (skor / kategori berlabel)</option>
                                 </x-select-input>
-                                <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">Rentang Angka: sistem hitung
-                                    Tinggi/Rendah otomatis. Teks: untuk hasil seperti NEGATIF/POSITIF</p>
-                            </div>
-                        </div>
-
-                        {{-- Flag Nilai Kritis — taruh setelah Nilai Rujukan karena konseptual terkait --}}
-                        <div>
-                            <x-input-label value="Nilai Kritis" />
-                            <div class="mt-2">
-                                <x-toggle wire:model.live="formClabitem.nilai_kritis" trueValue="Y" falseValue="N"
-                                    label="Aktifkan auto-alert nilai kritis untuk item ini" />
-                            </div>
-                            <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">
-                                Saat aktif, hasil yang melewati ambang batas (low/high limit) ditandai sebagai
-                                <strong class="text-rose-600 dark:text-rose-400">NILAI KRITIS</strong> &mdash; perlu
-                                attention dokter segera
-                                (contoh: Gula Darah Sewaktu &lt;40 mg/dL, Kalium &gt;6 mEq/L).
-                            </p>
-                        </div>
-
-                        {{-- Mapping Alat & Satu Sehat --}}
-                        <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                            <div>
-                                <x-input-label value="Kode Analyzer" />
-                                <x-text-input wire:model.live="formClabitem.item_code" x-ref="inputItemCode"
-                                    maxlength="25" :error="$errors->has('formClabitem.item_code')" class="w-full mt-1"
-                                    placeholder="HGB, WBC, RBC..."
-                                    x-on:keydown.enter.prevent="$refs.inputLoincCode?.focus()" />
-                                <x-input-error :messages="$errors->get('formClabitem.item_code')" class="mt-1" />
-                                <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">Kode dari alat (Mindray dll)
-                                    untuk import hasil otomatis</p>
-                            </div>
-                            <div class="sm:col-span-2">
-                                <livewire:lov.loinc.lov-loinc target="loincLab" label="Kode LOINC (Satu Sehat)"
-                                    placeholder="Ketik nama pemeriksaan / kode LOINC..." :initialLoincCode="$formClabitem['loinc_code'] ?: null"
-                                    :disabled="false" wire:key="lov-loinc-{{ $renderVersions['modal'] ?? 0 }}" />
-
-                                <div class="flex flex-wrap items-center gap-2 mt-2">
-                                    <x-outline-button type="button" wire:click="cekLoincKeSatuSehat"
-                                        :disabled="trim($formClabitem['loinc_code'] ?? '') === ''" wire:loading.attr="disabled"
-                                        wire:target="cekLoincKeSatuSehat">
-                                        <span wire:loading.remove wire:target="cekLoincKeSatuSehat">Cek Kode LOINC</span>
-                                        <span wire:loading wire:target="cekLoincKeSatuSehat">Mengecek...</span>
-                                    </x-outline-button>
-                                </div>
-
-                                @if ($hasilCekLoinc)
-                                    <div class="mt-2 text-xs text-ink dark:text-gray-200">
-                                        @if ($hasilCekLoinc['status'] === 'ada')
-                                            <x-badge variant="success">Kode ada di LOINC</x-badge>
-                                            <p class="mt-1">Arti kode {{ $hasilCekLoinc['kode'] }}: <span class="font-semibold">{{ $hasilCekLoinc['display'] ?? 'tidak tersedia' }}</span></p>
-                                            @if (filled($formClabitem['loinc_display']) && filled($hasilCekLoinc['display']) && mb_strtolower(trim($formClabitem['loinc_display'])) !== mb_strtolower(trim($hasilCekLoinc['display'])))
-                                                <p class="mt-1">Nama tersimpan berbeda: {{ $formClabitem['loinc_display'] }}</p>
-                                            @endif
-                                            <p class="mt-1 text-muted dark:text-gray-400">Pastikan artinya sama dengan pemeriksaan ini. Kode yang artinya salah tetap bisa terkirim sebagai pemeriksaan lain.</p>
-                                        @elseif ($hasilCekLoinc['status'] === 'tidak_ada')
-                                            <x-badge variant="danger">Kode tidak ada di LOINC</x-badge>
-                                            <p class="mt-1">Kode {{ $hasilCekLoinc['kode'] }} tidak dikenal, kemungkinan besar ditolak saat kirim. Ganti dengan kode yang benar.</p>
-                                        @else
-                                            <x-badge variant="warning">Belum bisa dicek</x-badge>
-                                            <p class="mt-1">Server tx.fhir.org tidak merespons. Coba lagi beberapa saat.</p>
-                                        @endif
-                                    </div>
+                                <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">Kuantitatif: hasil angka, sistem
+                                    menandai Tinggi/Rendah. Kualitatif: hasil teks harus sama persis dengan nilai rujukan.
+                                    Semikuantitatif: skor berlabel seperti TUBEX (0-2 NEGATIF, 3 BORDERLINE, &gt;= 4 POSITIF).</p>
+                                @if ($jenisAwal === 'K' && $formClabitem['lowhigh_status'] !== 'K')
+                                    <p class="mt-1 text-xs font-medium text-error-deep dark:text-red-300">Baris kategori item ini akan dihapus saat disimpan.</p>
                                 @endif
+                            </div>
 
-                                <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">Cek ini memastikan kodenya ada dan
-                                    menampilkan artinya. Satu Sehat tidak menyediakan cek kode, jadi diterima atau tidaknya
-                                    baru pasti saat kirim.</p>
+                            {{-- Nilai Kritis — sebaris dengan Jenis Hasil. Semikuantitatif: kritis per baris kategori,
+                                 toggle umum disembunyikan. --}}
+                            <div @class(['hidden' => $formClabitem['lowhigh_status'] === 'K'])>
+                                <x-input-label value="Nilai Kritis (Critical Value)" />
+                                <div class="mt-2">
+                                    <x-toggle wire:model.live="formClabitem.nilai_kritis" trueValue="Y" falseValue="N"
+                                        label="Tandai hasil kritis (wajib segera dilaporkan ke dokter)" />
+                                </div>
+                                <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">
+                                    Saat aktif, hasil yang melewati ambang batas kritis ditandai
+                                    <strong class="text-rose-600 dark:text-rose-400">NILAI KRITIS</strong>
+                                    (contoh: Gula Darah Sewaktu &lt;40 mg/dL, Kalium &gt;6 mEq/L).
+                                </p>
                             </div>
                         </div>
 
                         @if ($formClabitem['lowhigh_status'] === 'Y' || $formClabitem['lowhigh_status'] === '1')
-                            {{-- Rentang Angka --}}
-                            <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                                <div>
-                                    <x-input-label value="Pria (Batas Bawah - Atas)" />
-                                    <div class="flex items-center gap-2 mt-1">
-                                        <x-text-input wire:model.live="formClabitem.low_limit_m" x-ref="inputLowM"
-                                            type="number" step="0.01" class="w-full" placeholder="Bawah"
-                                            x-on:keydown.enter.prevent="$refs.inputHighM?.focus()" />
-                                        <span class="text-gray-400">-</span>
-                                        <x-text-input wire:model.live="formClabitem.high_limit_m" x-ref="inputHighM"
-                                            type="number" step="0.01" class="w-full" placeholder="Atas"
-                                            x-on:keydown.enter.prevent="$refs.inputLowF?.focus()" />
+                            {{-- Batas Nilai Rujukan — satu x-border-form per kelompok, pola bingkai EMR RJ (Tanda Vital) --}}
+                            <div class="space-y-2">
+                                <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                                <x-border-form :title="__('Laki-laki')" :align="__('start')" :bgcolor="__('bg-surface-soft')" padding="p-3">
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <x-input-label value="Batas Bawah" />
+                                            <x-text-input wire:model.live="formClabitem.low_limit_m" x-ref="inputLowM"
+                                                type="number" step="0.01" class="w-full mt-1"
+                                                x-on:keydown.enter.prevent="$refs.inputHighM?.focus()" />
+                                        </div>
+                                        <div>
+                                            <x-input-label value="Batas Atas" />
+                                            <x-text-input wire:model.live="formClabitem.high_limit_m" x-ref="inputHighM"
+                                                type="number" step="0.01" class="w-full mt-1"
+                                                x-on:keydown.enter.prevent="$refs.inputLowF?.focus()" />
+                                        </div>
                                     </div>
-                                    <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">Hasil di luar rentang ini
-                                        ditandai Tinggi/Rendah</p>
-                                </div>
-                                <div>
-                                    <x-input-label value="Wanita (Batas Bawah - Atas)" />
-                                    <div class="flex items-center gap-2 mt-1">
-                                        <x-text-input wire:model.live="formClabitem.low_limit_f" x-ref="inputLowF"
-                                            type="number" step="0.01" class="w-full" placeholder="Bawah"
-                                            x-on:keydown.enter.prevent="$refs.inputHighF?.focus()" />
-                                        <span class="text-gray-400">-</span>
-                                        <x-text-input wire:model.live="formClabitem.high_limit_f" x-ref="inputHighF"
-                                            type="number" step="0.01" class="w-full" placeholder="Atas"
-                                            x-on:keydown.enter.prevent="$refs.inputLowK?.focus()" />
+                                </x-border-form>
+                                <x-border-form :title="__('Perempuan')" :align="__('start')" :bgcolor="__('bg-surface-soft')" padding="p-3">
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <x-input-label value="Batas Bawah" />
+                                            <x-text-input wire:model.live="formClabitem.low_limit_f" x-ref="inputLowF"
+                                                type="number" step="0.01" class="w-full mt-1"
+                                                x-on:keydown.enter.prevent="$refs.inputHighF?.focus()" />
+                                        </div>
+                                        <div>
+                                            <x-input-label value="Batas Atas" />
+                                            <x-text-input wire:model.live="formClabitem.high_limit_f" x-ref="inputHighF"
+                                                type="number" step="0.01" class="w-full mt-1"
+                                                x-on:keydown.enter.prevent="$refs.inputLowK?.focus()" />
+                                        </div>
                                     </div>
-                                </div>
-                                <div>
-                                    <x-input-label value="Anak (Batas Bawah - Atas)" />
-                                    <div class="flex items-center gap-2 mt-1">
-                                        <x-text-input wire:model.live="formClabitem.low_limit_k" x-ref="inputLowK"
-                                            type="number" step="0.01" class="w-full" placeholder="Bawah"
-                                            x-on:keydown.enter.prevent="$refs.inputHighK?.focus()" />
-                                        <span class="text-gray-400">-</span>
-                                        <x-text-input wire:model.live="formClabitem.high_limit_k" x-ref="inputHighK"
-                                            type="number" step="0.01" class="w-full" placeholder="Atas"
-                                            x-on:keydown.enter.prevent="$refs.inputCritLowM?.focus() || $refs.inputUnitConvert?.focus()" />
+                                </x-border-form>
+                                <x-border-form :title="__('Anak')" :align="__('start')" :bgcolor="__('bg-surface-soft')" padding="p-3">
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <x-input-label value="Batas Bawah" />
+                                            <x-text-input wire:model.live="formClabitem.low_limit_k" x-ref="inputLowK"
+                                                type="number" step="0.01" class="w-full mt-1"
+                                                x-on:keydown.enter.prevent="$refs.inputHighK?.focus()" />
+                                        </div>
+                                        <div>
+                                            <x-input-label value="Batas Atas" />
+                                            <x-text-input wire:model.live="formClabitem.high_limit_k" x-ref="inputHighK"
+                                                type="number" step="0.01" class="w-full mt-1"
+                                                x-on:keydown.enter.prevent="$refs.inputCritLowM?.focus() || $refs.inputUnitConvert?.focus()" />
+                                        </div>
                                     </div>
+                                </x-border-form>
                                 </div>
+                                <p class="text-xs text-gray-600 dark:text-gray-400">
+                                    Batas nilai rujukan: hasil di luar rentang ditandai <strong>Tinggi</strong>/<strong>Rendah</strong>.
+                                    Penilaian otomatis memakai batas Laki-laki/Perempuan sesuai jenis kelamin pasien; batas Anak
+                                    tersimpan tetapi belum dipakai.
+                                </p>
                             </div>
 
                             {{-- Ambang Nilai Kritis — hanya saat toggle Nilai Kritis aktif --}}
@@ -618,7 +931,7 @@ new class extends Component {
                                     </div>
                                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
                                         <div>
-                                            <x-input-label value="Pria (Kritis Bawah - Atas)" />
+                                            <x-input-label value="Laki-laki (Batas Kritis Bawah - Atas)" />
                                             <div class="flex items-center gap-2 mt-1">
                                                 <x-text-input wire:model.live="formClabitem.critical_low_m" x-ref="inputCritLowM"
                                                     type="number" step="0.01" class="w-full" placeholder="Bawah"
@@ -628,11 +941,11 @@ new class extends Component {
                                                     type="number" step="0.01" class="w-full" placeholder="Atas"
                                                     x-on:keydown.enter.prevent="$refs.inputCritLowF?.focus()" />
                                             </div>
-                                            <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">Hasil di bawah/atas ambang ini ditandai
+                                            <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">Hasil di bawah/atas ambang ini ditandai
                                                 <strong class="text-rose-600 dark:text-rose-400">NILAI KRITIS</strong></p>
                                         </div>
                                         <div>
-                                            <x-input-label value="Wanita (Kritis Bawah - Atas)" />
+                                            <x-input-label value="Perempuan (Batas Kritis Bawah - Atas)" />
                                             <div class="flex items-center gap-2 mt-1">
                                                 <x-text-input wire:model.live="formClabitem.critical_low_f" x-ref="inputCritLowF"
                                                     type="number" step="0.01" class="w-full" placeholder="Bawah"
@@ -644,7 +957,7 @@ new class extends Component {
                                             </div>
                                         </div>
                                         <div>
-                                            <x-input-label value="Anak (Kritis Bawah - Atas)" />
+                                            <x-input-label value="Anak (Batas Kritis Bawah - Atas)" />
                                             <div class="flex items-center gap-2 mt-1">
                                                 <x-text-input wire:model.live="formClabitem.critical_low_k" x-ref="inputCritLowK"
                                                     type="number" step="0.01" class="w-full" placeholder="Bawah"
@@ -665,35 +978,133 @@ new class extends Component {
 
                             <div class="grid grid-cols-1 gap-4 sm:grid-cols-4">
                                 <div>
-                                    <x-input-label value="Faktor Konversi" />
+                                    <x-input-label value="Satuan Hasil (UCUM)" />
+                                    <x-text-input wire:model.live="formClabitem.unit_desc" x-ref="inputUnitDesc"
+                                        maxlength="50" :error="$errors->has('formClabitem.unit_desc')" class="w-full mt-1" placeholder="g/dL, mg/dL, %, 10*3/uL"
+                                        x-on:keydown.enter.prevent="$refs.inputUnitConvert?.focus()" />
+                                    <x-input-error :messages="$errors->get('formClabitem.unit_desc')" class="mt-1" />
+                                    <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">Tampil di belakang hasil, misal: 12.5 <strong>g/dL</strong></p>
+                                </div>
+                                <div>
+                                    <x-input-label value="Faktor Konversi Satuan Alat" />
                                     <x-text-input wire:model.live="formClabitem.unit_convert" x-ref="inputUnitConvert"
                                         type="number" step="0.01" class="w-full mt-1"
                                         x-on:keydown.enter.prevent="$refs.inputPrice?.focus()" />
-                                    <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">Hasil dari alat dibagi
+                                    <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">Hasil dari alat dibagi
                                         nilai ini saat simpan, dikali kembali saat tampil. Contoh: HGB dari Mindray /10
                                     </p>
                                 </div>
                             </div>
+                        @elseif ($formClabitem['lowhigh_status'] === 'K')
+                            {{-- Kategori: baris rentang berlabel (LBMST_CLABITEM_KATEGORIS) --}}
+                            <div class="space-y-3">
+                                <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                                    <div>
+                                        <x-input-label value="Satuan Hasil (UCUM)" />
+                                        <x-text-input wire:model.live="formClabitem.unit_desc" x-ref="inputUnitDesc"
+                                            maxlength="50" :error="$errors->has('formClabitem.unit_desc')" class="w-full mt-1" placeholder="g/dL, mg/dL, %, 10*3/uL"
+                                            x-on:keydown.enter.prevent="$refs.inputPrice?.focus()" />
+                                        <x-input-error :messages="$errors->get('formClabitem.unit_desc')" class="mt-1" />
+                                        <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">Tampil di belakang hasil, misal: 12.5 <strong>g/dL</strong></p>
+                                    </div>
+                                </div>
+                                <div class="overflow-x-auto bg-canvas border rounded-2xl border-hairline dark:border-gray-700">
+                                    <table class="ds-table ds-table-entri">
+                                        <thead>
+                                            <tr>
+                                                <th class="ds-c w-10">No</th>
+                                                <th class="w-28">Min</th>
+                                                <th class="w-28">Max</th>
+                                                <th>Label</th>
+                                                <th class="w-40">Status</th>
+                                                <th class="ds-c w-20">Kritis</th>
+                                                <th class="ds-c w-16">Aksi</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach ($kategoriList as $index => $baris)
+                                                <tr wire:key="kategori-nilai-rujukan-{{ $index }}" class="align-top">
+                                                    <td class="ds-c ds-td-meta">{{ $index + 1 }}</td>
+                                                    <td>
+                                                        <x-text-input type="number" step="0.01" wire:model.live.debounce.500ms="kategoriList.{{ $index }}.nilaiMin"
+                                                            :error="$errors->has('kategoriList.' . $index . '.nilaiMin')" class="w-full px-2" placeholder="kosong = -" />
+                                                        <x-input-error :messages="$errors->get('kategoriList.' . $index . '.nilaiMin')" class="mt-1" />
+                                                    </td>
+                                                    <td>
+                                                        <x-text-input type="number" step="0.01" wire:model.live.debounce.500ms="kategoriList.{{ $index }}.nilaiMax"
+                                                            :error="$errors->has('kategoriList.' . $index . '.nilaiMax')" class="w-full px-2" placeholder="kosong = tak terbatas" />
+                                                        <x-input-error :messages="$errors->get('kategoriList.' . $index . '.nilaiMax')" class="mt-1" />
+                                                    </td>
+                                                    <td>
+                                                        <x-text-input wire:model.live.debounce.500ms="kategoriList.{{ $index }}.label" maxlength="50"
+                                                            :error="$errors->has('kategoriList.' . $index . '.label')" class="w-full px-2" placeholder="NEGATIF / BORDERLINE / POSITIF"
+                                                            style="text-transform:uppercase" />
+                                                        <x-input-error :messages="$errors->get('kategoriList.' . $index . '.label')" class="mt-1" />
+                                                    </td>
+                                                    <td>
+                                                        <x-select-input wire:model.live="kategoriList.{{ $index }}.status" class="w-full px-2">
+                                                            @foreach (\App\Support\KategoriNilaiRujukanLab::STATUS_KATEGORI as $kodeStatus => $namaStatus)
+                                                                <option value="{{ $kodeStatus }}">{{ $namaStatus }}</option>
+                                                            @endforeach
+                                                        </x-select-input>
+                                                    </td>
+                                                    <td class="ds-c">
+                                                        <div class="flex justify-center mt-2" title="Hasil di kategori ini ditandai NILAI KRITIS">
+                                                            <x-toggle wire:model.live="kategoriList.{{ $index }}.kritis" :trueValue="true" :falseValue="false" onColor="bg-error" />
+                                                        </div>
+                                                    </td>
+                                                    <td class="ds-c">
+                                                        <x-hapus-button :action="'hapusKategori(' . $index . ')'" title="Hapus Kategori"
+                                                            :message="'Hapus kategori ke-' . ($index + 1) . '?'" />
+                                                    </td>
+                                                </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <x-input-error :messages="$errors->get('kategoriList')" />
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <x-secondary-button type="button" wire:click="tambahKategori">+ Tambah Kategori</x-secondary-button>
+                                </div>
+                                <div class="p-3 text-xs border rounded-lg border-hairline bg-surface-soft dark:bg-gray-800 dark:border-gray-700">
+                                    <div class="text-gray-600 dark:text-gray-400">Nilai rujukan di cetakan (otomatis dari kategori):</div>
+                                    <div class="mt-1 font-mono text-ink dark:text-gray-100">{{ $this->teksNormalKategori() ?: '-' }}</div>
+                                </div>
+                                <p class="text-xs text-gray-600 dark:text-gray-400">
+                                    Min dan Max <strong>termasuk</strong> (0-2 berarti 0, 1, dan 2). Angka diambil dari hasil yang
+                                    diketik petugas, jadi "SKOR : 2", "SKOR 2", dan "2" sama-sama terbaca 2. Status: Normal tidak
+                                    ditandai, Borderline kuning, Abnormal oranye. Centang <strong>Kritis</strong> untuk kategori
+                                    yang perlu perhatian dokter segera.
+                                </p>
+                            </div>
                         @else
-                            {{-- Teks Deskriptif --}}
-                            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                            {{-- Kualitatif: Nilai Rujukan Laki-laki | Perempuan | Satuan Hasil — 1 baris --}}
+                            <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
                                 <div>
-                                    <x-input-label value="Rujukan Pria" />
+                                    <x-input-label value="Nilai Rujukan Laki-laki" />
                                     <x-text-input wire:model.live="formClabitem.normal_m" x-ref="inputNormalM"
                                         maxlength="100" class="w-full mt-1"
                                         placeholder="Contoh: 13 - 18 g/dL atau NEGATIF"
                                         x-on:keydown.enter.prevent="$refs.inputNormalF?.focus()" />
-                                    <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">Tampil di kolom Nilai
-                                        Rujukan pada hasil lab pasien pria</p>
+                                    <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">Tampil di kolom Nilai
+                                        Rujukan pada hasil lab pasien laki-laki</p>
                                 </div>
                                 <div>
-                                    <x-input-label value="Rujukan Wanita" />
+                                    <x-input-label value="Nilai Rujukan Perempuan" />
                                     <x-text-input wire:model.live="formClabitem.normal_f" x-ref="inputNormalF"
                                         maxlength="100" class="w-full mt-1"
                                         placeholder="Contoh: 12 - 16 g/dL atau NEGATIF"
+                                        x-on:keydown.enter.prevent="$refs.inputUnitDesc?.focus()" />
+                                    <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">Tampil di kolom Nilai
+                                        Rujukan pada hasil lab pasien perempuan</p>
+                                </div>
+                                <div>
+                                    <x-input-label value="Satuan Hasil (UCUM)" />
+                                    <x-text-input wire:model.live="formClabitem.unit_desc" x-ref="inputUnitDesc"
+                                        maxlength="50" :error="$errors->has('formClabitem.unit_desc')" class="w-full mt-1" placeholder="g/dL, mg/dL, %, 10*3/uL"
                                         x-on:keydown.enter.prevent="$refs.inputPrice?.focus()" />
-                                    <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">Tampil di kolom Nilai
-                                        Rujukan pada hasil lab pasien wanita</p>
+                                    <x-input-error :messages="$errors->get('formClabitem.unit_desc')" class="mt-1" />
+                                    <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">Tampil di belakang hasil, misal: 12.5 <strong>g/dL</strong></p>
                                 </div>
                             </div>
                         @endif
@@ -701,55 +1112,39 @@ new class extends Component {
                     </div>
                 </x-border-form>
 
-                {{-- ═══ SECTION 3: Tarif & Konfigurasi ═══ --}}
-                <x-border-form title="Tarif & Konfigurasi">
-                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-4">
-                        <div>
-                            <x-input-label value="Tarif" />
-                            <x-text-input-number wire:model="formClabitem.price" x-ref="inputPrice" :error="$errors->has('formClabitem.price')"
-                                class="mt-1" x-on:keydown.enter.prevent="$refs.inputItemSeq?.focus()" />
-                            <x-input-error :messages="$errors->get('formClabitem.price')" class="mt-1" />
-                            <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">Biaya tagihan pasien</p>
-                        </div>
-                        <div>
-                            <x-input-label value="Urutan" />
-                            <x-text-input-number wire:model="formClabitem.item_seq" x-ref="inputItemSeq"
-                                :error="$errors->has('formClabitem.item_seq')" class="mt-1"
-                                x-on:keydown.enter.prevent="$refs.inputStatus?.focus()" />
-                            <x-input-error :messages="$errors->get('formClabitem.item_seq')" class="mt-1" />
-                            <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">Posisi di cetakan</p>
-                        </div>
-                        <div>
-                            <x-input-label value="Status" />
-                            <x-select-input wire:model.live="formClabitem.status" x-ref="inputStatus"
-                                class="w-full mt-1" x-on:keydown.enter.prevent="$refs.inputHiddenStatus?.focus()">
-                                <option value="">Aktif</option>
-                                <option value="0">Non Aktif</option>
-                            </x-select-input>
-                            <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">Non Aktif = tidak bisa dipilih</p>
-                        </div>
-                        <div>
-                            <x-input-label value="Tampil di Hasil" />
-                            <x-select-input wire:model.live="formClabitem.hidden_status" x-ref="inputHiddenStatus"
-                                class="w-full mt-1" x-on:keydown.enter.prevent="$wire.save()">
-                                <option value="">Ya</option>
-                                <option value="1">Sembunyikan</option>
-                            </x-select-input>
-                            <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">Sembunyi = tidak di cetakan</p>
-                        </div>
-                    </div>
+                </div>
 
+                {{-- ═══ SECTION 3: Tarif & Konfigurasi ═══ --}}
+                <div x-show="activeTab === 'tarif'" x-cloak x-transition.opacity.duration.200ms>
+                <x-border-form title="Tarif & Konfigurasi">
                     @php
                         $produkTerpilih = trim($formClabitem['product_id'] ?? '');
                     @endphp
-                    <div class="grid grid-cols-1 gap-4 mt-4 sm:grid-cols-2 items-start">
-                        <div>
-                            <livewire:lov.product.lov-product target="clabitemProduct" label="Produk/Reagen (opsional)"
+                    {{-- 1 baris di layar lebar: Tarif 2 · Status 2 · Reagen/BHP 5 · Kebutuhan Reagen 3 --}}
+                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-12 items-start">
+                        <div class="lg:col-span-2">
+                            <x-input-label value="Tarif Pemeriksaan" />
+                            <x-text-input-number wire:model="formClabitem.price" x-ref="inputPrice" :error="$errors->has('formClabitem.price')"
+                                class="mt-1" x-on:keydown.enter.prevent="$refs.inputStatus?.focus()" />
+                            <x-input-error :messages="$errors->get('formClabitem.price')" class="mt-1" />
+                            <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">Biaya tagihan pasien</p>
+                        </div>
+                        <div class="lg:col-span-2">
+                            <x-input-label value="Status Pemeriksaan" />
+                            <x-select-input wire:model.live="formClabitem.status" x-ref="inputStatus"
+                                class="w-full mt-1" x-on:keydown.enter.prevent="$refs.inputDosage?.focus()">
+                                <option value="">Aktif</option>
+                                <option value="0">Nonaktif</option>
+                            </x-select-input>
+                            <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">Nonaktif = tidak bisa dipilih saat order</p>
+                        </div>
+                        <div class="lg:col-span-5">
+                            <livewire:lov.product.lov-product target="clabitemProduct" label="Reagen / BHP (opsional)"
                                 placeholder="Ketik nama/kode produk reagen..."
                                 :initialProductId="$produkTerpilih !== '' && $produkTerpilih !== '0' ? $produkTerpilih : null"
                                 wire:key="lov-clabitem-product-{{ $renderVersions['modal'] ?? 0 }}" />
                             <x-input-error :messages="$errors->get('formClabitem.product_id')" class="mt-1" />
-                            <div class="flex flex-wrap items-center gap-2 mt-1 text-xs text-gray-400 dark:text-gray-500">
+                            <div class="flex flex-wrap items-center gap-2 mt-1 text-xs text-gray-600 dark:text-gray-400">
                                 <span>Tersimpan:
                                     <span class="font-semibold text-ink dark:text-gray-200">{{ $produkTerpilih === '' || $produkTerpilih === '0' ? 'tanpa produk' : $produkTerpilih }}</span></span>
                                 @if ($produkTerpilih !== '' && $produkTerpilih !== '0')
@@ -757,11 +1152,77 @@ new class extends Component {
                                         class="font-medium text-brand-green hover:underline dark:text-brand-lime">Kosongkan</button>
                                 @endif
                             </div>
-                            <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">Reagen/BHP dari master obat &amp;
+                            <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">Reagen/BHP dari master obat &amp;
                                 barang. Boleh dikosongkan.</p>
+                        </div>
+                        <div class="lg:col-span-3">
+                            <x-input-label value="Kebutuhan Reagen per Tes" />
+                            <x-text-input-number wire:model="formClabitem.dosage" x-ref="inputDosage"
+                                :error="$errors->has('formClabitem.dosage')" class="mt-1"
+                                x-on:keydown.enter.prevent="$refs.inputItemCode?.focus()" />
+                            <x-input-error :messages="$errors->get('formClabitem.dosage')" class="mt-1" />
+                            <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">Kebutuhan reagen per
+                                pemeriksaan (sesuai satuan reagen di master obat &amp; barang), untuk perhitungan stok</p>
                         </div>
                     </div>
                 </x-border-form>
+
+                </div>
+
+                {{-- ═══ SECTION 4: Mapping Alat & SATUSEHAT (kode pemetaan, seperti KFA di Master Obat) ═══ --}}
+                <div x-show="activeTab === 'mapping'" x-cloak x-transition.opacity.duration.200ms>
+                <x-border-form title="Mapping Alat & SATUSEHAT">
+                            <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                                <div>
+                                    <x-input-label value="Kode Parameter Alat (Analyzer)" />
+                                    <x-text-input wire:model.live="formClabitem.item_code" x-ref="inputItemCode"
+                                        maxlength="25" :error="$errors->has('formClabitem.item_code')" class="w-full mt-1"
+                                        placeholder="HGB, WBC, RBC..."
+                                        x-on:keydown.enter.prevent="$refs.inputLoincCode?.focus()" />
+                                    <x-input-error :messages="$errors->get('formClabitem.item_code')" class="mt-1" />
+                                    <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">Kode dari alat (Mindray dll)
+                                        untuk import hasil otomatis</p>
+                                </div>
+                                <div class="sm:col-span-2">
+                                    <livewire:lov.loinc.lov-loinc target="loincLab" label="Kode LOINC (SATUSEHAT)"
+                                        placeholder="Ketik nama pemeriksaan / kode LOINC..." :initialLoincCode="$formClabitem['loinc_code'] ?: null"
+                                        :disabled="false" wire:key="lov-loinc-{{ $renderVersions['modal'] ?? 0 }}" />
+
+                                    <div class="flex flex-wrap items-center gap-2 mt-2">
+                                        <x-outline-button type="button" wire:click="cekLoincKeSatuSehat"
+                                            :disabled="trim($formClabitem['loinc_code'] ?? '') === ''" wire:loading.attr="disabled"
+                                            wire:target="cekLoincKeSatuSehat">
+                                            <span wire:loading.remove wire:target="cekLoincKeSatuSehat">Cek Kode LOINC</span>
+                                            <span wire:loading wire:target="cekLoincKeSatuSehat">Mengecek...</span>
+                                        </x-outline-button>
+                                    </div>
+
+                                    @if ($hasilCekLoinc)
+                                        <div class="mt-2 text-xs text-ink dark:text-gray-200">
+                                            @if ($hasilCekLoinc['status'] === 'ada')
+                                                <x-badge variant="success">Kode ada di LOINC</x-badge>
+                                                <p class="mt-1">Arti kode {{ $hasilCekLoinc['kode'] }}: <span class="font-semibold">{{ $hasilCekLoinc['display'] ?? 'tidak tersedia' }}</span></p>
+                                                @if (filled($formClabitem['loinc_display']) && filled($hasilCekLoinc['display']) && mb_strtolower(trim($formClabitem['loinc_display'])) !== mb_strtolower(trim($hasilCekLoinc['display'])))
+                                                    <p class="mt-1">Nama tersimpan berbeda: {{ $formClabitem['loinc_display'] }}</p>
+                                                @endif
+                                                <p class="mt-1 text-muted dark:text-gray-400">Pastikan artinya sama dengan pemeriksaan ini. Kode yang artinya salah tetap bisa terkirim sebagai pemeriksaan lain.</p>
+                                            @elseif ($hasilCekLoinc['status'] === 'tidak_ada')
+                                                <x-badge variant="danger">Kode tidak ada di LOINC</x-badge>
+                                                <p class="mt-1">Kode {{ $hasilCekLoinc['kode'] }} tidak dikenal, kemungkinan besar ditolak saat kirim. Ganti dengan kode yang benar.</p>
+                                            @else
+                                                <x-badge variant="warning">Belum bisa dicek</x-badge>
+                                                <p class="mt-1">Server tx.fhir.org tidak merespons. Coba lagi beberapa saat.</p>
+                                            @endif
+                                        </div>
+                                    @endif
+
+                                    <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">Cek ini memastikan kodenya ada dan
+                                        menampilkan artinya. Satu Sehat tidak menyediakan cek kode, jadi diterima atau tidaknya
+                                        baru pasti saat kirim.</p>
+                                </div>
+                            </div>
+                </x-border-form>
+                </div>
             </div>
 
             {{-- FOOTER --}}

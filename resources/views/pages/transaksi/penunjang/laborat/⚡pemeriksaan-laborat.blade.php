@@ -6,6 +6,7 @@ use Livewire\Attributes\On;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Reactive;
 use Illuminate\Support\Facades\DB;
+use App\Support\KategoriNilaiRujukanLab;
 
 new class extends Component {
     use WithPagination;
@@ -395,7 +396,10 @@ new class extends Component {
 
         $resultStatus = null;
 
-        if ($item['lowhigh_status'] === 'Y' && is_numeric($value)) {
+        if (($item['lowhigh_status'] ?? '') === KategoriNilaiRujukanLab::JENIS) {
+            // Jenis Kategori (mis. TUBEX): angka diambil dari hasil ("SKOR : 2") lalu dicocokkan ke rentang.
+            $resultStatus = KategoriNilaiRujukanLab::statusHasil($value, KategoriNilaiRujukanLab::untukItem((string) $item['clabitem_id']));
+        } elseif ($item['lowhigh_status'] === 'Y' && is_numeric($value)) {
             // Numeric comparison
             $unitConvert = floatval($item['unit_convert'] ?? 1) ?: 1;
             $numValue = floatval($value) / $unitConvert;
@@ -538,6 +542,7 @@ new class extends Component {
             ->join('lbmst_clabitems as b', 'a.clabitem_id', '=', 'b.clabitem_id')
             ->select(
                 'a.checkup_dtl',
+                'a.clabitem_id',
                 'a.lab_result',
                 'b.lowhigh_status',
                 'b.unit_convert',
@@ -561,7 +566,9 @@ new class extends Component {
 
             $resultStatus = null;
 
-            if (($item->lowhigh_status ?? 'N') === 'Y' && is_numeric($value)) {
+            if (($item->lowhigh_status ?? '') === KategoriNilaiRujukanLab::JENIS) {
+                $resultStatus = KategoriNilaiRujukanLab::statusHasil($value, KategoriNilaiRujukanLab::untukItem((string) $item->clabitem_id));
+            } elseif (($item->lowhigh_status ?? 'N') === 'Y' && is_numeric($value)) {
                 $numValue = (float) $value;
                 $lowLimit = $this->sex === 'P' ? $item->low_limit_f : $item->low_limit_m;
                 $highLimit = $this->sex === 'P' ? $item->high_limit_f : $item->high_limit_m;
@@ -866,12 +873,17 @@ new class extends Component {
                             @php
                                 $normal = $dtl['nilai_normal_display'] ?? '-';
                                 $resultStatus = $dtl['lab_result_status'] ?? '';
-                                $isKritis = (($dtl['nilai_kritis'] ?? 'N') === 'Y') && in_array($resultStatus, ['H', 'L'], true);
+                                $jenisKategori = ($dtl['lowhigh_status'] ?? '') === KategoriNilaiRujukanLab::JENIS;
+                                // Jenis Kategori: kritis dari centang kategori yang cocok, bukan flag H/L.
+                                $isKritis = $jenisKategori
+                                    ? KategoriNilaiRujukanLab::kritis((string) ($dtl['clabitem_id'] ?? ''), (string) ($dtl['lab_result'] ?? ''))
+                                    : (($dtl['nilai_kritis'] ?? 'N') === 'Y') && in_array($resultStatus, ['H', 'L'], true);
                                 $statusColor = match($resultStatus) {
                                     'H' => 'text-red-600 font-bold',
                                     'L' => 'text-blue-600 font-bold',
                                     'N' => 'text-green-600',
                                     'R' => 'text-orange-600 font-bold',
+                                    'B' => 'text-amber-700 dark:text-amber-400 font-bold',
                                     default => 'text-muted-soft',
                                 };
                                 $statusLabel = match($resultStatus) {
@@ -879,8 +891,17 @@ new class extends Component {
                                     'L' => 'Rendah',
                                     'N' => 'Normal',
                                     'R' => 'Abnormal',
+                                    'B' => 'Borderline',
                                     default => '-',
                                 };
+                                // Jenis Kategori: tampilkan label kategorinya (NEGATIF / BORDERLINE / POSITIF).
+                                $labelKategori = $jenisKategori ? KategoriNilaiRujukanLab::labelHasil((string) ($dtl['clabitem_id'] ?? ''), (string) ($dtl['lab_result'] ?? '')) : '';
+                                if ($labelKategori !== '') {
+                                    $statusLabel = $labelKategori;
+                                    if ($resultStatus === '' || $resultStatus === null) {
+                                        $statusColor = 'text-green-700 dark:text-green-400';
+                                    }
+                                }
                             @endphp
                             <tr wire:key="lab-hasil-dtl-{{ $dtl['checkup_dtl'] ?? $idx }}" class="{{ $isKritis ? 'bg-rose-100 dark:bg-rose-900/30 ring-1 ring-rose-300 dark:ring-rose-700' : 'hover:bg-surface-soft dark:hover:bg-gray-800' }}">
                                 <td class="px-3 py-2 text-muted">{{ $idx + 1 }}</td>

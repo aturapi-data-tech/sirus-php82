@@ -840,6 +840,15 @@ new class extends Component {
                                                     }
                                                 }
 
+                                                // Jenis Nilai Rujukan Kategori (lowhigh_status 'K', mis. TUBEX): kritis dari
+                                                // centang kategori yang cocok, label status = label kategori.
+                                                $jenisKategori = ($item->lowhigh_status ?? '') === \App\Support\KategoriNilaiRujukanLab::JENIS;
+                                                $labelKategori = '';
+                                                if ($jenisKategori) {
+                                                    $isKritis = \App\Support\KategoriNilaiRujukanLab::kritis((string) ($item->clabitem_id ?? ''), (string) ($item->lab_result ?? ''));
+                                                    $labelKategori = \App\Support\KategoriNilaiRujukanLab::labelHasil((string) ($item->clabitem_id ?? ''), (string) ($item->lab_result ?? ''));
+                                                }
+
                                                 $rowClass = $isKritis
                                                     ? 'bg-rose-100 dark:bg-rose-900/30 ring-1 ring-rose-300 dark:ring-rose-700'
                                                     : ($isHigh
@@ -894,7 +903,7 @@ new class extends Component {
                                                 }
 
                                                 // Status label
-                                                $statusLabel = $isHigh ? 'Tinggi' : ($isLow ? 'Rendah' : ($flagStatus === 'R' ? 'Abnormal' : ''));
+                                                $statusLabel = $isHigh ? 'Tinggi' : ($isLow ? 'Rendah' : ($labelKategori !== '' ? $labelKategori : ($flagStatus === 'R' ? 'Abnormal' : ($flagStatus === 'B' ? 'Borderline' : ''))));
                                             @endphp
                                             @php
                                                 $itemId = trim($item->clabitem_id ?? '');
@@ -932,8 +941,17 @@ new class extends Component {
                                                             <span class="font-bold text-red-600">Tinggi</span>
                                                         @elseif ($isLow)
                                                             <span class="font-bold text-blue-600">Rendah</span>
+                                                        @elseif ($labelKategori !== '')
+                                                            <span @class([
+                                                                'font-bold',
+                                                                'text-orange-600' => $flagStatus === 'R',
+                                                                'text-amber-700 dark:text-amber-400' => $flagStatus === 'B',
+                                                                'text-green-700 dark:text-green-400' => $flagStatus === '',
+                                                            ])>{{ $labelKategori }}</span>
                                                         @elseif ($flagStatus === 'R')
                                                             <span class="font-bold text-orange-600">Abnormal</span>
+                                                        @elseif ($flagStatus === 'B')
+                                                            <span class="font-bold text-amber-700 dark:text-amber-400">Borderline</span>
                                                         @endif
                                                         @if ($isKritis)
                                                             <div class="mt-1">

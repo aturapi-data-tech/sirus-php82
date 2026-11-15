@@ -185,8 +185,9 @@ Route `/master/laborat` → `master-laborat/clab` (kategori) + `master-laborat/c
 | Grup | Kolom |
 |---|---|
 | Identitas | `clabitem_id`, `clabitem_desc`, `clab_id`, `product_id`, `item_seq`, `price`, `dosage`, `unit_desc`, `status`, `hidden_status` |
-| Paket | `is_group` (`'1'`=paket), `clabitem_group` (id induk bila child) |
-| Mode rujukan | `lowhigh_status` (`'Y'`=Rentang Angka, null=Teks Deskriptif) |
+| Catatan nilai | `hidden_status`: `'Y'` sembunyi, `'N'`/null tampil (form kini menulis Y/N; dulu `'1'`). `status`: BUKAN penanda aktif — `'0'` di 203 item yang tetap dipakai |
+| Paket | **`clabitem_group`** = id induk → penentu "bagian dari panel/paket" (form: toggle `bagianPanel`). `is_group` `'Y'`/`'1'` = item header panel (dibuang kirim-lab); data: `'0'` di 227/228 item, form tidak mengubahnya |
+| Mode rujukan | `lowhigh_status` (`'Y'`=Rentang Angka, null/`'N'`=Teks Deskriptif, **`'K'`=Kategori** — §7.2) |
 | Normal TEKS | `normal_m`, `normal_f` |
 | Normal ANGKA | `low_limit_m/high_limit_m` (Pria), `low_limit_f/high_limit_f` (Wanita), `low_limit_k/high_limit_k` (Anak) |
 | **KRITIS ANGKA** | `critical_low_m/high_m`, `critical_low_f/high_f`, `critical_low_k/high_k` |
@@ -217,7 +218,30 @@ mode TEKS (lowhigh_status≠'Y'):
   **tanpa** bagi `unit_convert` (import sudah menyimpan nilai terbagi).
 - **`_k` (Anak) TIDAK dipakai runtime** — hanya `_m/_f`. Konsisten di semua konsumen (display, cetak,
   laporan, status). `_k` cuma tersimpan/tertampil di master.
-- **Status disimpan `'H'/'L'/'R'/null`** (Normal = null, bukan literal `'N'`).
+- **Status disimpan `'H'/'L'/'R'/'B'/null`** (Normal = null, bukan literal `'N'`; `'B'` hanya dari jenis Kategori).
+- **Jenis Kategori (`'K'`) dinilai lebih dulu** di kedua jalur — lihat §7.2.
+
+### 7.2 Jenis Nilai Rujukan Kategori (`lowhigh_status='K'`) — sejak 2026-11-15
+
+Untuk pemeriksaan berskor/berlabel yang dulu selalu "Abnormal" di mode TEKS (contoh: TUBEX `SKOR : 2`
+tidak pernah sama persis dengan teks normal). DDL: `docs/ddl-lab-kategori-nilai-rujukan.sql`
+(tabel `LBMST_CLABITEM_KATEGORIS`, data awal TUBEX `TU00211`, hitung ulang hasil lama).
+Kode tunggal: `App\Support\KategoriNilaiRujukanLab`.
+
+- Baris kategori: `NILAI_MIN`/`NILAI_MAX` (inklusif, NULL = tak terbatas), `LABEL`, `STATUS` N/B/A, `KRITIS` Y/N.
+- Penilaian: angka diambil dari teks hasil (`"SKOR : 2"`→2, rentang `"1-2"`→2), kategori pertama yang cocok
+  dipakai. Status disimpan: N→null, **B→`'B'` (Borderline, baru)**, A→`'R'`. Tanpa angka → null; angka di luar
+  semua rentang → `'R'`.
+- Kolom/status ditampilkan sebagai **label kategori** (NEGATIF/BORDERLINE/POSITIF) di layar petugas, display RM,
+  dan cetakan; kritis dari centang kategori (bukan `critical_*` / flag H/L).
+- Master: pilihan "Kategori" di Jenis Nilai Rujukan → tabel kategori; saat simpan `normal_m/normal_f` diisi teks
+  ASCII gabungan kategori (`0-2 NEGATIF ; 3 BORDERLINE ; >= 4 POSITIF`, maks 100 char) dan `low/high/critical_*`
+  dikosongkan, `nilai_kritis` = ada kategori kritis. Konsumen yang belum mengenal `'K'` (aplikasi 6i, kirim-lab
+  SATUSEHAT, RL 3.8) memperlakukannya seperti TEKS → tetap aman.
+- Tabel belum dibuat di suatu DB → kategori dibaca kosong (tidak ORA-00942); hanya simpan item Kategori di master
+  yang ditolak dengan pesan "jalankan DDL".
+- **Belum**: laporan Nilai Kritis manajemen (`NilaiKritisLabTrait`, SQL) belum membaca kritis kategori; kategori
+  berbasis teks (Widal 1/80, 1/160) belum didukung.
 
 ---
 
