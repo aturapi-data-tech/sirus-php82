@@ -79,6 +79,12 @@
     @endphp
 
 
+    {{-- Uraian Tindakan — kotak bebas di atas, seperti formulir kertas. nl2br(e()) : baris baru ikut, tanpa escape ganda. --}}
+    <div class="text-[11px] font-bold bg-[#eef2ee] px-1.5 py-[3px] border border-[#999] mt-1.5">URAIAN TINDAKAN</div>
+    <table class="w-full border-collapse text-[10px]">
+        <tr><td class="border border-[#999] px-[5px] py-[2px] align-top" style="min-height:60px; height:60px;">{!! filled($form['uraianTindakan'] ?? null) ? nl2br(e($form['uraianTindakan'])) : '-' !!}</td></tr>
+    </table>
+
     {{-- 1. Jenis Partus --}}
     <div class="text-[11px] font-bold bg-[#eef2ee] px-1.5 py-[3px] border border-[#999] mt-1.5">1. JENIS PARTUS</div>
     <table class="w-full border-collapse text-[10px]">
