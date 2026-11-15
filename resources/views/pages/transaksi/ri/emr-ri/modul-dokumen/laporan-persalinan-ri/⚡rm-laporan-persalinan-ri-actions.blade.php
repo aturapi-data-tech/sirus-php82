@@ -34,6 +34,7 @@ new class extends Component {
         // Jenis Partus
         'jenisPartus'         => '',   // Partus Spontan | Partus Buatan
         'indikasi'            => '',
+        'uraianTindakan'            => '',   // narasi tindakan (kotak besar di atas formulir kertas)
         // BAYI — baris berulang: satu persalinan bisa menghasilkan bayi kembar (gemelli),
         // dan tiap bayi punya BB/PB/APGAR/jenis kelamin/keadaan sendiri. Lihat bayiKosong().
         'bayi'                => [],
@@ -447,6 +448,7 @@ new class extends Component {
         return [
             'jenisPartus'      => $this->newForm['jenisPartus'] ?? '',
             'indikasi'         => $this->newForm['indikasi'] ?? '',
+            'uraianTindakan'         => $this->newForm['uraianTindakan'] ?? '',
             'bayi'             => $this->normalizeBayi($this->newForm),
             'plasentaLahirTgl' => $this->newForm['plasentaLahirTgl'] ?? '',
             'plasentaCara'     => $this->newForm['plasentaCara'] ?? '',
@@ -488,10 +490,10 @@ new class extends Component {
         ];
     }
 
-    // Cek: minimal jenis partus terisi ATAU sudah ada satu baris bayi.
+    // Cek: minimal uraian tindakan / jenis partus terisi ATAU sudah ada satu baris bayi.
     private function adaIntiPersalinan(): bool
     {
-        return filled($this->newForm['jenisPartus'] ?? null) || count($this->normalizeBayi($this->newForm)) > 0;
+        return filled($this->newForm['jenisPartus'] ?? null) || filled($this->newForm['uraianTindakan'] ?? null) || count($this->normalizeBayi($this->newForm)) > 0;
     }
 
     // Simpan entri (add/update by createdAt) dengan status $finalized. Dipakai draft & kunci.
@@ -539,7 +541,7 @@ new class extends Component {
             return;
         }
         if (!$this->adaIntiPersalinan()) {
-            $this->dispatch('toast', type: 'error', message: 'Isi Jenis Partus atau tambahkan minimal satu baris data bayi.');
+            $this->dispatch('toast', type: 'error', message: 'Isi Uraian Tindakan, Jenis Partus, atau tambahkan minimal satu baris data bayi.');
             return;
         }
 
@@ -568,7 +570,7 @@ new class extends Component {
             return;
         }
         if (!$this->adaIntiPersalinan()) {
-            $this->dispatch('toast', type: 'error', message: 'Isi Jenis Partus atau tambahkan minimal satu baris data bayi sebelum TTD.');
+            $this->dispatch('toast', type: 'error', message: 'Isi Uraian Tindakan, Jenis Partus, atau tambahkan minimal satu baris data bayi sebelum TTD.');
             return;
         }
 
@@ -937,6 +939,17 @@ new class extends Component {
                     @if ($this->diForm())
                     <fieldset @disabled($formReadOnly) class="space-y-4">
 
+                        {{-- Uraian Tindakan — kotak bebas besar di atas formulir kertas (narasi jalannya tindakan persalinan) --}}
+
+                        <x-border-form title="Uraian Tindakan Persalinan">
+
+                            <x-textarea wire:model="newForm.uraianTindakan" rows="6" class="w-full"
+
+                                placeholder="Tuliskan jalannya tindakan persalinan: pembukaan, his, pimpinan persalinan, tindakan yang dilakukan, temuan, dsb." />
+
+                        </x-border-form>
+
+
                         {{-- 1. Jenis Partus --}}
                         <x-border-form title="1. Jenis Partus">
                             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -955,111 +968,137 @@ new class extends Component {
                             </div>
                         </x-border-form>
 
-                        {{-- 2. Bayi — tabel entri berulang (kelahiran kembar / gemelli) --}}
+                        {{-- 2. Bayi — entri berulang (kelahiran kembar / gemelli). Isian disusun grid 6 kolom di atas
+                             daftar, daftar diringkas 9 kolom — dulu satu tabel 19 kolom (min 1900px) yang menggeser ke kanan. --}}
                         <x-border-form title="2. Bayi">
                             <div class="space-y-3">
+                                @if (!$formReadOnly)
+                                    {{-- ISIAN bayi baru: Tambah (atau Enter di isian teks) memasukkan ke daftar di bawah --}}
+                                    <div class="p-3 border rounded-2xl border-hairline bg-surface-soft/70 dark:bg-gray-800/40 dark:border-gray-700">
+                                        <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+                                            {{-- Baris 1: Lahir · JK · Keadaan · BB · PB --}}
+                                            <div class="col-span-2 sm:col-span-2 lg:col-span-2">
+                                                <x-input-label value="Lahir (tgl & jam)" />
+                                                <div class="flex gap-1 mt-1">
+                                                    <x-text-input wire:model="bayiLahir" placeholder="dd/mm/yyyy HH:mm:ss" :error="$errors->has('bayiLahir')" class="w-full px-2" />
+                                                    <x-now-button wire:click="setNowBayiLahir" class="!p-2 shrink-0" />
+                                                </div>
+                                                <x-input-error :messages="$errors->get('bayiLahir')" class="mt-1" />
+                                            </div>
+                                            <div>
+                                                <x-input-label value="Jenis Kelamin" />
+                                                <x-select-input wire:model="bayiJenisKelamin" :error="$errors->has('bayiJenisKelamin')" class="w-full mt-1">
+                                                    <option value="">—</option>
+                                                    <option value="Laki-laki">Laki-laki</option>
+                                                    <option value="Perempuan">Perempuan</option>
+                                                </x-select-input>
+                                            </div>
+                                            <div>
+                                                <x-input-label value="Keadaan" />
+                                                <x-select-input wire:model="bayiKeadaan" :error="$errors->has('bayiKeadaan')" class="w-full mt-1">
+                                                    <option value="">—</option>
+                                                    <option value="Hidup">Hidup</option>
+                                                    <option value="Mati">Mati</option>
+                                                </x-select-input>
+                                            </div>
+                                            <div>
+                                                <x-input-label value="BB (gr)" />
+                                                <x-text-input type="number" wire:model="bayiBb" wire:keydown.enter.prevent="tambahBayi" :error="$errors->has('bayiBb')" class="w-full mt-1" />
+                                            </div>
+                                            <div>
+                                                <x-input-label value="PB (cm)" />
+                                                <x-text-input type="number" wire:model="bayiPb" wire:keydown.enter.prevent="tambahBayi" :error="$errors->has('bayiPb')" class="w-full mt-1" />
+                                            </div>
+
+                                            {{-- Baris 2: APGAR · Resusitasi · Ukuran Kepala · Caput --}}
+                                            <div>
+                                                <x-input-label value="APGAR" />
+                                                <x-text-input wire:model="bayiApgar" wire:keydown.enter.prevent="tambahBayi" :error="$errors->has('bayiApgar')" class="w-full mt-1" placeholder="7-8-9" />
+                                            </div>
+                                            <div>
+                                                <x-input-label value="Resusitasi" />
+                                                <x-select-input wire:model="bayiResusitasi" :error="$errors->has('bayiResusitasi')" class="w-full mt-1">
+                                                    <option value="">—</option>
+                                                    <option value="Ya">Ya</option>
+                                                    <option value="Tidak">Tidak</option>
+                                                </x-select-input>
+                                            </div>
+                                            <div class="col-span-2 sm:col-span-3 lg:col-span-3">
+                                                <x-input-label value="Ukuran Kepala (cm): BT · BP · FO · MO · OB" />
+                                                <div class="grid grid-cols-5 gap-1 mt-1">
+                                                    <x-text-input type="number" step="0.1" wire:model="bayiUkKepalaBt" wire:keydown.enter.prevent="tambahBayi" :error="$errors->has('bayiUkKepalaBt')" class="w-full px-1" placeholder="BT" title="Bitemporalis" />
+                                                    <x-text-input type="number" step="0.1" wire:model="bayiUkKepalaBp" wire:keydown.enter.prevent="tambahBayi" :error="$errors->has('bayiUkKepalaBp')" class="w-full px-1" placeholder="BP" title="Biparietalis" />
+                                                    <x-text-input type="number" step="0.1" wire:model="bayiUkKepalaFo" wire:keydown.enter.prevent="tambahBayi" :error="$errors->has('bayiUkKepalaFo')" class="w-full px-1" placeholder="FO" title="Fronto-Occipitalis" />
+                                                    <x-text-input type="number" step="0.1" wire:model="bayiUkKepalaMo" wire:keydown.enter.prevent="tambahBayi" :error="$errors->has('bayiUkKepalaMo')" class="w-full px-1" placeholder="MO" title="Mento-Occipitalis" />
+                                                    <x-text-input type="number" step="0.1" wire:model="bayiUkKepalaOb" wire:keydown.enter.prevent="tambahBayi" :error="$errors->has('bayiUkKepalaOb')" class="w-full px-1" placeholder="OB" title="Sub-Occipito-Bregmatika" />
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <x-input-label value="Caput Suksedanium" />
+                                                <x-text-input wire:model="bayiCaputSuksedanium" wire:keydown.enter.prevent="tambahBayi" :error="$errors->has('bayiCaputSuksedanium')" class="w-full mt-1" />
+                                            </div>
+
+                                            {{-- Baris 3: Cephal · Atresia · Lain-lain · Tambah --}}
+                                            <div>
+                                                <x-input-label value="Cephal Hematoma" />
+                                                <x-text-input wire:model="bayiCephalHematoma" wire:keydown.enter.prevent="tambahBayi" :error="$errors->has('bayiCephalHematoma')" class="w-full mt-1" />
+                                            </div>
+                                            <div>
+                                                <x-input-label value="Atresia Ani" />
+                                                <x-text-input wire:model="bayiAtresiaAni" wire:keydown.enter.prevent="tambahBayi" :error="$errors->has('bayiAtresiaAni')" class="w-full mt-1" />
+                                            </div>
+                                            <div class="col-span-2 sm:col-span-1 lg:col-span-3">
+                                                <x-input-label value="Lain-lain" />
+                                                <x-text-input wire:model="bayiLain" wire:keydown.enter.prevent="tambahBayi" :error="$errors->has('bayiLain')" class="w-full mt-1" />
+                                            </div>
+                                            <div class="flex items-end col-span-2 sm:col-span-3 lg:col-span-1">
+                                                <x-primary-button type="button" wire:click="tambahBayi" wire:loading.attr="disabled" wire:target="tambahBayi" class="justify-center w-full gap-1">
+                                                    <span wire:loading.remove wire:target="tambahBayi" class="flex items-center gap-1">
+                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
+                                                        Tambah Bayi
+                                                    </span>
+                                                    <span wire:loading wire:target="tambahBayi"><x-loading class="w-4 h-4" /></span>
+                                                </x-primary-button>
+                                            </div>
+                                        </div>
+                                        <p class="mt-2 text-xs text-muted-soft">Petugas penambah: <strong>{{ auth()->user()->myuser_name ?? '-' }}</strong> (tercatat per bayi). Untuk kelahiran kembar, tambahkan satu kali per bayi.</p>
+                                    </div>
+                                @endif
+
+                                {{-- DAFTAR bayi yang sudah ditambahkan --}}
                                 <div class="overflow-x-auto bg-canvas border rounded-2xl border-hairline dark:border-gray-700">
-                                    <table class="ds-table ds-table-entri min-w-[1900px]">
+                                    <table class="ds-table ds-table-entri">
                                         <thead>
                                             <tr>
                                                 <th class="ds-c w-10">No</th>
-                                                <th class="w-44">Lahir</th>
-                                                <th class="w-32">JK</th>
-                                                <th class="w-28">Keadaan</th>
-                                                <th class="w-24">BB (gr)</th>
-                                                <th class="w-24">PB (cm)</th>
-                                                <th class="w-28">APGAR</th>
-                                                <th class="w-28">Resusitasi</th>
-                                                <th class="w-16">BT</th>
-                                                <th class="w-16">BP</th>
-                                                <th class="w-16">FO</th>
-                                                <th class="w-16">MO</th>
-                                                <th class="w-16">OB</th>
-                                                <th class="w-32">Caput Suks.</th>
-                                                <th class="w-32">Cephal Hemat.</th>
-                                                <th class="w-28">Atresia Ani</th>
-                                                <th class="w-40">Lain-lain</th>
-                                                <th class="w-36">Petugas</th>
-                                                <th class="ds-c w-24">Aksi</th>
+                                                <th>Lahir</th>
+                                                <th>JK / Keadaan</th>
+                                                <th>BB / PB</th>
+                                                <th>APGAR / Resusitasi</th>
+                                                <th>Ukuran Kepala</th>
+                                                <th>Temuan</th>
+                                                <th>Petugas</th>
+                                                <th class="ds-c w-16">Aksi</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            @if (!$formReadOnly)
-                                                {{-- Baris ENTRI: sejajar kolom tabel, sekali Tambah langsung masuk daftar --}}
-                                                <tr class="align-top bg-surface-soft/70 dark:bg-gray-800/40">
-                                                    <td class="ds-c ds-td-meta">+</td>
-                                                    <td>
-                                                        <div class="flex gap-1">
-                                                            <x-text-input wire:model="bayiLahir" placeholder="dd/mm/yyyy HH:mm:ss" :error="$errors->has('bayiLahir')" class="w-full px-2" />
-                                                            <x-now-button wire:click="setNowBayiLahir" class="!p-2 shrink-0" />
-                                                        </div>
-                                                        <x-input-error :messages="$errors->get('bayiLahir')" class="mt-1" />
-                                                    </td>
-                                                    <td>
-                                                        <x-select-input wire:model="bayiJenisKelamin" :error="$errors->has('bayiJenisKelamin')" class="w-full px-1">
-                                                            <option value="">—</option>
-                                                            <option value="Laki-laki">Laki-laki</option>
-                                                            <option value="Perempuan">Perempuan</option>
-                                                        </x-select-input>
-                                                    </td>
-                                                    <td>
-                                                        <x-select-input wire:model="bayiKeadaan" :error="$errors->has('bayiKeadaan')" class="w-full px-1">
-                                                            <option value="">—</option>
-                                                            <option value="Hidup">Hidup</option>
-                                                            <option value="Mati">Mati</option>
-                                                        </x-select-input>
-                                                    </td>
-                                                    <td><x-text-input type="number" wire:model="bayiBb" wire:keydown.enter.prevent="tambahBayi" :error="$errors->has('bayiBb')" class="w-full px-1" /></td>
-                                                    <td><x-text-input type="number" wire:model="bayiPb" wire:keydown.enter.prevent="tambahBayi" :error="$errors->has('bayiPb')" class="w-full px-1" /></td>
-                                                    <td><x-text-input wire:model="bayiApgar" wire:keydown.enter.prevent="tambahBayi" :error="$errors->has('bayiApgar')" class="w-full px-1" placeholder="7-8-9" /></td>
-                                                    <td>
-                                                        <x-select-input wire:model="bayiResusitasi" :error="$errors->has('bayiResusitasi')" class="w-full px-1">
-                                                            <option value="">—</option>
-                                                            <option value="Ya">Ya</option>
-                                                            <option value="Tidak">Tidak</option>
-                                                        </x-select-input>
-                                                    </td>
-                                                    <td><x-text-input type="number" step="0.1" wire:model="bayiUkKepalaBt" wire:keydown.enter.prevent="tambahBayi" :error="$errors->has('bayiUkKepalaBt')" class="w-full px-1" /></td>
-                                                    <td><x-text-input type="number" step="0.1" wire:model="bayiUkKepalaBp" wire:keydown.enter.prevent="tambahBayi" :error="$errors->has('bayiUkKepalaBp')" class="w-full px-1" /></td>
-                                                    <td><x-text-input type="number" step="0.1" wire:model="bayiUkKepalaFo" wire:keydown.enter.prevent="tambahBayi" :error="$errors->has('bayiUkKepalaFo')" class="w-full px-1" /></td>
-                                                    <td><x-text-input type="number" step="0.1" wire:model="bayiUkKepalaMo" wire:keydown.enter.prevent="tambahBayi" :error="$errors->has('bayiUkKepalaMo')" class="w-full px-1" /></td>
-                                                    <td><x-text-input type="number" step="0.1" wire:model="bayiUkKepalaOb" wire:keydown.enter.prevent="tambahBayi" :error="$errors->has('bayiUkKepalaOb')" class="w-full px-1" /></td>
-                                                    <td><x-text-input wire:model="bayiCaputSuksedanium" wire:keydown.enter.prevent="tambahBayi" :error="$errors->has('bayiCaputSuksedanium')" class="w-full px-1" /></td>
-                                                    <td><x-text-input wire:model="bayiCephalHematoma" wire:keydown.enter.prevent="tambahBayi" :error="$errors->has('bayiCephalHematoma')" class="w-full px-1" /></td>
-                                                    <td><x-text-input wire:model="bayiAtresiaAni" wire:keydown.enter.prevent="tambahBayi" :error="$errors->has('bayiAtresiaAni')" class="w-full px-1" /></td>
-                                                    <td><x-text-input wire:model="bayiLain" wire:keydown.enter.prevent="tambahBayi" :error="$errors->has('bayiLain')" class="w-full px-2" /></td>
-                                                    <td class="ds-td-meta">{{ auth()->user()->myuser_name ?? '-' }}</td>
-                                                    <td class="ds-c">
-                                                        <x-primary-button type="button" wire:click="tambahBayi" wire:loading.attr="disabled" wire:target="tambahBayi" class="justify-center gap-1 w-full">
-                                                            <span wire:loading.remove wire:target="tambahBayi" class="flex items-center gap-1">
-                                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
-                                                                Tambah
-                                                            </span>
-                                                            <span wire:loading wire:target="tambahBayi"><x-loading class="w-4 h-4" /></span>
-                                                        </x-primary-button>
-                                                    </td>
-                                                </tr>
-                                            @endif
-
                                             @forelse ($newForm['bayi'] ?? [] as $nomor => $baris)
-                                                <tr wire:key="laporan-persalinan-bayi-{{ $nomor }}">
+                                                @php
+                                                    $temuanBayi = collect([
+                                                        'Caput' => $baris['caputSuksedanium'] ?? '',
+                                                        'Cephal' => $baris['cephalHematoma'] ?? '',
+                                                        'Atresia Ani' => $baris['atresiaAni'] ?? '',
+                                                        'Lain' => $baris['lain'] ?? '',
+                                                    ])->filter(fn($nilai) => filled($nilai))->map(fn($nilai, $label) => $label . ': ' . $nilai)->implode('; ');
+                                                @endphp
+                                                <tr wire:key="laporan-persalinan-bayi-{{ $nomor }}" class="align-top">
                                                     <td class="ds-c ds-td-meta">{{ $nomor + 1 }}</td>
-                                                    <td class="ds-td-strong">{{ ($baris['lahir'] ?? '') ?: '-' }}</td>
-                                                    <td>{{ ($baris['jenisKelamin'] ?? '') ?: '-' }}</td>
-                                                    <td>{{ ($baris['keadaan'] ?? '') ?: '-' }}</td>
-                                                    <td>{{ ($baris['bb'] ?? '') ?: '-' }}</td>
-                                                    <td>{{ ($baris['pb'] ?? '') ?: '-' }}</td>
-                                                    <td>{{ ($baris['apgar'] ?? '') ?: '-' }}</td>
-                                                    <td>{{ ($baris['resusitasi'] ?? '') ?: '-' }}</td>
-                                                    <td>{{ ($baris['ukKepalaBt'] ?? '') ?: '-' }}</td>
-                                                    <td>{{ ($baris['ukKepalaBp'] ?? '') ?: '-' }}</td>
-                                                    <td>{{ ($baris['ukKepalaFo'] ?? '') ?: '-' }}</td>
-                                                    <td>{{ ($baris['ukKepalaMo'] ?? '') ?: '-' }}</td>
-                                                    <td>{{ ($baris['ukKepalaOb'] ?? '') ?: '-' }}</td>
-                                                    <td>{{ ($baris['caputSuksedanium'] ?? '') ?: '-' }}</td>
-                                                    <td>{{ ($baris['cephalHematoma'] ?? '') ?: '-' }}</td>
-                                                    <td>{{ ($baris['atresiaAni'] ?? '') ?: '-' }}</td>
-                                                    <td>{{ ($baris['lain'] ?? '') ?: '-' }}</td>
+                                                    <td class="ds-td-strong whitespace-nowrap">{{ ($baris['lahir'] ?? '') ?: '-' }}</td>
+                                                    <td>{{ ($baris['jenisKelamin'] ?? '') ?: '-' }}<div class="text-xs text-muted-soft">{{ ($baris['keadaan'] ?? '') ?: '-' }}</div></td>
+                                                    <td class="whitespace-nowrap tabular-nums">{{ ($baris['bb'] ?? '') ?: '-' }} gr<div class="text-xs text-muted-soft">{{ ($baris['pb'] ?? '') ?: '-' }} cm</div></td>
+                                                    <td>{{ ($baris['apgar'] ?? '') ?: '-' }}<div class="text-xs text-muted-soft">Resusitasi: {{ ($baris['resusitasi'] ?? '') ?: '-' }}</div></td>
+                                                    <td class="text-xs">{{ $this->ringkasUkuranKepala($baris) ?: '-' }}</td>
+                                                    <td class="text-xs">{{ $temuanBayi ?: '-' }}</td>
                                                     <td class="ds-td-meta">{{ ($baris['petugas'] ?? '') ?: '-' }}</td>
                                                     <td class="ds-c">
                                                         @if (!$formReadOnly)
@@ -1071,16 +1110,13 @@ new class extends Component {
                                                 </tr>
                                             @empty
                                                 <tr>
-                                                    <td colspan="19" class="ds-c italic text-muted-soft">Belum ada data bayi. Untuk kelahiran kembar, tambahkan satu baris per bayi.</td>
+                                                    <td colspan="9" class="ds-c italic text-muted-soft">Belum ada data bayi. Untuk kelahiran kembar, tambahkan satu kali per bayi.</td>
                                                 </tr>
                                             @endforelse
                                         </tbody>
                                     </table>
                                 </div>
                                 <p class="text-xs text-muted-soft">Ukuran kepala (cm): <strong>BT</strong> Bitemporalis, <strong>BP</strong> Biparietalis, <strong>FO</strong> Fronto-Occipitalis, <strong>MO</strong> Mento-Occipitalis, <strong>OB</strong> Sub-Occipito-Bregmatika.</p>
-                                @if (!$formReadOnly)
-                                    <p class="text-xs text-muted-soft">Isi baris paling atas lalu klik <strong>Tambah</strong> (atau tekan Enter). Untuk kelahiran kembar, tambahkan satu baris per bayi. Petugas penambah baris ikut tercatat.</p>
-                                @endif
                             </div>
                         </x-border-form>
 
@@ -1294,6 +1330,12 @@ new class extends Component {
                                             <tr x-show="open" x-cloak>
                                                 <td colspan="6" class="px-4 py-4 bg-surface-soft/60 dark:bg-gray-950/30">
                                                     <dl class="grid grid-cols-1 gap-x-8 gap-y-3 md:grid-cols-2">
+                                                        @if (filled($entry['uraianTindakan'] ?? null))
+                                                            <div class="md:col-span-2">
+                                                                <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Uraian Tindakan</dt>
+                                                                <dd class="mt-0.5 whitespace-pre-line text-ink dark:text-gray-200">{{ $entry['uraianTindakan'] }}</dd>
+                                                            </div>
+                                                        @endif
                                                         <div>
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Jenis Partus</dt>
                                                             <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['jenisPartus'] ?? '') ?: '-' }}</dd>
