@@ -24,7 +24,14 @@
             {{-- NIK --}}
             <div>
                 <x-input-label value="NIK" :required="true" />
-                <x-text-input wire:model.live="dataPasien.pasien.identitas.nik" :error="$errors->has('dataPasien.pasien.identitas.nik')" class="w-full mt-1" />
+                <div class="flex gap-1 mt-1">
+                    <x-text-input wire:model.live="dataPasien.pasien.identitas.nik" :error="$errors->has('dataPasien.pasien.identitas.nik')" class="w-full" />
+                    <x-outline-button type="button" wire:click="cekBpjs" wire:loading.attr="disabled" wire:target="cekBpjs"
+                        title="Cek data peserta BPJS dari NIK (atau ID BPJS bila NIK kosong)" class="!px-3 shrink-0 whitespace-nowrap">
+                        <span wire:loading.remove wire:target="cekBpjs">Cek BPJS</span>
+                        <span wire:loading wire:target="cekBpjs"><x-loading /></span>
+                    </x-outline-button>
+                </div>
                 <x-input-error :messages="$errors->get('dataPasien.pasien.identitas.nik')" class="mt-1" />
             </div>
 
@@ -40,6 +47,49 @@
                 <x-text-input wire:model.live="dataPasien.pasien.identitas.pasport" placeholder="untuk WNA / WNI" class="w-full mt-1" />
             </div>
         </div>
+
+        {{-- Hasil Cek BPJS: status peserta + perbedaan dengan isi form --}}
+        @if (!empty($pesertaBpjs))
+            <div class="p-4 text-sm border rounded-lg border-hairline bg-surface-soft dark:bg-gray-800 dark:border-gray-700">
+                <div class="flex flex-wrap items-center gap-2">
+                    <span class="font-semibold text-ink dark:text-gray-100">Data BPJS: {{ $pesertaBpjs['nama'] }}</span>
+                    <x-badge :variant="strtoupper($pesertaBpjs['status']) === 'AKTIF' ? 'success' : 'danger'">{{ $pesertaBpjs['status'] }}</x-badge>
+                    <span class="text-xs text-gray-600 dark:text-gray-400">{{ $pesertaBpjs['jenisPeserta'] }} · {{ $pesertaBpjs['hakKelas'] }}</span>
+                </div>
+
+                @if (empty($perbedaanBpjs))
+                    <p class="mt-2 text-success-deep dark:text-green-300">Nama, tanggal lahir, jenis kelamin, NIK, ID BPJS, dan No. HP sama dengan BPJS.</p>
+                @else
+                    <p class="mt-2 text-gray-700 dark:text-gray-300">Ada perbedaan dengan data BPJS (data kependudukan):</p>
+                    <table class="w-full mt-2 text-sm">
+                        <thead>
+                            <tr class="text-left text-xs text-gray-600 dark:text-gray-400">
+                                <th class="py-1 pr-3 font-medium">Data</th>
+                                <th class="py-1 pr-3 font-medium">Di SIRUS (form)</th>
+                                <th class="py-1 font-medium">Di BPJS</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($perbedaanBpjs as $perbedaan)
+                                <tr wire:key="beda-bpjs-{{ $perbedaan['kunci'] }}" class="border-t border-gray-200 dark:border-gray-700">
+                                    <td class="py-1 pr-3 text-gray-700 dark:text-gray-300">{{ $perbedaan['label'] }}</td>
+                                    <td class="py-1 pr-3 font-mono text-error-deep dark:text-red-300">{{ $perbedaan['sirus'] !== '' ? $perbedaan['sirus'] : '(kosong)' }}</td>
+                                    <td class="py-1 font-mono text-success-deep dark:text-green-300">{{ $perbedaan['bpjs'] }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                    <div class="flex flex-wrap items-center gap-2 mt-3">
+                        <x-confirm-button variant="primary" action="perbaruiDariBpjs()" title="Perbarui dari BPJS"
+                            message="{{ count($perbedaanBpjs) }} data di form akan diganti dengan data BPJS: {{ collect($perbedaanBpjs)->pluck('label')->implode(', ') }}. Lanjutkan? Data baru tersimpan setelah Anda menekan Simpan."
+                            confirmText="Ya, perbarui" cancelText="Batal">
+                            Perbarui dari BPJS
+                        </x-confirm-button>
+                        <span class="text-xs text-gray-600 dark:text-gray-400">Pastikan pasiennya orang yang sama sebelum memperbarui.</span>
+                    </div>
+                @endif
+            </div>
+        @endif
 
         {{-- Bayi baru lahir: tanpa NIK sendiri, IHS didaftarkan lewat NIK ibu --}}
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-5">

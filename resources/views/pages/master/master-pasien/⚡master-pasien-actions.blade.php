@@ -13,10 +13,11 @@ use App\Support\IhsPasienSatuSehat;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 use App\Http\Traits\Concerns\WithValidationToastTrait;
+use App\Http\Traits\BPJS\VclaimTrait;
 use Carbon\Carbon;
 
 new class extends Component {
-    use MasterPasienTrait, WithRenderVersioningTrait, WithValidationToastTrait;
+    use MasterPasienTrait, WithRenderVersioningTrait, WithValidationToastTrait, VclaimTrait;
 
     public string $formMode = 'create'; // create|edit
     public string $regNo = '';
@@ -43,6 +44,12 @@ new class extends Component {
 
     // Status kunci pasien (rsmst_pasiens.lockstatus): '' = bebas, 'RJ'/'UGD'/'RI' = terkunci di satu jalur
     public string $lockStatus = '';
+
+    /** Hasil Cek BPJS (VClaim peserta by NIK / No Kartu) yang dipakai layar: identitas + status. */
+    public array $pesertaBpjs = [];
+
+    /** Perbedaan isi form vs BPJS: list of ['kunci', 'label', 'sirus', 'bpjs']. */
+    public array $perbedaanBpjs = [];
 
     public function mount(): void
     {
@@ -150,7 +157,7 @@ new class extends Component {
 
     protected function resetFormFields(): void
     {
-        $this->reset(['dataPasien', 'regNo', 'bpjspasienCode', 'pasienUuid', 'lockStatus']);
+        $this->reset(['dataPasien', 'regNo', 'bpjspasienCode', 'pasienUuid', 'lockStatus', 'pesertaBpjs', 'perbedaanBpjs']);
 
         $this->resetValidation();
     }
@@ -670,6 +677,144 @@ new class extends Component {
         $this->dataPasien['pasien']['identitas']['patientUuid'] = $hasil['ihs'];
         $this->pasienUuid = $hasil['ihs'];
         $this->dispatch('toast', type: 'success', message: "{$hasil['pesan']} IHS: {$hasil['ihs']}. Tekan Simpan untuk menyimpan.");
+    }
+
+    /**
+     * Cek peserta BPJS (VClaim) dari NIK di form, atau No Kartu bila NIK kosong, lalu bandingkan dengan
+     * isi form. Tidak mengubah apa pun: perbedaan ditampilkan dan baru diterapkan lewat perbaruiDariBpjs()
+     * setelah dikonfirmasi, dan baru tersimpan saat user menekan Simpan.
+     */
+    public function cekBpjs(): void
+    {
+        $identitas = $this->dataPasien['pasien']['identitas'] ?? [];
+        $nik = trim((string) ($identitas['nik'] ?? ''));
+        $noKartu = trim((string) ($identitas['idbpjs'] ?? ''));
+        $this->reset(['pesertaBpjs', 'perbedaanBpjs']);
+
+        $tanggal = Carbon::now()->format('Y-m-d');
+        if (!preg_match('/^\d{16}$/', $nik) && !preg_match('/^\d{13}$/', $noKartu)) {
+            $this->dispatch('toast', type: 'warning', message: 'Isi NIK 16 digit atau ID BPJS 13 digit dulu sebelum Cek BPJS.');
+            return;
+        }
+
+        // VClaim yang sedang gangguan bisa melempar error dari dalam trait; cukup tampilkan pesan.
+        try {
+            $response = preg_match('/^\d{16}$/', $nik)
+                ? $this->peserta_nik($nik, $tanggal)
+                : $this->peserta_nomorkartu($noKartu, $tanggal);
+            $content = $response->getOriginalContent();
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal menghubungi BPJS (VClaim). Coba lagi beberapa saat.');
+            return;
+        }
+
+        if ((int) ($content['metadata']['code'] ?? 500) !== 200 || empty($content['response']['peserta'])) {
+            $this->dispatch('toast', type: 'error', message: 'BPJS: ' . ($content['metadata']['message'] ?? 'data peserta tidak ditemukan.'));
+            return;
+        }
+
+        $this->terimaPesertaBpjs($content['response']['peserta']);
+    }
+
+    /** Dipisah dari cekBpjs() supaya perbandingan bisa diuji tanpa memanggil VClaim. */
+    public function terimaPesertaBpjs(array $peserta): void
+    {
+        $this->pesertaBpjs = [
+            'nama' => mb_strtoupper(trim((string) ($peserta['nama'] ?? ''))),
+            'nik' => trim((string) ($peserta['nik'] ?? '')),
+            'noKartu' => trim((string) ($peserta['noKartu'] ?? '')),
+            'tglLahir' => $this->tanggalBpjsKeForm((string) ($peserta['tglLahir'] ?? '')),
+            'sex' => mb_strtoupper(trim((string) ($peserta['sex'] ?? ''))),
+            'telepon' => trim((string) ($peserta['mr']['noTelepon'] ?? '')),
+            'status' => (string) ($peserta['statusPeserta']['keterangan'] ?? '-'),
+            'jenisPeserta' => (string) ($peserta['jenisPeserta']['keterangan'] ?? '-'),
+            'hakKelas' => (string) ($peserta['hakKelas']['keterangan'] ?? '-'),
+        ];
+        $this->perbedaanBpjs = $this->bandingkanDenganBpjs();
+
+        $jumlah = count($this->perbedaanBpjs);
+        $this->dispatch(
+            'toast',
+            type: $jumlah === 0 ? 'success' : 'warning',
+            message: $jumlah === 0
+                ? 'Data pasien sama dengan BPJS (status peserta: ' . $this->pesertaBpjs['status'] . ').'
+                : "Ada {$jumlah} data yang berbeda dengan BPJS. Periksa tabel perbandingan di bawah NIK.",
+        );
+    }
+
+    /** Terapkan nilai BPJS ke form untuk semua perbedaan. Belum tersimpan sampai Simpan ditekan. */
+    public function perbaruiDariBpjs(): void
+    {
+        if ($this->pesertaBpjs === [] || $this->perbedaanBpjs === []) {
+            return;
+        }
+
+        foreach ($this->perbedaanBpjs as $perbedaan) {
+            $nilai = $this->pesertaBpjs[$perbedaan['kunci']] ?? '';
+            match ($perbedaan['kunci']) {
+                'nama' => $this->dataPasien['pasien']['regName'] = $nilai,
+                'nik' => $this->dataPasien['pasien']['identitas']['nik'] = $nilai,
+                'noKartu' => $this->dataPasien['pasien']['identitas']['idbpjs'] = $nilai,
+                'telepon' => $this->dataPasien['pasien']['kontak']['nomerTelponSelulerPasien'] = $nilai,
+                'tglLahir' => $this->terapkanTanggalLahir($nilai),
+                'sex' => $this->terapkanJenisKelamin($nilai),
+            };
+        }
+
+        $jumlah = count($this->perbedaanBpjs);
+        $this->perbedaanBpjs = $this->bandingkanDenganBpjs();
+        $this->dispatch('toast', type: 'success', message: "{$jumlah} data diperbarui dari BPJS. Tekan Simpan untuk menyimpan.");
+    }
+
+    /** @return list<array{kunci: string, label: string, sirus: string, bpjs: string}> */
+    private function bandingkanDenganBpjs(): array
+    {
+        $pasien = $this->dataPasien['pasien'] ?? [];
+        $jenisKelaminId = (int) ($pasien['jenisKelamin']['jenisKelaminId'] ?? 0);
+
+        $daftar = [
+            ['kunci' => 'nama', 'label' => 'Nama', 'sirus' => mb_strtoupper(trim((string) ($pasien['regName'] ?? '')))],
+            ['kunci' => 'tglLahir', 'label' => 'Tanggal Lahir', 'sirus' => trim((string) ($pasien['tglLahir'] ?? ''))],
+            ['kunci' => 'sex', 'label' => 'Jenis Kelamin', 'sirus' => match ($jenisKelaminId) { 1 => 'L', 2 => 'P', default => '' }],
+            ['kunci' => 'nik', 'label' => 'NIK', 'sirus' => trim((string) ($pasien['identitas']['nik'] ?? ''))],
+            ['kunci' => 'noKartu', 'label' => 'ID BPJS', 'sirus' => trim((string) ($pasien['identitas']['idbpjs'] ?? ''))],
+            ['kunci' => 'telepon', 'label' => 'No. HP', 'sirus' => trim((string) ($pasien['kontak']['nomerTelponSelulerPasien'] ?? ''))],
+        ];
+
+        $perbedaan = [];
+        foreach ($daftar as $baris) {
+            $nilaiBpjs = (string) ($this->pesertaBpjs[$baris['kunci']] ?? '');
+            // BPJS kosong tidak dianggap beda: tidak ada yang bisa dipakai untuk memperbarui.
+            if ($nilaiBpjs !== '' && $nilaiBpjs !== $baris['sirus']) {
+                $perbedaan[] = [...$baris, 'bpjs' => $nilaiBpjs];
+            }
+        }
+
+        return $perbedaan;
+    }
+
+    private function terapkanTanggalLahir(string $tanggal): void
+    {
+        $this->dataPasien['pasien']['tglLahir'] = $tanggal;
+        $this->syncUmurFromTglLahir($tanggal);
+    }
+
+    /** BPJS hanya L/P. Id dan Desc diisi bersamaan (lihat skill master-pasien: Desc tak boleh tertinggal). */
+    private function terapkanJenisKelamin(string $sex): void
+    {
+        $jenisKelaminId = match ($sex) { 'L' => 1, 'P' => 2, default => null };
+        if ($jenisKelaminId === null) {
+            return;
+        }
+
+        $this->dataPasien['pasien']['jenisKelamin']['jenisKelaminId'] = $jenisKelaminId;
+        $this->dataPasien['pasien']['jenisKelamin']['jenisKelaminDesc'] = $jenisKelaminId === 1 ? 'Laki-laki' : 'Perempuan';
+    }
+
+    /** VClaim tglLahir "YYYY-MM-DD" → format form "dd/mm/yyyy". */
+    private function tanggalBpjsKeForm(string $tanggal): string
+    {
+        return preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', trim($tanggal), $bagian) ? "{$bagian[3]}/{$bagian[2]}/{$bagian[1]}" : '';
     }
 
     /**

@@ -160,8 +160,15 @@ class IhsPasienSatuSehat
             $hasilNik = $this->panggilCari(['identifier' => $sistemNik]);
             if ($this->daftarIhs($hasilNik) !== []) {
                 $namaTerdaftar = $this->namaTerdaftar($hasilNik);
+                $tanggalSirus = $this->tanggalIndonesia($tanggalLahir);
+                $pemakaiLain = $this->pemakaiNikLain($nik, trim((string) ($identitas['regNo'] ?? '')));
 
-                return $this->hasil(self::TIDAK_COCOK, 'NIK sudah terdaftar' . ($namaTerdaftar !== '' ? " atas nama {$namaTerdaftar}" : '') . ', tetapi nama atau tanggal lahir di SIRUS tidak sama. Samakan dengan KTP lalu coba lagi.');
+                // Nama dari SATUSEHAT disamarkan Kemkes (mis. "RE** HA**"), jadi tidak bisa ditampilkan utuh.
+                return $this->hasil(self::TIDAK_COCOK, "NIK {$nik} sudah terdaftar di SATUSEHAT"
+                    . ($namaTerdaftar !== '' ? " atas nama {$namaTerdaftar} (disamarkan SATUSEHAT)" : '')
+                    . ", tetapi tidak cocok dengan data di SIRUS: {$nama}, lahir {$tanggalSirus}."
+                    . ($pemakaiLain !== '' ? " NIK ini juga dipakai di SIRUS oleh {$pemakaiLain}." : '')
+                    . ' Tekan Cek BPJS untuk melihat nama dan tanggal lahir sesuai data kependudukan, samakan, lalu coba lagi.');
             }
         } catch (\Throwable $e) {
             return $this->hasil(self::GAGAL, 'Pencarian gagal: ' . $this->ringkasError($e));
@@ -331,7 +338,7 @@ class IhsPasienSatuSehat
             ->when($regNo !== '', fn($query) => $query->where('reg_no', '<>', $regNo))
             ->exists();
         if ($dipakaiLain) {
-            return $this->hasil(self::NIK_KEMBAR, 'NIK ini juga dipakai pasien lain di SIRUS, jadi tidak didaftarkan otomatis.');
+            return $this->hasil(self::NIK_KEMBAR, 'NIK ini juga dipakai di SIRUS oleh ' . $this->pemakaiNikLain($nik, $regNo) . ', jadi tidak didaftarkan otomatis. Pastikan NIK milik pasien yang mana.');
         }
 
         $gender = $this->kodeGender((string) ($identitas['jenisKelamin'] ?? ''));
@@ -418,6 +425,28 @@ class IhsPasienSatuSehat
         }
 
         return '';
+    }
+
+    /** Pasien lain di SIRUS yang memakai NIK sama, mis. "RM 123456 BUDI (lahir 01/02/1990)". Maks. 3. */
+    private function pemakaiNikLain(string $nik, string $regNo): string
+    {
+        $pemakai = DB::table('rsmst_pasiens')
+            ->whereRaw('TRIM(nik_bpjs) = ?', [$nik])
+            ->when($regNo !== '', fn($query) => $query->where('reg_no', '<>', $regNo))
+            ->selectRaw("reg_no, reg_name, TO_CHAR(birth_date, 'DD/MM/YYYY') AS tanggal_lahir")
+            ->orderBy('reg_no')
+            ->limit(4)
+            ->get();
+
+        $daftar = $pemakai->take(3)->map(fn($row) => 'RM ' . trim((string) $row->reg_no) . ' ' . trim((string) $row->reg_name)
+            . (filled($row->tanggal_lahir) ? " (lahir {$row->tanggal_lahir})" : ''))->implode(', ');
+
+        return $pemakai->count() > 3 ? $daftar . ', dan lainnya' : $daftar;
+    }
+
+    private function tanggalIndonesia(string $tanggalYmd): string
+    {
+        return preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $tanggalYmd, $bagian) ? "{$bagian[3]}/{$bagian[2]}/{$bagian[1]}" : $tanggalYmd;
     }
 
     private function alamat(array $identitas, string $desaId): array
