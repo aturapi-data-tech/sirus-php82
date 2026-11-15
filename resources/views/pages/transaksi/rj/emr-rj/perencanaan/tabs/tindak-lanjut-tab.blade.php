@@ -22,7 +22,7 @@
         <div class="space-y-3">
         <div>
             <x-input-label value="Kondisi Saat Pulang" />
-            <div class="flex flex-wrap gap-x-4 gap-y-1 mt-1">
+            <div class="grid grid-cols-2 gap-2 mt-1">
                 @foreach (array_keys(\App\Support\Terminologi\KondisiPulang::OPTIONS) as $kondisi)
                     <x-radio-button :label="$kondisi" :value="$kondisi" name="kondisiPulang-rj"
                         wire:model.live="perencanaan.kondisiPulang.kondisiPulang" :disabled="$isFormLocked" />
@@ -33,7 +33,7 @@
         {{-- Prognosis (Playbook RJ bab 22) — dikirim ke Satu Sehat sebagai ClinicalImpression SNOMED --}}
         <div>
             <x-input-label value="Prognosis" />
-            <div class="flex flex-wrap gap-x-4 gap-y-1 mt-1">
+            <div class="grid grid-cols-2 gap-2 mt-1">
                 @foreach (array_keys(\App\Support\Terminologi\Prognosis::OPTIONS) as $prognosis)
                     <x-radio-button :label="$prognosis" :value="$prognosis" name="prognosis-rj"
                         wire:model.live="perencanaan.prognosis.prognosis" :disabled="$isFormLocked" />

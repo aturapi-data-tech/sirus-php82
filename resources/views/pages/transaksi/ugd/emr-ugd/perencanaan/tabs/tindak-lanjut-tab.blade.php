@@ -27,7 +27,7 @@
              Status Psikiatri: tertutup, terbuka sendiri bila sudah dipilih. --}}
         <x-border-form :title="__('Kondisi Saat Keluar')" :collapsible="true" padding="p-3"
             :open="filled($perencanaan['kondisiPulang']['kondisiPulang'] ?? null)">
-            <div class="flex flex-wrap gap-x-4 gap-y-1">
+            <div class="grid grid-cols-2 gap-2">
                 @foreach (array_keys(\App\Support\Terminologi\KondisiPulang::OPTIONS) as $kondisi)
                     <x-radio-button :label="$kondisi" :value="$kondisi" name="kondisiPulang-ugd"
                         wire:model.live="perencanaan.kondisiPulang.kondisiPulang" :disabled="$isFormLocked" />
