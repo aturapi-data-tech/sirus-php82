@@ -115,7 +115,11 @@
    caption dipakai untuk teks sekunder (muted, 11.5px) sehingga kepala tiap bagian
    form ikut pudar & sulit dipindai. Di sini pakai warna ink + ukuran sedikit lebih
    besar; color pakai var(--ink) supaya ikut ber-swap di mode gelap tanpa dark:. */
-.ds-form-title { @apply font-sans font-semibold text-sm uppercase; color: var(--ink); letter-spacing: 0.06em; }
+.ds-form-title { @apply font-sans font-semibold text-sm uppercase; letter-spacing: 0.06em;
+    /* Judul bingkai = hijau brand + garis aksen kiri, supaya tidak dikira label isian (x-input-label tetap ink).
+       Kontras: brand-green 5,1-5,7 di latar terang; brand-lime 9,6 di latar gelap. */
+    color: theme('colors.brand.green'); border-left: 3px solid currentColor; padding-left: 0.5rem; }
+.dark .ds-form-title { color: theme('colors.brand.lime'); }
 .ds-eyebrow    { @apply font-sans font-semibold text-xs uppercase text-brand-green; letter-spacing: 1.2px; }
 
 /* Spike-mark (asterisk radial Anthropic) sederhana */
