@@ -311,7 +311,7 @@ new class extends Component {
             'stockwhPrintNumber' => ['nullable', 'string', 'max:50'],
 
             // Status & Integrasi
-            'productStatus' => ['required', Rule::in(['0', '1'])],
+            'productStatus' => ['nullable'], // field disembunyikan; nilai lama dibawa apa adanya
             'activeStatus' => ['required', Rule::in(['0', '1'])],
             'fornasNonfornasStatus' => ['required', Rule::in(['0', '1'])],
             'productIdSatusehat' => ['nullable', 'string', 'max:100'],
@@ -687,14 +687,17 @@ new class extends Component {
                                         <x-input-label value="Harga Jual *" />
                                         <x-text-input-number x-ref="salesPrice" wire:model="salesPrice"
                                             :error="$errors->has('salesPrice')" class="w-full mt-1"
-                                            x-on:keydown.enter.prevent="$refs.stock.focus()" />
+                                            x-on:keydown.enter.prevent="$refs.limitStock.focus()" />
                                         <x-input-error :messages="$errors->get('salesPrice')" class="mt-1" />
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        {{-- SECTION 4: Stok Gudang Utama --}}
+                        {{-- DINONAKTIFKAN 2026-11-15: bagian Stok Gudang Utama & Stok Per Unit disembunyikan.
+                             Kolom stok immst_products tidak dipakai web (stok berjalan = ledger tkview_iostock*), dan saat
+                             Ubah Data Obat kolom stok memang tidak disimpan. Saat Tambah, stok terisi default 0.
+                             SECTION 4: Stok Gudang Utama
                         <div
                             class="mb-4 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
                             <div class="px-5 py-3 border-b border-hairline dark:border-gray-700">
@@ -725,7 +728,7 @@ new class extends Component {
                             </div>
                         </div>
 
-                        {{-- SECTION 5: Stok Per Unit --}}
+                             SECTION 5: Stok Per Unit
                         <div
                             class="mb-4 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
                             <div class="px-5 py-3 border-b border-hairline dark:border-gray-700">
@@ -786,42 +789,48 @@ new class extends Component {
                                 </div>
                             </div>
                         </div>
+                        --}}
 
-                        {{-- SECTION 6: Limit Stok --}}
+                        {{-- SECTION 4: Limit Stok --}}
                         <div
                             class="mb-4 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
                             <div class="px-5 py-3 border-b border-hairline dark:border-gray-700">
-                                <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-800 pb-2">6. Limit Stok</h3>
+                                <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-800 pb-2">4. Limit Stok</h3>
                             </div>
                             <div class="p-5 space-y-4">
-                                <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                     <div>
-                                        <x-input-label value="Limit Stok" />
+                                        {{-- limit_stock = batas minimum stok Apotek (dipakai Analisa Perputaran Obat) --}}
+                                        <x-input-label value="Limit Stok Apotek" />
                                         <x-text-input x-ref="limitStock" wire:model.defer="limitStock" type="number"
                                             class="w-full mt-1"
                                             x-on:keydown.enter.prevent="$refs.limitStockwh.focus()" />
                                     </div>
                                     <div>
-                                        <x-input-label value="Limit Stok Warehouse" />
+                                        {{-- limit_stockwh = batas minimum stok Gudang --}}
+                                        <x-input-label value="Limit Stok Gudang" />
                                         <x-text-input x-ref="limitStockwh" wire:model.defer="limitStockwh" type="number"
                                             class="w-full mt-1"
-                                            x-on:keydown.enter.prevent="$refs.limitStockklinik.focus()" />
+                                            x-on:keydown.enter.prevent="$refs.qtyPerBox.focus()" />
                                     </div>
+                                    {{-- DINONAKTIFKAN 2026-11-15: Limit Stok Klinik (limit_stockklinik) tidak dipakai web.
+                                         Nilainya tetap terbawa dari data lama saat Edit (tidak berubah).
                                     <div>
                                         <x-input-label value="Limit Stok Klinik" />
                                         <x-text-input x-ref="limitStockklinik" wire:model.defer="limitStockklinik"
                                             type="number" class="w-full mt-1"
                                             x-on:keydown.enter.prevent="$refs.qtyPerBox.focus()" />
                                     </div>
+                                    --}}
                                 </div>
                             </div>
                         </div>
 
-                        {{-- SECTION 7: Informasi Tambahan --}}
+                        {{-- SECTION 5: Informasi Tambahan --}}
                         <div
                             class="mb-4 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
                             <div class="px-5 py-3 border-b border-hairline dark:border-gray-700">
-                                <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-800 pb-2">7. Informasi Tambahan</h3>
+                                <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-800 pb-2">5. Informasi Tambahan</h3>
                             </div>
                             <div class="p-5 space-y-4">
                                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -854,21 +863,23 @@ new class extends Component {
                                         <x-input-label value="Stockwh Print Number" />
                                         <x-text-input x-ref="stockwhPrintNumber" wire:model.defer="stockwhPrintNumber"
                                             class="w-full mt-1"
-                                            x-on:keydown.enter.prevent="$refs.productStatus.focus()" />
+                                            x-on:keydown.enter.prevent="$refs.activeStatus.focus()" />
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        {{-- SECTION 8: Status & Integrasi --}}
+                        {{-- SECTION 6: Status & Integrasi --}}
                         <div
                             class="mb-4 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
                             <div class="px-5 py-3 border-b border-hairline dark:border-gray-700">
-                                <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-800 pb-2">8. Status & Integrasi</h3>
+                                <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-800 pb-2">6. Status & Integrasi</h3>
                             </div>
                             <div class="p-5 space-y-4">
-                                <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                                    {{-- Product Status --}}
+                                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                    {{-- DINONAKTIFKAN 2026-11-15: Status Produk (product_status) tidak dibaca web mana pun;
+                                         yang dipakai Status Aktif (active_status). Nilai lama tetap terbawa saat Edit,
+                                         obat baru terisi '1'.
                                     <div>
                                         <x-input-label value="Status Produk *" />
                                         <x-select-input x-ref="productStatus" wire:model.defer="productStatus"
@@ -878,6 +889,7 @@ new class extends Component {
                                             <option value="1">Aktif</option>
                                         </x-select-input>
                                     </div>
+                                    --}}
 
                                     {{-- Active Status --}}
                                     <div>
