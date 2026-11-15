@@ -7,9 +7,11 @@ use Illuminate\Validation\Rule;
 use Illuminate\Database\QueryException;
 use App\Support\CakupanKfa;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
+use App\Http\Traits\Concerns\WithValidationToastTrait;
 
 new class extends Component {
     use WithRenderVersioningTrait;
+    use WithValidationToastTrait;
 
     /* -------------------------
      | Form Mode
@@ -260,6 +262,10 @@ new class extends Component {
      * ------------------------- */
     protected function rules(): array
     {
+        // Stok hanya ditulis saat Tambah (stok awal). Saat Edit kolom stok tidak ikut disimpan,
+        // dan data lama boleh minus (stok minus hanya peringatan), jadi jangan diblok min:0.
+        $aturanStok = $this->formMode === 'create' ? ['nullable', 'numeric', 'min:0'] : ['nullable'];
+
         return [
             // Informasi Dasar
             'productId' => ['required', 'string', 'max:50', $this->formMode === 'create' ? Rule::unique('immst_products', 'product_id') : Rule::unique('immst_products', 'product_id')->ignore($this->productId, 'product_id')],
@@ -277,20 +283,20 @@ new class extends Component {
             'salesPrice' => ['required', 'numeric', 'min:0'],
 
             // Stok Gudang Utama
-            'stock' => ['nullable', 'numeric', 'min:0'],
-            'stockwh' => ['nullable', 'numeric', 'min:0'],
-            'stockklinik' => ['nullable', 'numeric', 'min:0'],
+            'stock' => $aturanStok,
+            'stockwh' => $aturanStok,
+            'stockklinik' => $aturanStok,
 
             // Stok Per Unit
-            'stockOk' => ['nullable', 'numeric', 'min:0'],
-            'stockUgd' => ['nullable', 'numeric', 'min:0'],
-            'stockLaborat' => ['nullable', 'numeric', 'min:0'],
-            'stockUtara' => ['nullable', 'numeric', 'min:0'],
-            'stockSelatan' => ['nullable', 'numeric', 'min:0'],
-            'stockVk' => ['nullable', 'numeric', 'min:0'],
-            'stockTu' => ['nullable', 'numeric', 'min:0'],
-            'stockArm' => ['nullable', 'numeric', 'min:0'],
-            'stockRd' => ['nullable', 'numeric', 'min:0'],
+            'stockOk' => $aturanStok,
+            'stockUgd' => $aturanStok,
+            'stockLaborat' => $aturanStok,
+            'stockUtara' => $aturanStok,
+            'stockSelatan' => $aturanStok,
+            'stockVk' => $aturanStok,
+            'stockTu' => $aturanStok,
+            'stockArm' => $aturanStok,
+            'stockRd' => $aturanStok,
 
             // Limit Stok
             'limitStock' => ['nullable', 'numeric', 'min:0'],
@@ -373,7 +379,7 @@ new class extends Component {
      * ------------------------- */
     public function save(): void
     {
-        $data = $this->validate();
+        $data = $this->validateWithToast();
 
         // Prepare payload untuk insert/update
         $payload = [
@@ -385,18 +391,6 @@ new class extends Component {
             'supp_id' => $data['suppId'],
             'cost_price' => $data['costPrice'],
             'sales_price' => $data['salesPrice'],
-            'stock' => $data['stock'] ?? 0,
-            'stockwh' => $data['stockwh'] ?? 0,
-            'stockklinik' => $data['stockklinik'] ?? 0,
-            'stock_ok' => $data['stockOk'] ?? 0,
-            'stock_ugd' => $data['stockUgd'] ?? 0,
-            'stock_laborat' => $data['stockLaborat'] ?? 0,
-            'stock_utara' => $data['stockUtara'] ?? 0,
-            'stock_selatan' => $data['stockSelatan'] ?? 0,
-            'stock_vk' => $data['stockVk'] ?? 0,
-            'stock_tu' => $data['stockTu'] ?? 0,
-            'stock_arm' => $data['stockArm'] ?? 0,
-            'stock_rd' => $data['stockRd'] ?? 0,
             'limit_stock' => $data['limitStock'] ?? 0,
             'limit_stockwh' => $data['limitStockwh'] ?? 0,
             'limit_stockklinik' => $data['limitStockklinik'] ?? 0,
@@ -413,6 +407,23 @@ new class extends Component {
         ];
 
         if ($this->formMode === 'create') {
+            // Stok hanya diisi saat Tambah (stok awal). Saat Edit tidak ditulis agar stok
+            // yang berubah oleh transaksi selama modal terbuka tidak tertimpa angka lama.
+            $payload += [
+                'stock' => $data['stock'] ?? 0,
+                'stockwh' => $data['stockwh'] ?? 0,
+                'stockklinik' => $data['stockklinik'] ?? 0,
+                'stock_ok' => $data['stockOk'] ?? 0,
+                'stock_ugd' => $data['stockUgd'] ?? 0,
+                'stock_laborat' => $data['stockLaborat'] ?? 0,
+                'stock_utara' => $data['stockUtara'] ?? 0,
+                'stock_selatan' => $data['stockSelatan'] ?? 0,
+                'stock_vk' => $data['stockVk'] ?? 0,
+                'stock_tu' => $data['stockTu'] ?? 0,
+                'stock_arm' => $data['stockArm'] ?? 0,
+                'stock_rd' => $data['stockRd'] ?? 0,
+            ];
+
             // Auto-generate PRODUCT_NUMBER
             $maxNumber = DB::table('immst_products')->max('product_number');
             $nextNumber = $maxNumber ? (int) $maxNumber + 1 : 1;
@@ -475,10 +486,29 @@ new class extends Component {
     #[On('lov.selected.masterObatUom')]
     public function masterObatUom(string $target, array $payload): void
     {
-        $this->uomId = $payload['uom_id'] ?? '';
-        // atau jika ada data lain
-        $this->uomName = $payload['uom_name'] ?? '';
-        $this->incrementVersion('modal'); // jika perlu re-render
+        $this->uomId = $payload['uom_id'] ?? null;
+        $this->resetValidation('uomId');
+    }
+
+    #[On('lov.selected.masterObatCat')]
+    public function masterObatCat(string $target, array $payload): void
+    {
+        $this->catId = $payload['cat_id'] ?? null;
+        $this->resetValidation('catId');
+    }
+
+    #[On('lov.selected.masterObatGrp')]
+    public function masterObatGrp(string $target, array $payload): void
+    {
+        $this->grpId = $payload['grp_id'] ?? null;
+        $this->resetValidation('grpId');
+    }
+
+    #[On('lov.selected.masterObatSupp')]
+    public function masterObatSupp(string $target, array $payload): void
+    {
+        $this->suppId = $payload['supp_id'] ?? null;
+        $this->resetValidation('suppId');
     }
 };
 ?>
@@ -669,23 +699,26 @@ new class extends Component {
                             class="mb-4 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
                             <div class="px-5 py-3 border-b border-hairline dark:border-gray-700">
                                 <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-800 pb-2">4. Stok Gudang Utama</h3>
+                                @if ($formMode === 'edit')
+                                    <p class="mt-2 text-xs text-gray-600 dark:text-gray-400">Hanya tampilan: saat Ubah Data Obat, stok tidak ikut disimpan karena stok berjalan mengikuti transaksi.</p>
+                                @endif
                             </div>
                             <div class="p-5 space-y-4">
                                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
                                     <div>
                                         <x-input-label value="Stok" />
-                                        <x-text-input x-ref="stock" wire:model.defer="stock" type="number"
+                                        <x-text-input x-ref="stock" wire:model.defer="stock" type="number" :readonly="$formMode === 'edit'"
                                             class="w-full mt-1" x-on:keydown.enter.prevent="$refs.stockwh.focus()" />
                                     </div>
                                     <div>
                                         <x-input-label value="Stok Warehouse" />
-                                        <x-text-input x-ref="stockwh" wire:model.defer="stockwh" type="number"
+                                        <x-text-input x-ref="stockwh" wire:model.defer="stockwh" type="number" :readonly="$formMode === 'edit'"
                                             class="w-full mt-1"
                                             x-on:keydown.enter.prevent="$refs.stockklinik.focus()" />
                                     </div>
                                     <div>
                                         <x-input-label value="Stok Klinik" />
-                                        <x-text-input x-ref="stockklinik" wire:model.defer="stockklinik" type="number"
+                                        <x-text-input x-ref="stockklinik" wire:model.defer="stockklinik" type="number" :readonly="$formMode === 'edit'"
                                             class="w-full mt-1" x-on:keydown.enter.prevent="$refs.stockOk.focus()" />
                                     </div>
                                 </div>
@@ -697,54 +730,57 @@ new class extends Component {
                             class="mb-4 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
                             <div class="px-5 py-3 border-b border-hairline dark:border-gray-700">
                                 <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-800 pb-2">5. Stok Per Unit</h3>
+                                @if ($formMode === 'edit')
+                                    <p class="mt-2 text-xs text-gray-600 dark:text-gray-400">Hanya tampilan: saat Ubah Data Obat, stok tidak ikut disimpan karena stok berjalan mengikuti transaksi.</p>
+                                @endif
                             </div>
                             <div class="p-5 space-y-4">
                                 <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
                                     <div>
                                         <x-input-label value="Stok OK" />
-                                        <x-text-input x-ref="stockOk" wire:model.defer="stockOk" type="number"
+                                        <x-text-input x-ref="stockOk" wire:model.defer="stockOk" type="number" :readonly="$formMode === 'edit'"
                                             class="w-full mt-1" x-on:keydown.enter.prevent="$refs.stockUgd.focus()" />
                                     </div>
                                     <div>
                                         <x-input-label value="Stok UGD" />
-                                        <x-text-input x-ref="stockUgd" wire:model.defer="stockUgd" type="number"
+                                        <x-text-input x-ref="stockUgd" wire:model.defer="stockUgd" type="number" :readonly="$formMode === 'edit'"
                                             class="w-full mt-1"
                                             x-on:keydown.enter.prevent="$refs.stockLaborat.focus()" />
                                     </div>
                                     <div>
                                         <x-input-label value="Stok Laborat" />
-                                        <x-text-input x-ref="stockLaborat" wire:model.defer="stockLaborat" type="number"
+                                        <x-text-input x-ref="stockLaborat" wire:model.defer="stockLaborat" type="number" :readonly="$formMode === 'edit'"
                                             class="w-full mt-1" x-on:keydown.enter.prevent="$refs.stockUtara.focus()" />
                                     </div>
                                     <div>
                                         <x-input-label value="Stok Utara" />
-                                        <x-text-input x-ref="stockUtara" wire:model.defer="stockUtara" type="number"
+                                        <x-text-input x-ref="stockUtara" wire:model.defer="stockUtara" type="number" :readonly="$formMode === 'edit'"
                                             class="w-full mt-1"
                                             x-on:keydown.enter.prevent="$refs.stockSelatan.focus()" />
                                     </div>
                                     <div>
                                         <x-input-label value="Stok Selatan" />
-                                        <x-text-input x-ref="stockSelatan" wire:model.defer="stockSelatan" type="number"
+                                        <x-text-input x-ref="stockSelatan" wire:model.defer="stockSelatan" type="number" :readonly="$formMode === 'edit'"
                                             class="w-full mt-1" x-on:keydown.enter.prevent="$refs.stockVk.focus()" />
                                     </div>
                                     <div>
                                         <x-input-label value="Stok VK" />
-                                        <x-text-input x-ref="stockVk" wire:model.defer="stockVk" type="number"
+                                        <x-text-input x-ref="stockVk" wire:model.defer="stockVk" type="number" :readonly="$formMode === 'edit'"
                                             class="w-full mt-1" x-on:keydown.enter.prevent="$refs.stockTu.focus()" />
                                     </div>
                                     <div>
                                         <x-input-label value="Stok TU" />
-                                        <x-text-input x-ref="stockTu" wire:model.defer="stockTu" type="number"
+                                        <x-text-input x-ref="stockTu" wire:model.defer="stockTu" type="number" :readonly="$formMode === 'edit'"
                                             class="w-full mt-1" x-on:keydown.enter.prevent="$refs.stockArm.focus()" />
                                     </div>
                                     <div>
                                         <x-input-label value="Stok ARM" />
-                                        <x-text-input x-ref="stockArm" wire:model.defer="stockArm" type="number"
+                                        <x-text-input x-ref="stockArm" wire:model.defer="stockArm" type="number" :readonly="$formMode === 'edit'"
                                             class="w-full mt-1" x-on:keydown.enter.prevent="$refs.stockRd.focus()" />
                                     </div>
                                     <div>
                                         <x-input-label value="Stok RD" />
-                                        <x-text-input x-ref="stockRd" wire:model.defer="stockRd" type="number"
+                                        <x-text-input x-ref="stockRd" wire:model.defer="stockRd" type="number" :readonly="$formMode === 'edit'"
                                             class="w-full mt-1" x-on:keydown.enter.prevent="$refs.limitStock.focus()" />
                                     </div>
                                 </div>
