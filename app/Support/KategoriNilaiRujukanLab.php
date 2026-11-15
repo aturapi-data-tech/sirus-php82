@@ -12,9 +12,13 @@ use Illuminate\Support\Facades\DB;
  * Kode yang belum mengenal 'K' (termasuk aplikasi 6i) membacanya sebagai teks dan menampilkan
  * normal_m/normal_f, yang diisi otomatis dari kategori (teksNormal) saat master disimpan.
  *
- * Tabel LBMST_CLABITEM_KATEGORIS (docs/ddl-lab-kategori-nilai-rujukan.sql), satu baris per kategori:
- *   NILAI_MIN / NILAI_MAX inklusif, kosong = tak terbatas; STATUS N (normal) / B (borderline) /
- *   A (abnormal); KRITIS Y/N.
+ * Tabel LBMST_CLABITEM_KATEGORIS (docs/ddl-lab-kategori-nilai-rujukan.sql), satu baris per kategori,
+ * berupa SALAH SATU dari:
+ *   - rentang angka: NILAI_MIN / NILAI_MAX inklusif, kosong = tak terbatas (angka diambil dari teks hasil);
+ *   - teks hasil: NILAI_TEKS, alternatif dipisah "|", "*" = wildcard (mis. "NEGATIF|NEG", "+1|+2|+3", "*").
+ *     Dibandingkan setelah dinormalkan: huruf besar, tanpa spasi & tanda kurung ("(+1)" = "+1").
+ *   STATUS N (normal) / B (borderline) / A (abnormal); KRITIS Y/N.
+ * Baris dicocokkan menurut URUT; yang pertama cocok dipakai (teks & angka boleh dicampur, mis. Widal).
  * Status hasil yang disimpan ke lbtxn_checkupdtls.lab_result_status:
  *   N → null (normal, sama seperti sistem lama), B → 'B' (baru), A → 'R' (Abnormal, sudah dikenal).
  *
@@ -53,6 +57,7 @@ class KategoriNilaiRujukanLab
                         'urut' => (int) $row->urut,
                         'nilaiMin' => $row->nilai_min === null ? null : (float) $row->nilai_min,
                         'nilaiMax' => $row->nilai_max === null ? null : (float) $row->nilai_max,
+                        'nilaiTeks' => trim((string) ($row->nilai_teks ?? '')),
                         'label' => (string) $row->label,
                         'status' => (string) $row->status,
                         'kritis' => (string) ($row->kritis ?? 'N') === 'Y',
@@ -88,15 +93,107 @@ class KategoriNilaiRujukanLab
         return max(array_map(fn(string $angka) => (float) str_replace(',', '.', $angka), $temuan[0]));
     }
 
-    /** Kategori yang cocok untuk hasil, atau null (hasil tanpa angka / di luar semua rentang). */
-    public static function cocokkan(string $hasil, array $kategoriList): ?array
+    /**
+     * Bentuk baku teks untuk dibandingkan: huruf besar, tanpa spasi dan tanda kurung.
+     * "(+1)" → "+1", " negatif " → "NEGATIF", "Reactive (Remang)" → "REACTIVEREMANG".
+     */
+    public static function normalisasi(string $teks): string
     {
-        $angka = self::angkaDariHasil($hasil);
-        if ($angka === null) {
+        return preg_replace('/[\s()\[\]]+/u', '', mb_strtoupper($teks));
+    }
+
+    /** Apakah hasil cocok dengan pola NILAI_TEKS ("A|B|C", "*" wildcard). */
+    public static function cocokTeks(string $hasil, string $pola): bool
+    {
+        return self::alternatifCocok($hasil, $pola) !== null;
+    }
+
+    /** Alternatif pola (sebagaimana ditulis) yang cocok dengan hasil, atau null. */
+    private static function alternatifCocok(string $hasil, string $pola): ?string
+    {
+        $hasilBaku = self::normalisasi($hasil);
+        if ($hasilBaku === '') {
             return null;
         }
 
+        foreach (explode('|', $pola) as $alternatif) {
+            $alternatifBaku = self::normalisasi($alternatif);
+            if ($alternatifBaku === '') {
+                continue;
+            }
+            $regex = '/^' . str_replace('\\*', '.*', preg_quote($alternatifBaku, '/')) . '$/u';
+            if (preg_match($regex, $hasilBaku)) {
+                return trim($alternatif);
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Pilihan baku untuk isian hasil: PILIHAN PERTAMA tiap baris Teks Hasil (baris yang hanya "*" dilewati).
+     * Mis. baris "NEGATIF|NEG|-" → "NEGATIF".
+     *
+     * @return list<string>
+     */
+    public static function pilihanBaku(array $kategoriList): array
+    {
+        $pilihan = [];
         foreach ($kategoriList as $kategori) {
+            $pertama = trim(explode('|', (string) ($kategori['nilaiTeks'] ?? ''))[0]);
+            if ($pertama !== '' && !str_contains($pertama, '*')) {
+                $pilihan[] = mb_strtoupper($pertama);
+            }
+        }
+
+        return array_values(array_unique($pilihan));
+    }
+
+    /**
+     * Penulisan baku hasil yang diketik petugas:
+     *   - cocok baris teks lewat alternatif PERSIS (tanpa "*") → pilihan pertama baris itu
+     *     ("negatif", "-", "NEAGTIF" → "NEGATIF");
+     *   - cocok lewat "*" / baris angka / tak cocok → apa adanya, huruf besar ("(+2)", "1-2", "AMORF PHOSPAT").
+     */
+    public static function bakukanHasil(string $hasil, array $kategoriList): string
+    {
+        $hasil = trim($hasil);
+        if ($hasil === '') {
+            return '';
+        }
+
+        foreach ($kategoriList as $kategori) {
+            $pola = (string) ($kategori['nilaiTeks'] ?? '');
+            if ($pola === '') {
+                continue;
+            }
+            $alternatif = self::alternatifCocok($hasil, $pola);
+            if ($alternatif === null) {
+                continue;
+            }
+            $pertama = trim(explode('|', $pola)[0]);
+
+            return !str_contains($alternatif, '*') && !str_contains($pertama, '*') ? mb_strtoupper($pertama) : mb_strtoupper($hasil);
+        }
+
+        return mb_strtoupper($hasil);
+    }
+
+    /** Kategori pertama (menurut urutan) yang cocok untuk hasil, atau null. */
+    public static function cocokkan(string $hasil, array $kategoriList): ?array
+    {
+        $angka = self::angkaDariHasil($hasil);
+
+        foreach ($kategoriList as $kategori) {
+            if (($kategori['nilaiTeks'] ?? '') !== '') {
+                if (self::cocokTeks($hasil, $kategori['nilaiTeks'])) {
+                    return $kategori;
+                }
+                continue;
+            }
+            if ($angka === null) {
+                continue;
+            }
             $diAtasMin = $kategori['nilaiMin'] === null || $angka >= $kategori['nilaiMin'];
             $diBawahMax = $kategori['nilaiMax'] === null || $angka <= $kategori['nilaiMax'];
             if ($diAtasMin && $diBawahMax) {
@@ -109,18 +206,22 @@ class KategoriNilaiRujukanLab
 
     /**
      * Nilai lab_result_status untuk hasil: null (normal), 'B', atau 'R'.
-     * Hasil kosong / tanpa angka → null (tak bisa dinilai, tidak ditandai).
-     * Angka di luar semua rentang → 'R' (kategori tidak lengkap; lebih aman ditandai).
+     * Hasil kosong → null. Tidak cocok kategori mana pun:
+     *   - hasil berangka → 'R' (di luar semua rentang; lebih aman ditandai);
+     *   - hasil tanpa angka & item punya kategori teks → 'R' (teks di luar daftar, sama seperti Kualitatif);
+     *   - hasil tanpa angka & item hanya kategori angka → null (tak bisa dinilai, mis. "SKOR : -").
      */
     public static function statusHasil(string $hasil, array $kategoriList): ?string
     {
-        if (trim($hasil) === '' || self::angkaDariHasil($hasil) === null) {
+        if (trim($hasil) === '') {
             return null;
         }
 
         $kategori = self::cocokkan($hasil, $kategoriList);
         if ($kategori === null) {
-            return 'R';
+            $adaKategoriTeks = collect($kategoriList)->contains(fn($kategori) => ($kategori['nilaiTeks'] ?? '') !== '');
+
+            return self::angkaDariHasil($hasil) !== null || $adaKategoriTeks ? 'R' : null;
         }
 
         return match ($kategori['status']) {
@@ -149,6 +250,11 @@ class KategoriNilaiRujukanLab
     {
         $bagian = [];
         foreach ($kategoriList as $kategori) {
+            // Baris teks: cukup labelnya (pola seperti "+1|+2|*" tidak perlu tampil di cetakan).
+            if (($kategori['nilaiTeks'] ?? '') !== '') {
+                $bagian[] = $kategori['label'];
+                continue;
+            }
             $min = $kategori['nilaiMin'];
             $max = $kategori['nilaiMax'];
             $rentang = match (true) {
@@ -161,7 +267,7 @@ class KategoriNilaiRujukanLab
             $bagian[] = trim($rentang . ' ' . $kategori['label']);
         }
 
-        return implode(' ; ', $bagian);
+        return implode(' ; ', array_values(array_unique($bagian)));
     }
 
     private static function angkaRingkas(float $angka): string

@@ -35,6 +35,9 @@ new class extends Component {
      */
     public bool $bagianPanel = false;
 
+    /** Teks nilai rujukan untuk cetakan (normal_m/normal_f) pada jenis Semikuantitatif; kosong = dibuat dari kategori. */
+    public string $teksRujukanKategori = '';
+
     /** Jenis tersimpan saat form dibuka — untuk peringatan "baris kategori akan dihapus" saat jenis diganti. */
     public string $jenisAwal = '';
     public array $renderVersions = [];
@@ -162,10 +165,12 @@ new class extends Component {
             $this->kategoriList = array_map(fn(array $kategori) => [
                 'nilaiMin' => $kategori['nilaiMin'] === null ? '' : (string) (0 + $kategori['nilaiMin']),
                 'nilaiMax' => $kategori['nilaiMax'] === null ? '' : (string) (0 + $kategori['nilaiMax']),
+                'nilaiTeks' => $kategori['nilaiTeks'] ?? '',
                 'label' => $kategori['label'],
                 'status' => $kategori['status'],
                 'kritis' => $kategori['kritis'],
             ], KategoriNilaiRujukanLab::untukItem($clabitemId));
+            $this->teksRujukanKategori = (string) ($row->normal_m ?? '');
         }
 
         $this->incrementVersion('modal');
@@ -236,7 +241,7 @@ new class extends Component {
 
     public function tambahKategori(): void
     {
-        $this->kategoriList[] = ['nilaiMin' => '', 'nilaiMax' => '', 'label' => '', 'status' => 'N', 'kritis' => false];
+        $this->kategoriList[] = ['nilaiTeks' => '', 'nilaiMin' => '', 'nilaiMax' => '', 'label' => '', 'status' => 'N', 'kritis' => false];
     }
 
     public function hapusKategori(int $index): void
@@ -250,19 +255,21 @@ new class extends Component {
     private function kategoriTerisi(): array
     {
         $daftar = [];
-        foreach ($this->kategoriList as $baris) {
-            $min = trim((string) ($baris['nilaiMin'] ?? ''));
-            $max = trim((string) ($baris['nilaiMax'] ?? ''));
-            $label = mb_strtoupper(trim((string) ($baris['label'] ?? '')));
-            if ($min === '' && $max === '' && $label === '') {
+        foreach ($this->kategoriList as $kategori) {
+            $teks = mb_strtoupper(trim((string) ($kategori['nilaiTeks'] ?? '')));
+            $min = trim((string) ($kategori['nilaiMin'] ?? ''));
+            $max = trim((string) ($kategori['nilaiMax'] ?? ''));
+            $label = mb_strtoupper(trim((string) ($kategori['label'] ?? '')));
+            if ($teks === '' && $min === '' && $max === '' && $label === '') {
                 continue;
             }
             $daftar[] = [
-                'nilaiMin' => is_numeric($min) ? (float) $min : null,
-                'nilaiMax' => is_numeric($max) ? (float) $max : null,
+                'nilaiTeks' => $teks,
+                'nilaiMin' => $teks === '' && is_numeric($min) ? (float) $min : null,
+                'nilaiMax' => $teks === '' && is_numeric($max) ? (float) $max : null,
                 'label' => $label,
-                'status' => in_array($baris['status'] ?? '', ['N', 'B', 'A'], true) ? $baris['status'] : 'N',
-                'kritis' => (bool) ($baris['kritis'] ?? false),
+                'status' => in_array($kategori['status'] ?? '', ['N', 'B', 'A'], true) ? $kategori['status'] : 'N',
+                'kritis' => (bool) ($kategori['kritis'] ?? false),
             ];
         }
 
@@ -280,12 +287,22 @@ new class extends Component {
             return false;
         }
 
-        foreach ($this->kategoriList as $index => $baris) {
-            $min = trim((string) ($baris['nilaiMin'] ?? ''));
-            $max = trim((string) ($baris['nilaiMax'] ?? ''));
-            $label = trim((string) ($baris['label'] ?? ''));
-            if ($min === '' && $max === '' && $label === '') {
+        foreach ($this->kategoriList as $index => $kategori) {
+            $teks = trim((string) ($kategori['nilaiTeks'] ?? ''));
+            $min = trim((string) ($kategori['nilaiMin'] ?? ''));
+            $max = trim((string) ($kategori['nilaiMax'] ?? ''));
+            $label = trim((string) ($kategori['label'] ?? ''));
+            if ($teks === '' && $min === '' && $max === '' && $label === '') {
                 continue;
+            }
+            if ($teks !== '' && ($min !== '' || $max !== '')) {
+                $this->addError("kategoriList.{$index}.nilaiTeks", 'Isi Teks Hasil ATAU Min/Max, bukan keduanya.');
+                $valid = false;
+                continue;
+            }
+            if (mb_strlen($teks) > 100) {
+                $this->addError("kategoriList.{$index}.nilaiTeks", 'Teks Hasil maksimal 100 karakter.');
+                $valid = false;
             }
             if ($label === '' || mb_strlen($label) > 50) {
                 $this->addError("kategoriList.{$index}.label", 'Label wajib diisi, maks. 50 karakter.');
@@ -297,8 +314,8 @@ new class extends Component {
                     $valid = false;
                 }
             }
-            if ($min === '' && $max === '') {
-                $this->addError("kategoriList.{$index}.nilaiMin", 'Isi minimal salah satu: Min atau Max.');
+            if ($teks === '' && $min === '' && $max === '') {
+                $this->addError("kategoriList.{$index}.nilaiTeks", 'Isi Teks Hasil, atau Min/Max untuk hasil angka.');
                 $valid = false;
             } elseif (is_numeric($min) && is_numeric($max) && (float) $min > (float) $max) {
                 $this->addError("kategoriList.{$index}.nilaiMax", 'Max tidak boleh lebih kecil dari Min.');
@@ -306,12 +323,26 @@ new class extends Component {
             }
         }
 
-        if ($valid && mb_strlen(KategoriNilaiRujukanLab::teksNormal($kategoriSimpan)) > 100) {
-            $this->addError('kategoriList', 'Teks nilai rujukan hasil gabungan kategori melebihi 100 karakter. Persingkat labelnya.');
+        if ($valid && mb_strlen($this->teksRujukanUntukSimpan($kategoriSimpan)) > 100) {
+            $this->addError('teksRujukanKategori', 'Nilai rujukan di cetakan maksimal 100 karakter. Persingkat teksnya.');
             $valid = false;
         }
 
         return $valid;
+    }
+
+    /** Teks rujukan yang disimpan: isian manual bila ada, selain itu dibuat dari kategori (ASCII, maks 100). */
+    private function teksRujukanUntukSimpan(array $kategoriSimpan): string
+    {
+        $manual = trim($this->teksRujukanKategori);
+
+        return $manual !== '' ? mb_strtoupper($manual) : KategoriNilaiRujukanLab::teksNormal($kategoriSimpan);
+    }
+
+    public function isiTeksRujukanDariKategori(): void
+    {
+        $this->teksRujukanKategori = KategoriNilaiRujukanLab::teksNormal($this->kategoriTerisi());
+        $this->resetValidation('teksRujukanKategori');
     }
 
     /** Pratinjau teks nilai rujukan yang akan ditulis ke normal_m/normal_f. */
@@ -502,7 +533,7 @@ new class extends Component {
         if ($jenisKategori) {
             // Jenis Kategori: rentang & kritis ada di tabel kategori. Teks rujukan diisi otomatis supaya
             // cetakan, aplikasi 6i, dan kode yang belum mengenal 'K' tetap menampilkan keterangan benar.
-            $teksNormal = KategoriNilaiRujukanLab::teksNormal($kategoriSimpan);
+            $teksNormal = $this->teksRujukanUntukSimpan($kategoriSimpan);
             $payload = [
                 ...$payload,
                 'normal_m' => $teksNormal,
@@ -553,6 +584,7 @@ new class extends Component {
                         DB::table('lbmst_clabitem_kategoris')->insert([
                             'clabitem_id' => $clabitemId,
                             'urut' => $urutan + 1,
+                            'nilai_teks' => $kategori['nilaiTeks'] !== '' ? $kategori['nilaiTeks'] : null,
                             'nilai_min' => $kategori['nilaiMin'],
                             'nilai_max' => $kategori['nilaiMax'],
                             'label' => $kategori['label'],
@@ -690,6 +722,7 @@ new class extends Component {
         $this->oldProductId = '';
         $this->hasilCekLoinc = null;
         $this->kategoriList = [];
+        $this->teksRujukanKategori = '';
         $this->jenisAwal = '';
         $this->kodeOtomatis = true;
         $this->bagianPanel = false;
@@ -1013,8 +1046,9 @@ new class extends Component {
                                         <thead>
                                             <tr>
                                                 <th class="ds-c w-10">No</th>
-                                                <th class="w-28">Min</th>
-                                                <th class="w-28">Max</th>
+                                                <th class="w-56">Teks Hasil</th>
+                                                <th class="w-24">Min</th>
+                                                <th class="w-24">Max</th>
                                                 <th>Label</th>
                                                 <th class="w-40">Status</th>
                                                 <th class="ds-c w-20">Kritis</th>
@@ -1022,9 +1056,15 @@ new class extends Component {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            @foreach ($kategoriList as $index => $baris)
+                                            @foreach ($kategoriList as $index => $kategori)
                                                 <tr wire:key="kategori-nilai-rujukan-{{ $index }}" class="align-top">
                                                     <td class="ds-c ds-td-meta">{{ $index + 1 }}</td>
+                                                    <td>
+                                                        <x-text-input wire:model.live.debounce.500ms="kategoriList.{{ $index }}.nilaiTeks" maxlength="100"
+                                                            :error="$errors->has('kategoriList.' . $index . '.nilaiTeks')" class="w-full px-2" placeholder="mis. NEGATIF|NEG atau *"
+                                                            style="text-transform:uppercase" />
+                                                        <x-input-error :messages="$errors->get('kategoriList.' . $index . '.nilaiTeks')" class="mt-1" />
+                                                    </td>
                                                     <td>
                                                         <x-text-input type="number" step="0.01" wire:model.live.debounce.500ms="kategoriList.{{ $index }}.nilaiMin"
                                                             :error="$errors->has('kategoriList.' . $index . '.nilaiMin')" class="w-full px-2" placeholder="kosong = -" />
@@ -1066,15 +1106,28 @@ new class extends Component {
                                 <div class="flex flex-wrap items-center gap-2">
                                     <x-secondary-button type="button" wire:click="tambahKategori">+ Tambah Kategori</x-secondary-button>
                                 </div>
-                                <div class="p-3 text-xs border rounded-lg border-hairline bg-surface-soft dark:bg-gray-800 dark:border-gray-700">
-                                    <div class="text-gray-600 dark:text-gray-400">Nilai rujukan di cetakan (otomatis dari kategori):</div>
-                                    <div class="mt-1 font-mono text-ink dark:text-gray-100">{{ $this->teksNormalKategori() ?: '-' }}</div>
+                                <div>
+                                    <x-input-label value="Nilai Rujukan di Cetakan" />
+                                    <div class="flex gap-1 mt-1">
+                                        <x-text-input wire:model.blur="teksRujukanKategori" maxlength="100" class="w-full"
+                                            :error="$errors->has('teksRujukanKategori')" :placeholder="$this->teksNormalKategori() ?: 'mis. NEGATIF'"
+                                            style="text-transform:uppercase" />
+                                        <x-secondary-button type="button" wire:click="isiTeksRujukanDariKategori" class="!px-3 shrink-0 whitespace-nowrap"
+                                            title="Isi dari gabungan kategori">Isi dari Kategori</x-secondary-button>
+                                    </div>
+                                    <x-input-error :messages="$errors->get('teksRujukanKategori')" class="mt-1" />
+                                    <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">Tampil di kolom Nilai Rujukan hasil lab (maks. 100 karakter, tanpa simbol khusus).
+                                        Kosong = otomatis dari kategori: <span class="font-mono">{{ $this->teksNormalKategori() ?: '-' }}</span></p>
                                 </div>
                                 <p class="text-xs text-gray-600 dark:text-gray-400">
-                                    Min dan Max <strong>termasuk</strong> (0-2 berarti 0, 1, dan 2). Angka diambil dari hasil yang
-                                    diketik petugas, jadi "SKOR : 2", "SKOR 2", dan "2" sama-sama terbaca 2. Status: Normal tidak
-                                    ditandai, Borderline kuning, Abnormal oranye. Centang <strong>Kritis</strong> untuk kategori
-                                    yang perlu perhatian dokter segera.
+                                    Tiap baris diisi <strong>Teks Hasil</strong> ATAU <strong>Min/Max</strong>; baris dicocokkan dari atas, yang pertama cocok dipakai.
+                                    <strong>Teks Hasil</strong>: beberapa pilihan dipisah <span class="font-mono">|</span>, <span class="font-mono">*</span> = apa saja
+                                    (mis. <span class="font-mono">NEGATIF|NEG</span>, <span class="font-mono">+1|+2|+3</span>, <span class="font-mono">*</span> untuk "selain di atas");
+                                    huruf besar-kecil, spasi, dan tanda kurung diabaikan, jadi "(+1)" sama dengan "+1".
+                                    <strong>Pilihan pertama</strong> tiap Teks Hasil = penulisan baku: muncul sebagai pilihan saat input hasil, dan
+                                    hasil yang cocok disimpan dengan tulisan itu (mis. <span class="font-mono">NEGATIF|NEG|-</span>: "neg" &rarr; NEGATIF).
+                                    <strong>Min/Max</strong>: angka diambil dari hasil ("SKOR : 2" &rarr; 2, "1/200" &rarr; 200, "1-2" &rarr; 2), batas termasuk.
+                                    Label = yang tampil di hasil; Status menentukan tanda (Normal tanpa tanda, Borderline kuning, Abnormal oranye).
                                 </p>
                             </div>
                         @else

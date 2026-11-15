@@ -396,6 +396,17 @@ new class extends Component {
 
         $resultStatus = null;
 
+        // Penulisan baku sesuai mapping item (pilihan pertama baris Teks Hasil; Kualitatif: nilai normal di master),
+        // supaya "negatif", "-", "NEAGTIF" tersimpan "NEGATIF". Hasil yang tak cocok disimpan apa adanya.
+        if (($item['lowhigh_status'] ?? '') === KategoriNilaiRujukanLab::JENIS) {
+            $value = KategoriNilaiRujukanLab::bakukanHasil($value, KategoriNilaiRujukanLab::untukItem((string) $item['clabitem_id']));
+        } elseif (($item['lowhigh_status'] ?? '') !== 'Y') {
+            $normalItem = trim((string) ($this->sex === 'P' ? ($item['normal_f'] ?? '') : ($item['normal_m'] ?? '')));
+            if ($normalItem !== '' && KategoriNilaiRujukanLab::normalisasi($value) === KategoriNilaiRujukanLab::normalisasi($normalItem)) {
+                $value = $normalItem;
+            }
+        }
+
         if (($item['lowhigh_status'] ?? '') === KategoriNilaiRujukanLab::JENIS) {
             // Jenis Kategori (mis. TUBEX): angka diambil dari hasil ("SKOR : 2") lalu dicocokkan ke rentang.
             $resultStatus = KategoriNilaiRujukanLab::statusHasil($value, KategoriNilaiRujukanLab::untukItem((string) $item['clabitem_id']));
@@ -432,7 +443,8 @@ new class extends Component {
                 ? ($item['normal_f'] ?? '')
                 : ($item['normal_m'] ?? '');
 
-            if ($normalValue !== '' && $value !== $normalValue) {
+            // Kualitatif: sama bila hanya beda huruf besar-kecil/spasi/kurung ("negatif" = "NEGATIF").
+            if ($normalValue !== '' && KategoriNilaiRujukanLab::normalisasi($value) !== KategoriNilaiRujukanLab::normalisasi($normalValue)) {
                 $resultStatus = 'R';
             }
         }
@@ -586,7 +598,8 @@ new class extends Component {
                 }
             } elseif (($item->lowhigh_status ?? 'N') !== 'Y') {
                 $normalValue = $this->sex === 'P' ? ($item->normal_f ?? '') : ($item->normal_m ?? '');
-                if ($normalValue !== '' && $value !== $normalValue) {
+                // Kualitatif: sama bila hanya beda huruf besar-kecil/spasi/kurung ("negatif" = "NEGATIF").
+                if ($normalValue !== '' && KategoriNilaiRujukanLab::normalisasi($value) !== KategoriNilaiRujukanLab::normalisasi($normalValue)) {
                     $resultStatus = 'R';
                 }
             }
@@ -913,13 +926,30 @@ new class extends Component {
                                 </td>
                                 <td class="px-3 py-2">
                                     @if ($labStatus === 'C')
+                                        @php
+                                            // Pilihan baku dari mapping item: Semikuantitatif = pilihan pertama tiap baris Teks Hasil,
+                                            // Kualitatif = nilai normal bila berupa kata (NEGATIF, NON-REACTIVE) — rentang seperti
+                                            // "0-3" tidak disarankan supaya petugas tetap mengetik hitungan sebenarnya.
+                                            $normalKata = trim((string) ($sex === 'P' ? ($dtl['normal_f'] ?? '') : ($dtl['normal_m'] ?? '')));
+                                            $pilihanHasil = $jenisKategori
+                                                ? KategoriNilaiRujukanLab::pilihanBaku(KategoriNilaiRujukanLab::untukItem((string) ($dtl['clabitem_id'] ?? '')))
+                                                : (($dtl['lowhigh_status'] ?? '') !== 'Y' && $normalKata !== '' && !preg_match('/\d/', $normalKata) ? [$normalKata] : []);
+                                        @endphp
                                         <x-text-input type="text"
                                             value="{{ $dtl['lab_result'] ?? '' }}"
                                             wire:change="updateLabResult({{ $dtl['checkup_dtl'] }}, $event.target.value)"
                                             x-ref="hasil{{ $idx }}"
                                             x-on:keydown.enter.prevent="$event.target.blur(); $nextTick(() => $refs.hasil{{ $idx + 1 }}?.focus())"
                                             class="!w-28 text-sm"
-                                            placeholder="Hasil..." />
+                                            :list="$pilihanHasil ? 'pilihan-hasil-' . ($dtl['checkup_dtl'] ?? $idx) : null"
+                                            placeholder="{{ $pilihanHasil ? 'Pilih / ketik...' : 'Hasil...' }}" />
+                                        @if ($pilihanHasil)
+                                            <datalist id="pilihan-hasil-{{ $dtl['checkup_dtl'] ?? $idx }}">
+                                                @foreach ($pilihanHasil as $pilihan)
+                                                    <option value="{{ $pilihan }}"></option>
+                                                @endforeach
+                                            </datalist>
+                                        @endif
                                     @else
                                         <span class="text-body dark:text-gray-300">{{ $dtl['hasil_display'] ?? '-' }}</span>
                                     @endif

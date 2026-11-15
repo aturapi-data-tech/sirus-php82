@@ -228,7 +228,18 @@ tidak pernah sama persis dengan teks normal). DDL: `docs/ddl-lab-kategori-nilai-
 (tabel `LBMST_CLABITEM_KATEGORIS`, data awal TUBEX `TU00211`, hitung ulang hasil lama).
 Kode tunggal: `App\Support\KategoriNilaiRujukanLab`.
 
-- Baris kategori: `NILAI_MIN`/`NILAI_MAX` (inklusif, NULL = tak terbatas), `LABEL`, `STATUS` N/B/A, `KRITIS` Y/N.
+- Baris kategori = **teks** (`NILAI_TEKS`: alternatif `A|B`, `*` wildcard; dinormalkan huruf besar tanpa spasi/kurung,
+  `(+1)`=`+1`) **atau rentang angka** (`NILAI_MIN`/`NILAI_MAX` inklusif, NULL = tak terbatas), plus `LABEL`, `STATUS` N/B/A,
+  `KRITIS` Y/N. Dicocokkan menurut `URUT`, pertama cocok dipakai (Widal: `NEGATIF` lalu titer `1/80`→80).
+- Tak cocok: hasil berangka ATAU item punya kategori teks → `'R'`; selain itu null.
+- Teks rujukan cetakan (`normal_m/f`) boleh diisi manual di master; kosong = gabungan kategori.
+- **Penulisan baku saat input hasil** (`updateLabResult`, bukan Mindray): pilihan pertama baris Teks Hasil = tulisan baku
+  (`bakukanHasil()`; cocok lewat `*`/angka → apa adanya, huruf besar). Kualitatif: hasil yang setara nilai normal disimpan
+  persis seperti teks normal master. Isian hasil punya `<datalist>` dari `pilihanBaku()` (Kualitatif: nilai normal berupa
+  kata saja, rentang seperti "0-3" tidak disarankan).
+- Data awal (DDL B/B2): TUBEX, urine sedimen 0-3, dipstik (kecuali Urobilinogen), Sylinder, Kristal. Hitung ulang data
+  lama (C2) KONSERVATIF: hanya mencabut `'R'` yang salah, tidak menambah tanda ke data lama.
+- Mode TEKS (Kualitatif) kini dibandingkan setelah `KategoriNilaiRujukanLab::normalisasi()` ("negatif" = "NEGATIF").
 - Penilaian: angka diambil dari teks hasil (`"SKOR : 2"`→2, rentang `"1-2"`→2), kategori pertama yang cocok
   dipakai. Status disimpan: N→null, **B→`'B'` (Borderline, baru)**, A→`'R'`. Tanpa angka → null; angka di luar
   semua rentang → `'R'`.
@@ -241,7 +252,7 @@ Kode tunggal: `App\Support\KategoriNilaiRujukanLab`.
 - Tabel belum dibuat di suatu DB → kategori dibaca kosong (tidak ORA-00942); hanya simpan item Kategori di master
   yang ditolak dengan pesan "jalankan DDL".
 - **Belum**: laporan Nilai Kritis manajemen (`NilaiKritisLabTrait`, SQL) belum membaca kritis kategori; kategori
-  berbasis teks (Widal 1/80, 1/160) belum didukung.
+  berbasis teks: sudah (lihat atas).
 
 ---
 

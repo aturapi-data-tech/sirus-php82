@@ -68,7 +68,8 @@ Prefix tabel: `lbtxn_` (transaksi) & `lbmst_` (master). Header `lbtxn_checkuphdr
 
 9. **Jenis Nilai Rujukan ada TIGA**, bukan dua: `lowhigh_status` `'Y'` angka, null/`'N'` teks (cocok persis →
    selain itu `'R'`), **`'K'` Kategori** (tabel `LBMST_CLABITEM_KATEGORIS`, `App\Support\KategoriNilaiRujukanLab`,
-   status baru **`'B'` Borderline**). Konsumen yang menampilkan status/kritis WAJIB mengenal `'K'` & `'B'`
+   status baru **`'B'` Borderline**; baris kategori teks `NILAI_TEKS` atau rentang angka). Mode teks lama kini
+   dibandingkan ter-normalisasi (huruf besar, tanpa spasi/kurung). Konsumen yang menampilkan status/kritis WAJIB mengenal `'K'` & `'B'`
    (layar petugas, display RM, cetakan). Detail: `docs/laborat-architecture.md` §7.2.
 
 ## Verifikasi wajib sebelum selesai (Volt/Blade)
