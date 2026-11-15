@@ -1,28 +1,31 @@
 <x-border-form :title="__('Identitas')" :align="__('start')" :bgcolor="__('bg-canvas')">
     <div class="space-y-4">
         {{-- Patient UUID · NIK · ID BPJS · Paspor — 1 baris --}}
-        <div class="grid grid-cols-1 gap-4 sm:grid-cols-5">
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-6">
             {{-- Patient UUID + tombol generate (inline) --}}
             <div class="sm:col-span-2">
-                <x-input-label value="Patient UUID" :required="true" />
+                <x-input-label value="Patient UUID (IHS SATUSEHAT)" :required="true" />
                 <div class="flex gap-1 mt-1">
                     <x-text-input wire:model.live="dataPasien.pasien.identitas.patientUuid"
                         :error="$errors->has('dataPasien.pasien.identitas.patientUuid')" class="w-full" />
-                    <x-primary-button type="button"
+                    <x-outline-button type="button"
                         wire:click.prevent="UpdatepatientUuid('{{ $dataPasien['pasien']['identitas']['nik'] ?? '' }}')"
                         wire:loading.attr="disabled" wire:target="UpdatepatientUuid"
-                        title="Ambil UUID Satusehat dari NIK" class="!px-3 shrink-0">
-                        <span wire:loading.remove wire:target="UpdatepatientUuid">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                        title="Cari IHS di SATUSEHAT dari NIK, nama, dan tanggal lahir; daftarkan bila belum ada" class="!px-3 shrink-0 whitespace-nowrap">
+                        <span wire:loading.remove wire:target="UpdatepatientUuid" class="inline-flex items-center gap-1">
+                            {{-- ikon panah putar --}}
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                            Cek IHS
                         </span>
                         <span wire:loading wire:target="UpdatepatientUuid"><x-loading /></span>
-                    </x-primary-button>
+                    </x-outline-button>
                 </div>
                 <x-input-error :messages="$errors->get('dataPasien.pasien.identitas.patientUuid')" class="mt-1" />
+                <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">Cek IHS: cari di SATUSEHAT dari NIK, nama, dan tanggal lahir di form; daftarkan bila NIK belum terdaftar.</p>
             </div>
 
             {{-- NIK --}}
-            <div>
+            <div class="sm:col-span-2">
                 <x-input-label value="NIK" :required="true" />
                 <div class="flex gap-1 mt-1">
                     <x-text-input wire:model.live="dataPasien.pasien.identitas.nik" :error="$errors->has('dataPasien.pasien.identitas.nik')" class="w-full" />
@@ -37,6 +40,7 @@
                     </x-outline-button>
                 </div>
                 <x-input-error :messages="$errors->get('dataPasien.pasien.identitas.nik')" class="mt-1" />
+                <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">Cek BPJS: bandingkan nama, tanggal lahir, jenis kelamin, ID BPJS, No. HP dengan data BPJS (NIK, atau ID BPJS bila NIK kosong).</p>
             </div>
 
             {{-- ID BPJS --}}
@@ -98,7 +102,7 @@
         @endif
 
         {{-- Bayi baru lahir: tanpa NIK sendiri, IHS didaftarkan lewat NIK ibu --}}
-        <div class="grid grid-cols-1 gap-4 sm:grid-cols-5">
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-6">
             <div class="sm:col-span-2">
                 <x-input-label value="NIK Ibu (bayi baru lahir)" />
                 <x-text-input wire:model.live="dataPasien.pasien.bayi.nikIbu" placeholder="16 digit, kosongkan bila bukan bayi"
