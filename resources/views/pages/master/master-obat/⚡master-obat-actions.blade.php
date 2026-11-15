@@ -8,10 +8,12 @@ use Illuminate\Database\QueryException;
 use App\Support\CakupanKfa;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 use App\Http\Traits\Concerns\WithValidationToastTrait;
+use App\Http\Traits\SATUSEHAT\KfaTrait;
 
 new class extends Component {
     use WithRenderVersioningTrait;
     use WithValidationToastTrait;
+    use KfaTrait;
 
     /* -------------------------
      | Form Mode
@@ -85,6 +87,9 @@ new class extends Component {
     public string $fornasNonfornasStatus = '0';
     public ?string $productIdSatusehat = null;
     public ?string $productNameSatusehat = null;
+
+    /** Hasil Cek Kode KFA ke API KFA v2: ['kode', 'status' => ada|tidak_ada|gagal, 'produk' => ?array]. */
+    public ?array $hasilCekKfa = null;
 
     /* -------------------------
      | Auto-Generate (readonly)
@@ -195,6 +200,7 @@ new class extends Component {
         $this->productStatus = '1';
         $this->activeStatus = '1';
         $this->fornasNonfornasStatus = '0';
+        $this->hasilCekKfa = null;
         $this->resetVersion();
     }
 
@@ -268,14 +274,15 @@ new class extends Component {
 
         return [
             // Informasi Dasar
-            'productId' => ['required', 'string', 'max:50', $this->formMode === 'create' ? Rule::unique('immst_products', 'product_id') : Rule::unique('immst_products', 'product_id')->ignore($this->productId, 'product_id')],
-            'productName' => ['required', 'string', 'max:255'],
-            'kode' => ['required', 'string', 'max:100'],
+            // Batas panjang = ukuran kolom IMMST_PRODUCTS (product_id VARCHAR2(10), product_name 50, kode 10).
+            'productId' => ['required', 'string', 'max:10', $this->formMode === 'create' ? Rule::unique('immst_products', 'product_id') : Rule::unique('immst_products', 'product_id')->ignore($this->productId, 'product_id')],
+            'productName' => ['required', 'string', 'max:50'],
+            'kode' => ['nullable', 'string', 'max:10'], // 2.839 dari 2.840 obat lama kosong
 
             // Relasi Master
             'uomId' => ['required', 'exists:immst_uoms,uom_id'],
             'catId' => ['required', 'exists:immst_catproducts,cat_id'],
-            'grpId' => ['required', 'exists:immst_groupproducts,grp_id'],
+            'grpId' => ['nullable', 'exists:immst_groupproducts,grp_id'], // 216 obat aktif lama tanpa grup; grp_id hanya untuk tampilan daftar
             'suppId' => ['required', 'exists:immst_suppliers,supp_id'],
 
             // Harga
@@ -311,11 +318,11 @@ new class extends Component {
             'stockwhPrintNumber' => ['nullable', 'string', 'max:50'],
 
             // Status & Integrasi
-            'productStatus' => ['required', Rule::in(['0', '1'])],
+            'productStatus' => ['nullable'], // field disembunyikan; nilai lama dibawa apa adanya
             'activeStatus' => ['required', Rule::in(['0', '1'])],
             'fornasNonfornasStatus' => ['required', Rule::in(['0', '1'])],
-            'productIdSatusehat' => ['nullable', 'string', 'max:100'],
-            'productNameSatusehat' => ['nullable', 'string', 'max:255'],
+            'productIdSatusehat' => ['nullable', 'string', 'max:25'],
+            'productNameSatusehat' => ['nullable', 'string', 'max:250'],
         ];
     }
 
@@ -328,17 +335,18 @@ new class extends Component {
             // Informasi Dasar
             'productId.required' => ':attribute wajib diisi.',
             'productId.unique' => ':attribute sudah digunakan, silakan pilih ID lain.',
+            'productId.max' => ':attribute maksimal :max karakter.',
             'productName.required' => ':attribute wajib diisi.',
             'productName.max' => ':attribute maksimal :max karakter.',
-            'kode.required' => ':attribute wajib diisi.',
             'kode.max' => ':attribute maksimal :max karakter.',
+            'productIdSatusehat.max' => ':attribute maksimal :max karakter.',
+            'productNameSatusehat.max' => ':attribute maksimal :max karakter.',
 
             // Relasi Master
             'uomId.required' => ':attribute wajib dipilih.',
             'uomId.exists' => ':attribute tidak valid.',
             'catId.required' => ':attribute wajib dipilih.',
             'catId.exists' => ':attribute tidak valid.',
-            'grpId.required' => ':attribute wajib dipilih.',
             'grpId.exists' => ':attribute tidak valid.',
             'suppId.required' => ':attribute wajib dipilih.',
             'suppId.exists' => ':attribute tidak valid.',
@@ -360,17 +368,24 @@ new class extends Component {
     {
         return [
             'productId' => 'ID Produk',
-            'productName' => 'Nama Produk',
-            'kode' => 'Kode',
-            'uomId' => 'Satuan',
-            'catId' => 'Kategori',
-            'grpId' => 'Grup',
-            'suppId' => 'Supplier',
-            'costPrice' => 'Harga Beli',
-            'salesPrice' => 'Harga Jual',
+            'productName' => 'Nama Obat / Barang',
+            'kode' => 'Kode Obat (internal)',
+            'uomId' => 'Satuan Obat',
+            'catId' => 'Kategori Produk',
+            'grpId' => 'Grup Produk',
+            'suppId' => 'Supplier / PBF',
+            'costPrice' => 'Harga Beli per Satuan',
+            'salesPrice' => 'Harga Jual per Satuan',
             'stock' => 'Stok',
             'stockwh' => 'Stok Warehouse',
             'stockklinik' => 'Stok Klinik',
+            'limitStock' => 'Limit Stok Minimum Apotek',
+            'limitStockwh' => 'Limit Stok Minimum Gudang',
+            'qtyPerBox' => 'Qty Per Box (lama)',
+            'takar' => 'Satuan Takar Racikan',
+            'qtyBox' => 'Isi per Box',
+            'productIdSatusehat' => 'Kode KFA (SATUSEHAT)',
+            'productNameSatusehat' => 'Nama KFA (SATUSEHAT)',
         ];
     }
 
@@ -384,7 +399,7 @@ new class extends Component {
         // Prepare payload untuk insert/update
         $payload = [
             'product_name' => $data['productName'],
-            'kode' => $data['kode'],
+            'kode' => $data['kode'] ?? null,
             'uom_id' => $data['uomId'],
             'cat_id' => $data['catId'],
             'grp_id' => $data['grpId'],
@@ -510,6 +525,55 @@ new class extends Component {
         $this->suppId = $payload['supp_id'] ?? null;
         $this->resetValidation('suppId');
     }
+
+    /* -------------------------
+     | KFA (API KFA v2 Kemkes)
+     * ------------------------- */
+    #[On('lov.selected.masterObatKfa')]
+    public function masterObatKfa(string $target, array $payload): void
+    {
+        $this->productIdSatusehat = $payload['kfa_code'] ?? null;
+        $this->productNameSatusehat = mb_substr((string) ($payload['name'] ?? ''), 0, 250) ?: null;
+        $this->hasilCekKfa = ['kode' => (string) $this->productIdSatusehat, 'status' => 'ada', 'produk' => $payload];
+    }
+
+    public function updatedProductIdSatusehat(): void
+    {
+        $this->hasilCekKfa = null;
+    }
+
+    public function cekKodeKfa(): void
+    {
+        $kode = trim((string) $this->productIdSatusehat);
+
+        if ($kode === '') {
+            $this->dispatch('toast', type: 'info', message: 'Isi Kode KFA dulu sebelum dicek.');
+            return;
+        }
+
+        $this->productIdSatusehat = $kode;
+        $this->hasilCekKfa = ['kode' => $kode, ...$this->periksaKodeKfa($kode)];
+    }
+
+    public function pakaiNamaKfa(): void
+    {
+        $namaKfa = $this->hasilCekKfa['produk']['name'] ?? '';
+        if ($namaKfa !== '') {
+            $this->productNameSatusehat = mb_substr($namaKfa, 0, 250);
+        }
+    }
+
+    public function pakaiPenggantiKfa(): void
+    {
+        $kodePengganti = $this->hasilCekKfa['produk']['pengganti_kode'] ?? '';
+        if ($kodePengganti === '') {
+            return;
+        }
+
+        $this->productIdSatusehat = $kodePengganti;
+        $this->hasilCekKfa = ['kode' => $kodePengganti, ...$this->periksaKodeKfa($kodePengganti)];
+        $this->pakaiNamaKfa();
+    }
 };
 ?>
 
@@ -537,10 +601,10 @@ new class extends Component {
 
             {{-- BODY --}}
             <div class="flex-1 px-4 py-4 overflow-y-auto bg-surface-soft dark:bg-gray-950/20" x-enter-chain>
-                <div class="max-w-6xl">
+                <div>
 
                     {{-- FOKUS DINAMIS BERDASARKAN MODE --}}
-                    <div x-data="{ 
+                    <div class="grid grid-cols-1 gap-4 lg:grid-cols-2" x-data="{ 
                             formMode: @entangle('formMode'),
                             init() {
                                 // Listen untuk event focus dari Livewire
@@ -558,7 +622,7 @@ new class extends Component {
 
                         {{-- SECTION 1: Informasi Dasar --}}
                         <div
-                            class="mb-4 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
+                            class="lg:col-span-2 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
                             <div class="px-5 py-3 border-b border-hairline dark:border-gray-700">
                                 <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-800 pb-2">1. Informasi Dasar</h3>
                             </div>
@@ -572,44 +636,46 @@ new class extends Component {
                                             class="w-full mt-1"
                                             x-on:keydown.enter.prevent="$refs.productName.focus()" />
                                         <x-input-error :messages="$errors->get('productId')" class="mt-1" />
+                                        <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">Kunci data obat yang dipakai di semua transaksi; tidak bisa diubah setelah disimpan.</p>
                                     </div>
 
                                     {{-- Product Name --}}
                                     <div class="sm:col-span-2">
-                                        <x-input-label value="Nama Produk *" />
+                                        <x-input-label value="Nama Obat / Barang *" />
                                         <x-text-input x-ref="productName" wire:model.live="productName"
                                             :error="$errors->has('productName')" class="w-full mt-1"
                                             x-on:keydown.enter.prevent="$refs.kode.focus()" />
                                         <x-input-error :messages="$errors->get('productName')" class="mt-1" />
+                                        <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">Nama yang muncul di pencarian resep, kasir, dan cetakan.</p>
                                     </div>
                                 </div>
 
                                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                     {{-- Kode --}}
                                     <div>
-                                        <x-input-label value="Kode *" />
+                                        <x-input-label value="Kode Obat (internal)" />
                                         <x-text-input x-ref="kode" wire:model.live="kode" :error="$errors->has('kode')"
                                             class="w-full mt-1"
-                                            x-on:keydown.enter.prevent="$refs.productNumber.focus()" />
+                                            x-on:keydown.enter.prevent="$refs.costPrice.focus()" />
                                         <x-input-error :messages="$errors->get('kode')" class="mt-1" />
+                                        <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">Opsional, maks. 10 karakter. Untuk pencarian; tampil di samping ID Produk di daftar dan di daftar tarif downtime.</p>
                                     </div>
 
-                                    {{-- Product Number (Auto-generate, readonly) --}}
+                                    {{-- DINONAKTIFKAN 2026-11-15: Nomor Urut Produk (product_number) tidak dibaca web mana pun.
+                                         Tetap dibuat otomatis saat Tambah (MAX+1) agar kolom lama terisi seperti biasa.
                                     <div>
-                                        <x-input-label value="Nomor Produk (Auto)" />
+                                        <x-input-label value="Nomor Urut Produk (otomatis)" />
                                         <x-text-input x-ref="productNumber" wire:model.live="productNumber" disabled
                                             class="w-full mt-1 bg-gray-100 dark:bg-gray-800" />
-                                        <p class="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
-                                            Akan di-generate otomatis saat menyimpan.
-                                        </p>
                                     </div>
+                                    --}}
                                 </div>
                             </div>
                         </div>
 
                         {{-- SECTION 2: Relasi Master --}}
                         <div
-                            class="mb-4 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
+                            class="bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
                             <div class="px-5 py-3 border-b border-hairline dark:border-gray-700">
                                 <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-800 pb-2">2. Relasi Master Data</h3>
                             </div>
@@ -617,34 +683,33 @@ new class extends Component {
                                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                     {{-- UOM --}}
                                     <div>
-                                        <x-input-label value="Satuan (UOM) *" />
                                         @if ($formMode == 'create')
-                                        <livewire:lov.uom.lov-uom target="masterObatUom" />
+                                        <livewire:lov.uom.lov-uom label="Satuan Obat (UOM) *" target="masterObatUom" />
                                         @else
-                                        <livewire:lov.uom.lov-uom target="masterObatUom" :initial-uom-id="$uomId" />
+                                        <livewire:lov.uom.lov-uom label="Satuan Obat (UOM) *" target="masterObatUom" :initial-uom-id="$uomId" />
                                         @endif
                                         <x-input-error :messages="$errors->get('uomId')" class="mt-1" />
+                                        <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">Satuan jual/stok, mis. Tablet, Botol, Ampul.</p>
                                     </div>
 
                                     {{-- Category --}}
                                     <div>
-                                        <x-input-label value="Kategori *" />
                                         @if ($formMode == 'create')
-                                        <livewire:lov.cat-product.lov-cat-product target="masterObatCat" />
+                                        <livewire:lov.cat-product.lov-cat-product label="Kategori Produk *" target="masterObatCat" />
                                         @else
-                                        <livewire:lov.cat-product.lov-cat-product target="masterObatCat"
+                                        <livewire:lov.cat-product.lov-cat-product label="Kategori Produk *" target="masterObatCat"
                                             :initial-cat-id="$catId" />
                                         @endif
                                         <x-input-error :messages="$errors->get('catId')" class="mt-1" />
+                                        <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">Menentukan obat ikut dihitung cakupan KFA atau tidak (alkes dkk tidak).</p>
                                     </div>
 
                                     {{-- Group --}}
                                     <div>
-                                        <x-input-label value="Grup *" />
                                         @if ($formMode == 'create')
-                                        <livewire:lov.group-product.lov-group-product target="masterObatGrp" />
+                                        <livewire:lov.group-product.lov-group-product label="Grup Produk" target="masterObatGrp" />
                                         @else
-                                        <livewire:lov.group-product.lov-group-product target="masterObatGrp"
+                                        <livewire:lov.group-product.lov-group-product label="Grup Produk" target="masterObatGrp"
                                             :initial-grp-id="$grpId" />
                                         @endif
                                         <x-input-error :messages="$errors->get('grpId')" class="mt-1" />
@@ -652,14 +717,14 @@ new class extends Component {
 
                                     {{-- Supplier --}}
                                     <div>
-                                        <x-input-label value="Supplier *" />
                                         @if ($formMode == 'create')
-                                        <livewire:lov.supplier.lov-supplier target="masterObatSupp" />
+                                        <livewire:lov.supplier.lov-supplier label="Supplier / PBF *" target="masterObatSupp" />
                                         @else
-                                        <livewire:lov.supplier.lov-supplier target="masterObatSupp"
+                                        <livewire:lov.supplier.lov-supplier label="Supplier / PBF *" target="masterObatSupp"
                                             :initial-supp-id="$suppId" />
                                         @endif
                                         <x-input-error :messages="$errors->get('suppId')" class="mt-1" />
+                                        <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">Pemasok utama obat ini.</p>
                                     </div>
                                 </div>
                             </div>
@@ -667,7 +732,7 @@ new class extends Component {
 
                         {{-- SECTION 3: Harga --}}
                         <div
-                            class="mb-4 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
+                            class="bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
                             <div class="px-5 py-3 border-b border-hairline dark:border-gray-700">
                                 <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-800 pb-2">3. Harga</h3>
                             </div>
@@ -675,26 +740,31 @@ new class extends Component {
                                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                     {{-- Cost Price --}}
                                     <div>
-                                        <x-input-label value="Harga Beli *" />
+                                        <x-input-label value="Harga Beli per Satuan *" />
                                         <x-text-input-number x-ref="costPrice" wire:model="costPrice"
                                             :error="$errors->has('costPrice')" class="w-full mt-1"
                                             x-on:keydown.enter.prevent="$refs.salesPrice.focus()" />
                                         <x-input-error :messages="$errors->get('costPrice')" class="mt-1" />
+                                        <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">Harga dari supplier, dasar HPP.</p>
                                     </div>
 
                                     {{-- Sales Price --}}
                                     <div>
-                                        <x-input-label value="Harga Jual *" />
+                                        <x-input-label value="Harga Jual per Satuan *" />
                                         <x-text-input-number x-ref="salesPrice" wire:model="salesPrice"
                                             :error="$errors->has('salesPrice')" class="w-full mt-1"
-                                            x-on:keydown.enter.prevent="$refs.stock.focus()" />
+                                            x-on:keydown.enter.prevent="$refs.limitStock.focus()" />
                                         <x-input-error :messages="$errors->get('salesPrice')" class="mt-1" />
+                                        <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">Harga yang ditagihkan ke pasien.</p>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        {{-- SECTION 4: Stok Gudang Utama --}}
+                        {{-- DINONAKTIFKAN 2026-11-15: bagian Stok Gudang Utama & Stok Per Unit disembunyikan.
+                             Kolom stok immst_products tidak dipakai web (stok berjalan = ledger tkview_iostock*), dan saat
+                             Ubah Data Obat kolom stok memang tidak disimpan. Saat Tambah, stok terisi default 0.
+                             SECTION 4: Stok Gudang Utama
                         <div
                             class="mb-4 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
                             <div class="px-5 py-3 border-b border-hairline dark:border-gray-700">
@@ -725,7 +795,7 @@ new class extends Component {
                             </div>
                         </div>
 
-                        {{-- SECTION 5: Stok Per Unit --}}
+                             SECTION 5: Stok Per Unit
                         <div
                             class="mb-4 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
                             <div class="px-5 py-3 border-b border-hairline dark:border-gray-700">
@@ -786,89 +856,108 @@ new class extends Component {
                                 </div>
                             </div>
                         </div>
+                        --}}
 
-                        {{-- SECTION 6: Limit Stok --}}
+                        {{-- SECTION 4: Limit Stok --}}
                         <div
-                            class="mb-4 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
+                            class="bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
                             <div class="px-5 py-3 border-b border-hairline dark:border-gray-700">
-                                <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-800 pb-2">6. Limit Stok</h3>
+                                <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-800 pb-2">4. Limit Stok</h3>
                             </div>
                             <div class="p-5 space-y-4">
-                                <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                     <div>
-                                        <x-input-label value="Limit Stok" />
+                                        {{-- limit_stock = batas minimum stok Apotek (dipakai Analisa Perputaran Obat) --}}
+                                        <x-input-label value="Limit Stok Minimum Apotek" />
                                         <x-text-input x-ref="limitStock" wire:model.defer="limitStock" type="number"
                                             class="w-full mt-1"
                                             x-on:keydown.enter.prevent="$refs.limitStockwh.focus()" />
+                                        <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">Batas bawah stok apotek; dipakai Analisa Perputaran Obat.</p>
                                     </div>
                                     <div>
-                                        <x-input-label value="Limit Stok Warehouse" />
+                                        {{-- limit_stockwh = batas minimum stok Gudang --}}
+                                        <x-input-label value="Limit Stok Minimum Gudang" />
                                         <x-text-input x-ref="limitStockwh" wire:model.defer="limitStockwh" type="number"
                                             class="w-full mt-1"
-                                            x-on:keydown.enter.prevent="$refs.limitStockklinik.focus()" />
+                                            x-on:keydown.enter.prevent="$refs.takar.focus()" />
+                                        <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">Batas bawah stok gudang medis; dipakai Analisa Perputaran Obat.</p>
                                     </div>
+                                    {{-- DINONAKTIFKAN 2026-11-15: Limit Stok Klinik (limit_stockklinik) tidak dipakai web.
+                                         Nilainya tetap terbawa dari data lama saat Edit (tidak berubah).
                                     <div>
                                         <x-input-label value="Limit Stok Klinik" />
                                         <x-text-input x-ref="limitStockklinik" wire:model.defer="limitStockklinik"
                                             type="number" class="w-full mt-1"
                                             x-on:keydown.enter.prevent="$refs.qtyPerBox.focus()" />
                                     </div>
+                                    --}}
                                 </div>
                             </div>
                         </div>
 
-                        {{-- SECTION 7: Informasi Tambahan --}}
+                        {{-- SECTION 5: Informasi Tambahan --}}
                         <div
-                            class="mb-4 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
+                            class="bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
                             <div class="px-5 py-3 border-b border-hairline dark:border-gray-700">
-                                <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-800 pb-2">7. Informasi Tambahan</h3>
+                                <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-800 pb-2">5. Informasi Tambahan</h3>
                             </div>
                             <div class="p-5 space-y-4">
-                                <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                    {{-- DINONAKTIFKAN 2026-11-15: qty_per_box tidak dipakai web; isi per box yang dipakai = qty_box (Isi per Box).
                                     <div>
-                                        <x-input-label value="Qty Per Box" />
+                                        <x-input-label value="Qty Per Box (lama)" />
                                         <x-text-input x-ref="qtyPerBox" wire:model.defer="qtyPerBox" type="number"
                                             class="w-full mt-1" x-on:keydown.enter.prevent="$refs.takar.focus()" />
+                                        <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">Kolom lama, tidak dipakai web. Isi per box yang dipakai adalah kolom Isi per Box.</p>
                                     </div>
+                                    --}}
                                     <div>
-                                        <x-input-label value="Takar" />
+                                        <x-input-label value="Satuan Takar Racikan" />
                                         <x-text-input x-ref="takar" wire:model.defer="takar" class="w-full mt-1"
                                             x-on:keydown.enter.prevent="$refs.qtyBox.focus()" />
+                                        <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">Satuan bawaan saat obat dipakai di racikan e-resep, mis. Tablet, mg.</p>
                                     </div>
                                     <div>
-                                        <x-input-label value="Qty Box" />
+                                        <x-input-label value="Isi per Box" />
                                         <x-text-input x-ref="qtyBox" wire:model.defer="qtyBox" type="number"
                                             class="w-full mt-1"
-                                            x-on:keydown.enter.prevent="$refs.stockPrintNumber.focus()" />
+                                            x-on:keydown.enter.prevent="$refs.productIdSatusehat.focus()" />
+                                        <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">Jumlah satuan dalam 1 box; dipakai Kartu Stock dan pembulatan order di Analisa Perputaran Obat.</p>
                                     </div>
                                 </div>
 
+                                {{-- DINONAKTIFKAN 2026-11-15: Nomor Cetak Stok Apotek/Gudang (stock_print_number,
+                                     stockwh_print_number) tidak dipakai web. Nilai lama tetap terbawa saat Edit.
                                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                     <div>
-                                        <x-input-label value="Stock Print Number" />
+                                        <x-input-label value="Nomor Cetak Stok Apotek (lama)" />
                                         <x-text-input x-ref="stockPrintNumber" wire:model.defer="stockPrintNumber"
                                             class="w-full mt-1"
                                             x-on:keydown.enter.prevent="$refs.stockwhPrintNumber.focus()" />
                                     </div>
                                     <div>
-                                        <x-input-label value="Stockwh Print Number" />
+                                        <x-input-label value="Nomor Cetak Stok Gudang (lama)" />
                                         <x-text-input x-ref="stockwhPrintNumber" wire:model.defer="stockwhPrintNumber"
                                             class="w-full mt-1"
-                                            x-on:keydown.enter.prevent="$refs.productStatus.focus()" />
+                                            x-on:keydown.enter.prevent="$refs.activeStatus.focus()" />
                                     </div>
                                 </div>
+                                --}}
                             </div>
                         </div>
 
-                        {{-- SECTION 8: Status & Integrasi --}}
+                        {{-- SECTION 6: Status & Integrasi --}}
                         <div
-                            class="mb-4 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
+                            class="lg:col-span-2 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
                             <div class="px-5 py-3 border-b border-hairline dark:border-gray-700">
-                                <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-800 pb-2">8. Status & Integrasi</h3>
+                                <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-800 pb-2">6. Status & Integrasi</h3>
                             </div>
-                            <div class="p-5 space-y-4">
-                                <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                                    {{-- Product Status --}}
+                            <div class="grid grid-cols-1 gap-4 p-5 lg:grid-cols-3">
+                                {{-- Kolom kiri: status, atas-bawah --}}
+                                <div class="grid self-start grid-cols-1 gap-4">
+                                    {{-- DINONAKTIFKAN 2026-11-15: Status Produk (product_status) tidak dibaca web mana pun;
+                                         yang dipakai Status Aktif (active_status). Nilai lama tetap terbawa saat Edit,
+                                         obat baru terisi '1'.
                                     <div>
                                         <x-input-label value="Status Produk *" />
                                         <x-select-input x-ref="productStatus" wire:model.defer="productStatus"
@@ -878,44 +967,105 @@ new class extends Component {
                                             <option value="1">Aktif</option>
                                         </x-select-input>
                                     </div>
+                                    --}}
 
                                     {{-- Active Status --}}
                                     <div>
                                         <x-input-label value="Status Aktif *" />
-                                        <x-select-input x-ref="activeStatus" wire:model.defer="activeStatus"
-                                            :error="$errors->has('activeStatus')" class="w-full mt-1"
-                                            x-on:keydown.enter.prevent="$refs.fornasNonfornasStatus.focus()">
-                                            <option value="0">Tidak Aktif</option>
-                                            <option value="1">Aktif</option>
-                                        </x-select-input>
+                                        <div class="mt-2">
+                                            <x-toggle wire:model="activeStatus" trueValue="1" falseValue="0"
+                                                :label="$activeStatus === '1' ? 'Aktif' : 'Tidak Aktif'" />
+                                        </div>
+                                        <x-input-error :messages="$errors->get('activeStatus')" class="mt-1" />
+                                        <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">Tidak Aktif = obat hilang dari pilihan resep dan transaksi.</p>
                                     </div>
 
                                     {{-- Fornas Status --}}
                                     <div>
-                                        <x-input-label value="Fornas/Non-Fornas *" />
-                                        <x-select-input x-ref="fornasNonfornasStatus"
-                                            wire:model.defer="fornasNonfornasStatus"
-                                            :error="$errors->has('fornasNonfornasStatus')" class="w-full mt-1"
-                                            x-on:keydown.enter.prevent="$refs.productIdSatusehat.focus()">
-                                            <option value="0">Non-Fornas</option>
-                                            <option value="1">Fornas</option>
-                                        </x-select-input>
+                                        <x-input-label value="Fornas *" />
+                                        <div class="mt-2">
+                                            <x-toggle wire:model="fornasNonfornasStatus" trueValue="1" falseValue="0"
+                                                :label="$fornasNonfornasStatus === '1' ? 'Fornas' : 'Non-Fornas'" />
+                                        </div>
+                                        <x-input-error :messages="$errors->get('fornasNonfornasStatus')" class="mt-1" />
+                                        <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">Aktif = obat masuk Formularium Nasional.</p>
                                     </div>
+                                </div>
+
+                                {{-- Kolom kanan: satu kelompok KFA --}}
+                                <div class="p-4 space-y-4 border lg:col-span-2 rounded-xl border-hairline dark:border-gray-700">
+                                <div>
+                                    <livewire:lov.kfa.lov-kfa target="masterObatKfa" label="Cari KFA dari Nama Obat" />
+                                    <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">Cari langsung ke Kamus Farmasi dan Alkes (KFA) Kemkes. Memilih hasil mengisi Kode KFA dan Nama KFA di bawah.</p>
                                 </div>
 
                                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                     <div>
-                                        <x-input-label value="Product ID Satusehat" />
-                                        <x-text-input x-ref="productIdSatusehat" wire:model.defer="productIdSatusehat"
-                                            class="w-full mt-1"
-                                            x-on:keydown.enter.prevent="$refs.productNameSatusehat.focus()" />
+                                        <x-input-label value="Kode KFA (SATUSEHAT)" />
+                                        <div class="flex items-center gap-2 mt-1">
+                                            <x-text-input x-ref="productIdSatusehat" wire:model.defer="productIdSatusehat"
+                                                class="w-full"
+                                                x-on:keydown.enter.prevent="$refs.productNameSatusehat.focus()" />
+                                            <x-outline-button type="button" wire:click="cekKodeKfa" class="whitespace-nowrap"
+                                                wire:loading.attr="disabled" wire:target="cekKodeKfa,pakaiPenggantiKfa">
+                                                <span wire:loading.remove wire:target="cekKodeKfa">Cek Kode KFA</span>
+                                                <span wire:loading wire:target="cekKodeKfa">Mengecek...</span>
+                                            </x-outline-button>
+                                        </div>
+                                        <x-input-error :messages="$errors->get('productIdSatusehat')" class="mt-1" />
+                                        <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">Kode Kamus Farmasi dan Alkes; obat tanpa KFA dilewati saat kirim resep ke SATUSEHAT.</p>
                                     </div>
                                     <div>
-                                        <x-input-label value="Product Name Satusehat" />
+                                        <x-input-label value="Nama KFA (SATUSEHAT)" />
                                         <x-text-input x-ref="productNameSatusehat"
                                             wire:model.defer="productNameSatusehat" class="w-full mt-1"
                                             x-on:keydown.enter.prevent="$wire.save()" />
+                                        <x-input-error :messages="$errors->get('productNameSatusehat')" class="mt-1" />
+                                        <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">Nama sesuai kamus KFA untuk kode di sebelahnya.</p>
                                     </div>
+                                </div>
+
+                                @if ($hasilCekKfa)
+                                    @php $produkKfa = $hasilCekKfa['produk'] ?? null; @endphp
+                                    <div class="p-3 text-xs border rounded-lg text-ink border-hairline bg-surface-soft dark:bg-gray-800 dark:border-gray-700 dark:text-gray-200">
+                                        @if ($hasilCekKfa['status'] === 'ada' && $produkKfa)
+                                            @if ($produkKfa['aktif'])
+                                                <x-badge variant="success">Kode ada di KFA</x-badge>
+                                            @else
+                                                <x-badge variant="warning">Kode ada di KFA, tetapi tidak aktif</x-badge>
+                                            @endif
+                                            <p class="mt-2">Kode {{ $hasilCekKfa['kode'] }}: <span class="font-semibold">{{ $produkKfa['name'] }}</span></p>
+                                            @if (collect([$produkKfa['zat_aktif'], $produkKfa['sediaan'], $produkKfa['pabrik']])->filter()->isNotEmpty())
+                                                <p class="mt-1 text-gray-600 dark:text-gray-400">{{ collect(['Zat aktif: ' . $produkKfa['zat_aktif'], 'Sediaan: ' . $produkKfa['sediaan'], 'Pabrik: ' . $produkKfa['pabrik']])->reject(fn($teks) => str_ends_with($teks, ': '))->implode(' · ') }}</p>
+                                            @endif
+
+                                            @if (!$produkKfa['aktif'])
+                                                <p class="mt-1">Produk ini sudah tidak dipakai di KFA. Sebaiknya pilih produk lain yang aktif.</p>
+                                                @if ($produkKfa['pengganti_kode'] !== '')
+                                                    <div class="flex flex-wrap items-center gap-2 mt-1">
+                                                        <span>Pengganti dari KFA: {{ $produkKfa['pengganti_nama'] ?: '-' }} ({{ $produkKfa['pengganti_kode'] }})</span>
+                                                        <x-secondary-button type="button" wire:click="pakaiPenggantiKfa">Pakai Pengganti</x-secondary-button>
+                                                    </div>
+                                                @endif
+                                            @endif
+
+                                            @if (mb_strtolower(trim((string) $productNameSatusehat)) !== mb_strtolower(trim($produkKfa['name'])))
+                                                <div class="flex flex-wrap items-center gap-2 mt-2">
+                                                    <span>Nama KFA di form {{ filled($productNameSatusehat) ? 'berbeda: ' . $productNameSatusehat : 'masih kosong' }}.</span>
+                                                    <x-secondary-button type="button" wire:click="pakaiNamaKfa">Pakai Nama dari KFA</x-secondary-button>
+                                                </div>
+                                            @endif
+
+                                            <p class="mt-2 text-gray-600 dark:text-gray-400">Pastikan produknya sama dengan obat ini (zat aktif, kekuatan, sediaan). Kode yang salah tetap terkirim sebagai obat lain.</p>
+                                        @elseif ($hasilCekKfa['status'] === 'tidak_ada')
+                                            <x-badge variant="danger">Kode tidak ada di KFA</x-badge>
+                                            <p class="mt-2">Kode {{ $hasilCekKfa['kode'] }} tidak dikenal KFA, resep obat ini akan ditolak saat kirim. Cari kode yang benar lewat Cari KFA di atas.</p>
+                                        @else
+                                            <x-badge variant="warning">Belum bisa dicek</x-badge>
+                                            <p class="mt-2">Server KFA tidak merespons. Coba lagi beberapa saat.</p>
+                                        @endif
+                                    </div>
+                                @endif
                                 </div>
                             </div>
                         </div>
