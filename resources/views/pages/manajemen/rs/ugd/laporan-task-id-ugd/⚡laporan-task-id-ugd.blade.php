@@ -165,9 +165,9 @@ new class extends Component {
 
         // Triase hanya ada di JSON, jadi disaring sesudah dipetakan (seperti filter Tidak lengkap).
         if ($this->filterTriase === 'BELUM') {
-            $all = $all->filter(fn($r) => blank($r->triase))->values();
+            $all = $all->filter(fn($row) => blank($row->triase))->values();
         } elseif ($this->filterTriase !== '') {
-            $all = $all->filter(fn($r) => $r->triase === $this->filterTriase)->values();
+            $all = $all->filter(fn($row) => $row->triase === $this->filterTriase)->values();
         }
 
         return $all;

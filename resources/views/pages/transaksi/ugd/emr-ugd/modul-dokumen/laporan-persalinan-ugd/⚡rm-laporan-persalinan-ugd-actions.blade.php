@@ -1084,24 +1084,24 @@ new class extends Component {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            @forelse ($newForm['bayi'] ?? [] as $nomor => $baris)
+                                            @forelse ($newForm['bayi'] ?? [] as $nomor => $bayi)
                                                 @php
                                                     $temuanBayi = collect([
-                                                        'Caput' => $baris['caputSuksedanium'] ?? '',
-                                                        'Cephal' => $baris['cephalHematoma'] ?? '',
-                                                        'Atresia Ani' => $baris['atresiaAni'] ?? '',
-                                                        'Lain' => $baris['lain'] ?? '',
+                                                        'Caput' => $bayi['caputSuksedanium'] ?? '',
+                                                        'Cephal' => $bayi['cephalHematoma'] ?? '',
+                                                        'Atresia Ani' => $bayi['atresiaAni'] ?? '',
+                                                        'Lain' => $bayi['lain'] ?? '',
                                                     ])->filter(fn($nilai) => filled($nilai))->map(fn($nilai, $label) => $label . ': ' . $nilai)->implode('; ');
                                                 @endphp
                                                 <tr wire:key="laporan-persalinan-bayi-{{ $nomor }}" class="align-top">
                                                     <td class="ds-c ds-td-meta">{{ $nomor + 1 }}</td>
-                                                    <td class="ds-td-strong whitespace-nowrap">{{ ($baris['lahir'] ?? '') ?: '-' }}</td>
-                                                    <td>{{ ($baris['jenisKelamin'] ?? '') ?: '-' }}<div class="text-xs text-muted-soft">{{ ($baris['keadaan'] ?? '') ?: '-' }}</div></td>
-                                                    <td class="whitespace-nowrap tabular-nums">{{ ($baris['bb'] ?? '') ?: '-' }} gr<div class="text-xs text-muted-soft">{{ ($baris['pb'] ?? '') ?: '-' }} cm</div></td>
-                                                    <td>{{ ($baris['apgar'] ?? '') ?: '-' }}<div class="text-xs text-muted-soft">Resusitasi: {{ ($baris['resusitasi'] ?? '') ?: '-' }}</div></td>
-                                                    <td class="text-xs">{{ $this->ringkasUkuranKepala($baris) ?: '-' }}</td>
+                                                    <td class="ds-td-strong whitespace-nowrap">{{ ($bayi['lahir'] ?? '') ?: '-' }}</td>
+                                                    <td>{{ ($bayi['jenisKelamin'] ?? '') ?: '-' }}<div class="text-xs text-muted-soft">{{ ($bayi['keadaan'] ?? '') ?: '-' }}</div></td>
+                                                    <td class="whitespace-nowrap tabular-nums">{{ ($bayi['bb'] ?? '') ?: '-' }} gr<div class="text-xs text-muted-soft">{{ ($bayi['pb'] ?? '') ?: '-' }} cm</div></td>
+                                                    <td>{{ ($bayi['apgar'] ?? '') ?: '-' }}<div class="text-xs text-muted-soft">Resusitasi: {{ ($bayi['resusitasi'] ?? '') ?: '-' }}</div></td>
+                                                    <td class="text-xs">{{ $this->ringkasUkuranKepala($bayi) ?: '-' }}</td>
                                                     <td class="text-xs">{{ $temuanBayi ?: '-' }}</td>
-                                                    <td class="ds-td-meta">{{ ($baris['petugas'] ?? '') ?: '-' }}</td>
+                                                    <td class="ds-td-meta">{{ ($bayi['petugas'] ?? '') ?: '-' }}</td>
                                                     <td class="ds-c">
                                                         @if (!$formReadOnly)
                                                             <x-hapus-button :action="'hapusBayi(' . $nomor . ')'" title="Hapus Bayi" :message="'Yakin hapus data bayi ke-' . ($nomor + 1) . ' dari laporan ini?'" />
