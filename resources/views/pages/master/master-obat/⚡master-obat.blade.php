@@ -21,6 +21,10 @@ new class extends Component {
     #[Url(as: 'kfa')]
     public string $filterKfa = '';
 
+    /** '1' = aktif saja (bawaan), '0' = tidak aktif saja, '' = semua status. */
+    #[Url(as: 'status')]
+    public string $filterStatus = '1';
+
     /* -------------------------
      | Update Search Keyword
              * Fungsi: Reset halaman saat keyword berubah
@@ -44,13 +48,18 @@ new class extends Component {
         $this->resetPage();
     }
 
+    public function updatedFilterStatus(): void
+    {
+        $this->resetPage();
+    }
+
     /* -------------------------
      | Reset Filters
              * Fungsi: Reset keyword pencarian & per-halaman ke default
      * ------------------------- */
     public function resetFilters(): void
     {
-        $this->reset(['searchKeyword', 'filterKfa']);
+        $this->reset(['searchKeyword', 'filterKfa', 'filterStatus']);
         $this->itemsPerPage = 10;
         $this->resetPage();
     }
@@ -120,6 +129,7 @@ new class extends Component {
                 'p.sales_price',
                 'p.stock',
                 'p.product_id_satusehat',
+                'p.active_status',
 
                 // Nama dari tabel relasi (untuk display)
                 'u.uom_desc as uom_name',
@@ -136,6 +146,13 @@ new class extends Component {
                 ->whereIn('p.cat_id', CakupanKfa::KATEGORI_OBAT)
                 ->whereRaw('TRIM(p.product_id_satusehat) IS NULL')
                 ->orderByRaw('NVL(pakai.jumlah_pakai, 0) DESC');
+        }
+
+        // active_status '1'/'0'; NULL lama dianggap tidak aktif, sama dengan pemakai lain (where = '1').
+        if ($this->filterStatus === '1') {
+            $queryBuilder->where('p.active_status', '1');
+        } elseif ($this->filterStatus === '0') {
+            $queryBuilder->whereRaw("NVL(p.active_status, '0') <> '1'");
         }
 
         $queryBuilder->orderBy('p.product_name', 'asc');
@@ -238,6 +255,16 @@ new class extends Component {
 
                     {{-- RIGHT ACTIONS --}}
                     <div class="flex items-center justify-end gap-2">
+                        {{-- Filter status aktif --}}
+                        <div class="w-40">
+                            <x-input-label for="filterStatus" value="Filter Status" class="sr-only" />
+                            <x-select-input id="filterStatus" wire:model.live="filterStatus">
+                                <option value="1">Aktif</option>
+                                <option value="0">Tidak aktif</option>
+                                <option value="">Semua status</option>
+                            </x-select-input>
+                        </div>
+
                         {{-- Filter cakupan KFA --}}
                         <div class="w-56">
                             <x-input-label for="filterKfa" value="Filter KFA" class="sr-only" />
@@ -302,7 +329,12 @@ new class extends Component {
                                     </td>
 
                                     <td class="px-6 py-4">
-                                        <div class="font-medium text-gray-900 dark:text-white">{{ $row->product_name }}</div>
+                                        <div class="font-medium text-gray-900 dark:text-white">
+                                            {{ $row->product_name }}
+                                            @if (($row->active_status ?? '') !== '1')
+                                                <x-badge variant="danger">Tidak Aktif</x-badge>
+                                            @endif
+                                        </div>
                                         <div class="font-mono text-xs" style="color:var(--muted)">
                                             {{ $row->product_id }}@if (!empty($row->kode)) · {{ $row->kode }}@endif
                                         </div>
