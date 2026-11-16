@@ -32,7 +32,7 @@ new #[Layout('layouts.app-fullscreen')] class extends Component {
      *  tetapi nomor besar menunjuk panggilan terakhir).
      *
      *  PRIVASI (halaman publik, tanpa login): hanya nomor antrian; nama pasien
-     *  disamarkan (kata pertama + inisial) dan hanya untuk yang sedang diperiksa.
+     *  disamarkan ("SITI A*** R***") dan hanya untuk yang sedang diperiksa.
      *  Tidak ada No. RM, alamat, atau isi EMR.
      * ════════════════════════════════════════════════════════════════════════
      */
@@ -43,7 +43,10 @@ new #[Layout('layouts.app-fullscreen')] class extends Component {
         return '<div class="p-8 text-center text-muted-soft">Memuat antrian…</div>';
     }
 
-    /** "SITI AMINAH RAHAYU" → "SITI A. R." — cukup untuk dikenali sendiri, tidak membuka nama lengkap. */
+    /**
+     * "SITI AMINAH RAHAYU" → "SITI A*** R***" — kata pertama utuh supaya dikenali sendiri; kata berikutnya
+     * huruf pertama + 3 bintang TETAP (bukan sepanjang kata) agar panjang nama asli tidak terbaca.
+     */
     private function samarkanNama(?string $nama): string
     {
         $kataList = preg_split('/\s+/', trim((string) $nama), -1, PREG_SPLIT_NO_EMPTY);
@@ -51,7 +54,7 @@ new #[Layout('layouts.app-fullscreen')] class extends Component {
             return '';
         }
         $depan = array_shift($kataList);
-        $inisial = array_map(fn($kata) => mb_substr($kata, 0, 1) . '.', $kataList);
+        $inisial = array_map(fn($kata) => mb_substr($kata, 0, 1) . '***', $kataList);
 
         return trim($depan . ' ' . implode(' ', $inisial));
     }
