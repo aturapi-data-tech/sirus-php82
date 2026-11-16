@@ -984,7 +984,7 @@ new class extends Component {
 
         <div class="flex items-center justify-between px-4 py-3 border-b border-hairline dark:border-gray-700">
             <h3 class="text-sm font-semibold text-body dark:text-gray-300">Riwayat Pembayaran</h3>
-            @php $cashins = DB::table('rstxn_rjcashins')->where('rj_no', $rjNo)->orderBy('rjc_date')->get(); @endphp
+            @php $cashins = DB::table('rstxn_rjcashins as c')->leftJoin('acmst_accounts as a', 'a.acc_id', '=', 'c.acc_id')->where('c.rj_no', $rjNo)->orderBy('c.rjc_date')->get(['c.*', 'a.acc_name']); @endphp
             <x-badge variant="gray">{{ $cashins->count() }} transaksi</x-badge>
         </div>
 
@@ -1005,8 +1005,9 @@ new class extends Component {
                             <td class="px-4 py-1.5 text-muted dark:text-gray-400 whitespace-nowrap">
                                 {{ Carbon::parse($cash->rjc_date)->format('d/m/Y H:i:s') }}
                             </td>
-                            <td class="px-4 py-1.5 font-mono text-sm text-muted dark:text-gray-400 whitespace-nowrap">
-                                {{ $cash->acc_id }}
+                            <td class="px-4 py-1.5">
+                                <div class="text-ink dark:text-gray-200">{{ $cash->acc_name ?: '-' }}</div>
+                                <div class="font-mono text-xs text-muted dark:text-gray-400">{{ $cash->acc_id ?? '-' }}</div>
                             </td>
                             <td class="px-4 py-1.5 text-ink dark:text-gray-200">{{ $cash->rjc_desc }}</td>
                             <td
