@@ -24,7 +24,7 @@ new class extends Component {
     #[Session(key: 'antrian-kasir-ugd-filterStatus')]
     public string $filterStatus = 'A';
     #[Session(key: 'antrian-kasir-ugd-filterKlaim')]
-    public string $filterKlaim = ''; // '' | 'BPJS' | 'UMUM' — pakai klaim_status di rsmst_klaimtypes (JM dianggap BPJS)
+    public string $filterKlaim = ''; // '' | 'BPJS' | 'BPJS_BAYAR' (BPJS yang punya pembayaran kas) | 'UMUM' — pakai klaim_status di rsmst_klaimtypes (JM dianggap BPJS)
     #[Session(key: 'antrian-kasir-ugd-filterDokter')]
     public string $filterDokter = '';
     #[Session(key: 'antrian-kasir-ugd-itemsPerPage')]
@@ -97,6 +97,30 @@ new class extends Component {
         return [$d, (clone $d)->endOfDay()];
     }
 
+    /**
+     * Ringkasan BPJS yang punya pembayaran kas di tanggal terpilih (semua status kecuali Batal),
+     * untuk cek cepat apakah memang bayar sebagian atau salah tagih.
+     */
+    #[Computed]
+    public function ringkasanBpjsBayar(): array
+    {
+        [$start, $end] = $this->dateRange();
+
+        $hasil = DB::table('rstxn_ugdcashins as c')
+            ->join('rstxn_ugdhdrs as h', 'h.rj_no', '=', 'c.rj_no')
+            ->leftJoin('rsmst_klaimtypes as k', 'k.klaim_id', '=', 'h.klaim_id')
+            ->whereBetween('h.rj_date', [$start, $end])
+            ->where('h.klaim_id', '!=', 'KR')
+            ->where(DB::raw("NVL(h.rj_status,'A')"), '!=', 'F')
+            ->where(function ($q) {
+                $q->where('k.klaim_status', 'BPJS')->orWhere('h.klaim_id', 'JM');
+            })
+            ->selectRaw('COUNT(DISTINCT c.rj_no) as jumlah_pasien, NVL(SUM(c.rjc_nominal), 0) as total')
+            ->first();
+
+        return ['jumlahPasien' => (int) ($hasil->jumlah_pasien ?? 0), 'total' => (int) ($hasil->total ?? 0)];
+    }
+
     #[Computed]
     public function rows()
     {
@@ -123,6 +147,14 @@ new class extends Component {
         if ($this->filterKlaim === 'BPJS') {
             $query->where(function ($q) {
                 $q->where('k.klaim_status', 'BPJS')->orWhere('h.klaim_id', 'JM');
+            });
+        } elseif ($this->filterKlaim === 'BPJS_BAYAR') {
+            // BPJS yang ternyata ada uang masuk kas — untuk cek cepat: memang bayar sebagian
+            // (obat/layanan tak ditanggung) atau salah tagih.
+            $query->where(function ($q) {
+                $q->where('k.klaim_status', 'BPJS')->orWhere('h.klaim_id', 'JM');
+            })->whereExists(function ($sub) {
+                $sub->select(DB::raw(1))->from('rstxn_ugdcashins as c')->whereColumn('c.rj_no', 'h.rj_no');
             });
         } elseif ($this->filterKlaim === 'UMUM') {
             $query->where(function ($q) {
@@ -168,6 +200,16 @@ new class extends Component {
         // ambil ulang per baris; satu baris gagal tak menjatuhkan daftar.
         $rjNoHalaman = $items->pluck('rj_no')->all();
 
+        // Pembayaran kas per akun, hanya untuk baris halaman ini.
+        $bayarPerRjNo = DB::table('rstxn_ugdcashins as c')
+            ->leftJoin('acmst_accounts as a', 'a.acc_id', '=', 'c.acc_id')
+            ->whereIn('c.rj_no', $rjNoHalaman)
+            ->groupBy('c.rj_no', 'c.acc_id', 'a.acc_name')
+            ->selectRaw('c.rj_no, c.acc_id, a.acc_name, SUM(c.rjc_nominal) as nominal')
+            ->orderBy('c.acc_id')
+            ->get()
+            ->groupBy('rj_no');
+
         $jsonPerRjNo = $this->bacaJsonKunjunganUGD($rjNoHalaman);
 
         $labPerRjNo = DB::table('lbtxn_checkuphdrs')
@@ -186,7 +228,10 @@ new class extends Component {
             ->pluck('jumlah', 'rj_no')
             ->all();
 
-        $paginator->getCollection()->transform(function ($row) use ($jsonPerRjNo, $labPerRjNo, $radPerRjNo) {
+        $paginator->getCollection()->transform(function ($row) use ($jsonPerRjNo, $labPerRjNo, $radPerRjNo, $bayarPerRjNo) {
+            $row->bayar_list = ($bayarPerRjNo[$row->rj_no] ?? collect())->values();
+            $row->bayar_total = (int) $row->bayar_list->sum('nominal');
+            $row->is_bpjs = ($row->klaim_status ?? '') === 'BPJS' || ($row->klaim_id ?? '') === 'JM';
             $row->lab_status = (int) ($labPerRjNo[$row->rj_no] ?? 0);
             $row->rad_status = (int) ($radPerRjNo[$row->rj_no] ?? 0);
 
@@ -298,9 +343,10 @@ new class extends Component {
                     {{-- FILTER KLAIM — BPJS / UMUM --}}
                     <div class="w-full sm:w-auto">
                         <x-input-label value="Klaim" />
-                        <x-select-input wire:model.live="filterKlaim" class="w-full mt-1 sm:w-32">
+                        <x-select-input wire:model.live="filterKlaim" class="w-full mt-1 sm:w-40">
                             <option value="">Semua</option>
                             <option value="BPJS">BPJS</option>
+                            <option value="BPJS_BAYAR">BPJS ada bayar</option>
                             <option value="UMUM">UMUM</option>
                         </x-select-input>
                     </div>
@@ -341,6 +387,14 @@ new class extends Component {
                 </div>
                 <div class="mt-1 text-xs text-muted">
                     Data Terakhir: {{ now()->format('d/m/Y H:i:s') }}
+                    @if ($this->ringkasanBpjsBayar['jumlahPasien'] > 0)
+                        <span class="mx-1 text-muted-soft">·</span>
+                        <button type="button" wire:click="$set('filterKlaim', 'BPJS_BAYAR')"
+                            class="font-semibold text-amber-700 hover:underline dark:text-amber-400"
+                            title="BPJS yang punya pembayaran kas di tanggal ini (semua status kecuali Batal). Klik untuk menyaring.">
+                            BPJS ada bayar: {{ $this->ringkasanBpjsBayar['jumlahPasien'] }} pasien &middot; Rp {{ number_format($this->ringkasanBpjsBayar['total']) }}
+                        </button>
+                    @endif
                 </div>
             </div>
 
@@ -388,6 +442,11 @@ new class extends Component {
                                         </div>
                                         <div class="flex flex-wrap items-center gap-2">
                                             <x-list.klaim-badge :status="$row->klaim_status" :desc="$row->klaim_desc" :id="$row->klaim_id" />
+                                            @if ($row->is_bpjs && $row->bayar_total > 0)
+                                                <x-badge variant="warning" title="Pasien BPJS dengan pembayaran kas — cek: bayar sebagian (obat/layanan tak ditanggung) atau salah tagih">
+                                                    BPJS &middot; Bayar Rp {{ number_format($row->bayar_total) }}
+                                                </x-badge>
+                                            @endif
                                             <x-list.sep-spri :sep="$row->vno_sep" />
                                             <div>
                                                 @if ($row->lab_status)
@@ -461,6 +520,21 @@ new class extends Component {
                                                         class="font-medium {{ $rjTextColor }}">{{ $rjLabel }}</span>
                                                 </div>
                                             @endif
+                                            {{-- Pembayaran kas per akun --}}
+                                            <div class="text-xs text-muted dark:text-gray-500">
+                                                Bayar:
+                                                @if ($row->bayar_total > 0)
+                                                    <span class="font-semibold text-ink dark:text-gray-200">Rp {{ number_format($row->bayar_total) }}</span>
+                                                @else
+                                                    <span class="text-muted-soft">—</span>
+                                                @endif
+                                            </div>
+                                            @foreach ($row->bayar_list as $bayar)
+                                                <div class="flex items-baseline justify-between gap-2 pl-2 text-xs text-muted dark:text-gray-400">
+                                                    <span class="truncate" title="{{ $bayar->acc_id }}">&middot; {{ $bayar->acc_name ?: $bayar->acc_id }}</span>
+                                                    <span class="font-mono whitespace-nowrap">Rp {{ number_format($bayar->nominal) }}</span>
+                                                </div>
+                                            @endforeach
                                             <div class="flex items-center gap-1.5">
                                                 <span
                                                     class="w-2 h-2 rounded-full {{ $row->task_id6 ? 'bg-emerald-500' : 'bg-gray-300' }}"></span>
