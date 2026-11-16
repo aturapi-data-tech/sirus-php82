@@ -299,6 +299,21 @@ trait PiutangPasienTrait
     }
 
     /**
+     * SEMUA baris piutang (sisa>0) untuk filter yang sama dgn daftar — dipakai unduh Excel.
+     * cursor() = baris dibaca satu per satu saat ditulis ke berkas, tidak ditampung di memori
+     * (filter "semua bulan" bisa puluhan ribu baris).
+     */
+    protected function piutangSemuaBaris(?Carbon $start, ?Carbon $end, string $jalur, string $klaim, string $search): \Illuminate\Support\LazyCollection
+    {
+        return DB::query()
+            ->fromSub($this->piutangUnionSub($start, $end, $jalur, $klaim, $search), 'p')
+            ->where('sisa', '>', 0)
+            ->orderByDesc('sisa')
+            ->orderByDesc('no_transaksi')
+            ->cursor();
+    }
+
+    /**
      * Satu baris piutang untuk SATU transaksi — dipakai layar pembayaran piutang
      * saat menghitung ulang sisa tepat sebelum menulis (setelah lock baris header).
      *
