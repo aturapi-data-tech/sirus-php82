@@ -16,6 +16,8 @@ Route::livewire('/display/antrian-apotek-ri', 'pages::display.antrian-apotek-ri.
     ->name('display.antrian-apotek-ri');
 Route::livewire('/display/jadwal-poli', 'pages::display.jadwal-poli.jadwal-poli')
     ->name('display.jadwal-poli');
+Route::livewire('/display/antrian-poli-rj', 'pages::display.antrian-poli-rj.antrian-poli-rj')
+    ->name('display.antrian-poli-rj');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::livewire('/dashboard', 'dashboard')->name('dashboard');
