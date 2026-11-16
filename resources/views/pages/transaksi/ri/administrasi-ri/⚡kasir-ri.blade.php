@@ -1253,7 +1253,7 @@ new class extends Component {
     <div class="overflow-hidden bg-canvas border border-hairline rounded-2xl dark:border-gray-700 dark:bg-gray-900">
         <div class="flex items-center justify-between px-4 py-3 border-b border-hairline dark:border-gray-700">
             <h3 class="text-sm font-semibold text-body dark:text-gray-300">Riwayat Pembayaran Pulang</h3>
-            @php $payments = DB::table('rstxn_ripaymentpdtls')->where('rihdr_no', $riHdrNo)->orderBy('ripay_date')->get(); @endphp
+            @php $payments = DB::table('rstxn_ripaymentpdtls as p')->leftJoin('acmst_accounts as a', 'a.acc_id', '=', 'p.acc_id')->where('p.rihdr_no', $riHdrNo)->orderBy('p.ripay_date')->get(['p.*', 'a.acc_name']); @endphp
             <x-badge variant="gray">{{ $payments->count() }} transaksi</x-badge>
         </div>
 
@@ -1273,8 +1273,9 @@ new class extends Component {
                             <td class="px-4 py-1.5 text-muted dark:text-gray-400 whitespace-nowrap">
                                 {{ Carbon::parse($pay->ripay_date)->format('d/m/Y H:i:s') }}
                             </td>
-                            <td class="px-4 py-1.5 font-mono text-sm text-muted dark:text-gray-400">
-                                {{ $pay->acc_id ?? '-' }}
+                            <td class="px-4 py-1.5">
+                                <div class="text-ink dark:text-gray-200">{{ $pay->acc_name ?: '-' }}</div>
+                                <div class="font-mono text-xs text-muted dark:text-gray-400">{{ $pay->acc_id ?? '-' }}</div>
                             </td>
                             <td class="px-4 py-1.5 text-muted dark:text-gray-400">
                                 {{ $pay->emp_id ?? '-' }}
