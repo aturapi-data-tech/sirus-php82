@@ -150,8 +150,13 @@
                                             : number_format(floatval($normalHigh) * $unitConvert);
                                 }
 
-                                // Nilai Normal + Satuan digabung
-                                if ($normalLow !== '' && $normalHigh !== '') {
+                                // Nilai Normal + Satuan digabung. Rentang angka HANYA untuk Kuantitatif (lowhigh_status Y), sama
+                                // dengan tampilan layar — item teks/kategori lama banyak menyimpan batas 0-0 (Widal, sedimen,
+                                // HBsAg) yang dulu tercetak "0–0" alih-alih teks normal (NEGATIF, 0-3, NON-REACTIVE).
+                                if (!$useConvert) {
+                                    $normalVal = $sex === 'P' ? $item->normal_f ?? '' : $item->normal_m ?? '';
+                                    $normalText = $normalVal !== '' ? "{$normalVal}  {$unitDesc}" : '-';
+                                } elseif ($normalLow !== '' && $normalHigh !== '') {
                                     $normalText = "{$normalLow} – {$normalHigh}  {$unitDesc}";
                                 } elseif ($normalLow !== '' && $normalHigh === '') {
                                     $normalText = "< {$normalLow}  {$unitDesc}";

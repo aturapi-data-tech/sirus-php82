@@ -94,12 +94,12 @@ class KategoriNilaiRujukanLab
     }
 
     /**
-     * Bentuk baku teks untuk dibandingkan: huruf besar, tanpa spasi dan tanda kurung.
-     * "(+1)" → "+1", " negatif " → "NEGATIF", "Reactive (Remang)" → "REACTIVEREMANG".
+     * Bentuk baku teks untuk dibandingkan: huruf besar, tanpa spasi, tanda kurung, dan tanda kutip.
+     * "(+1)" → "+1", " negatif " → "NEGATIF", "Reactive (Remang)" → "REACTIVEREMANG", "\"O\" RH (+)" → "ORH+".
      */
     public static function normalisasi(string $teks): string
     {
-        return preg_replace('/[\s()\[\]]+/u', '', mb_strtoupper($teks));
+        return preg_replace('/[\s()\[\]"\']+/u', '', mb_strtoupper($teks));
     }
 
     /** Apakah hasil cocok dengan pola NILAI_TEKS ("A|B|C", "*" wildcard). */
@@ -147,6 +147,26 @@ class KategoriNilaiRujukanLab
         }
 
         return array_values(array_unique($pilihan));
+    }
+
+    /**
+     * Daftar pilihan TERTUTUP: semua baris berupa Teks Hasil dan tidak ada baris "*" (mis. NON-REACTIVE / REACTIVE).
+     * Isian hasil item seperti ini berupa dropdown pilihan, bukan ketik.
+     */
+    public static function pilihanTertutup(array $kategoriList): bool
+    {
+        if ($kategoriList === []) {
+            return false;
+        }
+
+        foreach ($kategoriList as $kategori) {
+            $teks = trim((string) ($kategori['nilaiTeks'] ?? ''));
+            if ($teks === '' || $teks === '*') {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**
@@ -207,6 +227,7 @@ class KategoriNilaiRujukanLab
     /**
      * Nilai lab_result_status untuk hasil: null (normal), 'B', atau 'R'.
      * Hasil kosong → null. Tidak cocok kategori mana pun:
+     *   - item tanpa kategori Borderline/Abnormal (mis. Golongan Darah) → null;
      *   - hasil berangka → 'R' (di luar semua rentang; lebih aman ditandai);
      *   - hasil tanpa angka & item punya kategori teks → 'R' (teks di luar daftar, sama seperti Kualitatif);
      *   - hasil tanpa angka & item hanya kategori angka → null (tak bisa dinilai, mis. "SKOR : -").
@@ -219,6 +240,12 @@ class KategoriNilaiRujukanLab
 
         $kategori = self::cocokkan($hasil, $kategoriList);
         if ($kategori === null) {
+            // Item yang kategorinya tidak pernah menandai (mis. Golongan Darah: semua Normal) → hasil di luar daftar
+            // juga tidak ditandai; tidak ada konsep "abnormal" untuk item seperti ini.
+            $adaKategoriBertanda = collect($kategoriList)->contains(fn($kategori) => in_array($kategori['status'] ?? 'N', ['A', 'B'], true));
+            if (!$adaKategoriBertanda) {
+                return null;
+            }
             $adaKategoriTeks = collect($kategoriList)->contains(fn($kategori) => ($kategori['nilaiTeks'] ?? '') !== '');
 
             return self::angkaDariHasil($hasil) !== null || $adaKategoriTeks ? 'R' : null;
