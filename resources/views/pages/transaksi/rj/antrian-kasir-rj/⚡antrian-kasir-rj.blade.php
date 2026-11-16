@@ -223,8 +223,7 @@ new class extends Component {
             ->selectRaw('c.rj_no, SUM(c.rjc_nominal) as total')
             ->get();
 
-        // Dihitung di PHP (satu baris per kunjungan BPJS berbayar — kecil); fromSub() Laravel
-        // menulis "(...) as b" yang ditolak Oracle untuk alias tabel.
+        // Dijumlah di PHP: satu baris per kunjungan BPJS berbayar dalam satu tanggal — kecil.
         return ['jumlahPasien' => $bayarPerKunjungan->count(), 'total' => (int) $bayarPerKunjungan->sum('total')];
     }
 

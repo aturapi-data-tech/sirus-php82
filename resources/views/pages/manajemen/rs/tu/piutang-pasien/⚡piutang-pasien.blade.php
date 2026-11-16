@@ -6,6 +6,7 @@ use Livewire\Attributes\Computed;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Pagination\Paginator;
 use App\Http\Traits\Manajemen\Rs\Tu\PiutangPasienTrait;
+use Carbon\Carbon;
 
 new class extends Component {
     use WithPagination;
@@ -14,16 +15,26 @@ new class extends Component {
     public string $searchKeyword = '';
     public string $filterJalur = '';   // '' | RJ | UGD | RI
     public string $filterKlaim = '';    // '' | BPJS | UMUM | KRONIS | DOKEL
+    // mm/yyyy, default bulan berjalan supaya muatan awal kecil (all-time ±85 ribu transaksi).
+    // Kosong = semua bulan. Tanggal acuan: RJ/UGD rj_date, RI exit_date (tanggal pulang).
+    public string $filterBulan = '';
     public int $itemsPerPage = 10;
+
+    public function mount(): void
+    {
+        $this->filterBulan = Carbon::now(env('APP_TIMEZONE'))->format('m/Y');
+    }
 
     public function updatedSearchKeyword(): void { $this->resetPage(); }
     public function updatedFilterJalur(): void   { $this->resetPage(); }
     public function updatedFilterKlaim(): void   { $this->resetPage(); }
+    public function updatedFilterBulan(): void   { $this->resetPage(); }
     public function updatedItemsPerPage(): void  { $this->resetPage(); }
 
     public function resetFilters(): void
     {
         $this->reset(['searchKeyword', 'filterJalur', 'filterKlaim']);
+        $this->filterBulan = Carbon::now(env('APP_TIMEZONE'))->format('m/Y');
         $this->resetPage();
     }
 
@@ -41,14 +52,38 @@ new class extends Component {
         };
     }
 
+    /**
+     * Rentang bulan terpilih: [awal, akhir], [null, null] untuk semua bulan,
+     * atau null bila isian bulan belum lengkap/salah (tidak di-query — mencegah muat all-time
+     * tak sengaja saat petugas masih mengetik).
+     */
+    private function rentangBulan(): ?array
+    {
+        $bulan = trim($this->filterBulan);
+        if ($bulan === '') {
+            return [null, null];
+        }
+        if (!preg_match('/^(0[1-9]|1[0-2])\/\d{4}$/', $bulan)) {
+            return null;
+        }
+        $awal = Carbon::createFromFormat('d/m/Y H:i:s', "01/{$bulan} 00:00:00", env('APP_TIMEZONE'));
+
+        return [$awal, (clone $awal)->endOfMonth()];
+    }
+
     #[Computed]
     public function rows()
     {
         $page    = Paginator::resolveCurrentPage();
         $perPage = $this->itemsPerPage;
 
+        $rentang = $this->rentangBulan();
+        if ($rentang === null) {
+            return new LengthAwarePaginator(collect(), 0, $perPage, $page, ['path' => request()->url()]);
+        }
+
         $barisHalaman = $this->piutangPageItems(
-            null, null,
+            $rentang[0], $rentang[1],
             $this->filterJalur, $this->filterKlaim, trim($this->searchKeyword),
             $perPage, $page,
         );
@@ -65,8 +100,14 @@ new class extends Component {
     #[Computed]
     public function summary(): array
     {
+        $rentang = $this->rentangBulan();
+        if ($rentang === null) {
+            // Bulan belum lengkap/salah: tanpa query.
+            return ['jumlah' => 0, 'sisa' => 0, 'tagihan' => 0, 'bayar' => 0, 'rj' => 0, 'ugd' => 0, 'ri' => 0];
+        }
+
         return $this->piutangSummary(
-            null, null,
+            $rentang[0], $rentang[1],
             $this->filterJalur, $this->filterKlaim, trim($this->searchKeyword),
         );
     }
@@ -97,6 +138,13 @@ new class extends Component {
                             <x-text-input wire:model.live.debounce.300ms="searchKeyword" class="block w-full pl-10"
                                 placeholder="Cari No Transaksi / No RM / Nama Pasien..." />
                         </div>
+                    </div>
+
+                    {{-- BULAN — kosongkan untuk semua bulan --}}
+                    <div class="w-full sm:w-auto">
+                        <x-input-label value="Bulan" />
+                        <x-text-input type="text" wire:model.live.debounce.500ms="filterBulan" placeholder="mm/yyyy"
+                            class="mt-1 sm:w-32" title="Format mm/yyyy (RJ/UGD: tanggal kunjungan, RI: tanggal pulang). Kosongkan untuk semua bulan." />
                     </div>
 
                     {{-- FILTER JALUR --}}
