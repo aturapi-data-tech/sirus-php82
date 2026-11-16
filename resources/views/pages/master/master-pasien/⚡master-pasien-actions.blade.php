@@ -782,11 +782,11 @@ new class extends Component {
         ];
 
         $perbedaan = [];
-        foreach ($daftar as $baris) {
-            $nilaiBpjs = (string) ($this->pesertaBpjs[$baris['kunci']] ?? '');
+        foreach ($daftar as $isian) {
+            $nilaiBpjs = (string) ($this->pesertaBpjs[$isian['kunci']] ?? '');
             // BPJS kosong tidak dianggap beda: tidak ada yang bisa dipakai untuk memperbarui.
-            if ($nilaiBpjs !== '' && $nilaiBpjs !== $baris['sirus']) {
-                $perbedaan[] = [...$baris, 'bpjs' => $nilaiBpjs];
+            if ($nilaiBpjs !== '' && $nilaiBpjs !== $isian['sirus']) {
+                $perbedaan[] = [...$isian, 'bpjs' => $nilaiBpjs];
             }
         }
 

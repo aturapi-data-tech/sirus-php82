@@ -185,8 +185,9 @@ Route `/master/laborat` → `master-laborat/clab` (kategori) + `master-laborat/c
 | Grup | Kolom |
 |---|---|
 | Identitas | `clabitem_id`, `clabitem_desc`, `clab_id`, `product_id`, `item_seq`, `price`, `dosage`, `unit_desc`, `status`, `hidden_status` |
-| Paket | `is_group` (`'1'`=paket), `clabitem_group` (id induk bila child) |
-| Mode rujukan | `lowhigh_status` (`'Y'`=Rentang Angka, null=Teks Deskriptif) |
+| Catatan nilai | `hidden_status`: `'Y'` sembunyi, `'N'`/null tampil (form kini menulis Y/N; dulu `'1'`). `status`: BUKAN penanda aktif — `'0'` di 203 item yang tetap dipakai |
+| Paket | **`clabitem_group`** = id induk → penentu "bagian dari panel/paket" (form: toggle `bagianPanel`). `is_group` `'Y'`/`'1'` = item header panel (dibuang kirim-lab); data: `'0'` di 227/228 item, form tidak mengubahnya |
+| Mode rujukan | `lowhigh_status` (`'Y'`=Rentang Angka, null/`'N'`=Teks Deskriptif, **`'K'`=Kategori** — §7.2) |
 | Normal TEKS | `normal_m`, `normal_f` |
 | Normal ANGKA | `low_limit_m/high_limit_m` (Pria), `low_limit_f/high_limit_f` (Wanita), `low_limit_k/high_limit_k` (Anak) |
 | **KRITIS ANGKA** | `critical_low_m/high_m`, `critical_low_f/high_f`, `critical_low_k/high_k` |
@@ -203,8 +204,8 @@ Ada di `pages/transaksi/penunjang/laborat/⚡pemeriksaan-laborat.blade.php`. `se
 
 ```
 mode ANGKA (lowhigh_status='Y' & hasil numerik):
-    unitConvert = unit_convert ?: 1
-    numValue    = hasil / unitConvert          # entri interaktif: DIBAGI convert
+    numValue    = hasil                        # ANGKA ALAT, tanpa dibagi unit_convert (sejak 2026-11-15;
+                                               # dulu dibagi → Eritrosit "9" terbaca Rendah)
     low  = sex==='P' ? low_limit_f  : low_limit_m
     high = sex==='P' ? high_limit_f : high_limit_m
     numValue < low  → 'L' (Rendah) ;  numValue > high → 'H' (Tinggi) ;  else Normal (null)
@@ -213,11 +214,57 @@ mode TEKS (lowhigh_status≠'Y'):
     hasil != normal → 'R' (Abnormal)
 ```
 
-- **`recalculateAllResultStatus()`** (dipanggil setelah Mindray) logika sama, tapi `numValue=(float)hasil`
-  **tanpa** bagi `unit_convert` (import sudah menyimpan nilai terbagi).
+- **`recalculateAllResultStatus()`** (dipanggil setelah Mindray) logika sama: `numValue=(float)hasil`, tanpa bagi
+  `unit_convert`. Input manual & Mindray kini identik.
+- Input manual Kuantitatif: hanya angka (koma desimal → titik, `-`, `<`/`>` boleh); item berkonversi menolak angka
+  satuan penuh (>= faktor DAN > 100× batas atas, mis. Eritrosit 4500000 → "ketik 4.5").
 - **`_k` (Anak) TIDAK dipakai runtime** — hanya `_m/_f`. Konsisten di semua konsumen (display, cetak,
   laporan, status). `_k` cuma tersimpan/tertampil di master.
-- **Status disimpan `'H'/'L'/'R'/null`** (Normal = null, bukan literal `'N'`).
+- **Status disimpan `'H'/'L'/'R'/'B'/null`** (Normal = null, bukan literal `'N'`; `'B'` hanya dari jenis Kategori).
+- **Jenis Kategori (`'K'`) dinilai lebih dulu** di kedua jalur — lihat §7.2.
+
+### 7.2 Jenis Nilai Rujukan Kategori (`lowhigh_status='K'`) — sejak 2026-11-15
+
+Untuk pemeriksaan berskor/berlabel yang dulu selalu "Abnormal" di mode TEKS (contoh: TUBEX `SKOR : 2`
+tidak pernah sama persis dengan teks normal). DDL: `docs/ddl-lab-kategori-nilai-rujukan.sql`
+(tabel `LBMST_CLABITEM_KATEGORIS`, data awal TUBEX `TU00211`, hitung ulang hasil lama).
+Kode tunggal: `App\Support\KategoriNilaiRujukanLab`.
+
+- Baris kategori = **teks** (`NILAI_TEKS`: alternatif `A|B`, `*` wildcard; dinormalkan huruf besar tanpa spasi/kurung,
+  `(+1)`=`+1`) **atau rentang angka** (`NILAI_MIN`/`NILAI_MAX` inklusif, NULL = tak terbatas), plus `LABEL`, `STATUS` N/B/A,
+  `KRITIS` Y/N. Dicocokkan menurut `URUT`, pertama cocok dipakai (Widal: `NEGATIF` lalu titer `1/80`→80).
+- Tak cocok: hasil berangka ATAU item punya kategori teks → `'R'`; selain itu null.
+- Teks rujukan cetakan (`normal_m/f`) boleh diisi manual di master; kosong = gabungan kategori.
+- **Penulisan baku saat input hasil** (`updateLabResult`, bukan Mindray): pilihan pertama baris Teks Hasil = tulisan baku
+  (`bakukanHasil()`; cocok lewat `*`/angka → apa adanya, huruf besar). Kualitatif: hasil yang setara nilai normal disimpan
+  persis seperti teks normal master. Isian hasil punya `<datalist>` dari `pilihanBaku()` (Kualitatif: nilai normal berupa
+  kata saja, rentang seperti "0-3" tidak disarankan).
+- **Pilihan tertutup** (`pilihanTertutup()`: semua baris Teks Hasil, tanpa baris `*`) → isian hasil berupa **dropdown**
+  (pilihan pertama tiap baris); hasil lama di luar daftar tampil sebagai opsi "(lama)". Data awal B3: NON-REACTIVE/
+  REACTIVE/MERAGUKAN (HBsAg, HIV, Syphilis, IgG/IgM, Anti HCV) dan NEGATIF/POSITIF (Dengue, Salmonella IgG/IgM, NS1,
+  Swab, Leptospira, Plasmodium, Toxoplasma, Lendir feses).
+- DDL (`docs/ddl-lab-kategori-nilai-rujukan.sql`, dibuat dari DB lokal teruji 16/11/2026): 51 item / 181 kategori —
+  TUBEX; urine dipstik (Albumin, Reduksi, Keton, Bilirubin, Nitrit) & sedimen (Leukosit/Epitel/Eritrosit 0-3, Sylinder,
+  Kristal); serologi NON-REACTIVE/REACTIVE/MERAGUKAN; NEGATIF/POSITIF (Dengue, Salmonella, NS1, Swab, Leptospira,
+  Plasmodium, Toxoplasma, Lendir feses); Widal (NEGATIF/1/200/1/400/1/800); BTA; Dengue Control; Golongan Darah (semua N).
+  Batas 0-0 sisa di item non-Kuantitatif dikosongkan. Hitung ulang data lama KONSERVATIF (cabut `'R'` salah saja),
+  diverifikasi identik dengan penilai PHP. Item yang semua kategorinya Normal (Golongan Darah) tidak pernah menandai.
+- Keputusan lab yang masih terbuka: RDW-CV (Kuantitatif, batas 0-0), Urobilinogen, Plano, "+/-" dipstik, ambang Widal,
+  MERAGUKAN, feses (warna/konsistensi/bau/parasit), LED LE00153, item tanpa nama BA00008 (Hematologi 3 Diff).
+- Mode TEKS (Kualitatif) kini dibandingkan setelah `KategoriNilaiRujukanLab::normalisasi()` ("negatif" = "NEGATIF").
+- Penilaian: angka diambil dari teks hasil (`"SKOR : 2"`→2, rentang `"1-2"`→2), kategori pertama yang cocok
+  dipakai. Status disimpan: N→null, **B→`'B'` (Borderline, baru)**, A→`'R'`. Tanpa angka → null; angka di luar
+  semua rentang → `'R'`.
+- Kolom/status ditampilkan sebagai **label kategori** (NEGATIF/BORDERLINE/POSITIF) di layar petugas, display RM,
+  dan cetakan; kritis dari centang kategori (bukan `critical_*` / flag H/L).
+- Master: pilihan "Kategori" di Jenis Nilai Rujukan → tabel kategori; saat simpan `normal_m/normal_f` diisi teks
+  ASCII gabungan kategori (`0-2 NEGATIF ; 3 BORDERLINE ; >= 4 POSITIF`, maks 100 char) dan `low/high/critical_*`
+  dikosongkan, `nilai_kritis` = ada kategori kritis. Konsumen yang belum mengenal `'K'` (aplikasi 6i, kirim-lab
+  SATUSEHAT, RL 3.8) memperlakukannya seperti TEKS → tetap aman.
+- Tabel belum dibuat di suatu DB → kategori dibaca kosong (tidak ORA-00942); hanya simpan item Kategori di master
+  yang ditolak dengan pesan "jalankan DDL".
+- **Belum**: laporan Nilai Kritis manajemen (`NilaiKritisLabTrait`, SQL) belum membaca kritis kategori; kategori
+  berbasis teks: sudah (lihat atas).
 
 ---
 

@@ -20,10 +20,10 @@ default => 'text-left',
 @endphp
 
 {{-- Model kartu outline standar UI ("Input teks & pilihan"):
-     latar canvas + border hairline, judul = uppercase hijau brand + garis aksen kiri (ds-form-title),
+     latar canvas + border hairline, judul = uppercase hijau brand (ds-form-title),
      di atas, TANPA header bar terisi. Hijau membedakan judul bingkai dari label isian (hitam).
-     Collapsible: panah di kiri judul, baris judul ber-hover, dan "klik untuk membuka" saat tertutup —
-     dulu panahnya kecil di ujung kanan sehingga judul dikira label biasa. --}}
+     Collapsible: panah di kiri judul dan baris judul ber-hover — dulu panahnya kecil di ujung kanan
+     sehingga judul dikira label biasa. --}}
 <div {{ $attributes->merge(['class' => "border border-hairline rounded-2xl shadow-sm dark:border-gray-700 {$bgcolor} dark:bg-gray-900 {$class}"]) }}
     @if($collapsible) x-data="{ open: @js($open) }" @endif>
     <div class="{{ $padding }}">
@@ -38,7 +38,6 @@ default => 'text-left',
                         </svg>
                         {{ $title }}
                     </span>
-                    <span x-show="!open" class="ml-auto text-xs text-gray-600 dark:text-gray-400">klik untuk membuka</span>
                 </button>
                 <div x-show="open" x-collapse>
                     {{ $slot }}

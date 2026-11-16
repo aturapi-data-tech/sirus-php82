@@ -128,6 +128,14 @@
                                     }
                                 }
 
+                                // Jenis Nilai Rujukan Kategori (lowhigh_status 'K', mis. TUBEX): kritis dari centang
+                                // kategori yang cocok, label status = label kategori (NEGATIF / BORDERLINE / POSITIF).
+                                $labelKategori = '';
+                                if (($item->lowhigh_status ?? '') === \App\Support\KategoriNilaiRujukanLab::JENIS) {
+                                    $isKritis = \App\Support\KategoriNilaiRujukanLab::kritis((string) ($item->clabitem_id ?? ''), (string) ($item->lab_result ?? ''));
+                                    $labelKategori = \App\Support\KategoriNilaiRujukanLab::labelHasil((string) ($item->clabitem_id ?? ''), (string) ($item->lab_result ?? ''));
+                                }
+
                                 $normalLow = $sex === 'P' ? $item->low_limit_f ?? '' : $item->low_limit_m ?? '';
                                 $normalHigh = $sex === 'P' ? $item->high_limit_f ?? '' : $item->high_limit_m ?? '';
 
@@ -142,8 +150,13 @@
                                             : number_format(floatval($normalHigh) * $unitConvert);
                                 }
 
-                                // Nilai Normal + Satuan digabung
-                                if ($normalLow !== '' && $normalHigh !== '') {
+                                // Nilai Normal + Satuan digabung. Rentang angka HANYA untuk Kuantitatif (lowhigh_status Y), sama
+                                // dengan tampilan layar — item teks/kategori lama banyak menyimpan batas 0-0 (Widal, sedimen,
+                                // HBsAg) yang dulu tercetak "0–0" alih-alih teks normal (NEGATIF, 0-3, NON-REACTIVE).
+                                if (!$useConvert) {
+                                    $normalVal = $sex === 'P' ? $item->normal_f ?? '' : $item->normal_m ?? '';
+                                    $normalText = $normalVal !== '' ? "{$normalVal}  {$unitDesc}" : '-';
+                                } elseif ($normalLow !== '' && $normalHigh !== '') {
                                     $normalText = "{$normalLow} – {$normalHigh}  {$unitDesc}";
                                 } elseif ($normalLow !== '' && $normalHigh === '') {
                                     $normalText = "< {$normalLow}  {$unitDesc}";
@@ -189,8 +202,12 @@
                                             <span class="font-bold text-red-700">Tinggi</span>
                                         @elseif ($isLow)
                                             <span class="font-bold text-blue-700">Rendah</span>
+                                        @elseif ($labelKategori !== '')
+                                            <span class="font-bold {{ $flagStatus === 'R' ? 'text-orange-600' : ($flagStatus === 'B' ? 'text-amber-700' : 'text-green-700') }}">{{ $labelKategori }}</span>
                                         @elseif ($flagStatus === 'R')
                                             <span class="font-bold text-orange-600">Abnormal</span>
+                                        @elseif ($flagStatus === 'B')
+                                            <span class="font-bold text-amber-700">Borderline</span>
                                         @endif
                                         @if ($isKritis)
                                             <div class="mt-0.5">

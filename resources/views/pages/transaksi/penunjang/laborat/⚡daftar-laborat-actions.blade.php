@@ -210,7 +210,37 @@ new class extends Component {
     /* =======================
      | UPDATE STATUS CHECKUP
      * ======================= */
-    public function updateCheckupStatus(string $status): void
+    /** Nama item yang hasilnya masih kosong — untuk dialog konfirmasi Simpan Hasil Laboratorium. */
+    public array $itemHasilKosong = [];
+
+    /**
+     * Item hasil yang wajib dicek saat Simpan Hasil: bukan baris judul paket (punya anak), bukan sub-judul
+     * berbintang ("*SEDIMEN"), dan tidak disembunyikan dari hasil. Mengembalikan [total, daftar nama yang kosong].
+     *
+     * @return array{0: int, 1: list<string>}
+     */
+    private function periksaHasilKosong(): array
+    {
+        $itemList = DB::table('lbtxn_checkupdtls as d')
+            ->join('lbmst_clabitems as b', 'b.clabitem_id', '=', 'd.clabitem_id')
+            ->where('d.checkup_no', $this->checkupNo)
+            ->whereRaw("NVL(b.hidden_status, 'N') NOT IN ('Y', '1')")
+            ->whereRaw('NOT EXISTS (SELECT 1 FROM lbmst_clabitems c WHERE c.clabitem_group = d.clabitem_id)')
+            ->whereRaw("SUBSTR(TRIM(b.clabitem_desc), 1, 1) <> '*'")
+            ->orderBy('d.checkup_dtl')
+            ->get(['b.clabitem_desc', 'd.lab_result']);
+
+        $kosong = $itemList
+            ->filter(fn($row) => trim((string) ($row->lab_result ?? '')) === '')
+            ->map(fn($row) => ltrim(trim((string) $row->clabitem_desc), '- '))
+            ->values()
+            ->all();
+
+        return [$itemList->count(), $kosong];
+    }
+
+    /** $tetapSimpan = true dari dialog konfirmasi "sebagian hasil kosong". */
+    public function updateCheckupStatus(string $status, bool $tetapSimpan = false): void
     {
         if (!$this->isAllowedRole()) {
             $this->dispatch('toast', type: 'error', message: 'Anda tidak memiliki akses.');
@@ -337,6 +367,21 @@ new class extends Component {
                 $this->dispatch('toast', type: 'error', message: 'Kolom pemeriksa masih kosong. Pastikan EMP ID sudah diisi di profil user, lalu proses ulang pemeriksaan.');
                 return;
             }
+
+            // Hasil kosong: semua kosong → ditolak; sebagian kosong → konfirmasi dulu (parameter paket seperti
+            // LED/P-LCC memang sering tidak dikerjakan, jadi tidak diwajibkan).
+            [$jumlahItem, $kosong] = $this->periksaHasilKosong();
+            if ($jumlahItem > 0 && count($kosong) === $jumlahItem) {
+                $this->dispatch('toast', type: 'error', message: 'Belum ada hasil yang diisi. Isi hasil pemeriksaan dulu sebelum Simpan Hasil Laboratorium.');
+                return;
+            }
+            if ($kosong !== [] && !$tetapSimpan) {
+                $this->itemHasilKosong = $kosong;
+                $this->dispatch('open-modal', name: 'konfirmasi-hasil-kosong');
+                return;
+            }
+            $this->itemHasilKosong = [];
+            $this->dispatch('close-modal', name: 'konfirmasi-hasil-kosong');
 
             try {
                 DB::transaction(function () {
@@ -936,6 +981,54 @@ new class extends Component {
                 </div>
             </div>
 
+        </div>
+    </x-modal>
+
+    {{-- Konfirmasi Simpan Hasil saat sebagian hasil masih kosong — header & banner standar modul dokumen --}}
+    <x-modal name="konfirmasi-hasil-kosong" size="2xl" focusable>
+        <x-modul-dokumen.header judul="Simpan Hasil Laboratorium" namaModal="konfirmasi-hasil-kosong"
+            ikon="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z">
+            No. Lab: <span class="font-mono font-semibold">{{ $checkupNo ?: '-' }}</span>
+            &middot; {{ $headerData['reg_name'] ?? '' }}
+            <x-slot:badge>
+                <x-badge variant="warning">{{ count($itemHasilKosong) }} belum diisi</x-badge>
+            </x-slot:badge>
+        </x-modul-dokumen.header>
+
+        <div class="p-6 space-y-4">
+            <x-modul-dokumen.banner jenis="terkunci">
+                Setelah disimpan, hasil terkunci. Pemeriksaan yang masih kosong tercetak tanpa nilai.
+            </x-modul-dokumen.banner>
+
+            <div>
+                <x-input-label value="Pemeriksaan yang belum diisi" />
+                <ul class="grid grid-cols-1 gap-x-6 gap-y-1 p-3 mt-1 overflow-y-auto text-sm border sm:grid-cols-2 lg:grid-cols-3 max-h-64 rounded-xl border-hairline bg-surface-soft text-body dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300">
+                    @foreach ($itemHasilKosong as $namaItem)
+                        <li class="flex items-center gap-2">
+                            <span class="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0"></span>{{ $namaItem }}
+                        </li>
+                    @endforeach
+                </ul>
+                <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">Parameter yang memang tidak dikerjakan (mis. LED, P-LCC) boleh dibiarkan kosong.</p>
+            </div>
+
+            <div class="flex justify-end gap-2 pt-4 border-t border-hairline-soft dark:border-gray-800">
+                <x-secondary-button type="button" x-on:click="$dispatch('close-modal', { name: 'konfirmasi-hasil-kosong' })"
+                    class="inline-flex items-center gap-1.5">
+                    {{-- ikon pensil: kembali mengisi --}}
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                    Kembali Isi Hasil
+                </x-secondary-button>
+                <x-primary-button type="button" wire:click="updateCheckupStatus('H', true)" wire:loading.attr="disabled"
+                    wire:target="updateCheckupStatus">
+                    <span wire:loading.remove wire:target="updateCheckupStatus" class="flex items-center gap-1.5">
+                        {{-- ikon simpan --}}
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
+                        Tetap Simpan Hasil
+                    </span>
+                    <span wire:loading wire:target="updateCheckupStatus" class="flex items-center gap-1.5"><x-loading /> Menyimpan...</span>
+                </x-primary-button>
+            </div>
         </div>
     </x-modal>
 </div>

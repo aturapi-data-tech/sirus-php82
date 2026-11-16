@@ -14,6 +14,8 @@ new class extends Component {
     public string $filterDokter = '';
     public string $filterStatus = '';
     public string $filterKlaim = 'BPJS';
+    /** '' = semua, 'P1'/'P2'/'P3'/'P0' = tingkat kegawatan, 'BELUM' = belum ditriase. */
+    public string $filterTriase = '';
     public bool $filterIncompleteOnly = false;
     public int $itemsPerPage = 25;
 
@@ -27,12 +29,13 @@ new class extends Component {
     public function updatedFilterDokter(): void         { $this->resetPage(); }
     public function updatedFilterStatus(): void         { $this->resetPage(); }
     public function updatedFilterKlaim(): void          { $this->resetPage(); }
+    public function updatedFilterTriase(): void         { $this->resetPage(); }
     public function updatedFilterIncompleteOnly(): void { $this->resetPage(); }
     public function updatedItemsPerPage(): void         { $this->resetPage(); }
 
     public function resetFilters(): void
     {
-        $this->reset(['searchKeyword', 'filterDokter', 'filterStatus', 'filterIncompleteOnly']);
+        $this->reset(['searchKeyword', 'filterDokter', 'filterStatus', 'filterTriase', 'filterIncompleteOnly']);
         $this->filterKlaim = 'BPJS';
         $this->filterBulan = Carbon::now()->format('m/Y');
         $this->resetPage();
@@ -158,6 +161,13 @@ new class extends Component {
 
         if ($this->filterIncompleteOnly) {
             $all = $all->filter(fn($r) => !$r->lengkap_check['lengkap'])->values();
+        }
+
+        // Triase hanya ada di JSON, jadi disaring sesudah dipetakan (seperti filter Tidak lengkap).
+        if ($this->filterTriase === 'BELUM') {
+            $all = $all->filter(fn($row) => blank($row->triase))->values();
+        } elseif ($this->filterTriase !== '') {
+            $all = $all->filter(fn($row) => $row->triase === $this->filterTriase)->values();
         }
 
         return $all;
@@ -353,6 +363,7 @@ new class extends Component {
             'P1' => ['label' => 'P1 · Kritis (Merah)',     'variant' => 'danger',  'cls' => 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-200'],
             'P2' => ['label' => 'P2 · Urgent (Kuning)',    'variant' => 'warning', 'cls' => 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-200'],
             'P3' => ['label' => 'P3 · Minor (Hijau)',      'variant' => 'success', 'cls' => 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-200'],
+            'P0' => ['label' => 'P0 · Meninggal (Hitam)',  'variant' => 'gray',    'cls' => 'bg-gray-800 text-white dark:bg-gray-700 dark:text-gray-100'],
             'P4' => ['label' => 'P4 · Non-darurat',        'variant' => 'gray',    'cls' => 'bg-surface-soft text-body dark:bg-gray-800 dark:text-gray-200'],
             default => null,
         };
@@ -434,6 +445,17 @@ new class extends Component {
                             <option value="BPJS">BPJS</option>
                             <option value="UMUM">UMUM</option>
                             <option value="">Semua</option>
+                        </x-select-input>
+                    </div>
+                    <div class="w-full sm:w-auto">
+                        <x-input-label value="Triase" />
+                        <x-select-input wire:model.live="filterTriase" class="mt-1 block w-full sm:w-40">
+                            <option value="">Semua</option>
+                            <option value="P1">P1 · Kritis (Merah)</option>
+                            <option value="P2">P2 · Urgent (Kuning)</option>
+                            <option value="P3">P3 · Minor (Hijau)</option>
+                            <option value="P0">P0 · Meninggal (Hitam)</option>
+                            <option value="BELUM">Belum triase</option>
                         </x-select-input>
                     </div>
                     <div class="w-full sm:w-auto">

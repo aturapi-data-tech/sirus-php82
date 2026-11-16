@@ -6,6 +6,7 @@ use Livewire\Attributes\On;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Reactive;
 use Illuminate\Support\Facades\DB;
+use App\Support\KategoriNilaiRujukanLab;
 
 new class extends Component {
     use WithPagination;
@@ -393,12 +394,68 @@ new class extends Component {
             return;
         }
 
+        // Kuantitatif (Low/High): hanya angka. Koma desimal ("11,9") diubah ke titik supaya ikut dinilai Tinggi/Rendah;
+        // "-" (tidak diperiksa) dan awalan < / > ("<0.5") tetap boleh. Selain itu ditolak, tidak disimpan.
+        if (($item['lowhigh_status'] ?? '') === 'Y') {
+            $angkaBaku = $this->angkaHasilKuantitatif($value);
+            if ($angkaBaku === null) {
+                $namaItem = trim((string) ($item['clabitem_desc'] ?? 'Hasil'));
+                $this->dispatch('hasil-lab-ditolak', checkupDtl: $checkupDtl, nilaiLama: (string) ($item['lab_result'] ?? ''));
+                $this->dispatch('toast', type: 'error', message: "{$namaItem} harus berupa angka (desimal pakai titik atau koma, mis. 12.5), tanda \"-\" bila tidak diperiksa, atau diawali < / >. \"{$value}\" tidak disimpan.");
+                return;
+            }
+            $value = $angkaBaku;
+
+            // Item berkonversi (mis. Eritrosit ×1.000.000, Leukosit ×1.000): yang diketik ANGKA ALAT, sesuai nilai
+            // normal di layar input (Eritrosit 4.5, bukan 4500000). Angka satuan penuh ditolak bila >= faktor konversi
+            // DAN > 100× batas atas — angka alat ekstrem yang sah (Leukosit 150, Trombosit 1500) tetap diterima.
+            $faktorKonversi = (float) ($item['unit_convert'] ?? 0);
+            $batasAtas = $this->sex === 'P' ? ($item['high_limit_f'] ?? null) : ($item['high_limit_m'] ?? null);
+            if ($faktorKonversi > 1 && is_numeric($value) && (float) $value >= $faktorKonversi
+                && ($batasAtas === null || $batasAtas === '' || (float) $value > (float) $batasAtas * 100)) {
+                $namaItem = trim((string) ($item['clabitem_desc'] ?? 'Hasil'));
+                $contohAlat = rtrim(rtrim(number_format((float) $value / $faktorKonversi, 2, '.', ''), '0'), '.');
+                $this->dispatch('hasil-lab-ditolak', checkupDtl: $checkupDtl, nilaiLama: (string) ($item['lab_result'] ?? ''));
+                $this->dispatch('toast', type: 'error', message: "{$namaItem} diketik dalam satuan alat (seperti nilai normal di layar), mis. {$contohAlat} untuk {$value}. Tidak disimpan.");
+                return;
+            }
+        }
+
+        // Semikuantitatif TANPA baris "*" (semua kemungkinan hasil terdaftar, mis. TUBEX): hasil yang tidak cocok
+        // satu pun kategori ditolak, tidak disimpan. Item yang punya "*" menerima temuan bebas (Sylinder, Kristal).
+        if (($item['lowhigh_status'] ?? '') === KategoriNilaiRujukanLab::JENIS) {
+            $kategoriItem = KategoriNilaiRujukanLab::untukItem((string) $item['clabitem_id']);
+            $punyaPilihanBebas = collect($kategoriItem)->contains(fn($kategori) => trim($kategori['nilaiTeks'] ?? '') === '*');
+            if ($kategoriItem !== [] && !$punyaPilihanBebas && KategoriNilaiRujukanLab::cocokkan($value, $kategoriItem) === null) {
+                $namaItem = trim((string) ($item['clabitem_desc'] ?? 'Hasil'));
+                $contohSah = KategoriNilaiRujukanLab::teksNormal($kategoriItem);
+                $this->dispatch('hasil-lab-ditolak', checkupDtl: $checkupDtl, nilaiLama: (string) ($item['lab_result'] ?? ''));
+                $this->dispatch('toast', type: 'error', message: "\"{$value}\" tidak sesuai pilihan hasil {$namaItem} ({$contohSah}). Tidak disimpan.");
+                return;
+            }
+        }
+
         $resultStatus = null;
 
-        if ($item['lowhigh_status'] === 'Y' && is_numeric($value)) {
-            // Numeric comparison
-            $unitConvert = floatval($item['unit_convert'] ?? 1) ?: 1;
-            $numValue = floatval($value) / $unitConvert;
+        // Penulisan baku sesuai mapping item (pilihan pertama baris Teks Hasil; Kualitatif: nilai normal di master),
+        // supaya "negatif", "-", "NEAGTIF" tersimpan "NEGATIF". Hasil yang tak cocok disimpan apa adanya.
+        if (($item['lowhigh_status'] ?? '') === KategoriNilaiRujukanLab::JENIS) {
+            $value = KategoriNilaiRujukanLab::bakukanHasil($value, KategoriNilaiRujukanLab::untukItem((string) $item['clabitem_id']));
+        } elseif (($item['lowhigh_status'] ?? '') !== 'Y') {
+            $normalItem = trim((string) ($this->sex === 'P' ? ($item['normal_f'] ?? '') : ($item['normal_m'] ?? '')));
+            if ($normalItem !== '' && KategoriNilaiRujukanLab::normalisasi($value) === KategoriNilaiRujukanLab::normalisasi($normalItem)) {
+                $value = $normalItem;
+            }
+        }
+
+        if (($item['lowhigh_status'] ?? '') === KategoriNilaiRujukanLab::JENIS) {
+            // Jenis Kategori (mis. TUBEX): angka diambil dari hasil ("SKOR : 2") lalu dicocokkan ke rentang.
+            $resultStatus = KategoriNilaiRujukanLab::statusHasil($value, KategoriNilaiRujukanLab::untukItem((string) $item['clabitem_id']));
+        } elseif ($item['lowhigh_status'] === 'Y' && is_numeric($value)) {
+            // Numeric comparison — hasil & batas sama-sama ANGKA ALAT (unit_convert hanya untuk tampilan),
+            // sama dengan jalur Mindray (recalculateAllResultStatus). Dulu hasil manual dibagi unit_convert
+            // sehingga Eritrosit "9" (batas 4-6) terbaca 0,000009 → Rendah.
+            $numValue = floatval($value);
 
             $lowLimit = $this->sex === 'P'
                 ? ($item['low_limit_f'] ?? null)
@@ -428,7 +485,8 @@ new class extends Component {
                 ? ($item['normal_f'] ?? '')
                 : ($item['normal_m'] ?? '');
 
-            if ($normalValue !== '' && $value !== $normalValue) {
+            // Kualitatif: sama bila hanya beda huruf besar-kecil/spasi/kurung ("negatif" = "NEGATIF").
+            if ($normalValue !== '' && KategoriNilaiRujukanLab::normalisasi($value) !== KategoriNilaiRujukanLab::normalisasi($normalValue)) {
                 $resultStatus = 'R';
             }
         }
@@ -529,6 +587,35 @@ new class extends Component {
         }
     }
 
+    /**
+     * Bentuk baku hasil Kuantitatif, atau null bila ditolak.
+     *   "12.5" / ".9" / "-12" → apa adanya; "11,9" → "11.9" (koma desimal, 1-2 angka di belakang);
+     *   "-" → "-" (tidak diperiksa); "<0.5" / ">= 1000" → tanpa spasi ("<0.5", ">=1000");
+     *   "4,000" (pemisah ribuan), "x", "12.5 g/dL" → null.
+     */
+    private function angkaHasilKuantitatif(string $hasil): ?string
+    {
+        $hasil = trim($hasil);
+        if ($hasil === '-') {
+            return $hasil;
+        }
+
+        if (!preg_match('/^([<>]=?)?\s*(-?\d*(?:[.,]\d+)?)$/', $hasil, $bagian) || $bagian[2] === '' || $bagian[2] === '-') {
+            return null;
+        }
+
+        $angka = $bagian[2];
+        if (str_contains($angka, ',')) {
+            // Koma dengan 3 angka di belakang = pemisah ribuan ("4,000"), bukan desimal → tolak, jangan ditebak.
+            if (!preg_match('/^-?\d*,\d{1,2}$/', $angka)) {
+                return null;
+            }
+            $angka = str_replace(',', '.', $angka);
+        }
+
+        return is_numeric($angka) ? ($bagian[1] ?? '') . $angka : null;
+    }
+
     /* =======================
      | RECALCULATE ALL LAB RESULT STATUS
      * ======================= */
@@ -538,6 +625,7 @@ new class extends Component {
             ->join('lbmst_clabitems as b', 'a.clabitem_id', '=', 'b.clabitem_id')
             ->select(
                 'a.checkup_dtl',
+                'a.clabitem_id',
                 'a.lab_result',
                 'b.lowhigh_status',
                 'b.unit_convert',
@@ -561,7 +649,9 @@ new class extends Component {
 
             $resultStatus = null;
 
-            if (($item->lowhigh_status ?? 'N') === 'Y' && is_numeric($value)) {
+            if (($item->lowhigh_status ?? '') === KategoriNilaiRujukanLab::JENIS) {
+                $resultStatus = KategoriNilaiRujukanLab::statusHasil($value, KategoriNilaiRujukanLab::untukItem((string) $item->clabitem_id));
+            } elseif (($item->lowhigh_status ?? 'N') === 'Y' && is_numeric($value)) {
                 $numValue = (float) $value;
                 $lowLimit = $this->sex === 'P' ? $item->low_limit_f : $item->low_limit_m;
                 $highLimit = $this->sex === 'P' ? $item->high_limit_f : $item->high_limit_m;
@@ -579,7 +669,8 @@ new class extends Component {
                 }
             } elseif (($item->lowhigh_status ?? 'N') !== 'Y') {
                 $normalValue = $this->sex === 'P' ? ($item->normal_f ?? '') : ($item->normal_m ?? '');
-                if ($normalValue !== '' && $value !== $normalValue) {
+                // Kualitatif: sama bila hanya beda huruf besar-kecil/spasi/kurung ("negatif" = "NEGATIF").
+                if ($normalValue !== '' && KategoriNilaiRujukanLab::normalisasi($value) !== KategoriNilaiRujukanLab::normalisasi($normalValue)) {
                     $resultStatus = 'R';
                 }
             }
@@ -866,12 +957,17 @@ new class extends Component {
                             @php
                                 $normal = $dtl['nilai_normal_display'] ?? '-';
                                 $resultStatus = $dtl['lab_result_status'] ?? '';
-                                $isKritis = (($dtl['nilai_kritis'] ?? 'N') === 'Y') && in_array($resultStatus, ['H', 'L'], true);
+                                $jenisKategori = ($dtl['lowhigh_status'] ?? '') === KategoriNilaiRujukanLab::JENIS;
+                                // Jenis Kategori: kritis dari centang kategori yang cocok, bukan flag H/L.
+                                $isKritis = $jenisKategori
+                                    ? KategoriNilaiRujukanLab::kritis((string) ($dtl['clabitem_id'] ?? ''), (string) ($dtl['lab_result'] ?? ''))
+                                    : (($dtl['nilai_kritis'] ?? 'N') === 'Y') && in_array($resultStatus, ['H', 'L'], true);
                                 $statusColor = match($resultStatus) {
                                     'H' => 'text-red-600 font-bold',
                                     'L' => 'text-blue-600 font-bold',
                                     'N' => 'text-green-600',
                                     'R' => 'text-orange-600 font-bold',
+                                    'B' => 'text-amber-700 dark:text-amber-400 font-bold',
                                     default => 'text-muted-soft',
                                 };
                                 $statusLabel = match($resultStatus) {
@@ -879,8 +975,17 @@ new class extends Component {
                                     'L' => 'Rendah',
                                     'N' => 'Normal',
                                     'R' => 'Abnormal',
+                                    'B' => 'Borderline',
                                     default => '-',
                                 };
+                                // Jenis Kategori: tampilkan label kategorinya (NEGATIF / BORDERLINE / POSITIF).
+                                $labelKategori = $jenisKategori ? KategoriNilaiRujukanLab::labelHasil((string) ($dtl['clabitem_id'] ?? ''), (string) ($dtl['lab_result'] ?? '')) : '';
+                                if ($labelKategori !== '') {
+                                    $statusLabel = $labelKategori;
+                                    if ($resultStatus === '' || $resultStatus === null) {
+                                        $statusColor = 'text-green-700 dark:text-green-400';
+                                    }
+                                }
                             @endphp
                             <tr wire:key="lab-hasil-dtl-{{ $dtl['checkup_dtl'] ?? $idx }}" class="{{ $isKritis ? 'bg-rose-100 dark:bg-rose-900/30 ring-1 ring-rose-300 dark:ring-rose-700' : 'hover:bg-surface-soft dark:hover:bg-gray-800' }}">
                                 <td class="px-3 py-2 text-muted">{{ $idx + 1 }}</td>
@@ -892,13 +997,54 @@ new class extends Component {
                                 </td>
                                 <td class="px-3 py-2">
                                     @if ($labStatus === 'C')
+                                        @php
+                                            // Pilihan baku dari mapping item: Semikuantitatif = pilihan pertama tiap baris Teks Hasil,
+                                            // Kualitatif = nilai normal bila berupa kata (NEGATIF, NON-REACTIVE) — rentang seperti
+                                            // "0-3" tidak disarankan supaya petugas tetap mengetik hitungan sebenarnya.
+                                            $normalKata = trim((string) ($sex === 'P' ? ($dtl['normal_f'] ?? '') : ($dtl['normal_m'] ?? '')));
+                                            $pilihanHasil = $jenisKategori
+                                                ? KategoriNilaiRujukanLab::pilihanBaku(KategoriNilaiRujukanLab::untukItem((string) ($dtl['clabitem_id'] ?? '')))
+                                                : (($dtl['lowhigh_status'] ?? '') !== 'Y' && $normalKata !== '' && !preg_match('/\d/', $normalKata) ? [$normalKata] : []);
+                                        @endphp
+                                        @php
+                                            // Daftar pilihan tertutup (mis. NON-REACTIVE / REACTIVE) → dropdown, petugas cukup memilih.
+                                            $hasilTertutup = $jenisKategori && KategoriNilaiRujukanLab::pilihanTertutup(KategoriNilaiRujukanLab::untukItem((string) ($dtl['clabitem_id'] ?? '')));
+                                            $hasilSekarang = (string) ($dtl['lab_result'] ?? '');
+                                        @endphp
+                                        @if ($hasilTertutup)
+                                            <x-select-input
+                                                wire:change="updateLabResult({{ $dtl['checkup_dtl'] }}, $event.target.value)"
+                                                x-on:hasil-lab-ditolak.window="if ($event.detail.checkupDtl == {{ $dtl['checkup_dtl'] }}) $el.value = $event.detail.nilaiLama"
+                                                x-ref="hasil{{ $idx }}"
+                                                x-on:keydown.enter.prevent="$nextTick(() => $refs.hasil{{ $idx + 1 }}?.focus())"
+                                                class="!w-40 text-sm">
+                                                <option value="">— Pilih —</option>
+                                                @foreach ($pilihanHasil as $pilihan)
+                                                    <option value="{{ $pilihan }}" @selected($hasilSekarang === $pilihan)>{{ $pilihan }}</option>
+                                                @endforeach
+                                                {{-- Hasil lama di luar daftar tetap terlihat, tidak hilang diam-diam --}}
+                                                @if ($hasilSekarang !== '' && !in_array($hasilSekarang, $pilihanHasil, true))
+                                                    <option value="{{ $hasilSekarang }}" selected>{{ $hasilSekarang }} (lama)</option>
+                                                @endif
+                                            </x-select-input>
+                                        @else
                                         <x-text-input type="text"
                                             value="{{ $dtl['lab_result'] ?? '' }}"
                                             wire:change="updateLabResult({{ $dtl['checkup_dtl'] }}, $event.target.value)"
+                                            x-on:hasil-lab-ditolak.window="if ($event.detail.checkupDtl == {{ $dtl['checkup_dtl'] }}) $el.value = $event.detail.nilaiLama"
                                             x-ref="hasil{{ $idx }}"
                                             x-on:keydown.enter.prevent="$event.target.blur(); $nextTick(() => $refs.hasil{{ $idx + 1 }}?.focus())"
                                             class="!w-28 text-sm"
-                                            placeholder="Hasil..." />
+                                            :list="$pilihanHasil ? 'pilihan-hasil-' . ($dtl['checkup_dtl'] ?? $idx) : null"
+                                            placeholder="{{ $pilihanHasil ? 'Pilih / ketik...' : 'Hasil...' }}" />
+                                        @endif
+                                        @if ($pilihanHasil && !$hasilTertutup)
+                                            <datalist id="pilihan-hasil-{{ $dtl['checkup_dtl'] ?? $idx }}">
+                                                @foreach ($pilihanHasil as $pilihan)
+                                                    <option value="{{ $pilihan }}"></option>
+                                                @endforeach
+                                            </datalist>
+                                        @endif
                                     @else
                                         <span class="text-body dark:text-gray-300">{{ $dtl['hasil_display'] ?? '-' }}</span>
                                     @endif

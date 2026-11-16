@@ -66,6 +66,12 @@ Prefix tabel: `lbtxn_` (transaksi) & `lbmst_` (master). Header `lbtxn_checkuphdr
    numerik-guard string hasil pakai `REGEXP_LIKE(...,'^-?[0-9]+(\.[0-9]+)?$')` sebelum `TO_NUMBER`
    (CASE short-circuit). Laporan kritis butuh `sex` → `baseKritis` left-join `rsmst_pasiens`.
 
+9. **Jenis Nilai Rujukan ada TIGA**, bukan dua: `lowhigh_status` `'Y'` angka, null/`'N'` teks (cocok persis →
+   selain itu `'R'`), **`'K'` Kategori** (tabel `LBMST_CLABITEM_KATEGORIS`, `App\Support\KategoriNilaiRujukanLab`,
+   status baru **`'B'` Borderline**; baris kategori teks `NILAI_TEKS` atau rentang angka). Mode teks lama kini
+   dibandingkan ter-normalisasi (huruf besar, tanpa spasi/kurung). Konsumen yang menampilkan status/kritis WAJIB mengenal `'K'` & `'B'`
+   (layar petugas, display RM, cetakan). Detail: `docs/laborat-architecture.md` §7.2.
+
 ## Verifikasi wajib sebelum selesai (Volt/Blade)
 
 Compile 2 file blade via `Blade::compileString` → `php -l` (lihat skill `blade-safe-edit`), jalankan query

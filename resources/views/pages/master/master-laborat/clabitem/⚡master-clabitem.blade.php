@@ -314,21 +314,21 @@ new class extends Component {
                                                 {{-- Mode low-high --}}
                                                 @if ($item->low_limit_m !== null || $item->high_limit_m !== null)
                                                     <div class="text-gray-500 dark:text-gray-400">
-                                                        <span class="text-blue-500">P</span>:
+                                                        <span class="font-semibold text-blue-700 dark:text-blue-300" title="Laki-laki">L</span>:
                                                         {{ $item->low_limit_m ?? '-' }} -
                                                         {{ $item->high_limit_m ?? '-' }}
                                                     </div>
                                                 @endif
                                                 @if ($item->low_limit_f !== null || $item->high_limit_f !== null)
                                                     <div class="text-gray-500 dark:text-gray-400">
-                                                        <span class="text-pink-500">W</span>:
+                                                        <span class="font-semibold text-pink-700 dark:text-pink-300" title="Perempuan">P</span>:
                                                         {{ $item->low_limit_f ?? '-' }} -
                                                         {{ $item->high_limit_f ?? '-' }}
                                                     </div>
                                                 @endif
                                                 @if ($item->low_limit_k !== null || $item->high_limit_k !== null)
                                                     <div class="text-gray-500 dark:text-gray-400">
-                                                        <span class="text-green-500">A</span>:
+                                                        <span class="font-semibold text-green-700 dark:text-green-300" title="Anak">A</span>:
                                                         {{ $item->low_limit_k ?? '-' }} -
                                                         {{ $item->high_limit_k ?? '-' }}
                                                     </div>
@@ -346,34 +346,39 @@ new class extends Component {
                                                         <div class="text-[10px] font-bold text-rose-600 dark:text-rose-400">KRITIS</div>
                                                         @if ($item->critical_low_m !== null || $item->critical_high_m !== null)
                                                             <div class="text-rose-500 dark:text-rose-300">
-                                                                <span class="text-blue-500">P</span>:
+                                                                <span class="font-semibold text-blue-700 dark:text-blue-300" title="Laki-laki">L</span>:
                                                                 {{ $item->critical_low_m ?? '-' }} - {{ $item->critical_high_m ?? '-' }}
                                                             </div>
                                                         @endif
                                                         @if ($item->critical_low_f !== null || $item->critical_high_f !== null)
                                                             <div class="text-rose-500 dark:text-rose-300">
-                                                                <span class="text-pink-500">W</span>:
+                                                                <span class="font-semibold text-pink-700 dark:text-pink-300" title="Perempuan">P</span>:
                                                                 {{ $item->critical_low_f ?? '-' }} - {{ $item->critical_high_f ?? '-' }}
                                                             </div>
                                                         @endif
                                                         @if ($item->critical_low_k !== null || $item->critical_high_k !== null)
                                                             <div class="text-rose-500 dark:text-rose-300">
-                                                                <span class="text-green-500">A</span>:
+                                                                <span class="font-semibold text-green-700 dark:text-green-300" title="Anak">A</span>:
                                                                 {{ $item->critical_low_k ?? '-' }} - {{ $item->critical_high_k ?? '-' }}
                                                             </div>
                                                         @endif
                                                     </div>
                                                 @endif
+                                            @elseif ($item->lowhigh_status === 'K')
+                                                {{-- Semikuantitatif (kategori): teks rujukan sama untuk L/P, dibuat dari kategori --}}
+                                                <div class="text-gray-600 dark:text-gray-400">
+                                                    <span class="font-semibold text-amber-700 dark:text-amber-400">Kategori</span>: {{ $item->normal_m ?? '-' }}
+                                                </div>
                                             @else
                                                 {{-- Mode teks --}}
                                                 @if ($item->normal_m)
                                                     <div class="text-gray-500 dark:text-gray-400">
-                                                        <span class="text-blue-500">P</span>: {{ $item->normal_m }}
+                                                        <span class="font-semibold text-blue-700 dark:text-blue-300" title="Laki-laki">L</span>: {{ $item->normal_m }}
                                                     </div>
                                                 @endif
                                                 @if ($item->normal_f)
                                                     <div class="text-gray-500 dark:text-gray-400">
-                                                        <span class="text-pink-500">W</span>: {{ $item->normal_f }}
+                                                        <span class="font-semibold text-pink-700 dark:text-pink-300" title="Perempuan">P</span>: {{ $item->normal_f }}
                                                     </div>
                                                 @endif
                                             @endif

@@ -83,6 +83,7 @@ new class extends Component {
                                     ['route' => 'display.antrian-apotek-ugd', 'label' => 'Antrian Apotek UGD', 'icon' => 'M4.501 4.5h15a1.5 1.5 0 011.5 1.5v12a1.5 1.5 0 01-1.5 1.5h-15A1.5 1.5 0 013 18V6a1.5 1.5 0 011.5-1.5zM12 8v8m-4-4h8'],
                                     ['route' => 'display.antrian-apotek-ri', 'label' => 'Antrian Apotek RI', 'icon' => 'M3 12l9-9 9 9M5 10v10a1 1 0 001 1h12a1 1 0 001-1V10M9 21V12h6v9'],
                                     ['route' => 'display.jadwal-poli', 'label' => 'Jadwal Poli Hari Ini', 'icon' => 'M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5'],
+                                    ['route' => 'display.antrian-poli-rj', 'label' => 'Antrian Poli RJ', 'icon' => 'M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z'],
                                 ];
                             @endphp
                             <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
