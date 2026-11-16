@@ -200,7 +200,7 @@ new class extends Component {
      | Computed: main query
      * ------------------------- */
     /**
-     * Ringkasan BPJS yang punya pembayaran kas di tanggal terpilih (semua status kecuali Batal),
+     * Ringkasan BPJS yang total pembayaran kasnya > 0 di tanggal terpilih (semua status kecuali Batal),
      * untuk cek cepat apakah memang bayar sebagian atau salah tagih.
      */
     #[Computed]
@@ -208,7 +208,8 @@ new class extends Component {
     {
         [$start, $end] = $this->dateRange();
 
-        $hasil = DB::table('rstxn_rjcashins as c')
+        // Total per kunjungan dulu, lalu hanya yang > 0 dihitung (baris kas Rp 0 bukan pembayaran).
+        $bayarPerKunjungan = DB::table('rstxn_rjcashins as c')
             ->join('rstxn_rjhdrs as h', 'h.rj_no', '=', 'c.rj_no')
             ->leftJoin('rsmst_klaimtypes as k', 'k.klaim_id', '=', 'h.klaim_id')
             ->whereBetween('h.rj_date', [$start, $end])
@@ -217,10 +218,14 @@ new class extends Component {
             ->where(function ($q) {
                 $q->where('k.klaim_status', 'BPJS')->orWhere('h.klaim_id', 'JM');
             })
-            ->selectRaw('COUNT(DISTINCT c.rj_no) as jumlah_pasien, NVL(SUM(c.rjc_nominal), 0) as total')
-            ->first();
+            ->groupBy('c.rj_no')
+            ->havingRaw('SUM(c.rjc_nominal) > 0')
+            ->selectRaw('c.rj_no, SUM(c.rjc_nominal) as total')
+            ->get();
 
-        return ['jumlahPasien' => (int) ($hasil->jumlah_pasien ?? 0), 'total' => (int) ($hasil->total ?? 0)];
+        // Dihitung di PHP (satu baris per kunjungan BPJS berbayar — kecil); fromSub() Laravel
+        // menulis "(...) as b" yang ditolak Oracle untuk alias tabel.
+        return ['jumlahPasien' => $bayarPerKunjungan->count(), 'total' => (int) $bayarPerKunjungan->sum('total')];
     }
 
     #[Computed]
@@ -260,9 +265,7 @@ new class extends Component {
             // (obat/layanan tak ditanggung) atau salah tagih.
             $query->where(function ($q) {
                 $q->where('k.klaim_status', 'BPJS')->orWhere('h.klaim_id', 'JM');
-            })->whereExists(function ($sub) {
-                $sub->select(DB::raw(1))->from('rstxn_rjcashins as c')->whereColumn('c.rj_no', 'h.rj_no');
-            });
+            })->whereRaw('(SELECT NVL(SUM(c.rjc_nominal), 0) FROM rstxn_rjcashins c WHERE c.rj_no = h.rj_no) > 0');
         } elseif ($this->filterKlaim === 'UMUM') {
             $query->where(function ($q) {
                 $q->where(function ($w) {
@@ -314,6 +317,7 @@ new class extends Component {
             ->leftJoin('acmst_accounts as a', 'a.acc_id', '=', 'c.acc_id')
             ->whereIn('c.rj_no', $rjNoHalaman)
             ->groupBy('c.rj_no', 'c.acc_id', 'a.acc_name')
+            ->havingRaw('SUM(c.rjc_nominal) <> 0') // baris kas Rp 0 (mis. KAS APOTEK) tidak dianggap pembayaran
             ->selectRaw('c.rj_no, c.acc_id, a.acc_name, SUM(c.rjc_nominal) as nominal')
             ->orderBy('c.acc_id')
             ->get()
