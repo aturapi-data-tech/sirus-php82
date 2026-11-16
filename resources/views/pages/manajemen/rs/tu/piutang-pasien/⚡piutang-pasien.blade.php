@@ -71,6 +71,61 @@ new class extends Component {
         return [$awal, (clone $awal)->endOfMonth()];
     }
 
+    /**
+     * Unduh piutang sebagai CSV siap-Excel (pola gizi-ri: BOM UTF-8 + pemisah ';'; proyek tidak
+     * memuat PhpSpreadsheet). Isi = filter yang sedang aktif (bulan, jalur, klaim, pencarian).
+     * Tgl Export ada di SETIAP baris + nama berkas, supaya jelas data itu diambil kapan
+     * (piutang berubah setiap ada pembayaran). Angka ditulis polos agar bisa dijumlah di Excel.
+     */
+    public function unduhExcel(): mixed
+    {
+        $rentang = $this->rentangBulan();
+        if ($rentang === null) {
+            $this->dispatch('toast', type: 'warning', message: 'Isi Bulan dengan format mm/yyyy, atau kosongkan untuk semua bulan.');
+            return null;
+        }
+        if ($this->summary['jumlah'] === 0) {
+            $this->dispatch('toast', type: 'warning', message: 'Tidak ada piutang untuk diunduh.');
+            return null;
+        }
+
+        $sekarang = Carbon::now(env('APP_TIMEZONE'));
+        $tglExport = $sekarang->format('d/m/Y H:i:s');
+        $periode = trim($this->filterBulan) !== '' ? trim($this->filterBulan) : 'Semua bulan';
+        $namaBerkas = 'piutang-pasien-' . (trim($this->filterBulan) !== '' ? str_replace('/', '-', trim($this->filterBulan)) : 'semua') . '-export-' . $sekarang->format('Ymd-His') . '.csv';
+        $barisList = $this->piutangSemuaBaris($rentang[0], $rentang[1], $this->filterJalur, $this->filterKlaim, trim($this->searchKeyword));
+
+        return response()->streamDownload(function () use ($barisList, $tglExport, $periode) {
+            $keluaran = fopen('php://output', 'w');
+            fwrite($keluaran, "\xEF\xBB\xBF"); // BOM UTF-8 — tanpa ini Excel membaca sebagai ANSI
+
+            fputcsv($keluaran, ['Tgl Export', 'Periode', 'Jalur', 'No Transaksi', 'No RM', 'Nama Pasien', 'JK', 'Tgl Lahir', 'Tgl Masuk', 'Tgl Transaksi/Pulang', 'Poli/Unit', 'Dokter', 'Klaim', 'Total', 'Diskon', 'Dibayar', 'Sisa Piutang'], ';');
+
+            foreach ($barisList as $baris) {
+                fputcsv($keluaran, [
+                    $tglExport,
+                    $periode,
+                    $baris->jalur,
+                    $baris->no_transaksi,
+                    $baris->reg_no,
+                    $baris->reg_name,
+                    $baris->sex ?? '',
+                    $baris->birth_date ?? '',
+                    $baris->tgl_masuk ?? '',
+                    $baris->tgl ?? '',
+                    $baris->unit ?? '',
+                    $baris->dokter ?? '',
+                    trim(($baris->klaim_status ?? '') . ' ' . ($baris->klaim_desc ? '- ' . $baris->klaim_desc : '')),
+                    (int) $baris->total,
+                    (int) $baris->diskon,
+                    (int) $baris->bayar,
+                    (int) $baris->sisa,
+                ], ';');
+            }
+            fclose($keluaran);
+        }, $namaBerkas, ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
     #[Computed]
     public function rows()
     {
@@ -172,6 +227,15 @@ new class extends Component {
 
                     {{-- RIGHT ACTIONS --}}
                     <div class="flex items-center gap-2 ml-auto">
+                        <x-outline-button type="button" wire:click="unduhExcel" wire:loading.attr="disabled" wire:target="unduhExcel"
+                            class="whitespace-nowrap" title="Unduh piutang sesuai filter (CSV siap dibuka Excel), tanggal export tercatat di tiap baris">
+                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            <span wire:loading.remove wire:target="unduhExcel">Unduh Excel</span>
+                            <span wire:loading wire:target="unduhExcel">Menyiapkan…</span>
+                        </x-outline-button>
                         <x-toolbar-refresh-reset :label="null" />
 
                         <div class="w-20">
