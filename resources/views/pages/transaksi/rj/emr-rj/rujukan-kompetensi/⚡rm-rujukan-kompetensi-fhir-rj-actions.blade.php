@@ -1318,16 +1318,20 @@ new class extends Component {
     @php $prasyaratKurang = $this->prasyaratKurang(); @endphp
 
     @if (!empty($formRujukan['hasil']['noRujukanSatuSehat']))
-        <div class="p-3 space-y-1 text-sm border border-green-200 rounded-lg bg-green-50 dark:bg-green-950 dark:border-green-900">
-            <p class="font-semibold text-green-800 dark:text-green-200">Rujukan IGD sudah terkirim</p>
-            <x-rujukan-kompetensi.ringkasan-terkirim :form="$formRujukan" jalur="fhir" :tanggalRujukan="$this->tanggalRujukanTampil()" :encounterId="$this->encounterUuid()" />
-
-            {{-- Surat Pengantar Rujukan + Resume Klinis — format Kemkes (calon Kepmenkes),
-                 wajib untuk SEMUA rujukan. Komponen cetaknya headless di halaman EMR. --}}
-            <div class="pt-2">
-                <x-cetak-button wire:click="cetakSuratRujukan" label="Cetak Surat Rujukan" />
+        {{-- Tema bingkai standar (x-border-form): canvas + border hairline + judul hijau brand --}}
+        <x-border-form class="text-sm">
+            <div class="space-y-3">
+            {{-- Judul + aksi sebaris: Cetak (Surat Pengantar + Resume Klinis, wajib untuk SEMUA rujukan;
+                 komponen cetaknya headless di halaman EMR) langsung terlihat tanpa scroll. --}}
+            <div class="flex flex-wrap items-center justify-between gap-2">
+                <p class="flex items-center gap-2 ds-form-title"><x-badge variant="success">Terkirim</x-badge>Rujukan IGD sudah terkirim</p>
+                <div class="flex flex-wrap items-center gap-2">
+                    <x-cetak-button wire:click="cetakSuratRujukan" label="Cetak Surat Rujukan" />
+                </div>
             </div>
-        </div>
+            <x-rujukan-kompetensi.ringkasan-terkirim :form="$formRujukan" jalur="fhir" :tanggalRujukan="$this->tanggalRujukanTampil()" :encounterId="$this->encounterUuid()" />
+            </div>
+        </x-border-form>
     @else
 
     {{-- Panduan pemakaian — komponen bersama 3 panel. --}}

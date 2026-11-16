@@ -641,3 +641,31 @@ Dr. Wahidin Sudirohusodo (100025592) baru DIMINTA menerima (18/09); jawabannya t
 - **Progres pengembangan**: spreadsheet `1i8bshkRbPX27zQ-1X4SpMP7qWITM1D0XpmmV3Xy0Wi0`, diperbarui
   sebelum tiap checkpoint.
 - Dokumen acuan tidak berubah: Playbook tetap **v6.1**, Postman tetap **V30062026**.
+
+## 11. Update BPJS 16/11/26 — Kelompok Layanan & id baru (Rawat Jalan)
+
+Sumber: grup WA 16/11/26 10.39 + Postman "Satu Sehat Rujukan Rumah Sakit (VCLAIM)" (export s/d 16/11).
+Tujuan: membuka RS strata di atasnya bila kapasitas RS sesuai kebutuhan sudah melewati threshold.
+
+| Perubahan | Di kita (branch feat/rujukan-antar-rs; panel BPJS RJ, UGD, RI — `⚡rm-rujukan-kompetensi-{rj,ugd,ri}-actions`, isi identik) |
+|---|---|
+| `GetFaskesRujukan` + `IdKelompokLayanan` (int; diteruskan ke SATUSEHAT sbg header `X-BPJS-Requested-Referral-Group`) | `cariFaskes()` mengirim bila terpilih; pilihan dari `muatKelompokLayanan()` saat Ambil Kriteria |
+| `Rujukan/Insert` → `satuSehatRujukan.idKriteriaRujukan` + `idFaskesRujukan` | dikirim bila ada; `idFaskesRujukan` = puncak response GetFaskes, `idKriteriaRujukan` dicari di puncak response GetKriteria (letak resmi BELUM didokumentasikan) |
+| 8 endpoint `GET /Referensi/...` (strata, kelompoklayanan, kelompoklayanan/diagnosa/{icd}, prosedur/kelompoklayanan/{id}, strata/diagnosa/..., strata/prosedur/..., spesialis/..., subspesialis/...) — method ID 21010–21017 | baru `kelompoklayanan/diagnosa/{icd}` (`SisruteTrait::sisrute_get_kelompok_layanan_diagnosa`) |
+
+- **Masih OPSIONAL**; nanti cutoff wajib bersama SATUSEHAT → struktur lama tak bisa dipakai. Kosong = JANGAN dikirim.
+- **Dev 16/11/26: `/Referensi/*` membalas 401 "Missing authentication headers"** — terbukti karena header `X-Authorization` (gaya PCare) wajib: dikirim kosong → "Authorization tidak valid.". Header yang sama
+  sukses di `/Rujukan/GetSpesialistik`. Postman memakai header `X-Authorization` (gaya PCare) — perlu dikonfirmasi
+  ke BPJS apakah RS butuh header itu / method ID belum aktif untuk cons-id kita. Panel tetap jalan tanpa kelompok.
+- Postman tidak memberi contoh response `/Referensi/*` → parser menerima beberapa nama kunci
+  (`idKelompokLayanan|IdKelompokLayanan|id`, `namaKelompokLayanan|nmKelompokLayanan|nama|display`). Cek ulang
+  begitu respons nyata didapat.
+- Alternatif sumber yang sama: sheet mapping ICD-10/ICD-9 → kelompok layanan (Google Drive grup, 13/11; masih
+  bisa berubah, perubahan diumumkan lewat Pusdatin).
+- Lain-lain grup 29/10–16/11: lokus piloting = Kota Bandung, Kota Makassar, Muara Enim, **Tulungagung**;
+  simulasi RJ 18/11; `Task.output.type` kini `candidate-referral-facility` (parser kandidat FHIR kita tak bergantung kode ini).
+- **Jawaban grup 16/11 (11.16–11.46):** ID Kelompok Layanan **1–24**; strata **1 Dasar · 2 Madya · 3 Utama · 4 Paripurna**
+  **tidak dikirim** (diturunkan BPJS dari kelompok layanan + kriteria; pembukaan strata di atasnya ditangani backend
+  dalam satu hit). Urutan: diagnosa dulu → kelompok layanan (bisa lebih dari satu, petugas memilih).
+  `idKriteriaRujukan`/`idFaskesRujukan` = UUID dari response GetKriteria/GetFaskes, dilampirkan saat simpan.
+  `namaKabupaten` jangan kosong. Template cetak final rajal BPJS: `rujukan-vclaim-1001R0160526B000001.pdf`.

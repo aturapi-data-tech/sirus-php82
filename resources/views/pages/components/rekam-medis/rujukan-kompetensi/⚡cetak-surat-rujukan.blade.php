@@ -84,7 +84,21 @@ new class extends Component {
         $sistolik = trim((string) ($tandaVital['sistolik'] ?? ''));
         $distolik = trim((string) ($tandaVital['distolik'] ?? ''));
 
+        $noRujukanBpjs = trim((string) ($hasil['noRujukan'] ?? ''));
+
         return [
+            // Rujukan Rawat Jalan BPJS (SISRUTE, punya nomor BPJS) → halaman 1 memakai tata letak
+            // contoh BPJS 16/11/26 (rujukan-vclaim-*.pdf) dengan logo RS; jalur FHIR tetap Kepmenkes.
+            'format' => $noRujukanBpjs !== '' ? 'bpjs' : 'kepmenkes',
+            'qrNoRujukan' => $noRujukanBpjs !== '' ? $this->qrPng($noRujukanBpjs) : '',
+            'tglRencana' => $this->tanggalPanjang((string) ($rujukan['tglRencanaKunjungan'] ?? ''), 'd/m/Y'),
+            'tglRujukanPanjang' => $this->tanggalPanjang((string) ($hasil['tglRujukan'] ?? ''), 'Y-m-d'),
+            'poliTujuan' => $this->namaPoliBpjs((string) (($rujukan['poliRujukan'] ?? '') ?: ($rujukan['kodeSpesialis'] ?? ''))),
+            'diagnosaKode' => trim((string) ($rujukan['kodeDiagnosa'] ?? '')),
+            'diagnosaDesc' => trim((string) ($rujukan['diagnosaDesc'] ?? '')),
+            'catatan' => trim((string) ($rujukan['catatan'] ?? '')),
+            'dicetakPada' => Carbon::now(config('app.timezone'))->format('d-m-Y H:i') . ' WIB',
+
             // Jalur FHIR tidak menerbitkan nomor BPJS — kosong, bukan '-' palsu.
             'noRujukan' => (string) ($hasil['noRujukanSatuSehat'] ?? ''),
             'noRujukanBpjs' => (string) ($hasil['noRujukan'] ?? ''),
@@ -149,6 +163,45 @@ new class extends Component {
                 'alasan' => trim((string) (($rujukan['catatan'] ?? '') ?: ($rujukan['deskripsi'] ?? ''))),
             ],
         ];
+    }
+
+    /** QR nomor rujukan BPJS (PNG base64) — kosong bila pustaka/GD gagal, surat tetap tercetak. */
+    private function qrPng(string $teks): string
+    {
+        try {
+            $qr = new \Milon\Barcode\DNS2D();
+            $qr->setStorPath(storage_path('framework/cache/'));
+
+            return (string) $qr->getBarcodePNG($teks, 'QRCODE', 4, 4);
+        } catch (\Throwable) {
+            return '';
+        }
+    }
+
+    /** "2026-05-05" / "05/05/2026" → "5 Mei 2026" (gaya contoh BPJS); gagal → apa adanya. */
+    private function tanggalPanjang(string $tanggal, string $format): string
+    {
+        $tanggal = trim($tanggal);
+        if ($tanggal === '') {
+            return '';
+        }
+        try {
+            return Carbon::createFromFormat($format, $tanggal)->locale('id')->isoFormat('D MMMM YYYY');
+        } catch (\Throwable) {
+            return $tanggal;
+        }
+    }
+
+    /** Kode poli BPJS 3 huruf → nama poli lokal (rsmst_polis.kd_poli_bpjs); tak ketemu → kodenya. */
+    private function namaPoliBpjs(string $kode): string
+    {
+        $kode = trim($kode);
+        if ($kode === '') {
+            return '';
+        }
+        $nama = DB::table('rsmst_polis')->where('kd_poli_bpjs', $kode)->value('poli_desc');
+
+        return $nama ? trim((string) $nama) . " ({$kode})" : $kode;
     }
 
     private function tanggalSurat(array $hasil): string

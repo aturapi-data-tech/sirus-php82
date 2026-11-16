@@ -1,35 +1,25 @@
 {{--
     Surat Pengantar Rujukan + Data Medis (Resume Klinis) Pasien Rujukan.
 
-    Tata letak mengikuti format Kemkes/BPJS yang dibagikan 10/11/2026 (contoh
-    "Surat Pengantar Rujuk Balik" + "Data Medis (Resume Klinis) Pasien Rujuk Balik"),
-    diterapkan untuk rujukan keluar. Dasar isi: PMK 16/2024 Pasal 17 — identitas
-    pasien, identitas fasyankes penerima, rekam medis, dan alasan rujukan.
+    Memakai STANDAR DOKUMEN CETAK RS: x-pdf.layout-a4-with-out-background (kop x-logo.identitas
+    + CSS Tailwind hasil build ter-inline). Tanpa kode formulir RM — belum ada di daftar
+    /panduan-dev/koding-formulir-rm (jangan mengarang kode).
 
-    SENGAJA A4 POLOS tanpa kop/logo RS: format ini universal (sama untuk semua
-    fasyankes), jadi tidak memakai x-pdf.layout-a4 yang selalu memasang kop.
-    Identitas RS perujuk cukup tertulis di isian "Asal Fasyankes Perujuk".
+    Dasar isi: PMK 16/2024 Pasal 17 — identitas pasien, identitas fasyankes penerima, rekam medis,
+    dan alasan rujukan. Halaman 1 punya DUA format:
+      - 'bpjs' (Rawat Jalan SISRUTE, ada Nomor Rujukan BPJS): isi & GAYA GARIS meniru contoh BPJS
+        16/11/26 "rujukan-vclaim-*.pdf" — kotak bergaris abu tipis membulat, nomor | QR dipisah garis
+        tegak, kotak Dari/Kepada berjarak, latar abu untuk poli tujuan & kode diagnosa, garis kaki.
+      - 'kepmenkes' (jalur FHIR Ranap/IGD): daftar isian "Label : nilai" (contoh Kemkes 10/11/26).
+    Halaman 2 (Resume Klinis) sama untuk keduanya.
 
-    Berlaku untuk SEMUA jalur rujukan (RJ/UGD/RI, SISRUTE maupun FHIR) — seluruh
-    isi datang dari $data yang sudah dinormalkan komponen pemanggil.
-
-    Catatan dompdf: tanpa CSS Tailwind (kelas arbitrary tak ter-render), dua kolom
-    memakai <table>, garis kotak ditulis per sel (atribut border diabaikan), blok
-    tanda tangan bertinggi tetap. Huruf DejaVu Serif agar °, — ikut tercetak.
+    Catatan dompdf: <table> untuk kolom (flex/grid tak didukung); kelas `underline` tak ter-render
+    (Tailwind menulis text-decoration-line) → inline style; DejaVu agar °, —, · tercetak.
 --}}
-<!DOCTYPE html>
-<html lang="id">
-
-<head>
-    <meta charset="utf-8">
-    <title>SURAT PENGANTAR RUJUKAN</title>
+<x-pdf.layout-a4-with-out-background>
     <style>
-        @page {
-            size: A4;
-            margin: 1.6cm 1.8cm 1.6cm 1.8cm;
-        }
 
-        body {
+        .surat-rujukan {
             margin: 0;
             font-family: 'DejaVu Serif', serif;
             font-size: 11px;
@@ -75,53 +65,157 @@
             margin-bottom: 14px;
         }
 
-        /* Kotak resume klinis halaman 2 */
-        .resume {
-            width: 100%;
-            border: 1px solid #000;
-        }
-
-        .resume td {
-            border-left: 1px solid #000;
-            border-right: 1px solid #000;
-            padding: 2px 5px;
-        }
-
-        .resume .no {
-            width: 32px;
-        }
-
-        .resume .label {
-            width: 230px;
-        }
-
-        .resume .titik {
-            width: 10px;
-            text-align: center;
-        }
-
-        /* Garis atas penanda awal bagian (I, II, ...); garis bawah di baris terakhir. */
-        .resume tr.awal td {
-            border-top: 1px solid #000;
-        }
-
-        .resume tr.akhir td {
-            border-bottom: 1px solid #000;
-        }
 
         .ttd td {
             text-align: center;
             padding: 1px 0;
         }
     </style>
-</head>
 
-<body>
+    <div class="surat-rujukan">
     @php
         $isi = fn($nilai) => filled($nilai) ? $nilai : '-';
         $tempatTanggal = ($data['perujuk']['kota'] ? $data['perujuk']['kota'] . ', ' : '') . 'Tanggal ' . ($data['tanggal'] ?: '');
     @endphp
 
+    {{-- ══════════ HALAMAN 1 (Rawat Jalan BPJS) — isi & gaya garis contoh BPJS 16/11/26
+         "rujukan-vclaim-*.pdf"; kop = standar RS (layout). ══════════ --}}
+    @if ($data['format'] === 'bpjs')
+        @php
+            // Gaya kotak BPJS: garis abu tipis, sudut membulat, isi berjarak.
+            $kotak = 'border border-gray-300 rounded p-3';
+            $label = 'text-[8px] text-gray-500';
+        @endphp
+        <div class="text-[10px] text-black" style="font-family:'DejaVu Sans', sans-serif;">
+            {{-- JUDUL + NOMOR | QR — satu kotak, dipisah garis tegak --}}
+            <table class="w-full mt-3 mb-3 {{ $kotak }}">
+                <tr>
+                    <td class="p-3 align-top">
+                        <div class="text-lg font-bold">Surat Pengantar Rujukan</div>
+                        <div class="mb-2 text-[8px] font-bold tracking-wider text-gray-500">RUJUKAN FKRTL &middot; VCLAIM</div>
+                        <div class="{{ $label }}">Nomor Rujukan BPJS</div>
+                        <div class="mb-2 text-[20px] font-bold font-mono">{{ $isi($data['noRujukanBpjs']) }}</div>
+                        <table class="w-full">
+                            <tr class="{{ $label }}">
+                                <td class="pr-2">No. Rujukan Satu Sehat (SSR)</td>
+                                <td class="pr-2">Tanggal Rujukan</td>
+                                <td>Rencana Berkunjung</td>
+                            </tr>
+                            <tr class="font-bold">
+                                <td class="pr-2 font-mono">{{ $isi($data['noRujukan']) }}</td>
+                                <td class="pr-2">{{ $isi($data['tglRujukanPanjang'] ?: $data['tanggal']) }}</td>
+                                <td>{{ $isi($data['tglRencana']) }}</td>
+                            </tr>
+                        </table>
+                    </td>
+                    <td class="w-32 p-3 text-center align-middle border-l border-gray-300">
+                        @if (filled($data['qrNoRujukan']))
+                            <img src="data:image/png;base64,{{ $data['qrNoRujukan'] }}" class="w-20 h-20" alt="QR">
+                            <div class="mt-1 {{ $label }}">Pindai nomor rujukan</div>
+                        @endif
+                    </td>
+                </tr>
+            </table>
+
+            {{-- DARI | KEPADA — dua kotak berjarak --}}
+            <table class="w-full mb-3">
+                <tr>
+                    <td class="w-1/2 align-top {{ $kotak }}">
+                        <div class="{{ $label }} font-bold tracking-wider">DARI &middot; FASYANKES PERUJUK</div>
+                        <div class="mb-2 text-[11px] font-bold">{{ $isi($data['perujuk']['nama']) }}</div>
+                        <div><span class="text-gray-500">Kode Faskes</span> <span class="font-bold font-mono">{{ $isi($data['perujuk']['kode']) }}</span></div>
+                        <div>{{ $isi($data['perujuk']['alamat']) }}</div>
+                    </td>
+                    <td class="w-4">&nbsp;</td>
+                    <td class="w-1/2 align-top {{ $kotak }}">
+                        <div class="{{ $label }} font-bold tracking-wider">KEPADA &middot; FASYANKES PENERIMA</div>
+                        <div class="mb-2 text-[11px] font-bold">{{ $isi($data['tujuan']['nama']) }}</div>
+                        <div><span class="text-gray-500">Kode Faskes</span> <span class="font-bold font-mono">{{ $isi($data['tujuan']['kode']) }}</span></div>
+                        <div>{{ $isi($data['tujuan']['alamat']) }}</div>
+                        <div class="px-2 py-1 mt-2 bg-gray-100 border border-gray-200 rounded">
+                            <span class="text-gray-500">Poli tujuan:</span> <span class="font-bold">{{ $isi($data['poliTujuan']) }}</span>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+
+            <div class="mb-2">Dengan hormat, mohon dilakukan pemeriksaan, perawatan dan pengobatan lanjutan pada pasien berikut:</div>
+
+            {{-- DATA PASIEN --}}
+            <table class="w-full mb-3">
+                <tr>
+                    <td class="{{ $kotak }}">
+                        <table class="w-full">
+                            <tr>
+                                <td class="{{ $label }} font-bold tracking-wider">DATA PASIEN</td>
+                                <td class="text-right {{ $label }}">No. RM <span class="text-[10px] font-bold text-black">{{ $isi($data['pasien']['noRm']) }}</span></td>
+                            </tr>
+                        </table>
+                        <div class="mt-1 {{ $label }}">Nama</div>
+                        <div class="text-[12px] font-bold">{{ $isi($data['pasien']['nama']) }}</div>
+                        <table class="w-full mt-1">
+                            <tr class="{{ $label }}">
+                                <td class="w-1/3">Umur</td>
+                                <td class="w-1/3">Jenis Kelamin</td>
+                                <td class="w-1/3">Nomor Kartu BPJS</td>
+                            </tr>
+                            <tr class="font-bold">
+                                <td>{{ $isi($data['pasien']['umur']) }}</td>
+                                <td>{{ $isi($data['pasien']['jenisKelamin']) }}</td>
+                                <td class="font-mono">{{ $isi($data['pasien']['noBpjs']) }}</td>
+                            </tr>
+                        </table>
+                        <div class="mt-2 {{ $label }}">Alamat</div>
+                        <div>{{ $isi($data['pasien']['alamat']) }}</div>
+                        <div class="mt-2 {{ $label }}">Diagnosa Saat Dirujuk</div>
+                        <table class="mt-1">
+                            <tr>
+                                <td class="px-3 py-1 font-bold font-mono bg-gray-100 border border-gray-200 rounded">{{ $isi($data['diagnosaKode']) }}</td>
+                                <td class="pl-3 font-bold align-middle">{{ $data['diagnosaDesc'] }}</td>
+                            </tr>
+                        </table>
+                        <div class="mt-2 {{ $label }}">Catatan</div>
+                        <div class="whitespace-pre-line">{{ $isi($data['catatan']) }}</div>
+                    </td>
+                </tr>
+            </table>
+
+            <div class="mb-2 text-justify leading-snug">
+                Rujukan telah mendapatkan persetujuan baik lisan maupun tertulis dari pasien dan/atau keluarga pasien
+                untuk dirujuk. Demikian kami sampaikan, atas perhatian Saudara kami ucapkan terima kasih.
+            </div>
+
+            {{-- Tanda tangan: tinggi tetap, tanpa flex/br (jebakan dompdf) --}}
+            <table class="w-full mt-2 text-center">
+                <tr>
+                    <td class="w-1/2">&nbsp;</td>
+                    <td class="w-1/2">{{ $data['perujuk']['kota'] }}, {{ $data['tglRujukanPanjang'] ?: $data['tanggal'] }}</td>
+                </tr>
+                <tr>
+                    <td>&nbsp;</td>
+                    <td class="font-bold">Dokter Penanggung Jawab Pasien (Perujuk)</td>
+                </tr>
+                <tr>
+                    <td class="h-20">&nbsp;</td>
+                    <td class="h-20">&nbsp;</td>
+                </tr>
+                <tr>
+                    <td>&nbsp;</td>
+                    <td class="font-bold">
+                        @if (filled($data['dpjp']))
+                            {{-- dompdf tak kenal text-decoration-line (kelas underline) --}}
+                            <span style="text-decoration:underline;">{{ $data['dpjp'] }}</span>
+                        @else
+                            ..................................................
+                        @endif
+                    </td>
+                </tr>
+            </table>
+
+            {{-- Garis kaki seperti contoh BPJS --}}
+            <div class="pt-1 mt-6 text-right text-[8px] text-gray-500 border-t border-gray-300">Dicetak dari SIRUS &middot; {{ $data['dicetakPada'] }}</div>
+        </div>
+    @else
     {{-- ══════════════════ HALAMAN 1 — SURAT PENGANTAR RUJUKAN ══════════════════ --}}
     <div class="judul">SURAT PENGANTAR RUJUKAN</div>
 
@@ -282,19 +376,12 @@
         dan telah mendapat persetujuan dari Dokter Penanggung Jawab Pasien (DPJP).
     </div>
 
+    @endif
+
     {{-- ══════════════════ HALAMAN 2 — DATA MEDIS (RESUME KLINIS) ══════════════════ --}}
     @php
         $resume = $data['resume'];
         $ttv = $resume['ttv'];
-        // Spasi pemisah memakai NBSP — spasi biasa beruntun diciutkan jadi satu oleh HTML.
-        $jeda = str_repeat("\u{00A0}", 3);
-        $teksTtv =
-            'TD: ' . $isi($ttv['tensi']) .
-            $jeda . 'Nadi: ' . $isi($ttv['nadi']) .
-            $jeda . 'Suhu: ' . $isi($ttv['suhu']) .
-            $jeda . 'Frek. Nafas: ' . $isi($ttv['nafas']) .
-            (filled($ttv['spo2']) ? $jeda . 'SpO2: ' . $ttv['spo2'] : '');
-
         // Daftar berhuruf a., b., c. — kosong dicetak '-'.
         $hurufList = fn(array $baris) => $baris === []
             ? '-'
@@ -306,122 +393,199 @@
         // Penunjang = teks bebas EMR, dipecah per baris lalu diberi huruf.
         $penunjang = collect(preg_split('/\r\n|\r|\n/', (string) $resume['penunjang']))
             ->map(fn($b) => trim($b))->filter()->values()->all();
-
-        $identitas = [
-            'a. Nama Pasien' => $data['pasien']['nama'],
-            'b. Umur' => $data['pasien']['umur'],
-            'c. Jenis Kelamin' => $data['pasien']['jenisKelamin'],
-            'd. Alamat' => $data['pasien']['alamat'],
-            'e. No. BPJS' => $data['pasien']['noBpjs'],
-        ];
-        $fisik = [
-            'a. Keadaan Umum' => $resume['keadaanUmum'],
-            'b. Tingkat Kesadaran Kualitatif dan Kuantitatif (GCS)' => $resume['gcs'],
-            'c. Tanda-Tanda Vital' => $teksTtv,
-            'd. Kondisi Kelainan Bermasalah' => $resume['kelainan'],
-            'e. Alergi (Ada/Tidak) Sebutkan' => $resume['alergi'],
-        ];
-
-        // Bagian berjudul + isi di bawahnya (II, VI–IX): [no, judul, isi]
-        $bagianBawah = [
-            ['VI', 'Prosedur diagnostik/pemeriksaan penunjang yang sudah dilakukan dan hasilnya', $hurufList($penunjang)],
-            ['VII', 'Terapi Yang Telah Diberikan', $hurufList($resume['terapi'])],
-            ['VIII', 'Tindakan Medis Yang Telah Dilakukan', $hurufList($resume['tindakan'])],
-            ['IX', 'Alasan Merujuk & Rencana Tindak Lanjut', $isi($resume['alasan'])],
-        ];
     @endphp
 
+    {{-- Gaya BPJS (kotak garis abu membulat, label kecil abu, sans-serif); isi & penomoran I–IX
+         format Kemkes. DIRANCANG MUAT 1 LEMBAR walau terapi banyak: identitas sebaris (lengkapnya
+         di halaman 1), bagian IV–IX menumpuk berurutan, terapi dua kolom bila > 6 baris,
+         kotak & tanda tangan rapat. --}}
+    @php
+        $kotak2 = 'border border-gray-300 rounded px-2 py-1';
+        $label2 = 'text-[8px] text-gray-500';
+        $judulBagian = 'text-[8px] font-bold tracking-wider text-gray-500';
+        $terapiList = array_values($resume['terapi']);
+        $terapiDuaKolom = count($terapiList) > 6;
+        $belahTerapi = (int) ceil(count($terapiList) / 2);
+        $terapiTeks = fn(array $baris, int $mulai) => collect($baris)->values()
+            ->map(fn($b, $i) => chr(97 + (($mulai + $i) % 26)) . '. ' . $b)->implode("\n");
+    @endphp
     <div style="page-break-before:always;"></div>
-    <div class="judul">DATA MEDIS (RESUME KLINIS) PASIEN RUJUKAN</div>
-
-    <table class="resume">
-        {{-- I. Identitas pasien --}}
-        <tr class="awal">
-            <td class="no" rowspan="{{ count($identitas) + 1 }}">I</td>
-            <td colspan="3"><strong>IDENTITAS PASIEN</strong></td>
-        </tr>
-        @foreach ($identitas as $label => $nilai)
+    <div class="text-[9px] leading-snug text-black" style="font-family:'DejaVu Sans', sans-serif;">
+        <table class="w-full mt-2 mb-1">
             <tr>
-                <td class="label">{{ $label }}</td>
-                <td class="titik">:</td>
-                <td>{{ $isi($nilai) }}</td>
+                <td class="align-bottom">
+                    <div class="text-[13px] font-bold">Data Medis (Resume Klinis) Pasien Rujukan</div>
+                </td>
+                <td class="text-right align-bottom {{ $label2 }} font-bold tracking-wider">
+                    @if (filled($data['noRujukanBpjs']))
+                        NO. BPJS {{ $data['noRujukanBpjs'] }} &middot;
+                    @endif
+                    SSR {{ $isi($data['noRujukan']) }}
+                </td>
             </tr>
-        @endforeach
+        </table>
 
-        {{-- II. Keluhan --}}
-        <tr class="awal">
-            <td class="no" rowspan="2">II</td>
-            <td colspan="3"><strong>Keluhan Pasien :</strong></td>
-        </tr>
-        <tr>
-            <td colspan="3" style="white-space:pre-line; padding-bottom:6px;">{{ $isi($resume['keluhanUtama']) }}</td>
-        </tr>
-
-        {{-- III. Pemeriksaan fisik --}}
-        <tr class="awal">
-            <td class="no" rowspan="{{ count($fisik) + 1 }}">III</td>
-            <td colspan="3"><strong>Pemeriksaan Fisik</strong></td>
-        </tr>
-        @foreach ($fisik as $label => $nilai)
+        {{-- I. IDENTITAS — satu baris --}}
+        <table class="w-full mb-1">
             <tr>
-                <td class="label">{{ $label }}</td>
-                <td class="titik">:</td>
-                <td style="white-space:pre-line;">{{ $isi($nilai) }}</td>
+                <td class="{{ $kotak2 }}">
+                    <div class="{{ $judulBagian }}">I &middot; IDENTITAS PASIEN</div>
+                    <table class="w-full">
+                        <tr class="{{ $label2 }}">
+                            <td class="w-2/5">Nama</td><td>Umur</td><td>Jenis Kelamin</td><td>No. BPJS</td><td>No. RM</td>
+                        </tr>
+                        <tr class="font-bold">
+                            <td class="text-[10px]">{{ $isi($data['pasien']['nama']) }}</td>
+                            <td>{{ $isi($data['pasien']['umur']) }}</td>
+                            <td>{{ $isi($data['pasien']['jenisKelamin']) }}</td>
+                            <td class="font-mono">{{ $isi($data['pasien']['noBpjs']) }}</td>
+                            <td class="font-mono">{{ $isi($data['pasien']['noRm']) }}</td>
+                        </tr>
+                    </table>
+                    <div><span class="{{ $label2 }}">Alamat</span> {{ $isi($data['pasien']['alamat']) }}</div>
+                </td>
             </tr>
-        @endforeach
+        </table>
 
-        {{-- IV. Diagnosa --}}
-        <tr class="awal">
-            <td class="no">IV</td>
-            <td class="label"><strong>Diagnosa Saat Rujukan</strong></td>
-            <td class="titik">:</td>
-            <td style="white-space:pre-line;">{{ $angkaList($resume['diagnosa']) }}</td>
-        </tr>
-
-        {{-- V. Kriteria rujukan --}}
-        <tr class="awal">
-            <td class="no">V</td>
-            <td class="label"><strong>Kriteria Rujukan</strong></td>
-            <td class="titik">:</td>
-            <td style="white-space:pre-line;">{{ $angkaList($resume['kriteria']) }}</td>
-        </tr>
-
-        {{-- VI–IX. Judul + isi di bawahnya --}}
-        @foreach ($bagianBawah as [$no, $judul, $teks])
-            <tr class="awal">
-                <td class="no" rowspan="2">{{ $no }}</td>
-                <td colspan="3"><strong>{{ $judul }}</strong></td>
+        {{-- II. KELUHAN --}}
+        <table class="w-full mb-1">
+            <tr>
+                <td class="{{ $kotak2 }}">
+                    <span class="{{ $judulBagian }}">II &middot; KELUHAN PASIEN</span>
+                    <div class="whitespace-pre-line">{{ $isi($resume['keluhanUtama']) }}</div>
+                </td>
             </tr>
-            <tr class="{{ $loop->last ? 'akhir' : '' }}">
-                <td colspan="3" style="white-space:pre-line; padding-bottom:6px;">{{ $teks }}</td>
+        </table>
+
+        {{-- III. PEMERIKSAAN FISIK --}}
+        <table class="w-full mb-1">
+            <tr>
+                <td class="{{ $kotak2 }}">
+                    <div class="{{ $judulBagian }}">III &middot; PEMERIKSAAN FISIK</div>
+                    <table class="w-full">
+                        <tr class="{{ $label2 }}">
+                            <td class="w-1/4">a. Keadaan Umum</td>
+                            <td class="w-1/4">b. Kesadaran (GCS)</td>
+                            <td class="w-1/2">e. Alergi (Ada/Tidak) Sebutkan</td>
+                        </tr>
+                        <tr class="font-bold">
+                            <td>{{ $isi($resume['keadaanUmum']) }}</td>
+                            <td>{{ $isi($resume['gcs']) }}</td>
+                            <td class="font-normal whitespace-pre-line">{{ $isi($resume['alergi']) }}</td>
+                        </tr>
+                    </table>
+                    <div class="{{ $label2 }}">c. Tanda-Tanda Vital</div>
+                    <table class="w-full">
+                        <tr>
+                            @foreach (['TD' => $ttv['tensi'], 'Nadi' => $ttv['nadi'], 'Suhu' => $ttv['suhu'], 'Frek. Nafas' => $ttv['nafas'], 'SpO2' => $ttv['spo2']] as $namaTtv => $nilaiTtv)
+                                <td class="px-2 py-1.5 bg-gray-100 border border-gray-200 rounded">
+                                    <span class="{{ $label2 }}">{{ $namaTtv }}</span> <span class="font-bold">{{ $isi($nilaiTtv) }}</span>
+                                </td>
+                                @if (!$loop->last)
+                                    <td class="w-2">&nbsp;</td>
+                                @endif
+                            @endforeach
+                        </tr>
+                    </table>
+                    <div><span class="{{ $label2 }}">d. Kondisi Kelainan Bermasalah</span> <span class="whitespace-pre-line">{{ $isi($resume['kelainan']) }}</span></div>
+                </td>
             </tr>
-        @endforeach
-    </table>
+        </table>
 
-    <table class="ttd" style="width:100%; margin-top:16px;">
-        <tr>
-            <td style="width:45%;">&nbsp;</td>
-            <td style="width:55%;">{{ $tempatTanggal }}</td>
-        </tr>
-        <tr>
-            <td>&nbsp;</td>
-            <td>Dokter Penanggung Jawab Pasien (Perujuk)</td>
-        </tr>
-        <tr>
-            <td style="height:70px;">&nbsp;</td>
-            <td style="height:70px;">&nbsp;</td>
-        </tr>
-        <tr>
-            <td>&nbsp;</td>
-            <td>
-                @if (filled($data['dpjp']))
-                    <span style="text-decoration:underline;">{{ $data['dpjp'] }}</span>
-                @else
-                    ..................................................
-                @endif
-            </td>
-        </tr>
-    </table>
-</body>
+        {{-- IV–VIII menumpuk ke bawah sesuai urutan Kemkes (permintaan user 16/11); terapi tetap 2 kolom bila banyak --}}
+        <table class="w-full mb-1">
+            <tr>
+                <td class="{{ $kotak2 }}">
+                    <div class="{{ $judulBagian }}">IV &middot; DIAGNOSA SAAT RUJUKAN</div>
+                    <div class="whitespace-pre-line">{{ $angkaList($resume['diagnosa']) }}</div>
+                </td>
+            </tr>
+        </table>
+        <table class="w-full mb-1">
+            <tr>
+                <td class="{{ $kotak2 }}">
+                    <div class="{{ $judulBagian }}">V &middot; KRITERIA RUJUKAN</div>
+                    <div class="whitespace-pre-line">{{ $angkaList($resume['kriteria']) }}</div>
+                </td>
+            </tr>
+        </table>
+        <table class="w-full mb-1">
+            <tr>
+                <td class="{{ $kotak2 }}">
+                    <div class="{{ $judulBagian }}">VI &middot; PEMERIKSAAN PENUNJANG &amp; HASILNYA</div>
+                    <div class="whitespace-pre-line">{{ $hurufList($penunjang) }}</div>
+                </td>
+            </tr>
+        </table>
 
-</html>
+        {{-- VII. TERAPI — dua kolom bila banyak --}}
+        <table class="w-full mb-1">
+            <tr>
+                <td class="{{ $kotak2 }}">
+                    <div class="{{ $judulBagian }}">VII &middot; TERAPI YANG TELAH DIBERIKAN</div>
+                    @if ($terapiList === [])
+                        <div>-</div>
+                    @elseif ($terapiDuaKolom)
+                        <table class="w-full">
+                            <tr>
+                                <td class="w-1/2 pr-2 align-top whitespace-pre-line">{{ $terapiTeks(array_slice($terapiList, 0, $belahTerapi), 0) }}</td>
+                                <td class="w-1/2 align-top whitespace-pre-line">{{ $terapiTeks(array_slice($terapiList, $belahTerapi), $belahTerapi) }}</td>
+                            </tr>
+                        </table>
+                    @else
+                        <div class="whitespace-pre-line">{{ $terapiTeks($terapiList, 0) }}</div>
+                    @endif
+                </td>
+            </tr>
+        </table>
+
+        <table class="w-full mb-1">
+            <tr>
+                <td class="{{ $kotak2 }}">
+                    <div class="{{ $judulBagian }}">VIII &middot; TINDAKAN MEDIS YANG TELAH DILAKUKAN</div>
+                    <div class="whitespace-pre-line">{{ $hurufList($resume['tindakan']) }}</div>
+                </td>
+            </tr>
+        </table>
+
+        {{-- IX. ALASAN --}}
+        <table class="w-full mb-1">
+            <tr>
+                <td class="{{ $kotak2 }}">
+                    <div class="{{ $judulBagian }}">IX &middot; ALASAN MERUJUK &amp; RENCANA TINDAK LANJUT</div>
+                    <div class="whitespace-pre-line">{{ $isi($resume['alasan']) }}</div>
+                </td>
+            </tr>
+        </table>
+
+        {{-- Tanda tangan rapat, tak boleh terbelah halaman --}}
+        <table class="w-full mt-1 text-center" style="page-break-inside:avoid;">
+            <tr>
+                <td class="w-1/2">&nbsp;</td>
+                <td class="w-1/2">{{ $data['perujuk']['kota'] }}, {{ $data['tglRujukanPanjang'] ?: $data['tanggal'] }}</td>
+            </tr>
+            <tr>
+                <td>&nbsp;</td>
+                <td class="font-bold">Dokter Penanggung Jawab Pasien (Perujuk)</td>
+            </tr>
+            <tr>
+                <td class="h-12">&nbsp;</td>
+                <td class="h-12">&nbsp;</td>
+            </tr>
+            <tr>
+                <td>&nbsp;</td>
+                <td class="font-bold">
+                    @if (filled($data['dpjp']))
+                        {{-- dompdf tak kenal text-decoration-line (kelas underline) --}}
+                        <span style="text-decoration:underline;">{{ $data['dpjp'] }}</span>
+                    @else
+                        ..................................................
+                    @endif
+                </td>
+            </tr>
+        </table>
+
+        <div class="pt-1 mt-2 text-right text-[8px] text-gray-500 border-t border-gray-300">Dicetak dari SIRUS &middot; {{ $data['dicetakPada'] }}</div>
+    </div>
+    </div>
+</x-pdf.layout-a4-with-out-background>

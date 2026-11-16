@@ -49,6 +49,8 @@ new class extends Component {
 
     // Pesan status per langkah (bukan toast — menetap di panel)
     public string $infoKriteria = '';
+    // Alasan Kelompok Layanan kosong (gagal BPJS / memang tak ada) — tetap terbaca setelah toast hilang.
+    public string $infoKelompokLayanan = '';
     public string $infoKandidat = '';
     public string $infoKirim = '';
 
@@ -130,6 +132,13 @@ new class extends Component {
             'kriteriaPilih' => '',
             'kriteriaIcd9' => '',
             'kriteriaIcd9Desc' => '',
+            // Update BPJS 16/11/26 — masih OPSIONAL sampai cutoff bersama SATUSEHAT:
+            // IdKelompokLayanan → GetFaskesRujukan; idKriteriaRujukan & idFaskesRujukan → Insert.
+            // Kosong = tidak dikirim (bukan dikirim kosong).
+            'kelompokLayananList' => [],
+            'idKelompokLayanan' => '',
+            'idKriteriaRujukan' => '',
+            'idFaskesRujukan' => '',
             // Jejaring wilayah — dipilih lewat LOV kabupaten (rsmst_kabupatens, kode BPS
             // sama dengan administrative-area SATUSEHAT); bawaan wilayah kita sendiri
             'kodePropinsi' => '35',
@@ -414,6 +423,10 @@ new class extends Component {
         $this->formRujukan['kodeDiagnosa'] = $kodeDiagnosa;
         $this->formRujukan['diagnosaDesc'] = $diagnosaDesc;
         // Diagnosa berubah → kriteria & kandidat lama tidak berlaku (linkId dinamis per ICD-10)
+        $this->formRujukan['kelompokLayananList'] = [];
+        $this->formRujukan['idKelompokLayanan'] = '';
+        $this->formRujukan['idKriteriaRujukan'] = '';
+        $this->formRujukan['idFaskesRujukan'] = '';
         $this->formRujukan['kriteriaList'] = [];
         $this->formRujukan['kriteriaSumber'] = '';
         $this->formRujukan['kriteriaPilih'] = '';
@@ -423,6 +436,10 @@ new class extends Component {
         $this->formRujukan['kandidatIdx'] = null;
         $this->infoKriteria = '';
         $this->infoKandidat = '';
+        // Urutan form BPJS (16/11/26): Kelompok Layanan langsung menyusul Diagnosa.
+        if (preg_match('/^[A-Z][0-9]{2}(\.[0-9]{1,2})?$/', $kodeDiagnosa)) {
+            $this->muatKelompokLayanan($kodeDiagnosa);
+        }
     }
 
     /* ═══════════════════════════════════════
@@ -473,9 +490,71 @@ new class extends Component {
         $this->formRujukan['kriteriaPilih'] = '';
         $this->formRujukan['kriteriaIcd9'] = '';
         $this->formRujukan['kriteriaIcd9Desc'] = '';
+        // idKriteriaRujukan (wajib di Insert setelah cutoff) — letak pastinya belum didokumentasikan
+        // BPJS, jadi dicari di puncak response; tidak ada = tidak dikirim.
+        $this->formRujukan['idKriteriaRujukan'] = (string) ($data['idKriteriaRujukan'] ?? ($data['response']['idKriteriaRujukan'] ?? ''));
+        $this->formRujukan['idFaskesRujukan'] = '';
+        // Kelompok biasanya sudah dimuat saat diagnosa dipilih — jangan timpa pilihan petugas.
+        if (empty($this->formRujukan['kelompokLayananList'])) {
+            $this->muatKelompokLayanan($kode);
+        }
 
         $this->simpanDraft();
         $this->infoKriteria = '✓ Kriteria dimuat dari server (' . count($this->formRujukan['kriteriaList']) . ' item). Pilih TEPAT SATU.';
+    }
+
+    /**
+     * Pilihan Kelompok Layanan untuk diagnosa ini (/Referensi/kelompoklayanan/diagnosa, baru
+     * 16/11/26). Satu pilihan → langsung dipakai; lebih → petugas memilih. Gagal/kosong →
+     * daftar kosong dan GetFaskes jalan tanpa IdKelompokLayanan (masih opsional) — bentuk
+     * response belum dicontohkan BPJS, jadi beberapa nama kunci diterima.
+     */
+    private function muatKelompokLayanan(string $kodeDiagnosa): void
+    {
+        $this->formRujukan['kelompokLayananList'] = [];
+        $this->formRujukan['idKelompokLayanan'] = '';
+        $this->infoKelompokLayanan = '';
+
+        $respon = SisruteTrait::sisrute_get_kelompok_layanan_diagnosa($kodeDiagnosa)->getOriginalContent();
+        $code = $respon['metadata']['code'] ?? 0;
+        if ($code != 200) {
+            // Kuning, bukan merah: kelompok layanan masih opsional, pencarian faskes tetap jalan.
+            $pesan = "[{$code}] " . ($respon['metadata']['message'] ?? 'tanpa pesan');
+            $this->infoKelompokLayanan = "Gagal dimuat dari BPJS {$pesan} — pencarian faskes tetap jalan tanpa kelompok layanan.";
+            $this->dispatch('toast', type: 'warning', message: "Kelompok Layanan {$kodeDiagnosa} tidak dimuat: {$pesan} — pencarian faskes tetap jalan tanpa kelompok layanan.");
+            return;
+        }
+
+        $data = $respon['response'] ?? [];
+        $mentah = collect([$data['list'] ?? null, $data['kelompokLayanan'] ?? null, $data['data'] ?? null, is_array($data) && array_is_list($data) ? $data : null])
+            ->first(fn($daftar) => is_array($daftar) && $daftar !== []);
+
+        $this->formRujukan['kelompokLayananList'] = collect($mentah ?? [])
+            ->map(fn($kelompok) => [
+                'id' => (string) ($kelompok['idKelompokLayanan'] ?? ($kelompok['IdKelompokLayanan'] ?? ($kelompok['id'] ?? ''))),
+                'nama' => (string) ($kelompok['namaKelompokLayanan'] ?? ($kelompok['nmKelompokLayanan'] ?? ($kelompok['nama'] ?? ($kelompok['display'] ?? '')))),
+            ])
+            ->filter(fn($kelompok) => $kelompok['id'] !== '' && ctype_digit($kelompok['id']))
+            ->unique('id')
+            ->values()
+            ->all();
+
+        if ($this->formRujukan['kelompokLayananList'] === []) {
+            $this->infoKelompokLayanan = "BPJS tidak memberi kelompok layanan untuk diagnosa {$kodeDiagnosa} — pencarian faskes tetap jalan tanpa kelompok layanan.";
+        }
+
+        if (count($this->formRujukan['kelompokLayananList']) === 1) {
+            $this->formRujukan['idKelompokLayanan'] = $this->formRujukan['kelompokLayananList'][0]['id'];
+        }
+    }
+
+    // Kelompok layanan ganti = kandidat lama dihitung dari kelompok lama.
+    public function updatedFormRujukanIdKelompokLayanan(): void
+    {
+        $this->formRujukan['kandidatList'] = [];
+        $this->formRujukan['kandidatIdx'] = null;
+        $this->formRujukan['idFaskesRujukan'] = '';
+        $this->infoKandidat = '';
     }
 
     /**
@@ -506,6 +585,7 @@ new class extends Component {
         // tampil justru menyesatkan (pola sama seperti ganti diagnosa/kriteria).
         $this->formRujukan['kandidatList'] = [];
         $this->formRujukan['kandidatIdx'] = null;
+        $this->formRujukan['idFaskesRujukan'] = '';
         $this->infoKandidat = '';
     }
 
@@ -611,6 +691,10 @@ new class extends Component {
             ],
             'encounter' => ['reference' => 'Encounter/' . $this->encounterUuid()],
         ];
+        // Update 16/11/26: IdKelompokLayanan (integer) — opsional sampai cutoff; kosong = tidak dikirim.
+        if (ctype_digit((string) ($this->formRujukan['idKelompokLayanan'] ?? ''))) {
+            $payload['IdKelompokLayanan'] = (int) $this->formRujukan['idKelompokLayanan'];
+        }
 
         $respon = SisruteTrait::sisrute_get_faskes_rujukan($payload)->getOriginalContent();
         $code = $respon['metadata']['code'] ?? 0;
@@ -658,6 +742,9 @@ new class extends Component {
             ->values()
             ->all();
         $this->formRujukan['kandidatIdx'] = null;
+        // idFaskesRujukan = id hasil pencarian ini (puncak response, mis. "23a6e692-…"),
+        // wajib ikut di Insert setelah cutoff 16/11/26.
+        $this->formRujukan['idFaskesRujukan'] = (string) ($data['idFaskesRujukan'] ?? '');
         $this->simpanDraft();
 
         // Tanpa kandidat = memang tidak ada faskes yang cocok — bukan error
@@ -798,6 +885,12 @@ new class extends Component {
                 ],
             ],
         ];
+        // Update 16/11/26: dua id ini wajib setelah cutoff; sebelum itu dikirim bila tersedia.
+        foreach (['idKriteriaRujukan', 'idFaskesRujukan'] as $kunciId) {
+            if (trim((string) ($this->formRujukan[$kunciId] ?? '')) !== '') {
+                $payloadRujukan['satuSehatRujukan'][$kunciId] = (string) $this->formRujukan[$kunciId];
+            }
+        }
 
         $respon = SisruteTrait::sisrute_insert_rujukan($payloadRujukan)->getOriginalContent();
         $code = $respon['metadata']['code'] ?? 0;
@@ -819,6 +912,9 @@ new class extends Component {
             'tujuanPpk' => $kandidat['kdppk'],
             'tujuanSatuSehat' => $kandidat['kodeFaskesSatuSehat'],
             'tujuanAlamat' => $kandidat['alamat'],
+            'idKelompokLayanan' => (string) ($this->formRujukan['idKelompokLayanan'] ?? ''),
+            'idKriteriaRujukan' => (string) ($payloadRujukan['satuSehatRujukan']['idKriteriaRujukan'] ?? ''),
+            'idFaskesRujukan' => (string) ($payloadRujukan['satuSehatRujukan']['idFaskesRujukan'] ?? ''),
             'dikirimOleh' => $payloadRujukan['user'],
             'dikirimPada' => Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s'),
         ];
@@ -1045,24 +1141,26 @@ new class extends Component {
 
     {{-- HASIL (sudah terkirim) --}}
     @if (!empty($formRujukan['hasil']['noRujukanSatuSehat']))
-        <div class="p-3 space-y-1 text-sm border border-green-200 rounded-lg bg-green-50 dark:bg-green-950 dark:border-green-900">
-            <p class="font-semibold text-green-800 dark:text-green-200">Rujukan sudah terkirim</p>
-            <x-rujukan-kompetensi.ringkasan-terkirim :form="$formRujukan" jalur="sisrute" :tanggalRujukan="$this->tanggalRujukanTampil()" :noSep="$this->nomorSep()" :encounterId="$this->encounterUuid()" />
-
-            {{-- Surat Pengantar Rujukan + Resume Klinis — format Kemkes (calon Kepmenkes),
-                 wajib untuk SEMUA rujukan. Komponen cetaknya headless di halaman EMR. --}}
-            <div class="pt-2">
-                <x-cetak-button wire:click="cetakSuratRujukan" label="Cetak Surat Rujukan" />
-            </div>
-            @if (!$isFormLocked)
-                <div class="pt-2">
-                    <x-hapus-button wire:click="hapusRujukan" confirm="Batalkan/hapus rujukan ini di BPJS & SATUSEHAT?" label="Batalkan Rujukan" />
+        {{-- Tema bingkai standar (x-border-form): canvas + border hairline + judul hijau brand --}}
+        <x-border-form class="text-sm">
+            <div class="space-y-3">
+            {{-- Judul + aksi sebaris: Cetak (Surat Pengantar + Resume Klinis, wajib untuk SEMUA rujukan;
+                 komponen cetaknya headless di halaman EMR) langsung terlihat tanpa scroll. --}}
+            <div class="flex flex-wrap items-center justify-between gap-2">
+                <p class="flex items-center gap-2 ds-form-title"><x-badge variant="success">Terkirim</x-badge>Rujukan sudah terkirim</p>
+                <div class="flex flex-wrap items-center gap-2">
+                    <x-cetak-button wire:click="cetakSuratRujukan" label="Cetak Surat Rujukan" />
+                    @if (!$isFormLocked)
+                        <x-hapus-button wire:click="hapusRujukan" confirm="Batalkan/hapus rujukan ini di BPJS & SATUSEHAT?" label="Batalkan Rujukan" />
+                    @endif
                 </div>
-            @endif
+            </div>
+            <x-rujukan-kompetensi.ringkasan-terkirim :form="$formRujukan" jalur="sisrute" :tanggalRujukan="$this->tanggalRujukanTampil()" :noSep="$this->nomorSep()" :encounterId="$this->encounterUuid()" />
             @if ($infoKirim !== '')
                 <p class="pt-1 text-red-700 dark:text-red-300">{{ $infoKirim }}</p>
             @endif
-        </div>
+            </div>
+        </x-border-form>
     @else
 
     {{-- Panduan pemakaian — komponen bersama; varian SISRUTE (tanpa persetujuan). --}}
@@ -1139,19 +1237,27 @@ new class extends Component {
                     <p class="mt-1 text-xs text-muted-soft">Pilih kode paling spesifik; kode induk 3-karakter (mis. N40) juga diterima. @if (filled($formRujukan['kodeDiagnosa'] ?? ''))<span class="font-mono font-semibold text-ink dark:text-gray-200">Kode terkirim: {{ $formRujukan['kodeDiagnosa'] }}</span>@endif</p>
                 </div>
 
-                <div class="grid grid-cols-1 gap-3">
+                {{-- Kelompok Layanan (update BPJS 16/11/26) — urutan form BPJS: tepat di bawah Diagnosa; opsional sampai cutoff --}}
                 <div>
-                    <livewire:lov.poli.lov-poli label="Kode Spesialis (poli BPJS)"
-                        target="rujukanRajalSpesialisRI"
-                        :initialPoliId="$this->poliIdSpesialis" :disabled="$isFormLocked"
-                        wire:key="lov-poli-spesialis-rajal-ri-{{ $riHdrNo }}" />
-                    <p class="mt-1 text-xs text-muted-soft">
-                        Terisi otomatis dari poli kunjungan; ganti bila poli tujuan berbeda.
-                        @if (filled($formRujukan['kodeSpesialis']))
-                            <span class="font-mono font-semibold text-ink dark:text-gray-200">Kode terkirim: {{ $formRujukan['kodeSpesialis'] }}</span>
+                    <x-input-label value="Kelompok Layanan" class="mb-1" />
+                    @if (!empty($formRujukan['kelompokLayananList']))
+                        <x-select-input wire:model.live="formRujukan.idKelompokLayanan" :disabled="$isFormLocked" class="w-full">
+                            <option value="">— tanpa kelompok layanan —</option>
+                            @foreach ($formRujukan['kelompokLayananList'] as $kelompok)
+                                <option value="{{ $kelompok['id'] }}">{{ $kelompok['nama'] ?: 'Kelompok ' . $kelompok['id'] }} ({{ $kelompok['id'] }})</option>
+                            @endforeach
+                        </x-select-input>
+                        <p class="mt-1 text-xs text-muted-soft">Dikirim sebagai IdKelompokLayanan saat mencari faskes — membuka RS strata di atasnya bila kapasitas penuh.</p>
+                    @else
+                        @if ($infoKelompokLayanan !== '')
+                            <p class="text-xs text-amber-700 dark:text-amber-400">{{ $infoKelompokLayanan }}</p>
+                        @else
+                            <p class="text-xs text-muted-soft">Dimuat dari BPJS setelah diagnosa dipilih (masih opsional).</p>
                         @endif
-                    </p>
+                    @endif
                 </div>
+
+                <div class="grid grid-cols-1 gap-3">
                 <div>
                     <x-input-label value="Tgl Rencana Kunjungan" class="mb-1" />
                     <x-text-input wire:model.blur="formRujukan.tglRencanaKunjungan" placeholder="dd/mm/yyyy"
@@ -1224,6 +1330,18 @@ new class extends Component {
                     @endif
                 </div>
 
+                <div>
+                    <livewire:lov.poli.lov-poli label="Kode Spesialis (poli BPJS)"
+                        target="rujukanRajalSpesialisRI"
+                        :initialPoliId="$this->poliIdSpesialis" :disabled="$isFormLocked"
+                        wire:key="lov-poli-spesialis-rajal-ri-{{ $riHdrNo }}" />
+                    <p class="mt-1 text-xs text-muted-soft">
+                        Terisi otomatis dari poli kunjungan; ganti bila poli tujuan berbeda.
+                        @if (filled($formRujukan['kodeSpesialis']))
+                            <span class="font-mono font-semibold text-ink dark:text-gray-200">Kode terkirim: {{ $formRujukan['kodeSpesialis'] }}</span>
+                        @endif
+                    </p>
+                </div>
                 {{-- Wilayah dipilih sekali lewat LOV kabupaten — propinsinya ikut
                      terisi, jadi pasangan kode tak bisa lagi tidak sinkron. --}}
                 <div>

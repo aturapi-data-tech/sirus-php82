@@ -393,6 +393,28 @@ trait SisruteTrait
         }
     }
 
+    // REFERENSI KELOMPOK LAYANAN per DIAGNOSA (baru 16/11/26, method ID 21010–21017).
+    // Hasilnya = pilihan IdKelompokLayanan untuk GetFaskesRujukan (skema membuka strata di
+    // atasnya saat kapasitas RS lewat threshold). Masih OPSIONAL sampai cutoff bersama
+    // SATUSEHAT — pemanggil wajib tetap jalan bila endpoint ini gagal (dev 16/11 masih
+    // membalas 401 "Missing authentication headers" untuk cons-id kita).
+    public static function sisrute_get_kelompok_layanan_diagnosa($kodeDiagnosa)
+    {
+        $url = null;
+        try {
+            $url = env('SISRUTE_URL') . '/Referensi/kelompoklayanan/diagnosa/' . rawurlencode((string) $kodeDiagnosa);
+
+            $signature = self::signature();
+            $response = BpjsHttp::mulai()
+                ->withHeaders($signature)
+                ->get($url);
+
+            return self::response_decrypt($response, $signature, $url, $response->transferStats->getTransferTime());
+        } catch (Exception $e) {
+            return self::sendError($e->getMessage(), null, 408, $url, null);
+        }
+    }
+
     // REFERENSI SPESIALISTIK (master kode spesialis FKRTL)
     public static function sisrute_get_spesialistik()
     {
