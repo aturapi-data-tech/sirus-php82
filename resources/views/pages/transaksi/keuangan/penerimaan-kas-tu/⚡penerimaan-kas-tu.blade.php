@@ -231,7 +231,7 @@ new class extends Component {
 
                                     {{-- NOMINAL / KAS / PETUGAS --}}
                                     <td class="px-4 py-4 space-y-1 align-top">
-                                        <div class="font-mono text-base font-bold whitespace-nowrap text-success dark:text-success">
+                                        <div class="font-mono text-base font-bold whitespace-nowrap text-brand-green dark:text-brand-lime">
                                             Rp {{ number_format($row->tucashk_nominal ?? 0) }}
                                         </div>
                                         <div class="text-xs text-muted dark:text-gray-400">
@@ -240,7 +240,7 @@ new class extends Component {
                                         </div>
                                         <div class="flex flex-wrap items-center gap-1.5 text-xs text-muted dark:text-gray-400">
                                             Petugas:
-                                            <span class="font-medium text-success dark:text-success">{{ $row->emp_name ?? $row->emp_id ?? '-' }}</span>
+                                            <span class="font-medium text-brand-green dark:text-brand-lime">{{ $row->emp_name ?? $row->emp_id ?? '-' }}</span>
                                             <x-badge variant="success">Posted</x-badge>
                                         </div>
                                     </td>
