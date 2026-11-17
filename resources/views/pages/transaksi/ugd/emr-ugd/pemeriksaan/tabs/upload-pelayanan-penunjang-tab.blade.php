@@ -42,6 +42,7 @@
                     <div wire:loading.remove wire:target="uploadHasilPenunjang,filePDF" class="w-full">
                         <x-primary-button type="button" wire:click="uploadHasilPenunjang" :disabled="$isFormLocked"
                             class="w-full justify-center">
+                            <x-ikon nama="unggah" />
                             Upload Penunjang
                         </x-primary-button>
                     </div>
@@ -155,7 +156,7 @@
                     <p class="text-base text-muted dark:text-gray-400">
                         File dibuka dalam mode preview — tidak dapat diedit.
                     </p>
-                    <x-secondary-button type="button" wire:click="closeModalViewPenunjang">Tutup</x-secondary-button>
+                    <x-secondary-button type="button" wire:click="closeModalViewPenunjang"><x-ikon nama="batal" /> Tutup</x-secondary-button>
                 </div>
             </div>
 

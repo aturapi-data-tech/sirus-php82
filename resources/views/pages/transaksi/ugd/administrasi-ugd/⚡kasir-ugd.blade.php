@@ -867,12 +867,14 @@ new class extends Component {
                             <x-confirm-button variant="warning" :action="'batalTransferRI()'" title="Batal Transfer RI"
                                 message="Yakin ingin membatalkan transfer ke RI? Data RI yang dibuat dari transfer akan dihapus dan UGD kembali aktif. Hanya bisa jika RI belum ada transaksi."
                                 confirmText="Ya, batalkan transfer" cancelText="Batal">
+                                <x-ikon nama="batal" />
                                 Batal Transfer RI
                             </x-confirm-button>
                         @else
                             <x-confirm-button variant="danger" :action="'batalTransaksi()'" title="Batal Transaksi"
                                 message="Yakin ingin membatalkan transaksi? Semua data pembayaran akan dihapus."
                                 confirmText="Ya, batalkan" cancelText="Batal">
+                                <x-ikon nama="batalkan" />
                                 Batal Transaksi
                             </x-confirm-button>
                         @endif
@@ -940,7 +942,7 @@ new class extends Component {
                     @hasanyrole(['Admin', 'Tu'])
                     <x-primary-button wire:click="postTransaksi" wire:loading.attr="disabled"
                         wire:target="postTransaksi" x-ref="btnPost">
-                        <span wire:loading.remove wire:target="postTransaksi">Post Transaksi</span>
+                        <span wire:loading.remove wire:target="postTransaksi" class="inline-flex items-center gap-2"><x-ikon nama="kirim" /> Post Transaksi</span>
                         <span wire:loading wire:target="postTransaksi"><x-loading /></span>
                     </x-primary-button>
                     @endhasanyrole
@@ -967,6 +969,7 @@ new class extends Component {
                             <x-confirm-button variant="danger" :action="'batalKunjungan()'" title="Batal Transaksi UGD"
                                 message="Batalkan transaksi UGD ini? Status akan menjadi BATAL (F). Hanya berhasil jika belum ada transaksi layanan apa pun."
                                 confirmText="Ya, batalkan" cancelText="Batal">
+                                <x-ikon nama="batalkan" />
                                 Batal Transaksi
                             </x-confirm-button>
                         </div>

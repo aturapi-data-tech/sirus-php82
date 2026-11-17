@@ -619,6 +619,13 @@ memakai katalog (164 tombol; 2 tombol pilihan Kamar sengaja tanpa ikon).
   disamakan** — 15 usulan (Simpan Telaah, TTD-E Telaah Obat, SKDP/PRB ke BPJS → info, Buka Kunci →
   warning-soft, dst.) + 2 perbaikan ikon (Batal Task 99 → `batalkan`, buang ikon di "Lanjut ke … →")
   + keputusan warna "Administrasi" (teal sesuai palet vs ungu di Apotek RJ/Kasir RI) menunggu user.
+- 2026-11-17 **UGD — ikon saja** (203 tombol): 98 ikon dipasang, 71 SVG manual diganti; 170 tombol
+  kini `<x-ikon>`, 29 memakai `x-satu-sehat.ikon-tombol`. Tanpa ikon (disengaja): pilihan level dokter
+  "Utama"/"RG" di Form Transfer UGD→RI, tautan Master Pasien, teks loading "Mengupload…".
+  **Komponen UGD BELUM disamakan** — usulan sejenis RJ (Simpan Telaah, TTD-E Telaah Obat, Rujukan ke
+  BPJS → info, Buka Kunci ×2 → warning-soft, Reset/Bersihkan/Tambah Implementasi → secondary) plus
+  khusus UGD: Cari Faskes & Cek BPJS → outline, Tambah Pelayanan/Alat Bantu (discharge planning)
+  ghost → secondary, Review DPJP / Batal Review (SBAR) tanpa warna buatan sendiri. Menunggu user.
 
 Area lain menyusul per modul: pasang ikon + samakan komponen + ganti SVG manual sekaligus.
 

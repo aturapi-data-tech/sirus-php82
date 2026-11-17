@@ -126,7 +126,7 @@
                 <div class="flex justify-end pt-2">
                     <x-primary-button wire:click="addAssessmentResikoBunuhDiri" wire:loading.attr="disabled"
                         wire:target="addAssessmentResikoBunuhDiri">
-                        <span wire:loading.remove wire:target="addAssessmentResikoBunuhDiri">Simpan Skrining Risiko
+                        <span wire:loading.remove wire:target="addAssessmentResikoBunuhDiri" class="inline-flex items-center gap-2"><x-ikon nama="simpan" /> Simpan Skrining Risiko
                             Bunuh Diri</span>
                         <span wire:loading wire:target="addAssessmentResikoBunuhDiri">Menyimpan...</span>
                     </x-primary-button>

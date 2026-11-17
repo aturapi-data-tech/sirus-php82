@@ -96,7 +96,7 @@ new class extends Component {
                     placeholder="Masukkan No Kartu BPJS / NIK" wire:model.defer="noKartuBPJS" autofocus class="flex-1"
                     wire:loading.attr="disabled" wire:target="cekPeserta" />
                 <x-primary-button type="submit" wire:loading.attr="disabled" wire:target="cekPeserta">
-                    <span wire:loading.remove wire:target="cekPeserta">Cek</span>
+                    <span wire:loading.remove wire:target="cekPeserta" class="inline-flex items-center gap-2"><x-ikon nama="cari" /> Cek</span>
                     <span wire:loading wire:target="cekPeserta">Mencari...</span>
                 </x-primary-button>
             </div>

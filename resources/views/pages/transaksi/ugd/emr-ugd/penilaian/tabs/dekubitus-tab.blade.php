@@ -86,7 +86,7 @@
                 <div class="flex justify-end pt-2">
                     <x-primary-button wire:click="addAssessmentDekubitus" wire:loading.attr="disabled"
                         wire:target="addAssessmentDekubitus">
-                        <span wire:loading.remove wire:target="addAssessmentDekubitus">Simpan Penilaian Dekubitus</span>
+                        <span wire:loading.remove wire:target="addAssessmentDekubitus" class="inline-flex items-center gap-2"><x-ikon nama="simpan" /> Simpan Penilaian Dekubitus</span>
                         <span wire:loading wire:target="addAssessmentDekubitus">Menyimpan...</span>
                     </x-primary-button>
                 </div>

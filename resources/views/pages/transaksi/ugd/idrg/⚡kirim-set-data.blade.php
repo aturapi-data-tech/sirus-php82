@@ -712,7 +712,7 @@ new class extends Component {
                         @if (!$sitbValidated)
                             <x-primary-button type="button" wire:click="validateSitbAction" wire:loading.attr="disabled"
                                 :disabled="$idrgFinal" class="!bg-brand hover:!bg-brand/90">
-                                <span wire:loading.remove wire:target="validateSitbAction">Validasi SITB</span>
+                                <span wire:loading.remove wire:target="validateSitbAction" class="inline-flex items-center gap-2"><x-ikon nama="setujui" /> Validasi SITB</span>
                                 <span wire:loading wire:target="validateSitbAction"><x-loading />...</span>
                             </x-primary-button>
                         @else
@@ -859,7 +859,8 @@ new class extends Component {
             <x-primary-button type="button" wire:click="setForCurrent" wire:loading.attr="disabled"
                 :disabled="$idrgFinal || !$hasClaim"
                 class="!bg-brand hover:!bg-brand/90 min-w-[220px] {{ !empty($claimDataSavedAt) ? '!bg-emerald-600' : '' }}">
-                <span wire:loading.remove wire:target="setForCurrent">
+                <span wire:loading.remove wire:target="setForCurrent" class="inline-flex items-center gap-2">
+                    <x-ikon nama="simpan" />
                     {{ !empty($claimDataSavedAt) ? 'Simpan Ulang Data Klaim' : 'Simpan Data Klaim' }}
                 </span>
                 <span wire:loading wire:target="setForCurrent"><x-loading />...</span>

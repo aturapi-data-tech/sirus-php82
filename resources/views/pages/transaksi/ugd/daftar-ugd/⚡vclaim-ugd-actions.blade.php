@@ -975,24 +975,17 @@ new class extends Component {
                             title="Hapus SEP BPJS"
                             message="Yakin hapus SEP ini dari server BPJS? Tindakan ini tidak dapat dibatalkan."
                             confirmText="Ya, hapus SEP" cancelText="Batal" class="text-xs gap-1">
-                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
+                            <x-ikon nama="hapus" ukuran="w-3 h-3" />
                             Hapus SEP dari BPJS
                         </x-confirm-button>
                     @endif
                 </div>
                 <div class="flex flex-wrap items-center justify-end gap-2 ml-auto">
-                <x-secondary-button type="button" wire:click="closeModal">Batal</x-secondary-button>
+                <x-secondary-button type="button" wire:click="closeModal"><x-ikon nama="batal" /> Batal</x-secondary-button>
                 <x-primary-button type="button" wire:click="generateSEP" wire:loading.attr="disabled"
                     :disabled="$isFormLocked" x-ref="btnSimpanVclaim">
                     <span wire:loading.remove>
-                        <svg class="inline w-4 h-4 mr-1 -ml-1" fill="none" stroke="currentColor"
-                            viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1-4l-4 4-4-4m4 4V4" />
-                        </svg>
+                        <x-ikon nama="simpan" class="inline mr-1 -ml-1" />
                         Simpan SEP
                     </span>
                     <span wire:loading><x-loading /> Menyimpan...</span>

@@ -295,7 +295,7 @@ new class extends Component {
             </div>
 
             <div class="flex justify-end px-6 py-4 border-t border-hairline dark:border-gray-700 shrink-0">
-                <x-secondary-button type="button" wire:click="closeModalicare">Tutup</x-secondary-button>
+                <x-secondary-button type="button" wire:click="closeModalicare"><x-ikon nama="batal" /> Tutup</x-secondary-button>
             </div>
 
         </div>

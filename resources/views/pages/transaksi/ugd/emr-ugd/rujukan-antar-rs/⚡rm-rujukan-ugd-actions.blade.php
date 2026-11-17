@@ -509,7 +509,7 @@ new class extends Component {
                                             x-on:keyup.enter="$wire.cariFaskes()" />
                                         <x-secondary-button type="button" wire:click="cariFaskes"
                                             wire:loading.attr="disabled" class="shrink-0">
-                                            <span wire:loading.remove wire:target="cariFaskes">Cari Faskes</span>
+                                            <span wire:loading.remove wire:target="cariFaskes" class="inline-flex items-center gap-2"><x-ikon nama="cari" /> Cari Faskes</span>
                                             <span wire:loading wire:target="cariFaskes"><x-loading /></span>
                                         </x-secondary-button>
                                     </div>
@@ -600,7 +600,7 @@ new class extends Component {
                                     @if (!$isFormLocked && !empty($rujukanAntarRS['ppkDirujuk']))
                                         <x-secondary-button type="button" wire:click="fetchListSpesialistik"
                                             wire:loading.attr="disabled" class="mt-1 text-sm">
-                                            <span wire:loading.remove wire:target="fetchListSpesialistik">Muat Poli
+                                            <span wire:loading.remove wire:target="fetchListSpesialistik" class="inline-flex items-center gap-2"><x-ikon nama="muat-ulang" /> Muat Poli
                                                 dari BPJS</span>
                                             <span wire:loading wire:target="fetchListSpesialistik"><x-loading /></span>
                                         </x-secondary-button>
@@ -633,11 +633,7 @@ new class extends Component {
                             <x-success-button type="button" wire:click="kirimBPJS" wire:loading.attr="disabled">
                                 <span wire:loading.remove wire:target="kirimBPJS"
                                     class="inline-flex items-center gap-2">
-                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                                        stroke-width="2">
-                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                            d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
-                                    </svg>
+                                    <x-ikon nama="kirim" />
                                     {{ !empty($rujukanAntarRS['noRujukan']) ? 'Update Rujukan BPJS' : 'Kirim Rujukan ke BPJS' }}
                                 </span>
                                 <span wire:loading wire:target="kirimBPJS" class="inline-flex items-center gap-2">
