@@ -168,9 +168,7 @@ new class extends Component {
                                 <th class="px-4 py-3 font-semibold">NO</th>
                                 <th class="px-4 py-3 font-semibold">TANGGAL</th>
                                 <th class="px-4 py-3 font-semibold">KETERANGAN</th>
-                                <th class="px-4 py-3 font-semibold text-right">NOMINAL</th>
-                                <th class="px-4 py-3 font-semibold">KAS</th>
-                                <th class="px-4 py-3 font-semibold">INFO</th>
+                                <th class="px-4 py-3 font-semibold">NOMINAL / KAS</th>
                                 <th class="px-4 py-3 font-semibold text-center">AKSI</th>
                             </tr>
                         </thead>
@@ -187,16 +185,16 @@ new class extends Component {
                                         <div>{{ $row->tucashk_desc ?? '-' }}</div>
                                         <div class="text-muted-soft">{{ $row->acc_id }} - {{ $row->acc_name ?? '-' }}</div>
                                     </td>
-                                    <td class="px-4 py-3 font-mono text-right whitespace-nowrap">
-                                        Rp {{ number_format($row->tucashk_nominal ?? 0) }}
-                                    </td>
+                                    {{-- Nominal, akun kas & petugas digabung satu kolom --}}
                                     <td class="px-4 py-3 text-sm">
-                                        <div>{{ $row->acc_name_kas ?? '-' }}</div>
-                                        <div class="text-muted-soft">{{ $row->acc_id_kas }}</div>
-                                    </td>
-                                    <td class="px-4 py-3 text-sm">
-                                        <div>{{ $row->emp_name ?? $row->emp_id ?? '-' }}</div>
-                                        <x-badge variant="success" class="mt-1">Posted</x-badge>
+                                        <div class="font-mono font-semibold whitespace-nowrap text-ink dark:text-gray-100">
+                                            Rp {{ number_format($row->tucashk_nominal ?? 0) }}
+                                        </div>
+                                        <div>{{ $row->acc_name_kas ?? '-' }} <span class="text-muted-soft">({{ $row->acc_id_kas }})</span></div>
+                                        <div class="flex flex-wrap items-center gap-1 mt-1 text-muted-soft">
+                                            <span>{{ $row->emp_name ?? $row->emp_id ?? '-' }}</span>
+                                            <x-badge variant="success">Posted</x-badge>
+                                        </div>
                                     </td>
                                     <td class="px-4 py-3">
                                         <div class="flex items-center justify-center gap-1">
@@ -214,7 +212,7 @@ new class extends Component {
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="7" class="px-4 py-10 text-center text-muted dark:text-gray-400">
+                                    <td colspan="5" class="px-4 py-10 text-center text-muted dark:text-gray-400">
                                         Tidak ada data penerimaan kas.
                                     </td>
                                 </tr>
