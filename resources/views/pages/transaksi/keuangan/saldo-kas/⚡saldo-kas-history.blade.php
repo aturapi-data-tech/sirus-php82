@@ -229,7 +229,11 @@ new class extends Component {
                 DB::raw("NVL({$sisi['kredit']},0) AS kredit_kita"),
             )
             ->orderBy('txn_date')
-            ->get();
+            ->get()
+            // Baris bernilai nol di kedua sisi (mis. PENGEMBALIAN ANGSURAN AWAL Rp0) tak mengubah
+            // saldo dan membingungkan — buang dari tampilan, rekap jenis, Excel, dan cetakan.
+            ->reject(fn ($baris) => (float) $baris->debit_kita == 0.0 && (float) $baris->kredit_kita == 0.0)
+            ->values();
 
         $namaLawan = DB::table('acmst_accounts')
             ->whereIn('acc_id', $rows->pluck('lawan_acc_id')->filter()->unique()->values()->all() ?: ['-'])
