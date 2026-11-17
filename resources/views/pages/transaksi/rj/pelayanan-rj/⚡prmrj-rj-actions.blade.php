@@ -788,11 +788,7 @@ new class extends Component {
                                             title="Salin Data Kunjungan"
                                             message="Isi bagian ini akan diganti dengan data kunjungan pasien yang terbaru. Ketikan Anda di bagian ini ikut hilang. Kriteria, Obat Khusus, dan tanda tangan tidak tersentuh."
                                             confirmText="Salin" class="shrink-0 px-2.5 py-1.5 text-sm">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                                                stroke-width="2">
-                                                <path stroke-linecap="round" stroke-linejoin="round"
-                                                    d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                            </svg>
+                                            <x-ikon nama="muat-ulang" />
                                             Salin Data Kunjungan
                                         </x-confirm-button>
                                     @endif
@@ -885,7 +881,7 @@ new class extends Component {
 
                             <div class="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-hairline dark:border-gray-700">
                                 @if (! $terkunci)
-                                    <x-secondary-button type="button" wire:click="simpanDraft">Simpan Draft</x-secondary-button>
+                                    <x-secondary-button type="button" wire:click="simpanDraft"><x-ikon nama="simpan" /> Simpan Draft</x-secondary-button>
                                 @endif
                             </div>
                         </div>
@@ -952,10 +948,7 @@ new class extends Component {
                                                         class="!text-blue-600 !bg-blue-50 !border-blue-200 hover:!bg-blue-100 hover:!text-blue-700 hover:!border-blue-300 dark:!text-blue-400 dark:!bg-blue-900/20 dark:!border-blue-800/30 dark:hover:!bg-blue-900/30 dark:hover:!text-blue-300"
                                                         title="Lihat rekam medis kunjungan ini">
                                                         <span class="inline-flex items-center gap-1">
-                                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                                            </svg>
+                                                            <x-ikon nama="lihat" ukuran="w-5 h-5" />
                                                             <span class="text-sm font-semibold">Lihat</span>
                                                         </span>
                                                     </x-outline-button>
@@ -973,9 +966,7 @@ new class extends Component {
                                                             class="!text-muted !bg-surface-soft !border-hairline hover:!bg-surface-soft hover:!text-body hover:!border-gray-300 dark:!text-muted-soft dark:!bg-gray-800/40 dark:!border-gray-700 dark:hover:!bg-gray-800/60"
                                                             title="Buka kunci baris ini">
                                                             <span class="inline-flex items-center gap-1">
-                                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-8 4h10a2 2 0 012 2v5a2 2 0 01-2 2H8a2 2 0 01-2-2v-5a2 2 0 012-2z" />
-                                                                </svg>
+                                                                <x-ikon nama="buka-kunci" ukuran="w-5 h-5" />
                                                                 <span class="text-sm font-semibold">Buka Kunci</span>
                                                             </span>
                                                         </x-outline-button>
@@ -1061,7 +1052,7 @@ new class extends Component {
                     <x-cetak-button wire:click="cetak" label="Cetak Semua" title="Cetak seluruh kunjungan pasien" />
                 @endif
                 <x-secondary-button type="button"
-                    wire:click="closeModal">Tutup</x-secondary-button>
+                    wire:click="closeModal"><x-ikon nama="batal" /> Tutup</x-secondary-button>
             </div>
         </div>
         @endif

@@ -126,10 +126,7 @@
                                     wire:loading.attr="disabled" wire:target="myiCare"
                                     class="gap-1 !bg-emerald-600 hover:!bg-emerald-700 !text-white focus:!ring-emerald-300 dark:!bg-emerald-600 dark:!text-white dark:hover:!bg-emerald-700 dark:focus:!ring-emerald-900">
                                     <span wire:loading.remove wire:target="myiCare" class="flex items-center gap-1">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                        </svg>
+                                        <x-ikon nama="riwayat" />
                                         i-Care
                                     </span>
                                     <span wire:loading wire:target="myiCare" class="flex items-center gap-1">
@@ -144,11 +141,7 @@
                             <x-primary-button type="button"
                                 wire:click="$dispatch('open-rm-screening-rj', { rjNo: {{ $rjNo }} })"
                                 class="gap-1 !bg-teal-600 hover:!bg-teal-700 !text-white focus:!ring-teal-300 dark:!bg-teal-600 dark:!text-white dark:hover:!bg-teal-700 dark:focus:!ring-teal-900">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                                    stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>Screening
+                                <x-ikon nama="setujui" />Screening
                             </x-primary-button>
                         @endhasanyrole
 
@@ -158,11 +151,7 @@
                                 class="gap-1 !bg-teal-600 hover:!bg-teal-700 !text-white focus:!ring-teal-300 dark:!bg-teal-600 dark:!text-white dark:hover:!bg-teal-700 dark:focus:!ring-teal-900">
                                 <span wire:loading.remove wire:target="openAdministrasiPasien"
                                     class="flex items-center gap-1">
-                                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                                        stroke-width="2">
-                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                            d="M2 8h20v12a1 1 0 01-1 1H3a1 1 0 01-1-1V8zm0 0V6a1 1 0 011-1h18a1 1 0 011 1v2M12 14a2 2 0 100-4 2 2 0 000 4z" />
-                                    </svg>
+                                    <x-ikon nama="pembayaran" class="shrink-0" />
                                     Administrasi
                                 </span>
                                 <span wire:loading wire:target="openAdministrasiPasien" class="flex items-center gap-1">
@@ -176,10 +165,7 @@
                             <x-primary-button type="button"
                                 wire:click="$dispatch('emr-rj.modul-dokumen.open', { rjNo: '{{ $rjNo }}' })"
                                 class="gap-1 !bg-indigo-600 hover:!bg-indigo-700 !text-white focus:!ring-indigo-300 dark:!bg-indigo-600 dark:!text-white dark:hover:!bg-indigo-700 dark:focus:!ring-indigo-900">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                </svg>Modul Dokumen
+                                <x-ikon nama="dokumen" />Modul Dokumen
                             </x-primary-button>
                         @endhasanyrole
 
@@ -189,11 +175,7 @@
                                 wire:loading.attr="disabled" wire:target="openLogAktivitas"
                                 class="order-first gap-1 !bg-slate-600 hover:!bg-slate-700 !text-white focus:!ring-slate-300 dark:!bg-slate-600 dark:!text-white dark:hover:!bg-slate-700 dark:focus:!ring-slate-900">
                                 <span wire:loading.remove wire:target="openLogAktivitas" class="flex items-center gap-1">
-                                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                                        stroke-width="2">
-                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                                    </svg>
+                                    <x-ikon nama="riwayat" class="shrink-0" />
                                     Log Aktivitas
                                 </span>
                                 <span wire:loading wire:target="openLogAktivitas" class="flex items-center gap-1">
@@ -238,11 +220,7 @@
                                 x-bind:disabled="loadingEresep"
                                 x-on:click.prevent="openEresepWithSave({{ $rjNo }})">
                                 <span x-show="!loadingEresep" class="flex items-center gap-1">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                                        stroke-width="2">
-                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                    </svg>E-Resep
+                                    <x-ikon nama="dokumen" />E-Resep
                                 </span>
                                 <span x-show="loadingEresep" x-cloak class="flex items-center gap-1">
                                     <x-loading /> Menyimpan & memuat...
@@ -261,10 +239,7 @@
                             <x-primary-button type="button"
                                 wire:click="$dispatch('rekam-medis-nasional.open', { jalur: 'RJ', nomor: '{{ $rjNo }}' })"
                                 class="gap-1 !bg-emerald-600 hover:!bg-emerald-700 !text-white focus:!ring-emerald-300 dark:!bg-emerald-600 dark:!text-white dark:hover:!bg-emerald-700 dark:focus:!ring-emerald-900">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                        d="M21 12a9 9 0 11-18 0 9 9 0 0118 0zM3.6 9h16.8M3.6 15h16.8M12 3a15 15 0 010 18M12 3a15 15 0 000 18" />
-                                </svg>
+                                <x-ikon nama="dokumen" />
                                 Rekam Medis Nasional
                             </x-primary-button>
                         @endhasanyrole
@@ -274,6 +249,7 @@
                     <div class="flex items-center gap-2">
                         {{-- Event, bukan tryClose() langsung: dirty guard milik host (modal EMR sendiri / pembungkus emr-coding-rj) --}}
                         <x-secondary-button x-on:click="$dispatch('emr-rj-tutup')">
+                            <x-ikon nama="batal" />
                             Tutup
                         </x-secondary-button>
 
@@ -281,11 +257,7 @@
                             <x-primary-button wire:click.prevent="save()" class="min-w-[120px]"
                                 wire:loading.attr="disabled">
                                 <span wire:loading.remove>
-                                    <svg class="inline w-4 h-4 mr-1 -ml-1" fill="none" stroke="currentColor"
-                                        viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1-4l-4 4-4-4m4 4V4" />
-                                    </svg>
+                                    <x-ikon nama="simpan" class="inline mr-1 -ml-1" />
                                     Simpan
                                 </span>
                                 <span wire:loading>

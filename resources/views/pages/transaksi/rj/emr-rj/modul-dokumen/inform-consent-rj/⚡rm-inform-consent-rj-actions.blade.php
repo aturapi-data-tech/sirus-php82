@@ -809,6 +809,7 @@ new class extends Component {
                                         </div>
                                         <x-outline-button type="button" wire:click.prevent="setPpaSaya" class="shrink-0"
                                             title="Isi dengan nama saya (user login)">
+                                            <x-ikon nama="ttd" />
                                             Saya
                                         </x-outline-button>
                                     </div>
@@ -1017,12 +1018,7 @@ new class extends Component {
                                                     class="gap-2">
                                                     <span wire:loading.remove wire:target="setDokterPenjelas"
                                                         class="flex items-center gap-1.5">
-                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor"
-                                                            viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                                stroke-width="2"
-                                                                d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 012.828 2.828L11.828 15.828a4 4 0 01-2.828 1.172H7v-2a4 4 0 011.172-2.828z" />
-                                                        </svg>
+                                                        <x-ikon nama="ttd" />
                                                         TTD Petugas &amp; Kunci
                                                     </span>
                                                     <span wire:loading wire:target="setDokterPenjelas">
@@ -1091,9 +1087,7 @@ new class extends Component {
                                                         konfirmasiHapus="Yakin hapus Inform Consent ini?">
                                                         @if ($isFinal && empty($consent['dokter']) && !$isFormLocked)
                                                         <x-primary-button type="button" wire:click="signDokter('{{ $rowKey }}')" wire:loading.attr="disabled" wire:target="signDokter('{{ $rowKey }}')" class="gap-1.5" title="Tanda tangan petugas menyusul">
-                                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 012.828 2.828L11.828 15.828a4 4 0 01-2.828 1.172H7v-2a4 4 0 011.172-2.828z" />
-                                                        </svg>
+                                                        <x-ikon nama="ttd" ukuran="w-5 h-5" />
                                                         TTD Petugas
                                                         </x-primary-button>
                                                         @endif

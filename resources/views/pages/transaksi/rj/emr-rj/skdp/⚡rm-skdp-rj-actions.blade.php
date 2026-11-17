@@ -494,11 +494,7 @@ new class extends Component {
                                     wire:loading.attr="disabled" wire:target="save">
                                     <span wire:loading.remove wire:target="save"
                                         class="inline-flex items-center gap-1">
-                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                                            stroke-width="2">
-                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
-                                        </svg>
+                                        <x-ikon nama="kirim" />
                                         Simpan &amp; Kirim BPJS
                                     </span>
                                     <span wire:loading wire:target="save"
@@ -521,10 +517,7 @@ new class extends Component {
                                 <x-secondary-button type="button" wire:click="bukaDaftarSuratKontrol" wire:loading.attr="disabled"
                                     wire:target="bukaDaftarSuratKontrol" class="mr-auto">
                                     <span wire:loading.remove wire:target="bukaDaftarSuratKontrol" class="inline-flex items-center gap-2">
-                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
-                                        </svg>
+                                        <x-ikon nama="lihat" />
                                         Daftar Surat Kontrol BPJS
                                     </span>
                                     <span wire:loading wire:target="bukaDaftarSuratKontrol" class="inline-flex items-center gap-2"><x-loading /> Memuat...</span>
@@ -534,18 +527,10 @@ new class extends Component {
                                 wire:target="save">
                                 <span wire:loading.remove wire:target="save" class="inline-flex items-center gap-2">
                                     @if ($isBPJS)
-                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                                            stroke-width="2">
-                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
-                                        </svg>
+                                        <x-ikon nama="kirim" />
                                         Simpan & Kirim SKDP ke BPJS
                                     @else
-                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                                            stroke-width="2">
-                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                        </svg>
+                                        <x-ikon nama="simpan" />
                                         Simpan Surat Kontrol
                                     @endif
                                 </span>

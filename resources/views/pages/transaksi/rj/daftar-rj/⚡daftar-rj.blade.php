@@ -838,10 +838,7 @@ new class extends Component {
                         {{-- Pendaftaran Rawat Jalan — Mr, Admin, Supervisor Tu --}}
                         @hasanyrole(['Mr', 'Admin', 'Supervisor Tu'])
                             <x-primary-button type="button" wire:click="openCreate" class="whitespace-nowrap">
-                                <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M12 4v16m8-8H4" />
-                                </svg>
+                                <x-ikon nama="tambah" ukuran="w-5 h-5" class="mr-1" />
                                 Pendaftaran Rawat Jalan
                             </x-primary-button>
                         @endhasanyrole
@@ -1394,6 +1391,7 @@ new class extends Component {
                                                             wire:click="$dispatch('task-id-batal-proses-rj', { rjNo: {{ $row->rj_no }} })"
                                                             class="!px-4 !py-2 text-sm {{ $row->task_id99 ? '!opacity-60' : '' }}"
                                                             title="{{ $row->task_id99 ? 'Sudah dijalankan, klik untuk update' : 'Batal antrean BPJS (Task ID 99) — hanya sebelum TaskId4/5. Bukan batal transaksi (itu di Kasir).' }}">
+                                                            <x-ikon nama="batal" />
                                                             <span class="flex flex-col items-center leading-tight">
                                                                 <span>Batal</span>
                                                                 <span class="text-[11px] font-normal opacity-90">Task 99</span>

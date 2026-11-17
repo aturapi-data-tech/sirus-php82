@@ -1039,6 +1039,7 @@ new class extends Component {
                                                                         wire:click="$dispatch('task-id-poli-proses', { rjNo: {{ $row->rj_no }}, aksi: '4' })"
                                                                         class="!px-4 !py-2 text-sm {{ $row->task_id4 ? '!opacity-60' : '' }}"
                                                                         title="{{ $row->task_id4 ? 'Sudah dijalankan, klik untuk update' : 'Klik untuk mencatat TaskId4 (Masuk Poli)' }}">
+                                                                        <x-ikon nama="kirim" />
                                                                         TaskId4
                                                                     </x-info-button>
 
@@ -1046,6 +1047,7 @@ new class extends Component {
                                                                         wire:click="$dispatch('task-id-poli-proses', { rjNo: {{ $row->rj_no }}, aksi: '5' })"
                                                                         class="!px-4 !py-2 text-sm {{ $row->task_id5 ? '!opacity-60' : '' }}"
                                                                         title="{{ $row->task_id5 ? 'Sudah dijalankan, klik untuk update' : 'Klik untuk mencatat TaskId5 (Panggil Antrian)' }}">
+                                                                        <x-ikon nama="kirim" />
                                                                         TaskId5
                                                                     </x-warning-button>
 
@@ -1053,6 +1055,7 @@ new class extends Component {
                                                                         wire:click="$dispatch('task-id-poli-proses', { rjNo: {{ $row->rj_no }}, aksi: 'antrean' })"
                                                                         class="!px-4 !py-2 text-sm"
                                                                         title="Banding waktu task SIRUS dengan yang tercatat di Antrean BPJS">
+                                                                        <x-ikon nama="kirim" />
                                                                         TaskId Antrean
                                                                     </x-primary-button>
                                                                 </div>

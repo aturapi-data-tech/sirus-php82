@@ -586,11 +586,13 @@ new class extends Component {
                 </div>
                 <div class="flex items-center gap-3">
                     <x-secondary-button type="button" wire:click="closeModal">
+                        <x-ikon nama="batal" />
                         Batal
                     </x-secondary-button>
                     <x-confirm-button variant="warning" :action="'transferKeUGD()'" title="Transfer ke UGD"
                         message="Yakin ingin mentransfer biaya RJ (Rp {{ number_format($totalBiayaRJ) }}) ke Gawat Darurat? Status RJ akan menjadi 'Transfer UGD' dan seluruh biaya dipindahkan ke UGD."
                         confirmText="Ya, transfer" cancelText="Batal">
+                        <x-ikon nama="setujui" />
                         Konfirmasi Transfer ke UGD
                     </x-confirm-button>
                 </div>

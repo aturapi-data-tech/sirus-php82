@@ -155,7 +155,7 @@
                 <div class="flex justify-end pt-2">
                     <x-primary-button wire:click="addAssessmentNyeri" wire:loading.attr="disabled"
                         wire:target="addAssessmentNyeri">
-                        <span wire:loading.remove wire:target="addAssessmentNyeri">Simpan Penilaian Nyeri</span>
+                        <span wire:loading.remove wire:target="addAssessmentNyeri" class="inline-flex items-center gap-2"><x-ikon nama="simpan" /> Simpan Penilaian Nyeri</span>
                         <span wire:loading wire:target="addAssessmentNyeri">Menyimpan...</span>
                     </x-primary-button>
                 </div>
