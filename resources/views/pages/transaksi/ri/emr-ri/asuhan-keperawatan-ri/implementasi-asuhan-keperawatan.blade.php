@@ -14,11 +14,12 @@
             <div class="flex justify-end mb-3">
                 @if ($activeImplIndex !== $idx)
                     <x-outline-button type="button" wire:click="openFormImpl({{ $idx }})">
-                        <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                        <x-ikon nama="tambah" ukuran="w-3.5 h-3.5" class="mr-1" />
                         Tambah SOAP
                     </x-outline-button>
                 @else
                     <x-secondary-button type="button" wire:click="closeFormImpl">
+                        <x-ikon nama="batal" />
                         Batal
                     </x-secondary-button>
                 @endif
@@ -103,7 +104,7 @@
 
                 <div class="flex justify-end">
                     <x-primary-button wire:click="addImplementasi" type="button">
-                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                        <x-ikon nama="simpan" class="mr-1" />
                         Simpan Implementasi
                     </x-primary-button>
                 </div>

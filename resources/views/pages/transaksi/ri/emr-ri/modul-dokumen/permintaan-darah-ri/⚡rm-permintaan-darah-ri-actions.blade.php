@@ -927,7 +927,7 @@ new class extends Component {
                 selesaiLihat="">
                 <x-slot:tombol>
                     @if ($editingKey && !$formReadOnly)
-                        <x-secondary-button wire:click="resetFormDarah">Batal Edit</x-secondary-button>
+                        <x-secondary-button wire:click="resetFormDarah"><x-ikon nama="batal" /> Batal Edit</x-secondary-button>
                     @endif
                 </x-slot:tombol>
             </x-modul-dokumen.footer>

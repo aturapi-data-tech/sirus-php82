@@ -364,7 +364,7 @@ new class extends Component {
                     </div>
 
                     <div class="flex items-end">
-                        <x-secondary-button type="button" wire:click="resetFilters">Reset</x-secondary-button>
+                        <x-secondary-button type="button" wire:click="resetFilters"><x-ikon nama="kembalikan" /> Reset</x-secondary-button>
                     </div>
                 </div>
             </div>

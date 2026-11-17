@@ -122,7 +122,7 @@ new class extends Component {
                     <x-badge variant="info">{{ count($daftarObat) }} obat terpantau</x-badge>
                 @endif
                 <span class="text-xs text-muted dark:text-gray-400">{{ $jumlahResepAktif }} resep aktif &middot; dibaca {{ $dihitungPada ?: '-' }}</span>
-                <x-secondary-button type="button" wire:click="muatUlang" wire:loading.attr="disabled" class="ml-auto">Muat ulang</x-secondary-button>
+                <x-secondary-button type="button" wire:click="muatUlang" wire:loading.attr="disabled" class="ml-auto"><x-ikon nama="muat-ulang" /> Muat ulang</x-secondary-button>
             </div>
 
             {{-- Tabel obat terpantau --}}

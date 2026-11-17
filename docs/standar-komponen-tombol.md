@@ -509,7 +509,7 @@ tampil di `/panduan-dev` (Komponen → Ikon Tombol).
 <x-ikon nama="kembalikan" ukuran="w-3.5 h-3.5" />
 ```
 
-### Katalog (25 aksi)
+### Katalog (26 aksi)
 
 | `nama` | Ikon | Dipakai untuk label |
 |---|---|---|
@@ -538,6 +538,7 @@ tampil di `/panduan-dev` (Komponen → Ikon Tombol).
 | `pembayaran` | dompet | Administrasi, Bayar, Kasir |
 | `waktu` | jam | Jam Sekarang, Hari Ini (isian tanggal tetap pakai `x-now-button`) |
 | `cetak` | printer | Print Etiket / cetak langsung via print agent. Tombol cetak biasa tetap `x-cetak-button` |
+| `pindah` | dua panah berlawanan | Pindah Kamar, Transfer pasien/biaya ke UGD/RI |
 
 ### Aturan
 
@@ -590,6 +591,7 @@ dan `/panduan-dev#ikon-tombol` menampilkannya. Ditetapkan dari pemindaian 1.236 
 | `unggah`, `ttd` | `x-primary-button` (pendamping → `x-secondary-button`) |
 | `dokumen`, `pembayaran` | toolbar EMR → palet semantik (indigo / teal); lainnya → `x-outline-button` |
 | `waktu` | isian tanggal → `x-now-button` |
+| `pindah` | toolbar EMR → palet amber (`!bg-amber-500`); lainnya → `x-secondary-button` |
 | `cetak` | `x-cetak-button`; cetak khusus yang tak bisa memakainya (print agent etiket) → `x-secondary-button` + `<x-ikon nama="cetak">` |
 
 **Pengecualian yang disengaja:** tombol navigasi ke modul lain (`<a wire:navigate>` + Pendaftaran
@@ -626,6 +628,16 @@ memakai katalog (164 tombol; 2 tombol pilihan Kamar sengaja tanpa ikon).
   BPJS → info, Buka Kunci ×2 → warning-soft, Reset/Bersihkan/Tambah Implementasi → secondary) plus
   khusus UGD: Cari Faskes & Cek BPJS → outline, Tambah Pelayanan/Alat Bantu (discharge planning)
   ghost → secondary, Review DPJP / Batal Review (SBAR) tanpa warna buatan sendiri. Menunggu user.
+- 2026-11-17 **RI + Resep RI + Kasir — ikon saja** (259 tombol): 123 ikon dipasang, 97 SVG manual
+  diganti; RI 198 `<x-ikon>` (+32 `x-satu-sehat.ikon-tombol`), Resep RI 15, Kasir 9. Ikon katalog baru
+  `pindah` (Pindah Kamar). Tanpa ikon (disengaja): pilihan level dokter Utama/Rawat Gabung, "Buka tab
+  Kamar" (navigasi antartab di Kasir RI), tautan Master Pasien, teks "Mengupload…". Buka Kunci,
+  Buat SEP, SPRI, Update Pasien Pulang BPJS → ikon `kirim`/`buka-kunci` sesuai makna.
+  **Komponen RI BELUM disamakan** — 44 penyimpangan (selain palet toolbar EMR/eresep, iDRG,
+  SATUSEHAT, TaskId): sejenis RJ/UGD + khusus RI: Ulangi (Kasir RI) danger → warning-soft,
+  Lihat / Cetak (Antrian Kasir RI) success → outline, Form B (Case Manager) info → secondary,
+  Selesai Melihat primary → secondary, Kirim Semua ke SIRS override green → primary, SPRI insert/update
+  override ungu → info (BPJS), Hapus Log ghost → confirm danger-soft. Menunggu user.
 
 Area lain menyusul per modul: pasang ikon + samakan komponen + ganti SVG manual sekaligus.
 

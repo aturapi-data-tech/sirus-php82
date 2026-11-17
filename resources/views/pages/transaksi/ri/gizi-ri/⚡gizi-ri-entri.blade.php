@@ -271,10 +271,7 @@ new class extends Component {
                                 wire:loading.attr="disabled" wire:target="openModulDokumen"
                                 class="gap-1 !bg-indigo-600 hover:!bg-indigo-700 !text-white focus:!ring-indigo-300 dark:!bg-indigo-600 dark:!text-white dark:hover:!bg-indigo-700 dark:focus:!ring-indigo-900">
                                 <span wire:loading.remove wire:target="openModulDokumen" class="flex items-center gap-1">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                    </svg>Modul Dokumen
+                                    <x-ikon nama="dokumen" />Modul Dokumen
                                 </span>
                                 <span wire:loading wire:target="openModulDokumen"
                                     class="flex items-center gap-1"><x-loading /> Memuat...</span>
@@ -288,11 +285,7 @@ new class extends Component {
                                 class="gap-1 !bg-teal-600 hover:!bg-teal-700 !text-white focus:!ring-teal-300 dark:!bg-teal-600 dark:!text-white dark:hover:!bg-teal-700 dark:focus:!ring-teal-900">
                                 <span wire:loading.remove wire:target="openAdministrasiPasien"
                                     class="flex items-center gap-1">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                                        stroke-width="2">
-                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                            d="M2 8h20v12a1 1 0 01-1 1H3a1 1 0 01-1-1V8zm0 0V6a1 1 0 011-1h18a1 1 0 011 1v2M12 14a2 2 0 100-4 2 2 0 000 4z" />
-                                    </svg>Administrasi
+                                    <x-ikon nama="pembayaran" />Administrasi
                                 </span>
                                 <span wire:loading wire:target="openAdministrasiPasien"
                                     class="flex items-center gap-1"><x-loading /> Memuat...</span>
@@ -305,15 +298,12 @@ new class extends Component {
                     <div class="flex items-center gap-2">
                         <x-secondary-button type="button"
                             wire:click="closeModal">
+                            <x-ikon nama="batal" />
                             Tutup
                         </x-secondary-button>
                         <x-primary-button type="button" wire:click="simpan" wire:loading.attr="disabled"
                             x-show="activeTab === 'gizi'" class="min-w-[120px]">
-                            <svg class="inline w-4 h-4 mr-1 -ml-1" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1-4l-4 4-4-4m4 4V4" />
-                            </svg>
+                            <x-ikon nama="simpan" class="inline mr-1 -ml-1" />
                             Simpan Penilaian Gizi
                         </x-primary-button>
 
@@ -323,11 +313,7 @@ new class extends Component {
                             <x-primary-button type="button" x-show="activeTab === 'pengkajian-perawat'" x-cloak
                                 class="min-w-[120px]"
                                 x-on:click="Livewire.dispatch('save-rm-pengkajian-awal-ri')">
-                                <svg class="inline w-4 h-4 mr-1 -ml-1" fill="none" stroke="currentColor"
-                                    viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1-4l-4 4-4-4m4 4V4" />
-                                </svg>
+                                <x-ikon nama="simpan" class="inline mr-1 -ml-1" />
                                 Simpan Pengkajian Perawat
                             </x-primary-button>
                         @endhasanyrole
@@ -336,11 +322,7 @@ new class extends Component {
                             <x-primary-button type="button" x-show="activeTab === 'pengkajian-dokter'" x-cloak
                                 class="min-w-[120px]"
                                 x-on:click="Livewire.dispatch('save-rm-pengkajian-dokter-ri')">
-                                <svg class="inline w-4 h-4 mr-1 -ml-1" fill="none" stroke="currentColor"
-                                    viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1-4l-4 4-4-4m4 4V4" />
-                                </svg>
+                                <x-ikon nama="simpan" class="inline mr-1 -ml-1" />
                                 Simpan Pengkajian Dokter
                             </x-primary-button>
                         @endhasanyrole

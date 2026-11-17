@@ -460,14 +460,17 @@ new class extends Component {
                 {{-- Actions --}}
                 <div class="flex justify-end gap-2 pt-2 border-t border-hairline-soft dark:border-gray-800">
                     <x-secondary-button wire:click="resetFormEntry" type="button" :disabled="$isFormLocked">
+                        <x-ikon nama="ubah" />
                         Ganti Kamar
                     </x-secondary-button>
                     <x-secondary-button wire:click="closeModal" type="button">
+                        <x-ikon nama="batal" />
                         Batal
                     </x-secondary-button>
                     <x-primary-button wire:click.prevent="simpanPindahKamar" wire:loading.attr="disabled"
                         wire:target="simpanPindahKamar" :disabled="$isFormLocked">
-                        <span wire:loading.remove wire:target="simpanPindahKamar">
+                        <span wire:loading.remove wire:target="simpanPindahKamar" class="inline-flex items-center gap-2">
+                            <x-ikon nama="setujui" />
                             {{ $activeRoom ? 'Konfirmasi Pindah' : 'Assign Kamar' }}
                         </span>
                         <span wire:loading wire:target="simpanPindahKamar"><x-loading class="w-4 h-4" /></span>

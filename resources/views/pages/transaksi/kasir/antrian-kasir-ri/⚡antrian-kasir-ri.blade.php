@@ -477,22 +477,14 @@ new class extends Component {
                                                     <x-success-button
                                                         wire:click="openAdministrasi({{ $row->sls_no }}, 'kasir')"
                                                         class="whitespace-nowrap justify-center">
-                                                        <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor"
-                                                            viewBox="0 0 24 24" stroke-width="2">
-                                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                        </svg>
+                                                        <x-ikon nama="lihat" ukuran="w-3.5 h-3.5" class="mr-1" />
                                                         Lihat / Cetak
                                                     </x-success-button>
                                                 @else
                                                     <x-secondary-button
                                                         wire:click="openAdministrasi({{ $row->sls_no }}, 'obat')"
                                                         class="whitespace-nowrap justify-center !bg-purple-600 !text-white !border-purple-700 hover:!bg-purple-700 dark:!bg-purple-600 dark:!text-white dark:!border-purple-700 dark:hover:!bg-purple-700">
-                                                        <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor"
-                                                            viewBox="0 0 24 24" stroke-width="2">
-                                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                                d="M2 8h20v12a1 1 0 01-1 1H3a1 1 0 01-1-1V8zm0 0V6a1 1 0 011-1h18a1 1 0 011 1v2M12 14a2 2 0 100-4 2 2 0 000 4z" />
-                                                        </svg>
+                                                        <x-ikon nama="pembayaran" ukuran="w-3.5 h-3.5" class="mr-1" />
                                                         Administrasi
                                                     </x-secondary-button>
                                                 @endif

@@ -1001,10 +1001,7 @@ new class extends Component {
                                         message="Yakin hapus SEP ini dari server BPJS? Tindakan ini tidak dapat dibatalkan."
                                         confirmText="Ya, hapus SEP" cancelText="Batal"
                                         class="w-full text-xs gap-1">
-                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                        </svg>
+                                        <x-ikon nama="hapus" ukuran="w-3 h-3" />
                                         Hapus SEP dari BPJS
                                     </x-confirm-button>
                                 </div>
@@ -1097,12 +1094,7 @@ new class extends Component {
                                         @if (!empty($SPRIForm['noSPRIBPJS']))
                                             <x-secondary-button type="button" wire:click="fetchDataSPRI"
                                                 class="text-xs gap-1">
-                                                <svg class="w-3 h-3" fill="none" stroke="currentColor"
-                                                    viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        stroke-width="2"
-                                                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                                </svg>
+                                                <x-ikon nama="muat-ulang" ukuran="w-3 h-3" />
                                                 Fetch dari BPJS
                                             </x-secondary-button>
                                         @endif
@@ -1325,12 +1317,8 @@ new class extends Component {
                                     <div class="lg:col-span-2 flex items-end">
                                         <x-secondary-button type="button" wire:click="fetchKlasRawat"
                                             :disabled="$isFormLocked" class="w-full text-xs gap-1">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor"
-                                                viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                            </svg>
-                                            ↺ Muat Kelas Rawat dari BPJS
+                                            <x-ikon nama="muat-ulang" />
+                                            Muat Kelas Rawat dari BPJS
                                         </x-secondary-button>
                                     </div>
 
@@ -1369,7 +1357,7 @@ new class extends Component {
                                                 <span wire:loading wire:target="fetchKlasRawat">Sedang memuat kelas
                                                     rawat...</span>
                                                 <span wire:loading.remove wire:target="fetchKlasRawat">Belum termuat
-                                                    dari BPJS — klik "↺ Muat Kelas Rawat" atau pilih manual (kasus
+                                                    dari BPJS — klik "Muat Kelas Rawat" atau pilih manual (kasus
                                                     bayi).</span>
                                             </p>
                                         @endif
@@ -1637,16 +1625,12 @@ new class extends Component {
                         @endif
                     </p>
                     <div class="flex gap-2 shrink-0">
-                        <x-secondary-button type="button" wire:click="closeModal">Batal</x-secondary-button>
+                        <x-secondary-button type="button" wire:click="closeModal"><x-ikon nama="batal" /> Batal</x-secondary-button>
                         @if ($activeTab === 'spri')
                             <x-primary-button type="button" wire:click="simpanSPRI" wire:loading.attr="disabled"
                                 class="!bg-purple-600 hover:!bg-purple-700 focus:!ring-purple-500">
                                 <span wire:loading.remove>
-                                    <svg class="inline w-4 h-4 mr-1 -ml-1" fill="none" stroke="currentColor"
-                                        viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1-4l-4 4-4-4m4 4V4" />
-                                    </svg>
+                                    <x-ikon nama="kirim" class="inline mr-1 -ml-1" />
                                     {{ empty($SPRIForm['noSPRIBPJS']) ? 'Insert SPRI ke BPJS' : 'Update SPRI ke BPJS' }}
                                 </span>
                                 <span wire:loading><x-loading /> Memproses...</span>
@@ -1655,6 +1639,7 @@ new class extends Component {
                             @if ($isFormLocked)
                                 {{-- SEP sudah ada: tombol Edit & Update --}}
                                 <x-secondary-button type="button" wire:click="$set('isFormLocked', false)">
+                                    <x-ikon nama="ubah" />
                                     Edit SEP
                                 </x-secondary-button>
                             @else
@@ -1662,7 +1647,7 @@ new class extends Component {
                                     {{-- Mode edit SEP: update ke BPJS --}}
                                     <x-primary-button type="button" wire:click="updateSEP"
                                         wire:loading.attr="disabled" x-ref="btnSimpanSEP">
-                                        <span wire:loading.remove>Update SEP ke BPJS</span>
+                                        <span wire:loading.remove class="inline-flex items-center gap-2"><x-ikon nama="simpan" /> Update SEP ke BPJS</span>
                                         <span wire:loading><x-loading /> Mengupdate...</span>
                                     </x-primary-button>
                                 @else
@@ -1670,11 +1655,7 @@ new class extends Component {
                                     <x-primary-button type="button" wire:click="generateSEP"
                                         wire:loading.attr="disabled" x-ref="btnSimpanSEP">
                                         <span wire:loading.remove>
-                                            <svg class="inline w-4 h-4 mr-1 -ml-1" fill="none"
-                                                stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                    d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1-4l-4 4-4-4m4 4V4" />
-                                            </svg>
+                                            <x-ikon nama="kirim" class="inline mr-1 -ml-1" />
                                             Buat SEP
                                         </span>
                                         <span wire:loading><x-loading /> Mengirim ke BPJS...</span>

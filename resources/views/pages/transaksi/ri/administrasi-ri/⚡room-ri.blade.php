@@ -415,10 +415,7 @@ new class extends Component {
                         <x-primary-button type="button" wire:click="openPindahKamar"
                             wire:loading.attr="disabled" wire:target="openPindahKamar"
                             class="gap-1 shrink-0 !bg-amber-500 hover:!bg-amber-600 !text-white focus:!ring-amber-300 dark:!bg-amber-500 dark:!text-white dark:hover:!bg-amber-600 dark:focus:!ring-amber-900">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                            </svg>
+                            <x-ikon nama="pindah" />
                             Pindah Kamar
                         </x-primary-button>
                     @endcan
@@ -441,9 +438,7 @@ new class extends Component {
                 </span>
                 @can('ri.pindahKamar')
                     <x-primary-button type="button" wire:click="openPindahKamar" class="gap-1.5">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                        </svg>
+                        <x-ikon nama="tambah" />
                         Assign Kamar
                     </x-primary-button>
                 @endcan

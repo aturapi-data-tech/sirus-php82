@@ -406,10 +406,7 @@
                                 wire:loading.attr="disabled" wire:target="openPindahKamar"
                                 class="gap-1 !bg-amber-500 hover:!bg-amber-600 !text-white focus:!ring-amber-300 dark:!bg-amber-500 dark:!text-white dark:hover:!bg-amber-600 dark:focus:!ring-amber-900">
                                 <span wire:loading.remove wire:target="openPindahKamar" class="flex items-center gap-1">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                                    </svg>Pindah Kamar
+                                    <x-ikon nama="pindah" />Pindah Kamar
                                 </span>
                                 <span wire:loading wire:target="openPindahKamar"
                                     class="flex items-center gap-1"><x-loading /> Memuat...</span>
@@ -422,10 +419,7 @@
                                 wire:loading.attr="disabled" wire:target="openModulDokumen"
                                 class="gap-1 !bg-indigo-600 hover:!bg-indigo-700 !text-white focus:!ring-indigo-300 dark:!bg-indigo-600 dark:!text-white dark:hover:!bg-indigo-700 dark:focus:!ring-indigo-900">
                                 <span wire:loading.remove wire:target="openModulDokumen" class="flex items-center gap-1">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                    </svg>Modul Dokumen
+                                    <x-ikon nama="dokumen" />Modul Dokumen
                                 </span>
                                 <span wire:loading wire:target="openModulDokumen"
                                     class="flex items-center gap-1"><x-loading /> Memuat...</span>
@@ -439,11 +433,7 @@
                                 class="gap-1 !bg-teal-600 hover:!bg-teal-700 !text-white focus:!ring-teal-300 dark:!bg-teal-600 dark:!text-white dark:hover:!bg-teal-700 dark:focus:!ring-teal-900">
                                 <span wire:loading.remove wire:target="openAdministrasiPasien"
                                     class="flex items-center gap-1">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                                        stroke-width="2">
-                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                            d="M2 8h20v12a1 1 0 01-1 1H3a1 1 0 01-1-1V8zm0 0V6a1 1 0 011-1h18a1 1 0 011 1v2M12 14a2 2 0 100-4 2 2 0 000 4z" />
-                                    </svg>Administrasi
+                                    <x-ikon nama="pembayaran" />Administrasi
                                 </span>
                                 <span wire:loading wire:target="openAdministrasiPasien"
                                     class="flex items-center gap-1"><x-loading /> Memuat...</span>
@@ -456,11 +446,7 @@
                                 wire:loading.attr="disabled" wire:target="openLogAktivitas"
                                 class="order-first gap-1 !bg-slate-600 hover:!bg-slate-700 !text-white focus:!ring-slate-300 dark:!bg-slate-600 dark:!text-white dark:hover:!bg-slate-700 dark:focus:!ring-slate-900">
                                 <span wire:loading.remove wire:target="openLogAktivitas" class="flex items-center gap-1">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                                        stroke-width="2">
-                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                                    </svg>Log Aktivitas
+                                    <x-ikon nama="riwayat" />Log Aktivitas
                                 </span>
                                 <span wire:loading wire:target="openLogAktivitas"
                                     class="flex items-center gap-1"><x-loading /> Memuat...</span>
@@ -473,11 +459,7 @@
                                 wire:click="openEresep('{{ $riHdrNo }}')" wire:loading.attr="disabled"
                                 wire:target="openEresep">
                                 <span wire:loading.remove wire:target="openEresep" class="flex items-center gap-1">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                                        stroke-width="2">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                    </svg>E-Resep
+                                    <x-ikon nama="dokumen" />E-Resep
                                 </span>
                                 <span wire:loading wire:target="openEresep" class="flex items-center gap-1"><x-loading />
                                     Memuat...</span>
@@ -490,11 +472,7 @@
                             <x-primary-button type="button"
                                 wire:click="$dispatch('resume-medis-ri.open', { riHdrNo: {{ $riHdrNo }} })"
                                 class="gap-1 !bg-rose-600 hover:!bg-rose-700 !text-white focus:!ring-rose-300 dark:!bg-rose-600 dark:!text-white dark:hover:!bg-rose-700 dark:focus:!ring-rose-900">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                                    stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                </svg>
+                                <x-ikon nama="dokumen" />
                                 Resume Medis
                             </x-primary-button>
                         @endif
@@ -504,11 +482,7 @@
                             <x-primary-button type="button"
                                 wire:click="$dispatch('ringkasan-pulang-ri.open', { riHdrNo: {{ $riHdrNo }} })"
                                 class="gap-1 !bg-teal-600 hover:!bg-teal-700 !text-white focus:!ring-teal-300 dark:!bg-teal-600 dark:!text-white dark:hover:!bg-teal-700 dark:focus:!ring-teal-900">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                                    stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                </svg>
+                                <x-ikon nama="dokumen" />
                                 Ringkasan Pulang
                             </x-primary-button>
                         @endhasanyrole
@@ -518,10 +492,7 @@
                             <x-primary-button type="button"
                                 wire:click="$dispatch('rekam-medis-nasional.open', { jalur: 'RI', nomor: '{{ $riHdrNo }}' })"
                                 class="gap-1 !bg-emerald-600 hover:!bg-emerald-700 !text-white focus:!ring-emerald-300 dark:!bg-emerald-600 dark:!text-white dark:hover:!bg-emerald-700 dark:focus:!ring-emerald-900">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                        d="M21 12a9 9 0 11-18 0 9 9 0 0118 0zM3.6 9h16.8M3.6 15h16.8M12 3a15 15 0 010 18M12 3a15 15 0 000 18" />
-                                </svg>
+                                <x-ikon nama="dokumen" />
                                 Rekam Medis Nasional
                             </x-primary-button>
                         @endhasanyrole
@@ -529,7 +500,7 @@
 
                     {{-- KANAN: Tutup + Simpan dinamis per active tab --}}
                     <div class="flex items-center gap-2">
-                        <x-secondary-button x-on:click="tryClose()">Tutup</x-secondary-button>
+                        <x-secondary-button x-on:click="tryClose()"><x-ikon nama="batal" /> Tutup</x-secondary-button>
 
                         @if (!$isFormLocked)
                             <template x-if="saveMap[activeTab]">
@@ -539,11 +510,7 @@
                                     x-on:sbar-edit-mode.window="sbarEditing = $event.detail?.editing ?? false"
                                     x-on:open-modal.window="cpptEditing = false; sbarEditing = false"
                                     x-on:click="saveActive()">
-                                    <svg class="inline w-4 h-4 mr-1 -ml-1" fill="none" stroke="currentColor"
-                                        viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1-4l-4 4-4-4m4 4V4" />
-                                    </svg>
+                                    <x-ikon nama="simpan" class="inline mr-1 -ml-1" />
                                     {{-- Saat mode edit, label berubah jadi "Perbarui CPPT/SBAR" --}}
                                     <span x-show="activeTab === 'cppt' && cpptEditing" x-cloak>Perbarui CPPT</span>
                                     <span x-show="activeTab === 'sbar' && sbarEditing" x-cloak>Perbarui SBAR</span>

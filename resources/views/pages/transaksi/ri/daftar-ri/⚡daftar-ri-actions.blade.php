@@ -1043,11 +1043,7 @@ new class extends Component {
                                     @if ($formMode === 'edit' && (($formDaftar['klaimStatus'] ?? '') === 'BPJS' || ($formDaftar['klaimId'] ?? '') === 'JM'))
                                         <x-info-button type="button" wire:click="openVclaimModal"
                                             class="gap-2 text-xs">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor"
-                                                viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                            </svg>
+                                            <x-ikon nama="dokumen" />
                                             SPRI / SEP
                                         </x-info-button>
                                     @endif
@@ -1120,7 +1116,7 @@ new class extends Component {
                         </x-ghost-button>
                     </a>
                     <div class="flex gap-3">
-                        <x-secondary-button x-on:click="tryClose()">Batal</x-secondary-button>
+                        <x-secondary-button x-on:click="tryClose()"><x-ikon nama="batal" /> Batal</x-secondary-button>
                         {{-- Guard sekali-klik: wire:loading.attr="disabled" punya jendela
                              sepersekian detik sebelum atribut terpasang — double-click cepat
                              bisa mengirim save() dua kali (pasien terdaftar ganda). Flag
@@ -1129,11 +1125,7 @@ new class extends Component {
                             x-on:click.prevent="if ($el.dataset.busy) return; $el.dataset.busy = '1'; $wire.save().finally(() => { delete $el.dataset.busy })"
                             wire:loading.attr="disabled" :disabled="$isFormLocked">
                             <span wire:loading.remove>
-                                <svg class="inline w-4 h-4 mr-1 -ml-1" fill="none" stroke="currentColor"
-                                    viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1-4l-4 4-4-4m4 4V4" />
-                                </svg>
+                                <x-ikon nama="simpan" class="inline mr-1 -ml-1" />
                                 {{ $isFormLocked ? 'Read Only' : 'Simpan' }}
                             </span>
                             <span wire:loading><x-loading /> Menyimpan...</span>

@@ -390,6 +390,7 @@ new class extends Component {
                                         class="flex-1 text-sm" />
                                     <x-secondary-button type="button" wire:click="$set('obatDanCairan.productId', '')"
                                         class="text-xs whitespace-nowrap shrink-0">
+                                        <x-ikon nama="ubah" ukuran="w-3.5 h-3.5" />
                                         Ganti
                                     </x-secondary-button>
                                 </div>

@@ -906,17 +906,11 @@ new class extends Component {
                     {{-- Buttons --}}
                     <div class="flex items-center justify-between pt-1">
                         <x-ghost-button wire:click="resetFormEntry" type="button" class="text-sm">
-                            <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                            </svg>
+                            <x-ikon nama="kembalikan" ukuran="w-3.5 h-3.5" class="mr-1" />
                             Reset
                         </x-ghost-button>
                         <x-primary-button wire:click="addAsuhanKeperawatan" type="button">
-                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M12 4v16m8-8H4" />
-                            </svg>
+                            <x-ikon nama="simpan" class="mr-1" />
                             Simpan Asuhan Keperawatan
                         </x-primary-button>
                     </div>

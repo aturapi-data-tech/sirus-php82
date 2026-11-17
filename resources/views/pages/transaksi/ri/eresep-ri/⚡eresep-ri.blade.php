@@ -781,9 +781,7 @@ new class extends Component {
                                                             class="!py-2 !px-3 !text-sm w-full justify-center !bg-emerald-600 hover:!bg-emerald-700 !text-white focus:!ring-emerald-300 dark:!bg-emerald-600 dark:!text-white dark:hover:!bg-emerald-700 dark:focus:!ring-emerald-900"
                                                             wire:loading.attr="disabled"
                                                             title="Tanda tangani resep ini dan kirimkan ke apotek">
-                                                            <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                            </svg>
+                                                            <x-ikon nama="ttd" class="mr-1.5" />
                                                             TTD & Kirim ke Apotek
                                                         </x-primary-button>
 
@@ -813,9 +811,7 @@ new class extends Component {
                                                                         wire:loading.attr="disabled"
                                                                         wire:confirm="Batalkan TTD resep ini untuk diedit ulang? Data di apotek akan dihapus dan resep kembali ke draft."
                                                                         title="Batalkan TTD agar resep bisa diedit ulang">
-                                                                        <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                                                                            <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                                                        </svg>
+                                                                        <x-ikon nama="ubah" class="mr-1.5" />
                                                                         Edit Resep
                                                                     </x-primary-button>
                                                                     @if ($hasSlsNo)
@@ -831,9 +827,7 @@ new class extends Component {
                                                                 wire:click="copyResepHdr({{ $resepIndex }})"
                                                                 class="!py-2 !px-3 !text-sm w-full justify-center !bg-indigo-600 hover:!bg-indigo-700 !text-white focus:!ring-indigo-300 dark:!bg-indigo-600 dark:!text-white dark:hover:!bg-indigo-700 dark:focus:!ring-indigo-900"
                                                                 title="Buat resep baru dengan isi obat yang sama (tanpa TTD)">
-                                                                <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                                                </svg>
+                                                                <x-ikon nama="muat-ulang" class="mr-1.5" />
                                                                 Salin ke Resep Baru
                                                             </x-primary-button>
                                                         @endif
@@ -844,9 +838,7 @@ new class extends Component {
                                                         wire:click="simpanPlanCppt({{ $resepIndex }})"
                                                         class="!py-2 !px-3 !text-sm w-full justify-center !bg-teal-600 hover:!bg-teal-700 !text-white focus:!ring-teal-300 dark:!bg-teal-600 dark:!text-white dark:hover:!bg-teal-700 dark:focus:!ring-teal-900"
                                                         title="Salin ringkasan obat resep ini ke kolom Plan di form CPPT">
-                                                        <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                                                        </svg>
+                                                        <x-ikon nama="kirim" class="mr-1.5" />
                                                         Kirim ke Plan CPPT
                                                     </x-primary-button>
 
@@ -941,6 +933,7 @@ new class extends Component {
                 class="sticky bottom-0 z-10 px-6 py-4 bg-canvas border-t border-hairline dark:bg-gray-900 dark:border-gray-700">
                 <div class="flex justify-end gap-3">
                     <x-secondary-button wire:click="closeModal">
+                        <x-ikon nama="batal" />
                         Tutup
                     </x-secondary-button>
                 </div>

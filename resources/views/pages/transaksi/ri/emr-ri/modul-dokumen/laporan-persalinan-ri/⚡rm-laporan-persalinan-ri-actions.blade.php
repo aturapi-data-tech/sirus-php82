@@ -1054,7 +1054,7 @@ new class extends Component {
                                             <div class="flex items-end col-span-2 sm:col-span-3 lg:col-span-1">
                                                 <x-primary-button type="button" wire:click="tambahBayi" wire:loading.attr="disabled" wire:target="tambahBayi" class="justify-center w-full gap-1">
                                                     <span wire:loading.remove wire:target="tambahBayi" class="flex items-center gap-1">
-                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
+                                                        <x-ikon nama="tambah" />
                                                         Tambah Bayi
                                                     </span>
                                                     <span wire:loading wire:target="tambahBayi"><x-loading class="w-4 h-4" /></span>

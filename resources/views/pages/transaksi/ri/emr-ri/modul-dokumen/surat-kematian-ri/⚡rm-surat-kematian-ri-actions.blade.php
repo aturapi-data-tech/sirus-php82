@@ -499,11 +499,11 @@ new class extends Component {
 
             <div
                 class="sticky bottom-0 z-10 flex justify-end gap-3 px-6 py-4 border-t bg-canvas border-hairline dark:bg-gray-900 dark:border-gray-700">
-                <x-secondary-button wire:click="closeModal">Tutup</x-secondary-button>
+                <x-secondary-button wire:click="closeModal"><x-ikon nama="batal" /> Tutup</x-secondary-button>
                 @if (!$isFormLocked)
-                    <x-secondary-button wire:click="saveDraft" wire:loading.attr="disabled">Simpan
+                    <x-secondary-button wire:click="saveDraft" wire:loading.attr="disabled"><x-ikon nama="simpan" /> Simpan
                         Draft</x-secondary-button>
-                    <x-primary-button wire:click="ttdDokter" wire:loading.attr="disabled">TTD-E Dokter &
+                    <x-primary-button wire:click="ttdDokter" wire:loading.attr="disabled"><x-ikon nama="ttd" /> TTD-E Dokter &
                         Kunci</x-primary-button>
                 @endif
                 @if ($sudahAda)

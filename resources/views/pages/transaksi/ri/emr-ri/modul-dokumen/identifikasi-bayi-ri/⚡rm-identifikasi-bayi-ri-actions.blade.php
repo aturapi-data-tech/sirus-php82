@@ -547,7 +547,7 @@ new class extends Component {
 
                         <div class="flex justify-end">
                             <x-primary-button type="button" wire:click="addEntry" wire:loading.attr="disabled" wire:target="addEntry">
-                                <span wire:loading.remove wire:target="addEntry">Simpan Identifikasi Bayi</span>
+                                <span wire:loading.remove wire:target="addEntry" class="inline-flex items-center gap-2"><x-ikon nama="simpan" /> Simpan Identifikasi Bayi</span>
                                 <span wire:loading wire:target="addEntry">Menyimpan…</span>
                             </x-primary-button>
                         </div>
@@ -599,7 +599,7 @@ new class extends Component {
                                                     @if (!$rowFinal && !$isFormLocked)
                                                     <x-primary-button type="button" wire:click="ttdEntry('{{ $rowKey }}')" wire:loading.attr="disabled"
                                                     wire:target="ttdEntry('{{ $rowKey }}')" class="gap-1.5 whitespace-nowrap" title="Tanda tangani entri ini">
-                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                                                    <x-ikon nama="ttd" ukuran="w-5 h-5" />
                                                     TTD Saya
                                                     </x-primary-button>
                                                     @endif

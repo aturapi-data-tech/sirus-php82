@@ -972,7 +972,7 @@ new class extends Component {
                                                                     <x-primary-button type="button" wire:click="saveEdit"
                                                                         wire:loading.attr="disabled" wire:target="saveEdit">
                                                                         <span wire:loading.remove
-                                                                            wire:target="saveEdit">Simpan</span>
+                                                                            wire:target="saveEdit" class="inline-flex items-center gap-2"><x-ikon nama="simpan" /> Simpan</span>
                                                                         <span wire:loading wire:target="saveEdit"><x-loading /></span>
                                                                     </x-primary-button>
                                                                     <x-icon-button color="gray" type="button"
@@ -1272,6 +1272,7 @@ new class extends Component {
                                                     title="Batal Transaksi"
                                                     message="Yakin ingin membatalkan transaksi ini? Bon Inap (jika ada) akan dihapus."
                                                     confirmText="Ya, batalkan" cancelText="Batal">
+                                                    <x-ikon nama="batalkan" />
                                                     Batal Transaksi
                                                 </x-confirm-button>
                                             @endif
@@ -1344,7 +1345,7 @@ new class extends Component {
                                             @if (strtoupper($riStatus ?? '') !== 'P')
                                                 <x-primary-button wire:click="postTransaksi" wire:loading.attr="disabled"
                                                     wire:target="postTransaksi" x-ref="btnPostRi">
-                                                    <span wire:loading.remove wire:target="postTransaksi">Post
+                                                    <span wire:loading.remove wire:target="postTransaksi" class="inline-flex items-center gap-2"><x-ikon nama="kirim" /> Post
                                                         Transaksi</span>
                                                     <span wire:loading wire:target="postTransaksi"><x-loading /></span>
                                                 </x-primary-button>
@@ -1387,7 +1388,7 @@ new class extends Component {
                 {{-- FOOTER --}}
                 <div
                     class="flex items-center justify-between gap-2 px-6 py-4 border-t border-hairline bg-surface-soft dark:border-gray-700 dark:bg-gray-900">
-                    <x-secondary-button wire:click="closeModal">Tutup</x-secondary-button>
+                    <x-secondary-button wire:click="closeModal"><x-ikon nama="batal" /> Tutup</x-secondary-button>
 
                     <div class="flex gap-2">
                         @if ($activeTab === 'kasir' && $this->isKasirPosted)

@@ -519,11 +519,13 @@ new class extends Component {
                         <x-confirm-button variant="warning-soft" action="batalKirimReturn()" title="Batal Kirim Return"
                             message="Transfer stok return pasien ini dibatalkan, stok kembali seperti sebelum dikirim. Lanjutkan?"
                             confirmText="Ya, batalkan">
+                            <x-ikon nama="batal" />
                             Batal Kirim
                         </x-confirm-button>
                     @endif
                     @if ($jumlahBelumDikirim > 0)
                         <x-primary-button type="button" wire:click="bukaKirimReturn" :disabled="!$isFormLocked">
+                            <x-ikon nama="kirim" />
                             Kirim Return ke Apotek
                         </x-primary-button>
                         @if (!$isFormLocked)
@@ -628,10 +630,10 @@ new class extends Component {
             </div>
 
             <div class="flex justify-end gap-2 pt-2 border-t border-hairline-soft dark:border-gray-800">
-                <x-secondary-button type="button" wire:click="tutupKirimReturn">Batal</x-secondary-button>
+                <x-secondary-button type="button" wire:click="tutupKirimReturn"><x-ikon nama="batal" /> Batal</x-secondary-button>
                 <x-primary-button type="button" wire:click.prevent="kirimReturnKeApotek" wire:loading.attr="disabled"
                     wire:target="kirimReturnKeApotek">
-                    <span wire:loading.remove wire:target="kirimReturnKeApotek">Kirim ke Apotek</span>
+                    <span wire:loading.remove wire:target="kirimReturnKeApotek" class="inline-flex items-center gap-2"><x-ikon nama="kirim" /> Kirim ke Apotek</span>
                     <span wire:loading wire:target="kirimReturnKeApotek"><x-loading class="w-4 h-4" /></span>
                 </x-primary-button>
             </div>
