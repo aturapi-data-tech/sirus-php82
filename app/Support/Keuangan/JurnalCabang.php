@@ -369,7 +369,7 @@ final class JurnalCabang
             // ── BAYAR_RJ (ACCOUNTS)
             [
                 'sumber'     => 'ACCOUNTS',
-                'label'      => '\'BAYAR_RJ (\'||a.rjc_desc||\')\'',
+                'label'      => '\'BAYAR_RJ (\'||case when a.rjc_desc like \'PIUT%\' then \'PIUT \' end||(select reg_name from rsmst_pasiens x where x.reg_no=b.reg_no)||\' / \'||b.reg_no||\' / \'||a.rj_no||\')\'',
                 'akun'       => 'a.acc_id',
                 'akunLawan'  => 'conf:RJ1',
                 'shift'      => 'nvl(a.shift,\'1\')',
@@ -381,7 +381,7 @@ final class JurnalCabang
             ],
             [
                 'sumber'     => 'ACCOUNTS',
-                'label'      => '\'BAYAR_RJ (\'||a.rjc_desc||\')\'',
+                'label'      => '\'BAYAR_RJ (\'||case when a.rjc_desc like \'PIUT%\' then \'PIUT \' end||(select reg_name from rsmst_pasiens x where x.reg_no=b.reg_no)||\' / \'||b.reg_no||\' / \'||a.rj_no||\')\'',
                 'akun'       => 'conf:RJ1',
                 'akunLawan'  => 'a.acc_id',
                 'shift'      => 'nvl(a.shift,\'1\')',
@@ -681,7 +681,7 @@ final class JurnalCabang
             // ── BAYAR_UGD (ACCOUNTS)
             [
                 'sumber'     => 'ACCOUNTS',
-                'label'      => '\'BAYAR_UGD (\'||a.RJc_desc||\')\'',
+                'label'      => '\'BAYAR_UGD (\'||case when a.rjc_desc like \'PIUT%\' then \'PIUT \' end||(select reg_name from rsmst_pasiens x where x.reg_no=b.reg_no)||\' / \'||b.reg_no||\' / \'||a.rj_no||\')\'',
                 'akun'       => 'a.acc_id',
                 'akunLawan'  => 'conf:UGD1',
                 'shift'      => 'nvl(a.shift,\'1\')',
@@ -693,7 +693,7 @@ final class JurnalCabang
             ],
             [
                 'sumber'     => 'ACCOUNTS',
-                'label'      => '\'BAYAR_UGD (\'||a.RJC_desc||\')\'',
+                'label'      => '\'BAYAR_UGD (\'||case when a.rjc_desc like \'PIUT%\' then \'PIUT \' end||(select reg_name from rsmst_pasiens x where x.reg_no=b.reg_no)||\' / \'||b.reg_no||\' / \'||a.rj_no||\')\'',
                 'akun'       => 'conf:UGD1',
                 'akunLawan'  => 'a.acc_id',
                 'shift'      => 'nvl(a.shift,\'1\')',
@@ -759,7 +759,7 @@ final class JurnalCabang
             // ── BAYAR_RESEP (ACCOUNTS)
             [
                 'sumber'     => 'ACCOUNTS',
-                'label'      => '\'BAYAR_RESEP (\'||a.sls_no||\' \'||a.reg_no||\')\'',
+                'label'      => '\'BAYAR_RESEP (\'||(select reg_name from rsmst_pasiens x where x.reg_no=a.reg_no)||\' / \'||a.reg_no||\' / \'||a.sls_no||\')\'',
                 'akun'       => 'a.acc_id',
                 'akunLawan'  => 'conf:RESEP1',
                 'shift'      => 'nvl(a.shift,\'1\')',
@@ -771,7 +771,7 @@ final class JurnalCabang
             ],
             [
                 'sumber'     => 'ACCOUNTS',
-                'label'      => '\'BAYAR_RESEP (\'||a.sls_no||\' \'||a.reg_no||\')\'',
+                'label'      => '\'BAYAR_RESEP (\'||(select reg_name from rsmst_pasiens x where x.reg_no=a.reg_no)||\' / \'||a.reg_no||\' / \'||a.sls_no||\')\'',
                 'akun'       => 'conf:RESEP1',
                 'akunLawan'  => 'a.acc_id',
                 'shift'      => 'nvl(a.shift,\'1\')',
@@ -1515,7 +1515,7 @@ final class JurnalCabang
             // ── BAYAR_RI (ACCOUNTS)
             [
                 'sumber'     => 'ACCOUNTS',
-                'label'      => '\'BAYAR_RI (\'||(select reg_name||\' / \'||x.reg_no||\'\' from rsmst_pasiens x where x.reg_no=b.reg_no)||\')\'',
+                'label'      => '\'BAYAR_RI (\'||(select reg_name from rsmst_pasiens x where x.reg_no=b.reg_no)||\' / \'||b.reg_no||\' / \'||a.rihdr_no||\')\'',
                 'akun'       => 'a.acc_id',
                 'akunLawan'  => 'conf:RI1',
                 'shift'      => 'nvl(a.shift,\'1\')',
@@ -1527,7 +1527,7 @@ final class JurnalCabang
             ],
             [
                 'sumber'     => 'ACCOUNTS',
-                'label'      => '\'BAYAR_RI (\'||(select reg_name||\' / \'||x.reg_no||\'\' from rsmst_pasiens x where x.reg_no=b.reg_no)||\')\'',
+                'label'      => '\'BAYAR_RI (\'||(select reg_name from rsmst_pasiens x where x.reg_no=b.reg_no)||\' / \'||b.reg_no||\' / \'||a.rihdr_no||\')\'',
                 'akun'       => 'conf:RI1',
                 'akunLawan'  => 'a.acc_id',
                 'shift'      => 'nvl(a.shift,\'1\')',
