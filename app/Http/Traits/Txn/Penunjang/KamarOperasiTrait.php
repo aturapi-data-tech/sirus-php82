@@ -39,20 +39,31 @@ trait KamarOperasiTrait
     /** Label sumber untuk tampilan & kalimat toast/audit. */
     private const LABEL_SUMBER_OK = ['RJ' => 'Rawat Jalan', 'UGD' => 'Gawat Darurat', 'RI' => 'Rawat Inap'];
 
-    /** Petugas yang boleh membuka & mengubah transaksi OK. */
-    protected function isAllowedRoleOk(): bool
+    /**
+     * Petugas yang boleh membuka & mengubah transaksi OK (tindakan, tarif, transfer biaya).
+     * Tu ikut karena transaksinya menyangkut tagihan. Dokter/Casemix/Mr/Gizi TIDAK —
+     * mereka hanya membuka Dokumen Pelayanan Bedah dari menu titik-3 (ROLE_MENU_OK).
+     */
+    public function isAllowedRoleOk(): bool
     {
         $user = auth()->user();
 
-        return $user ? $user->hasAnyRole(['Admin', 'Manager Umum', 'Supervisor Penunjang', 'Perawat']) : false;
+        return $user ? $user->hasAnyRole(['Admin', 'Manager Umum', 'Supervisor Penunjang', 'Supervisor Tu', 'Tu', 'Perawat']) : false;
     }
 
-    /** Batal transaksi = eskalasi ke atasan, sejalan dengan modul Laboratorium. */
-    protected function isAllowedBatalOk(): bool
+    /** Role yang melihat menu titik-3 di daftar OK = role transaksi + role dokumen bedah. */
+    public const ROLE_MENU_OK = ['Admin', 'Manager Umum', 'Supervisor Penunjang', 'Supervisor Tu', 'Tu', 'Perawat', 'Dokter', 'Casemix', 'Mr', 'Gizi'];
+
+    /**
+     * Batal transaksi = eskalasi ke atasan, sejalan dengan modul Laboratorium.
+     * Supervisor Tu = atasan Tu yang ikut mengentri; Tu sendiri TIDAK boleh batal.
+     * Public: dipakai juga oleh view untuk menampilkan tombol batal.
+     */
+    public function isAllowedBatalOk(): bool
     {
         $user = auth()->user();
 
-        return $user ? $user->hasAnyRole(['Admin', 'Supervisor Penunjang']) : false;
+        return $user ? $user->hasAnyRole(['Admin', 'Supervisor Penunjang', 'Supervisor Tu']) : false;
     }
 
     /**
