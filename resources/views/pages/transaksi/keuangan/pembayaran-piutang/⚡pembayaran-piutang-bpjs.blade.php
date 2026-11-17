@@ -323,11 +323,13 @@ new class extends Component {
 
                 <div class="flex items-center gap-2 ml-auto">
                     <x-secondary-button type="button" wire:click="centangHalamanIni">
+                        <x-ikon nama="setujui" />
                         Centang semua di halaman ini
                     </x-secondary-button>
-                    <x-secondary-button type="button" wire:click="kosongkanPilihan">Kosongkan</x-secondary-button>
+                    <x-secondary-button type="button" wire:click="kosongkanPilihan"><x-ikon nama="kembalikan" /> Kosongkan</x-secondary-button>
                     <x-primary-button type="button" wire:click="prosesTerpilih"
                         wire:loading.attr="disabled" wire:target="prosesTerpilih">
+                        <x-ikon nama="proses" />
                         Proses &amp; Lunaskan
                     </x-primary-button>
                 </div>

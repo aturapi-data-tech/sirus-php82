@@ -1093,7 +1093,7 @@ new class extends Component {
                     <div class="text-xs text-muted dark:text-gray-400">
                         Semua usulan di layar ini hitungan bantu — tidak ada angka master yang diubah dari sini.
                     </div>
-                    <x-secondary-button type="button" wire:click="closeModal">Tutup</x-secondary-button>
+                    <x-secondary-button type="button" wire:click="closeModal"><x-ikon nama="batal" /> Tutup</x-secondary-button>
                 </div>
             </div>
         </div>

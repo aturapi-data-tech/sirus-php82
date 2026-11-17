@@ -604,8 +604,13 @@ danger; Hentikan ×2 → danger-button; Muat Ulang footer, Tarik Data Aplicares/
 Daftarkan ke Aplicares ×2 → info; Daftarkan UUID kamar → teal; Tambah SLKI/SIKI → secondary;
 Reset Status Kunci → confirm warning-soft; di tabel Aplicares: Hapus per baris → danger-soft,
 Samakan → secondary). 25 ikon SVG manual di Master juga diganti `<x-ikon>`, jadi Master kini 100%
-memakai katalog (164 tombol; 2 tombol pilihan Kamar sengaja tanpa ikon). Area lain menyusul per
-modul: pasang ikon + samakan komponen + ganti SVG manual sekaligus.
+memakai katalog (164 tombol; 2 tombol pilihan Kamar sengaja tanpa ikon).
+- 2026-11-17 **Keuangan** (34 tombol): 26 ikon dipasang, 6 SVG manual diganti, Unduh Data Excel
+  info → outline, Evaluasi (analisa perputaran obat) secondary → outline. "Transaksi Baru" di
+  pembayaran hutang/topup = mengosongkan supplier → ikon `kembalikan`. Tombol ◀ ▶ pindah bulan
+  (Buku Besar, Laba Rugi) sudah berupa simbol, dibiarkan.
+
+Area lain menyusul per modul: pasang ikon + samakan komponen + ganti SVG manual sekaligus.
 
 ### Status penerapan (pemindaian 2026-11-17)
 

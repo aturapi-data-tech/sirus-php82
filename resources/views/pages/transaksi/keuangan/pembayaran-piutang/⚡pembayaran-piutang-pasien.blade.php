@@ -190,7 +190,7 @@ new class extends Component {
                                     <div class="font-semibold leading-tight truncate text-ink dark:text-gray-100">{{ $regName }}</div>
                                     <div class="font-mono text-xs leading-tight text-muted">No. RM {{ $regNo }}</div>
                                 </div>
-                                <x-secondary-button type="button" wire:click="gantiPasien">Ganti</x-secondary-button>
+                                <x-secondary-button type="button" wire:click="gantiPasien"><x-ikon nama="ubah" /> Ganti</x-secondary-button>
                             </div>
                         @else
                             <livewire:lov.pasien.lov-pasien target="pasien-piutang" label="Cari Pasien"
@@ -245,6 +245,7 @@ new class extends Component {
                         <x-toolbar-refresh-reset :label="null" />
                         <x-primary-button type="button" wire:click="prosesTerpilih"
                             wire:loading.attr="disabled" wire:target="prosesTerpilih">
+                            <x-ikon nama="proses" />
                             Proses Pembayaran
                         </x-primary-button>
                     </div>
