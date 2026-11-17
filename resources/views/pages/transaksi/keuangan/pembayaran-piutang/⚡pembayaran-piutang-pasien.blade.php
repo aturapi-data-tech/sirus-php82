@@ -181,10 +181,10 @@ new class extends Component {
             {{-- DUA KOLOM (pola Daftar RJ actions): KIRI = pasien + filter + ringkasan + Proses;
                  KANAN = daftar nota pasien (tanpa kolom Pasien — halaman ini memang per 1 pasien). --}}
             @php $pasienInfo = $this->rows->first(); @endphp
-            <div class="grid flex-1 min-h-0 grid-cols-1 gap-4 mt-2 lg:grid-cols-12">
+            <div class="flex flex-col flex-1 min-h-0 gap-4 mt-2 lg:flex-row">
 
                 {{-- KOLOM KIRI --}}
-                <div class="flex flex-col gap-5 p-5 overflow-y-auto border shadow-sm lg:col-span-4 xl:col-span-3 bg-canvas border-hairline rounded-2xl dark:bg-gray-900 dark:border-gray-700">
+                <div class="flex flex-col gap-5 p-5 overflow-y-auto border shadow-sm shrink-0 lg:w-96 bg-canvas border-hairline rounded-2xl dark:bg-gray-900 dark:border-gray-700">
 
                     <div>
                         @if ($regNo)
@@ -238,8 +238,8 @@ new class extends Component {
                         <x-toolbar-refresh-reset :label="null" />
                     </div>
 
-                    {{-- Ringkasan + Proses: didorong ke dasar kartu supaya selalu terlihat --}}
-                    <div class="pt-4 mt-auto space-y-3 border-t border-hairline dark:border-gray-700">
+                    {{-- Ringkasan + Proses: langsung di bawah filter supaya tak terpotong layar --}}
+                    <div class="pt-4 space-y-3 border-t border-hairline dark:border-gray-700">
                         @if ($regNo)
                             <div class="flex justify-between gap-3 text-sm">
                                 <span class="text-muted dark:text-gray-400">Total piutang ({{ $this->rows->count() }} nota)</span>
@@ -265,7 +265,7 @@ new class extends Component {
                 </div>
 
                 {{-- KOLOM KANAN — daftar nota --}}
-                <div class="flex flex-col min-h-0 border shadow-sm lg:col-span-8 xl:col-span-9 bg-canvas border-hairline rounded-2xl dark:border-gray-700 dark:bg-gray-900">
+                <div class="flex flex-col flex-1 min-w-0 min-h-0 border shadow-sm bg-canvas border-hairline rounded-2xl dark:border-gray-700 dark:bg-gray-900">
                     <div class="flex items-center justify-between gap-3 px-5 py-3 border-b border-hairline dark:border-gray-700">
                         <div class="text-sm font-semibold tracking-wide uppercase text-muted dark:text-gray-300">Nota Belum Lunas</div>
                         <x-toggle :current="$this->semuaTercentang ? '1' : '0'" trueValue="1" falseValue="0"
