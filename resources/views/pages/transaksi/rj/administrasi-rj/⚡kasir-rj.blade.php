@@ -236,7 +236,7 @@ new class extends Component {
         // bisa masuk tagihan karena transfer mensyaratkan rj_status = 'A'.
         if ($this->checkOkPendingRJ($this->rjNo)) {
             $nomorOk = implode(', ', $this->daftarOkPendingRJ($this->rjNo));
-            $this->dispatch('toast', type: 'error', message: "Transaksi Kamar Operasi No. {$nomorOk} belum ditransfer ke biaya rawat jalan, pembayaran tidak bisa diproses.");
+            $this->dispatch('toast', type: 'error', message: "Transaksi Tindakan Operasi No. {$nomorOk} belum ditransfer ke biaya rawat jalan, pembayaran tidak bisa diproses.");
             return;
         }
 

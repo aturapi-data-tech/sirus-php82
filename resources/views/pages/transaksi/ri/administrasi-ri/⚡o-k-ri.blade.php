@@ -50,7 +50,7 @@ new class extends Component {
     x-on:keydown.enter="$dispatch('administrasi-ri-goto-tab', { tab: 'RiRoom', focus: 'focus-panel-room-ri' })">
     <div class="overflow-hidden bg-canvas border border-hairline rounded-2xl dark:border-gray-700 dark:bg-gray-900">
         <div class="flex items-center justify-between px-4 py-3 border-b border-hairline dark:border-gray-700">
-            <h3 class="text-sm font-semibold text-body dark:text-gray-300">Daftar Operasi (OK)</h3>
+            <h3 class="text-sm font-semibold text-body dark:text-gray-300">Daftar Tindakan Operasi</h3>
             <x-badge variant="gray">{{ count($dataOk) }} item</x-badge>
         </div>
         <div class="overflow-x-auto">

@@ -178,7 +178,7 @@
         @if ($data['eOperasi'] > 0)
         <tr><td colspan="3" class="{{ $hdrSection }}">E. OPERASI</td></tr>
         <tr>
-            <td class="{{ $cellLabel }}">KAMAR OPERASI (OK)</td>
+            <td class="{{ $cellLabel }}">TINDAKAN OPERASI</td>
             <td class="{{ $cellAmt }}">{{ $rp($data['eOperasi']) }}</td>
             <td></td>
         </tr>

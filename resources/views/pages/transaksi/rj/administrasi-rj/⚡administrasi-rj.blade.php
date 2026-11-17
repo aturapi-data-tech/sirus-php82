@@ -57,7 +57,7 @@ new class extends Component {
 
     // ── Sub-Tab ──
     public string $activeTabAdministrasi = 'JasaKaryawan';
-    public array $EmrMenuAdministrasi = [['ermMenuId' => 'JasaKaryawan', 'ermMenuName' => 'Jasa Karyawan'], ['ermMenuId' => 'JasaDokter', 'ermMenuName' => 'Jasa Dokter'], ['ermMenuId' => 'JasaMedis', 'ermMenuName' => 'Jasa Medis'], ['ermMenuId' => 'Obat', 'ermMenuName' => 'Obat'], ['ermMenuId' => 'Laboratorium', 'ermMenuName' => 'Laboratorium'], ['ermMenuId' => 'Radiologi', 'ermMenuName' => 'Radiologi'], ['ermMenuId' => 'KamarOperasi', 'ermMenuName' => 'Kamar Operasi'], ['ermMenuId' => 'LainLain', 'ermMenuName' => 'Lain-Lain'], ['ermMenuId' => 'Kasir', 'ermMenuName' => 'Kasir']];
+    public array $EmrMenuAdministrasi = [['ermMenuId' => 'JasaKaryawan', 'ermMenuName' => 'Jasa Karyawan'], ['ermMenuId' => 'JasaDokter', 'ermMenuName' => 'Jasa Dokter'], ['ermMenuId' => 'JasaMedis', 'ermMenuName' => 'Jasa Medis'], ['ermMenuId' => 'Obat', 'ermMenuName' => 'Obat'], ['ermMenuId' => 'Laboratorium', 'ermMenuName' => 'Laboratorium'], ['ermMenuId' => 'Radiologi', 'ermMenuName' => 'Radiologi'], ['ermMenuId' => 'KamarOperasi', 'ermMenuName' => 'Tindakan Operasi'], ['ermMenuId' => 'LainLain', 'ermMenuName' => 'Lain-Lain'], ['ermMenuId' => 'Kasir', 'ermMenuName' => 'Kasir']];
 
     /* ===============================
      | MOUNT
@@ -574,7 +574,7 @@ new class extends Component {
                         @endforeach
 
                         {{-- 7 Item Read Only --}}
-                        @foreach ([['label' => 'Jasa Karyawan', 'value' => $sumJasaKaryawan], ['label' => 'Jasa Dokter', 'value' => $sumJasaDokter], ['label' => 'Jasa Medis', 'value' => $sumJasaMedis], ['label' => 'Obat', 'value' => $sumObat], ['label' => 'Laboratorium', 'value' => $sumLaboratorium], ['label' => 'Radiologi', 'value' => $sumRadiologi], ['label' => 'Kamar Operasi', 'value' => $sumKamarOperasi], ['label' => 'Lain-Lain', 'value' => $sumLainLain]] as $item)
+                        @foreach ([['label' => 'Jasa Karyawan', 'value' => $sumJasaKaryawan], ['label' => 'Jasa Dokter', 'value' => $sumJasaDokter], ['label' => 'Jasa Medis', 'value' => $sumJasaMedis], ['label' => 'Obat', 'value' => $sumObat], ['label' => 'Laboratorium', 'value' => $sumLaboratorium], ['label' => 'Radiologi', 'value' => $sumRadiologi], ['label' => 'Tindakan Operasi', 'value' => $sumKamarOperasi], ['label' => 'Lain-Lain', 'value' => $sumLainLain]] as $item)
                             <div
                                 class="px-2.5 py-1.5 bg-canvas border border-hairline rounded-xl dark:bg-gray-900 dark:border-gray-700">
                                 <p class="text-xs text-muted dark:text-gray-400 mb-0.5 truncate">

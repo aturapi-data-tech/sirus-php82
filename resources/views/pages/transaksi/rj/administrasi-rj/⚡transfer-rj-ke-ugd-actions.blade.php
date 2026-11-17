@@ -81,14 +81,14 @@ new class extends Component {
         // Guard: transaksi Kamar Operasi belum ditransfer (lihat transferKeUGD).
         if ($this->checkOkPendingRJ($rjNo)) {
             $nomorOk = implode(', ', $this->daftarOkPendingRJ($rjNo));
-            $this->dispatch('toast', type: 'error', message: "Transaksi Kamar Operasi No. {$nomorOk} belum ditransfer ke biaya RJ, transfer tidak bisa dilakukan.");
+            $this->dispatch('toast', type: 'error', message: "Transaksi Tindakan Operasi No. {$nomorOk} belum ditransfer ke biaya RJ, transfer tidak bisa dilakukan.");
             return;
         }
 
         // Guard: kunjungan ber-operasi tidak boleh ditransfer (lihat daftarOkSudahTrfBiayaRJ).
         if ($nomorOkList = $this->daftarOkSudahTrfBiayaRJ($rjNo)) {
             $nomorOk = implode(', ', $nomorOkList);
-            $this->dispatch('toast', type: 'error', message: "Kunjungan RJ ini memiliki transaksi Kamar Operasi No. {$nomorOk}, transfer tidak bisa dilakukan. Selesaikan pembayaran di Kasir RJ, lalu daftarkan pasien langsung.");
+            $this->dispatch('toast', type: 'error', message: "Kunjungan RJ ini memiliki transaksi Tindakan Operasi No. {$nomorOk}, transfer tidak bisa dilakukan. Selesaikan pembayaran di Kasir RJ, lalu daftarkan pasien langsung.");
             return;
         }
 
@@ -262,14 +262,14 @@ new class extends Component {
         // biaya operasinya tidak akan pernah bisa masuk tagihan mana pun.
         if ($this->checkOkPendingRJ($this->rjNo)) {
             $nomorOk = implode(', ', $this->daftarOkPendingRJ($this->rjNo));
-            $this->dispatch('toast', type: 'error', message: "Transaksi Kamar Operasi No. {$nomorOk} belum ditransfer ke biaya RJ, transfer tidak bisa dilakukan.");
+            $this->dispatch('toast', type: 'error', message: "Transaksi Tindakan Operasi No. {$nomorOk} belum ditransfer ke biaya RJ, transfer tidak bisa dilakukan.");
             return;
         }
 
         // Guard: kunjungan ber-operasi tidak boleh ditransfer (lihat daftarOkSudahTrfBiayaRJ).
         if ($nomorOkList = $this->daftarOkSudahTrfBiayaRJ($this->rjNo)) {
             $nomorOk = implode(', ', $nomorOkList);
-            $this->dispatch('toast', type: 'error', message: "Kunjungan RJ ini memiliki transaksi Kamar Operasi No. {$nomorOk}, transfer tidak bisa dilakukan. Selesaikan pembayaran di Kasir RJ, lalu daftarkan pasien langsung.");
+            $this->dispatch('toast', type: 'error', message: "Kunjungan RJ ini memiliki transaksi Tindakan Operasi No. {$nomorOk}, transfer tidak bisa dilakukan. Selesaikan pembayaran di Kasir RJ, lalu daftarkan pasien langsung.");
             return;
         }
 
