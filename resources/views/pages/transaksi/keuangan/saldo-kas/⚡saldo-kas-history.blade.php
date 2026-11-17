@@ -628,9 +628,10 @@ new class extends Component {
             </x-modul-dokumen.header>
 
             <div class="px-4 py-3 bg-canvas border-b border-hairline dark:bg-gray-900 dark:border-gray-700">
-                <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                {{-- Info tampilan (kiri) + kartu Rekap (kanan) sebaris → area tabel lebih tinggi. --}}
+                <div class="flex flex-col gap-3 lg:flex-row lg:items-start">
                     {{-- Baca-saja: tampilan, tanggal & shift dipilih di halaman Cek Saldo Kas --}}
-                    <div class="flex flex-wrap items-center gap-2 text-sm">
+                    <div class="flex flex-wrap items-center gap-2 text-sm lg:shrink-0 lg:min-h-[3.25rem]">
                         <span class="text-muted dark:text-gray-400">Tampilan</span>
                         <x-badge :variant="$mode === 'shift' ? 'success' : 'info'">{{ $mode === 'shift' ? 'Per Shift' : 'Harian' }}</x-badge>
                         <span class="font-mono font-semibold text-ink dark:text-gray-100">{{ $tanggalHarianInput }}</span>
@@ -639,10 +640,9 @@ new class extends Component {
                         @endif
                         <span class="text-xs text-muted-soft">(ubah di halaman Cek Saldo Kas)</span>
                     </div>
-                </div>
 
                 {{-- Rekap per jenis transaksi — kartu collapsible (gaya kartu step casemix) --}}
-                <div class="mt-3 border shadow-sm border-hairline rounded-xl bg-canvas dark:bg-gray-900 dark:border-gray-700"
+                <div class="flex-1 min-w-0 border shadow-sm border-hairline rounded-xl bg-canvas dark:bg-gray-900 dark:border-gray-700"
                      x-data="{ openRekap: false }">
                     <button type="button" x-on:click="openRekap = !openRekap"
                         class="flex items-center justify-between w-full gap-3 px-4 py-2.5 text-left">
@@ -704,6 +704,7 @@ new class extends Component {
                             </div>
                         @endif
                     </div>
+                </div>
                 </div>
             </div>
 
