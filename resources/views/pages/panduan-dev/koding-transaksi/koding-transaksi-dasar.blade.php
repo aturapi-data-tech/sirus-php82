@@ -96,7 +96,7 @@
                         {{-- flow RI --}}
                         <div class="ds-caption-up mb-2">Rawat Inap (RI)</div>
                         <div class="flex flex-wrap items-center gap-2 mb-2">
-                            @foreach ([['Daftar RI', 'EMR/Adm/Pindah Kamar dari list'], ['Billing per-item', 'imtxn_slshdrs/dtls'], ['Antrian Kasir RI', 'per resep/sls'], ['Daftar Kasir RI', 'per rihdr'], ['Posting Bayar', 'bon/kembalian']] as $i => [$tahap, $ket])
+                            @foreach ([['Daftar RI', 'EMR/Adm/Pindah Kamar dari list'], ['Billing per-item', 'imtxn_slshdrs/dtls'], ['Resep Inap (kasir)', 'per resep/sls'], ['Pasien Rawat Inap (kasir)', 'per rihdr'], ['Posting Bayar', 'bon/kembalian']] as $i => [$tahap, $ket])
                                 @if ($i > 0)<span class="ds-code" style="color:var(--primary)">▶</span>@endif
                                 <span class="ds-card-outline" style="padding:8px 14px; {{ $i === 0 ? 'border-color:var(--primary)' : '' }}">
                                     <span class="block text-sm font-semibold" style="color:var(--ink)">{{ $tahap }}</span>

@@ -157,7 +157,7 @@ new class extends Component {
 <div class="bg-canvas dark:bg-gray-800">
 
     <x-page-title
-        title="Daftar Pasien RI — Kasir"
+        title="Pasien Rawat Inap — Kasir"
         subtitle="Administrasi & Pembayaran per pasien rawat inap" />
 
     <div class="w-full h-[calc(100vh-5rem)] flex flex-col bg-surface-soft dark:bg-gray-800">

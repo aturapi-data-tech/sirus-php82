@@ -8,7 +8,7 @@
 //   - Setelah Lunas/Bon (status 'L') tanggal resep sudah tercetak di keterangan Bon Inap
 //     (rstxn_ribonobats.ribon_desc/ribon_date) → koreksi wajib Batal Transaksi dulu.
 //   - eresepHdr.resepDate di JSON RI (catatan resep dokter) SENGAJA tidak diubah.
-// Dibuka dari tombol di Antrian Kasir RI: dispatch 'open-ubah-data-resep-ri'.
+// Dibuka dari menu titik-3 Resep Inap (antrian-kasir-ri): dispatch 'open-ubah-data-resep-ri'.
 // Log dicatat di Log Aktivitas kunjungan RI (AdministrasiRI.userLogs), memuat No SLS.
 
 use Livewire\Component;
@@ -37,7 +37,7 @@ new class extends Component {
     }
 
     /* ===============================
-     | OPEN — dipicu dari Antrian Kasir RI
+     | OPEN — dipicu dari Resep Inap (kasir, antrian-kasir-ri)
      =============================== */
     #[On('open-ubah-data-resep-ri')]
     public function openUbahDataResep(int $slsNo): void

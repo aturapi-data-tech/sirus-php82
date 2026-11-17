@@ -167,7 +167,7 @@ class AksiRole
     public const RI_UBAH_DATA_KUNJUNGAN = ['Admin', 'Tu', 'Manager Umum', 'Supervisor Tu'];
 
     /**
-     * Ubah tanggal & shift RESEP RI (imtxn_slshdrs) dari Antrian Kasir RI — hanya selama resep
+     * Ubah tanggal & shift RESEP RI (imtxn_slshdrs) dari Resep Inap (kasir, antrian-kasir-ri) — hanya selama resep
      * masih Antrian (belum diproses kasir). Daftar = role yang membuka Administrasi kasir resep RI.
      */
     public const RI_UBAH_DATA_RESEP = ['Admin', 'Tu', 'Manager Umum', 'Supervisor Tu'];
