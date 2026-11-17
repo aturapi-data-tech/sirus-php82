@@ -46,7 +46,7 @@ new class extends Component {
     public function openTambah(string $sumber = 'RI'): void
     {
         if (!$this->isAllowedRoleOk()) {
-            $this->dispatch('toast', type: 'error', message: 'Anda tidak memiliki akses ke modul Kamar Operasi.');
+            $this->dispatch('toast', type: 'error', message: 'Anda tidak memiliki akses ke modul Tindakan Operasi.');
             return;
         }
 
@@ -249,7 +249,7 @@ new class extends Component {
         <div class="flex flex-col h-full" wire:key="{{ $this->renderKey('kamar-operasi-tambah-modal', [$sumber, $refNo ?: 'kosong']) }}">
 
             {{-- HEADER --}}
-            <x-modul-dokumen.header judul="Tambah Transaksi Kamar Operasi" ikon="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" tutup="closeTambah">
+            <x-modul-dokumen.header judul="Tambah Transaksi Tindakan Operasi" ikon="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" tutup="closeTambah">
                 Pilih layanan asal pasien, lalu tentukan dokter operator dan anestesi
             </x-modul-dokumen.header>
             <div class="flex flex-wrap items-center gap-2 px-6 py-2 border-b shrink-0 border-hairline dark:border-gray-700">

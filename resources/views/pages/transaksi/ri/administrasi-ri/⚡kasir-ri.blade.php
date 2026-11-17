@@ -565,7 +565,7 @@ new class extends Component {
         // pernah bisa masuk tagihan.
         if ($this->checkOkPendingRI($this->riHdrNo)) {
             $noOk = implode(', ', $this->daftarOkPendingRI($this->riHdrNo));
-            $this->dispatch('toast', type: 'error', message: "Transaksi Kamar Operasi No. {$noOk} belum ditransfer ke biaya rawat inap, proses pulang tidak bisa dilakukan.");
+            $this->dispatch('toast', type: 'error', message: "Transaksi Tindakan Operasi No. {$noOk} belum ditransfer ke biaya rawat inap, proses pulang tidak bisa dilakukan.");
             return;
         }
 
@@ -1036,7 +1036,7 @@ new class extends Component {
                 ['label' => 'Radiologi',     'value' => $sumRiRad],
                 ['label' => 'Kamar',         'value' => $sumRiRoom + $sumRiCService + $sumRiPerawatan],
                 ['label' => 'Lain-Lain',     'value' => $sumRiLainLain],
-                ['label' => 'Operasi (OK)',  'value' => $sumRiOk],
+                ['label' => 'Tindakan Operasi',  'value' => $sumRiOk],
                 ['label' => 'Bon Resep',     'value' => $sumRiBonResep],
                 ['label' => 'Obat Pinjam',   'value' => $sumRiObatPinjam],
                 ['label' => 'Trf UGD/RJ',    'value' => $sumRiTrfUgdRj],

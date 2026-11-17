@@ -311,7 +311,7 @@ new class extends Component {
 
 <div>
     <x-page-title
-        title="Transaksi Kamar Operasi"
+        title="Transaksi Tindakan Operasi"
         subtitle="Tindakan operasi, tarif, dan transfer biaya ke rawat inap" />
 
     <div class="w-full h-[calc(100vh-5rem)] flex flex-col bg-surface-soft dark:bg-gray-800">

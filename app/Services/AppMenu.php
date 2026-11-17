@@ -177,7 +177,7 @@ class AppMenu
             $entry(['group' => 'Penunjang', 'groupOrder' => 10, 'order' => 1, 'route' => 'penunjang.laborat', 'title' => 'Transaksi Laboratorium', 'desc' => 'Input hasil pemeriksaan laboratorium pasien', 'roles' => ['admin', 'manager umum', 'supervisor penunjang', 'laboratorium'], 'badge' => 'LAB']),
             $entry(['group' => 'Penunjang', 'groupOrder' => 10, 'order' => 2, 'route' => 'penunjang.laborat.lab-luar', 'title' => 'Upload Hasil Lab Luar', 'desc' => 'Upload PDF hasil lab luar yang sudah Selesai', 'roles' => ['admin', 'manager umum', 'supervisor penunjang', 'laboratorium'], 'badge' => 'LAB-LUAR']),
             $entry(['group' => 'Penunjang', 'groupOrder' => 10, 'order' => 3, 'route' => 'penunjang.radiologi.upload', 'title' => 'Upload Hasil Radiologi', 'desc' => 'Upload foto radiologi & hasil bacaan PDF', 'roles' => ['admin', 'manager umum', 'supervisor penunjang', 'radiologi'], 'badge' => 'RAD']),
-            $entry(['group' => 'Penunjang', 'groupOrder' => 10, 'order' => 4, 'route' => 'penunjang.kamar-operasi', 'title' => 'Transaksi Kamar Operasi', 'desc' => 'Tindakan operasi, tarif, & transfer biaya ke rawat inap — juga ada di grup Operasi', 'roles' => ['admin', 'manager umum', 'supervisor penunjang', 'dokter', 'perawat'], 'badge' => 'OK']),
+            $entry(['group' => 'Penunjang', 'groupOrder' => 10, 'order' => 4, 'route' => 'penunjang.kamar-operasi', 'title' => 'Transaksi Tindakan Operasi', 'desc' => 'Tindakan operasi, tarif, & transfer biaya ke rawat inap — juga ada di grup Operasi', 'roles' => ['admin', 'manager umum', 'supervisor penunjang', 'dokter', 'perawat'], 'badge' => 'OK']),
 
             // ── Gudang ────────────────────────────────────────────────
             $entry(['group' => 'Gudang', 'groupOrder' => 11, 'order' => 1, 'route' => 'gudang.penerimaan-medis', 'title' => 'Obat dari PBF', 'desc' => 'Penerimaan obat dari PBF / Supplier (Gudang Medis)', 'roles' => ['admin', 'manager umum', 'supervisor tu', 'gudang obat', 'apoteker'], 'badge' => 'RCV']),
@@ -205,7 +205,7 @@ class AppMenu
 
             // ── Operasi ────────────────────────────────────────────────
             $entry(['group' => 'Operasi', 'groupOrder' => 13, 'order' => 1, 'route' => 'operasi.jadwal-operasi', 'title' => 'Jadwal Operasi', 'desc' => 'Booking & manajemen jadwal operasi pasien', 'roles' => ['admin', 'manager medis', 'dokter', 'perawat'], 'badge' => 'JDW']),
-            $entry(['group' => 'Operasi', 'groupOrder' => 13, 'order' => 2, 'route' => 'penunjang.kamar-operasi', 'title' => 'Transaksi Kamar Operasi', 'desc' => 'Tindakan operasi, tarif, & transfer biaya ke rawat inap', 'roles' => ['admin', 'manager umum', 'supervisor penunjang', 'dokter', 'perawat'], 'badge' => 'OK']),
+            $entry(['group' => 'Operasi', 'groupOrder' => 13, 'order' => 2, 'route' => 'penunjang.kamar-operasi', 'title' => 'Transaksi Tindakan Operasi', 'desc' => 'Tindakan operasi, tarif, & transfer biaya ke rawat inap', 'roles' => ['admin', 'manager umum', 'supervisor penunjang', 'dokter', 'perawat'], 'badge' => 'OK']),
 
             // ── Down Time ─────────────────────────────────────────────
             // Terbuka untuk SEMUA role: saat SIMRS bermasalah, siapa pun yang masih

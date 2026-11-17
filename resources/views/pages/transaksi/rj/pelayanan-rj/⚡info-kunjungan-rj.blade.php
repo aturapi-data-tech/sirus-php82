@@ -279,7 +279,7 @@ new class extends Component {
             'obat' => 'Obat',
             'lab' => 'Laboratorium',
             'rad' => 'Radiologi',
-            'kamarOperasi' => 'Kamar Operasi',
+            'kamarOperasi' => 'Tindakan Operasi',
             'other' => 'Lain-lain',
         ];
         $rincianBiaya = [];

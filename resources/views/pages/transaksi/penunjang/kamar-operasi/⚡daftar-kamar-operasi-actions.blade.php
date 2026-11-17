@@ -60,7 +60,7 @@ new class extends Component {
     public function openActions(string $okReg): void
     {
         if (!$this->isAllowedRoleOk()) {
-            $this->dispatch('toast', type: 'error', message: 'Anda tidak memiliki akses ke modul Kamar Operasi.');
+            $this->dispatch('toast', type: 'error', message: 'Anda tidak memiliki akses ke modul Tindakan Operasi.');
             return;
         }
 
@@ -451,7 +451,7 @@ new class extends Component {
                 $statusOk = $headerData['ok_status'] ?? 'A';
             @endphp
 
-            <x-modul-dokumen.header judul="Transaksi Kamar Operasi"
+            <x-modul-dokumen.header judul="Transaksi Tindakan Operasi"
                 ikon="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
                 :jalur="$sumber ?: null" tutup="closeActions" />
 

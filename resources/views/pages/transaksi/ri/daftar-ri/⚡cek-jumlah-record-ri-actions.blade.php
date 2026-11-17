@@ -27,7 +27,7 @@ new class extends Component {
         'rstxn_riradiologs'   => ['label' => 'Radiologi', 'bisaReset' => false],
         'rstxn_ritempadmins'  => ['label' => 'Trf UGD/RJ', 'bisaReset' => false],
         'rstxn_riothers'      => ['label' => 'Lain-Lain', 'bisaReset' => true],
-        'rstxn_rioks'         => ['label' => 'Operasi (OK)', 'bisaReset' => false],
+        'rstxn_rioks'         => ['label' => 'Tindakan Operasi', 'bisaReset' => false],
         'rsmst_trfrooms'      => ['label' => 'Kamar', 'bisaReset' => true],
         'rstxn_ribonobats'    => ['label' => 'Bon Resep', 'bisaReset' => false],
         'rstxn_riobatrtns'    => ['label' => 'Return Obat', 'bisaReset' => true],

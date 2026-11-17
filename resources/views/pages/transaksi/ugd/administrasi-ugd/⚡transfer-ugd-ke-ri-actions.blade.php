@@ -97,7 +97,7 @@ new class extends Component {
         // Guard: kunjungan ber-operasi tidak boleh ditransfer (lihat daftarOkSudahTrfBiayaUGD).
         if ($nomorOkList = $this->daftarOkSudahTrfBiayaUGD($rjNo)) {
             $nomorOk = implode(', ', $nomorOkList);
-            $this->dispatch('toast', type: 'error', message: "Kunjungan UGD ini memiliki transaksi Kamar Operasi No. {$nomorOk}, transfer tidak bisa dilakukan. Selesaikan pembayaran di Kasir UGD, lalu daftarkan pasien langsung.");
+            $this->dispatch('toast', type: 'error', message: "Kunjungan UGD ini memiliki transaksi Tindakan Operasi No. {$nomorOk}, transfer tidak bisa dilakukan. Selesaikan pembayaran di Kasir UGD, lalu daftarkan pasien langsung.");
             return;
         }
 
@@ -414,14 +414,14 @@ new class extends Component {
         // biaya operasinya tidak akan pernah bisa masuk tagihan mana pun.
         if ($this->checkOkPendingUGD($this->rjNo)) {
             $nomorOk = implode(', ', $this->daftarOkPendingUGD($this->rjNo));
-            $this->dispatch('toast', type: 'error', message: "Transaksi Kamar Operasi No. {$nomorOk} belum ditransfer ke biaya UGD, transfer tidak bisa dilakukan.");
+            $this->dispatch('toast', type: 'error', message: "Transaksi Tindakan Operasi No. {$nomorOk} belum ditransfer ke biaya UGD, transfer tidak bisa dilakukan.");
             return;
         }
 
         // Guard: kunjungan ber-operasi tidak boleh ditransfer (lihat daftarOkSudahTrfBiayaUGD).
         if ($nomorOkList = $this->daftarOkSudahTrfBiayaUGD($this->rjNo)) {
             $nomorOk = implode(', ', $nomorOkList);
-            $this->dispatch('toast', type: 'error', message: "Kunjungan UGD ini memiliki transaksi Kamar Operasi No. {$nomorOk}, transfer tidak bisa dilakukan. Selesaikan pembayaran di Kasir UGD, lalu daftarkan pasien langsung.");
+            $this->dispatch('toast', type: 'error', message: "Kunjungan UGD ini memiliki transaksi Tindakan Operasi No. {$nomorOk}, transfer tidak bisa dilakukan. Selesaikan pembayaran di Kasir UGD, lalu daftarkan pasien langsung.");
             return;
         }
 
