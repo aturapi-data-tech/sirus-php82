@@ -256,8 +256,8 @@
                         <div class="ds-eyebrow mb-3">Rawat Inap — Tahap 5</div>
                         <h1 class="ds-display-md mb-4">Kasir RI</h1>
                         <p class="ds-body-md mb-6" style="max-width:62ch">
-                            Petugas Tu memakai <strong>Antrian Kasir RI</strong> dan <strong>Daftar Pasien
-                            RI</strong> (<span class="ds-code">/transaksi/kasir/*</span>) untuk menutup
+                            Petugas Tu memakai <strong>Resep Inap</strong> dan <strong>Pasien Rawat
+                            Inap</strong> (<span class="ds-code">/transaksi/kasir/*</span>) untuk menutup
                             tagihan perawatan — termasuk menerima <strong>titipan/deposit</strong> selama
                             pasien masih dirawat.
                         </p>

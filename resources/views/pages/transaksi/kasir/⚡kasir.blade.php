@@ -44,8 +44,8 @@ new class extends Component {
             <x-tabs variant="underline">
                 <x-tab :active="$activeTab === 'rj'" color="emerald" wire:click="setTab('rj')">Rawat Jalan</x-tab>
                 <x-tab :active="$activeTab === 'ugd'" color="rose" wire:click="setTab('ugd')">UGD</x-tab>
-                <x-tab :active="$activeTab === 'ri'" color="blue" wire:click="setTab('ri')">Rawat Inap</x-tab>
-                <x-tab :active="$activeTab === 'daftar-ri'" color="purple" wire:click="setTab('daftar-ri')">Daftar Pasien RI</x-tab>
+                <x-tab :active="$activeTab === 'ri'" color="blue" wire:click="setTab('ri')">Resep Inap</x-tab>
+                <x-tab :active="$activeTab === 'daftar-ri'" color="purple" wire:click="setTab('daftar-ri')">Pasien Rawat Inap</x-tab>
                 <x-tab :active="$activeTab === 'cash-in'" color="brand" wire:click="setTab('cash-in')">Cash In</x-tab>
                 <x-tab :active="$activeTab === 'cash-out'" color="violet" wire:click="setTab('cash-out')">Cash Out</x-tab>
                 <x-tab :active="$activeTab === 'piutang-pasien'" color="blue" wire:click="setTab('piutang-pasien')">Pembayaran Piutang Pasien</x-tab>
