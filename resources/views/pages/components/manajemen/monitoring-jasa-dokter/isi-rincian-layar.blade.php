@@ -66,7 +66,8 @@
                         @if ($barisKomponen->count() > ($batasLipat ?? 300))
                             <x-secondary-button type="button" wire:click="toggleKomponen('{{ $kunciKomponen }}')"
                                 wire:loading.attr="disabled" wire:target="toggleKomponen('{{ $kunciKomponen }}')" class="gap-1.5 whitespace-nowrap">
-                                <span wire:loading.remove wire:target="toggleKomponen('{{ $kunciKomponen }}')">
+                                <span wire:loading.remove wire:target="toggleKomponen('{{ $kunciKomponen }}')" class="inline-flex items-center gap-2">
+                                    <x-ikon nama="lihat" />
                                     {{ $dilipat ? 'Tampilkan ' . $barisKomponen->count() . ' baris' : 'Sembunyikan baris' }}
                                 </span>
                                 <span wire:loading wire:target="toggleKomponen('{{ $kunciKomponen }}')" class="inline-flex items-center gap-1.5">

@@ -87,6 +87,7 @@
                             <td class="px-3 py-2">
                                 @if ($diubah)
                                     <x-secondary-button type="button" wire:click="resetParameterBangsal" class="!py-1 text-xs">
+                                        <x-ikon nama="kembalikan" ukuran="w-3.5 h-3.5" />
                                         Kembalikan ke master
                                     </x-secondary-button>
                                 @endif

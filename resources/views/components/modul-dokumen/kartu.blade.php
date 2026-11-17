@@ -47,9 +47,7 @@
             <x-primary-button type="button" wire:click="{{ $buka }}" wire:loading.attr="disabled"
                 wire:target="{{ $buka }}" :disabled="$nonaktif" class="gap-2">
                 <span wire:loading.remove wire:target="{{ $buka }}" class="flex items-center gap-1.5">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                    </svg>
+                    <x-ikon nama="dokumen" />
                     {{ $tombol }}
                 </span>
                 <span wire:loading wire:target="{{ $buka }}" class="flex items-center gap-1.5">

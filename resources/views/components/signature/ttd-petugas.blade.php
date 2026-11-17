@@ -95,10 +95,7 @@
                             <div class="pt-1">
                                 <x-primary-button type="button" wire:click="{{ $sign }}" wire:loading.attr="disabled" wire:target="{{ $sign }}" class="justify-center w-full gap-1.5">
                                     <span wire:loading.remove wire:target="{{ $sign }}" class="flex items-center gap-1.5">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 012.828 2.828L11.828 15.828a4 4 0 01-2.828 1.172H7v-2a4 4 0 011.172-2.828z" />
-                                        </svg>
+                                        <x-ikon nama="ttd" />
                                         {{ $signLabel }}
                                     </span>
                                     <span wire:loading wire:target="{{ $sign }}">Menyimpan...</span>
@@ -107,9 +104,7 @@
                         @elseif ($allowClear)
                             <div class="pt-1">
                                 <x-secondary-button type="button" wire:click="{{ $clear }}" wire:loading.attr="disabled" wire:target="{{ $clear }}" class="justify-center w-full gap-1">
-                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
+                                    <x-ikon nama="hapus" ukuran="w-3 h-3" />
                                     {{ $clearLabel }}
                                 </x-secondary-button>
                             </div>

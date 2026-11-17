@@ -159,6 +159,26 @@ final class IkonTombol
             'label' => 'Pindah Kamar, Transfer ke UGD/RI (memindahkan pasien/biaya ke tempat lain)',
             'paths' => ['M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4'],
         ],
+        'sebelumnya' => [
+            'tombol' => 'x-secondary-button / x-ghost-button (navigasi antar-record)',
+            'label' => 'Sebelumnya — pindah ke record/dokumen sebelumnya (chevron kiri)',
+            'paths' => ['M15 19l-7-7 7-7'],
+        ],
+        'berikutnya' => [
+            'tombol' => 'x-secondary-button / x-ghost-button (navigasi antar-record)',
+            'label' => 'Berikutnya — pindah ke record/dokumen berikutnya (chevron kanan)',
+            'paths' => ['M9 5l7 7-7 7'],
+        ],
+        'masuk' => [
+            'tombol' => 'x-primary-button',
+            'label' => 'Masuk / Login',
+            'paths' => ['M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1'],
+        ],
+        'bantuan' => [
+            'tombol' => 'x-secondary-button',
+            'label' => 'Bantuan, Pelajari lebih lanjut, Panduan',
+            'paths' => ['M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'],
+        ],
         'waktu' => [
             'tombol' => 'x-now-button (isian tanggal); lainnya → x-secondary-button',
             'label' => 'Jam Sekarang, Hari Ini (isian tanggal pakai x-now-button)',

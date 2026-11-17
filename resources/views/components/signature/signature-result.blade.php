@@ -33,9 +33,7 @@
     @if (!$disabled)
         <div class="text-center">
             <x-secondary-button wire:click="{{ $wireMethod }}" type="button" class="mt-3 text-xs gap-1">
-                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                <x-ikon nama="hapus" ukuran="w-3 h-3" />
                 Hapus &amp; Ulangi TTD
             </x-secondary-button>
         </div>
