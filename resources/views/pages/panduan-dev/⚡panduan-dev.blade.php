@@ -337,6 +337,37 @@ new class extends Component {
                     </div>
                 </div>
 
+                {{-- ===== IKON TOMBOL — dirender dari App\Support\IkonTombol::PETA (sumber tunggal) ===== --}}
+                <div class="ds-card-outline mb-6" id="ikon-tombol">
+                    <div class="ds-caption-up mb-2" style="color:var(--muted)">Ikon Tombol — &lt;x-ikon nama="…"&gt;</div>
+                    <p class="ds-body-sm mb-5" style="color:var(--muted);max-width:70ch">
+                        Satu aksi = satu ikon di seluruh project, di kiri teks tombol. Jangan tulis <code class="ds-code">&lt;svg&gt;</code>
+                        inline: aksi baru → tambah entri di <code class="ds-code">App\Support\IkonTombol::PETA</code>.
+                        <code class="ds-code">batal</code> (tutup tanpa simpan) ≠ <code class="ds-code">batalkan</code> (batalkan transaksi) ≠
+                        <code class="ds-code">hapus</code>. Rincian: <code class="ds-code">docs/standar-komponen-tombol.md</code> § Ikon Tombol.
+                    </p>
+                    <div class="flex flex-wrap items-center gap-3 mb-6">
+                        <x-secondary-button type="button"><x-ikon nama="batal" /> Batal</x-secondary-button>
+                        <x-primary-button type="button"><x-ikon nama="simpan" /> Simpan</x-primary-button>
+                        <x-primary-button type="button"><x-ikon nama="tambah" /> Tambah Data</x-primary-button>
+                        <x-info-button type="button"><x-ikon nama="kirim" /> Kirim ke BPJS</x-info-button>
+                        <x-danger-button type="button"><x-ikon nama="batalkan" /> Batalkan Transaksi</x-danger-button>
+                    </div>
+                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                        @foreach (\App\Support\IkonTombol::PETA as $namaIkon => $ikon)
+                            <div class="flex items-start gap-3 p-3 border rounded-lg border-hairline dark:border-gray-700">
+                                <span class="inline-flex items-center justify-center w-9 h-9 rounded-lg shrink-0 bg-brand-green/10 text-brand-green dark:bg-brand-lime/10 dark:text-brand-lime">
+                                    <x-ikon :nama="$namaIkon" ukuran="w-5 h-5" />
+                                </span>
+                                <div class="min-w-0">
+                                    <code class="ds-code">{{ $namaIkon }}</code>
+                                    <div class="mt-1 text-xs text-muted dark:text-gray-400">{{ $ikon['label'] }}</div>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+
                 {{-- ===== BADGE ===== --}}
                 <div class="ds-card-outline mb-6">
                     <div class="ds-caption-up mb-5" style="color:var(--muted)">Badge — &lt;x-badge variant="…"&gt;</div>

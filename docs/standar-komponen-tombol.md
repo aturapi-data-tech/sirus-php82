@@ -475,3 +475,94 @@ Cetak dan hapus per entri di tabel **wajib** komponen: `<x-cetak-button>` dan `<
 (ikon 40px, sekelas tombol berteks). Rincian, mode dialog modal, dan pengecualian: lihat
 `docs/standar-ui-komponen.md` bagian "Tombol aksi per entri di tabel".
 
+
+---
+
+## Ikon Tombol — `<x-ikon nama="…">` (2026-11-17)
+
+**Setiap tombol berteks memakai ikon di kiri teks, dan aksi yang sama memakai ikon yang sama
+di seluruh project.** Peta ikon hanya ada di satu tempat, yaitu `App\Support\IkonTombol::PETA`.
+Komponen `resources/views/components/ikon.blade.php` merender dari peta itu. Katalog visualnya
+tampil di `/panduan-dev` (Komponen → Ikon Tombol).
+
+```blade
+<x-secondary-button type="button" wire:click="closeModal">
+    <x-ikon nama="batal" />
+    Batal
+</x-secondary-button>
+
+<x-confirm-button variant="primary" :action="'simpan()'" title="…" message="…">
+    <x-ikon nama="simpan" />
+    Simpan Perubahan
+</x-confirm-button>
+
+{{-- tombol dengan state loading: ikon ikut di span wire:loading.remove --}}
+<x-primary-button type="button" wire:click="simpan" wire:loading.attr="disabled" wire:target="simpan">
+    <span wire:loading.remove wire:target="simpan" class="inline-flex items-center gap-2">
+        <x-ikon nama="simpan" />
+        Simpan
+    </span>
+    <span wire:loading wire:target="simpan"><x-loading /> Menyimpan...</span>
+</x-primary-button>
+
+{{-- tombol kecil (!text-xs): ukuran lewat prop, BUKAN class --}}
+<x-ikon nama="kembalikan" ukuran="w-3.5 h-3.5" />
+```
+
+### Katalog (24 aksi)
+
+| `nama` | Ikon | Dipakai untuk label |
+|---|---|---|
+| `simpan` | disket | Simpan, Simpan Perubahan/Koreksi/Draft, Simpan & Posting, Perbarui |
+| `batal` | ✕ | Batal, Tutup, Batal Edit, Tidak: menutup form/modal **tanpa menyimpan** |
+| `tambah` | ＋ | Tambah …, Buat, Order, Catat …, Transaksi Baru (buang tanda "+" dari teks) |
+| `ubah` | pensil | Ubah, Ubah Data, Edit, Ganti, Koreksi, Lanjut |
+| `hapus` | tong sampah | Hapus data |
+| `batalkan` | lingkaran dicoret | Batalkan transaksi/order/SEP, Batal Inap, Cabut, Unmount: membatalkan yang **sudah tercatat** |
+| `kembalikan` | panah balik | Kembalikan ke Antrian, Kosongkan Form, Reset, Bersihkan, Batal / Entri Baru |
+| `kembali` | panah kiri | Kembali ke Daftar, Kembali ke Entri Baru (navigasi mundur) |
+| `muat-ulang` | panah melingkar | Muat Ulang, Tarik Data, Sinkron, Grouping Ulang, Salin Ulang |
+| `lihat` | mata | Lihat, Lihat Hasil/Foto, Preview, Pas Lebar/Layar |
+| `cari` | kaca pembesar | Cari, Cek (lookup master/BPJS) |
+| `kirim` | pesawat kertas | Kirim ke BPJS/SATUSEHAT/SISRUTE/DINKESTA, Post, TaskId |
+| `unggah` | panah naik ke baki | Upload, Unggah, Import, Replace berkas |
+| `unduh` | panah turun ke baki | Unduh, Unduh Excel, Download, Export |
+| `setujui` | centang dalam lingkaran | Selesai, Konfirmasi, Review, Setujui, Telaah, Saya Mengerti, Daftarkan, Pilih |
+| `ttd` | pena | TTD, TTD-E, Tanda Tangan, Saya |
+| `kunci` | gembok tertutup | Kunci |
+| `buka-kunci` | gembok terbuka | Buka Kunci, Akses Darurat |
+| `proses` | petir | Proses, Generate, Gabung jadi 1 PDF, Hitung, Grouping |
+| `hentikan` | kotak dalam lingkaran | Hentikan, Stop, Kill Session |
+| `dokumen` | kertas bergaris | Modul Dokumen, E-Resep, Kelola, Rekam Medis |
+| `riwayat` | papan klip | Log, Log Aktivitas, Riwayat |
+| `pembayaran` | dompet | Administrasi, Bayar, Kasir |
+| `waktu` | jam | Jam Sekarang, Hari Ini (isian tanggal tetap pakai `x-now-button`) |
+
+### Aturan
+
+1. **Jangan tulis `<svg>` inline di tombol berteks.** Pakai `<x-ikon>`. Aksi yang belum ada di
+   peta → tambah entri di `IkonTombol::PETA` dulu (nama = kata kerja bahasa Indonesia, kebab-case,
+   ditulis penuh), lalu catat di tabel ini.
+2. **Satu nama = satu makna.** Tiga yang sering tertukar:
+   `batal` (✕, tutup tanpa simpan) ≠ `batalkan` (⊘, membatalkan transaksi tercatat) ≠ `hapus` (tong sampah).
+3. **Ikon di kiri teks**, ukuran default `w-4 h-4`. Tombol kecil `!text-xs` → `ukuran="w-3.5 h-3.5"`.
+4. **Komponen yang sudah berikon dipakai apa adanya**, jangan ditambah `<x-ikon>`:
+   `x-hapus-button`, `x-cetak-button`, `x-lihat-button`, `x-action-edit`, `x-now-button`,
+   `x-toolbar-refresh-reset`, `x-satu-sehat.ikon-tombol`.
+5. **Tombol hanya-ikon** (Close X di header, hapus baris kecil) tetap `<x-icon-button>`, dan isinya
+   boleh `<x-ikon nama="…" ukuran="w-5 h-5" />`.
+6. **Nama salah ketik** tidak merender ikon dan tercatat di `storage/logs` (`InvalidArgumentException`).
+   Kalau ikon tidak muncul, cek log.
+
+### Status penerapan (pemindaian 2026-11-17)
+
+Dari 1.648 tombol di `resources/views`, **700 tombol berteks di 375 file belum berikon**
+(halaman `auth/` & `profile/` bawaan Breeze tidak dihitung). Pemetaan otomatis label → `nama`:
+batal 198 · simpan 93 · tambah 81 · ubah 55 · proses 33 · setujui 30 · kirim 25 · kembalikan 23 ·
+muat-ulang 21 · batalkan 20 · unggah 20 · lihat 17 · kembali 14 · cari 12 · hentikan 9 · ttd 8 ·
+hapus 6 · waktu 5 · buka-kunci 3 · dokumen 2 · riwayat 1 · **belum terpetakan 24** (label khusus:
+navigasi ◀ ▶, "Ambil IHS", "Pakai Pengganti", "Rawat Gabung", dll. Putuskan per kasus).
+Per area: RI 115, RJ 101, UGD 99, komponen 70, Gudang 37, Penunjang 27, Keuangan 26, Master ±150.
+
+Penerapan dilakukan **per modul** (bukan sapuan sekaligus), dimulai Kasir RJ/UGD/RI + Kas TU
+(2026-11-17, sudah). Saat menyentuh sebuah halaman, pasang ikon pada tombol-tombolnya sesuai tabel.

@@ -765,6 +765,7 @@ new class extends Component {
                                                         title="Kembalikan ke Antrian"
                                                         message="Kembalikan kunjungan {{ $row->reg_name }} ({{ $row->reg_no }}) dari Batal ke antrian kasir (Aktif)? Tindakan ini dicatat di log admin."
                                                         confirmText="Ya, kembalikan" cancelText="Batal">
+                                                        <x-ikon nama="kembalikan" ukuran="w-3.5 h-3.5" />
                                                         Kembalikan ke Antrian
                                                     </x-confirm-button>
                                                 @endcan

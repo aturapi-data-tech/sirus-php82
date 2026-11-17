@@ -396,11 +396,13 @@ new class extends Component {
                 <p class="text-xs text-muted dark:text-gray-400">Perubahan dicatat di Log Aktivitas kunjungan.</p>
                 <div class="flex items-center gap-3">
                     <x-secondary-button type="button" wire:click="closeModal">
+                        <x-ikon nama="batal" />
                         Batal
                     </x-secondary-button>
                     <x-confirm-button variant="primary" :action="'simpan()'" title="Ubah Data Kunjungan"
                         message="Simpan perubahan data kunjungan ini? Perubahan dicatat di Log Aktivitas."
                         confirmText="Ya, simpan" cancelText="Batal">
+                        <x-ikon nama="simpan" />
                         Simpan Perubahan
                     </x-confirm-button>
                 </div>
