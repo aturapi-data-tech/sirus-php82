@@ -229,10 +229,7 @@ new class extends Component {
                     <div class="flex items-center gap-2 ml-auto">
                         <x-outline-button type="button" wire:click="unduhExcel" wire:loading.attr="disabled" wire:target="unduhExcel"
                             class="whitespace-nowrap" title="Unduh piutang sesuai filter (CSV siap dibuka Excel), tanggal export tercatat di tiap baris">
-                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round"
-                                    d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
+                            <x-ikon nama="unduh" class="mr-1" />
                             <span wire:loading.remove wire:target="unduhExcel">Unduh Excel</span>
                             <span wire:loading wire:target="unduhExcel">Menyiapkan…</span>
                         </x-outline-button>
@@ -388,15 +385,12 @@ new class extends Component {
                                         </div>
                                     </td>
                                     <td class="px-5 py-4 text-center align-top rounded-r-2xl">
-                                        <x-secondary-button type="button"
+                                        <x-outline-button type="button"
                                             wire:click="openAdministrasi('{{ $row->jalur }}', {{ (int) $row->no_transaksi }})"
                                             class="whitespace-nowrap" title="Lihat rincian administrasi (read-only)">
-                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                            </svg>
+                                            <x-ikon nama="lihat" class="mr-1" />
                                             Detail
-                                        </x-secondary-button>
+                                        </x-outline-button>
                                     </td>
                                 </tr>
                             @empty

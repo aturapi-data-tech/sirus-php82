@@ -188,9 +188,7 @@ new class extends Component {
                             :disabled="$this->ringkasan['transaksi'] === 0"
                             title="Baris pasien semua dokter pada tampilan ini — tanggal layanan, no. RM, nama, klaim, nominal">
                             <span wire:loading.remove wire:target="lihatRincianSemua" class="inline-flex items-center gap-2">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12" />
-                                </svg>
+                                <x-ikon nama="lihat" />
                                 Rincian Semua
                             </span>
                             <span wire:loading wire:target="lihatRincianSemua" class="inline-flex items-center gap-2">
@@ -198,21 +196,18 @@ new class extends Component {
                             </span>
                         </x-outline-button>
 
-                        <x-info-button type="button" class="gap-2" wire:click="unduhRekap"
+                        <x-outline-button type="button" class="gap-2" wire:click="unduhRekap"
                             wire:loading.attr="disabled" wire:target="unduhRekap"
                             :disabled="$this->rows->isEmpty()"
                             title="Unduh rekap per dokter pada tampilan ini sebagai CSV — siap dibuka di Excel">
                             <span wire:loading.remove wire:target="unduhRekap" class="inline-flex items-center gap-2">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8">
-                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                        d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                                </svg>
+                                <x-ikon nama="unduh" />
                                 Unduh Excel
                             </span>
                             <span wire:loading wire:target="unduhRekap" class="inline-flex items-center gap-2">
                                 <x-loading /> Menyiapkan...
                             </span>
-                        </x-info-button>
+                        </x-outline-button>
 
                         <x-toolbar-refresh-reset :label="null" />
 
@@ -421,9 +416,7 @@ new class extends Component {
                                                 wire:loading.attr="disabled" wire:target="lihatRincian('{{ $row['dr_id'] }}')"
                                                 title="Baris pasien {{ $row['dr_name'] }} — {{ $this->periodeJasaLabel }}">
                                                 <span wire:loading.remove wire:target="lihatRincian('{{ $row['dr_id'] }}')" class="inline-flex items-center gap-2">
-                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                                    </svg>
+                                                    <x-ikon nama="lihat" />
                                                     Rincian
                                                 </span>
                                                 <span wire:loading wire:target="lihatRincian('{{ $row['dr_id'] }}')"><x-loading /> Membuka</span>

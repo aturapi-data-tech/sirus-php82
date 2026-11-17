@@ -638,6 +638,12 @@ memakai katalog (164 tombol; 2 tombol pilihan Kamar sengaja tanpa ikon).
   Lihat / Cetak (Antrian Kasir RI) success → outline, Form B (Case Manager) info → secondary,
   Selesai Melihat primary → secondary, Kirim Semua ke SIRS override green → primary, SPRI insert/update
   override ungu → info (BPJS), Hapus Log ghost → confirm danger-soft. Menunggu user.
+- 2026-11-17 **Halaman sistem & manajemen** (Monitor Database, Manajemen RS, Jadwal Operasi,
+  Pemantauan Ruang Server, Downtime; 89 tombol): 70 ikon dipasang, 19 SVG manual diganti — semua
+  kini `<x-ikon>`. Komponen disamakan (13): Export CSV / Unduh Excel info → outline, CSV & Detail →
+  outline, Cek Status (mount control) ghost → outline, Edit User outline → secondary. Simbol ↻ di
+  teks "Refresh" dibuang. Tombol operasional Monitor Database (Kill Session/Blocker/Waiter,
+  Disconnect, Mount/Unmount) hanya diberi ikon, komponennya dibiarkan.
 
 Area lain menyusul per modul: pasang ikon + samakan komponen + ganti SVG manual sekaligus.
 

@@ -207,6 +207,7 @@ new class extends Component {
 
                     <div class="ml-auto flex items-center gap-2">
                         <x-secondary-button type="button" wire:click="resetFilters" class="whitespace-nowrap">
+                            <x-ikon nama="kembalikan" />
                             Reset
                         </x-secondary-button>
                     </div>

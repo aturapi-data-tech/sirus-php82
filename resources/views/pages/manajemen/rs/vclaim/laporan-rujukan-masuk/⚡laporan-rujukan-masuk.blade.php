@@ -835,10 +835,7 @@ new class extends Component {
                         {{-- Ikon basis data, bukan awan-unduh seperti laporan rujukan keluar:
                              menegaskan datanya dibaca dari DB kita, bukan ditarik dari BPJS. --}}
                         <span wire:loading.remove wire:target="tarikData" class="inline-flex items-center gap-1.5">
-                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round"
-                                    d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
-                            </svg>
+                            <x-ikon nama="muat-ulang" />
                             Ambil Data
                         </span>
                         <span wire:loading wire:target="tarikData" class="inline-flex items-center gap-1.5">
@@ -847,19 +844,16 @@ new class extends Component {
                     </x-primary-button>
 
                     @if ($periodeTarik !== '' && !$this->kedaluwarsa)
-                        <x-secondary-button type="button" wire:click="eksporCsv" wire:loading.attr="disabled"
+                        <x-outline-button type="button" wire:click="eksporCsv" wire:loading.attr="disabled"
                             wire:target="eksporCsv" title="Unduh CSV — rincian + rekap Faskes Perujuk &amp; Poli, Poli Penerima &amp; Dokter, dan Diagnosa, mengikuti filter yang sedang aktif">
                             <span wire:loading.remove wire:target="eksporCsv" class="inline-flex items-center gap-1.5">
-                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                </svg>
+                                <x-ikon nama="unduh" />
                                 CSV
                             </span>
                             <span wire:loading wire:target="eksporCsv" class="inline-flex items-center gap-1.5">
                                 <x-loading /> CSV...
                             </span>
-                        </x-secondary-button>
+                        </x-outline-button>
                     @endif
 
                     <x-toolbar-refresh-reset :label="null" />

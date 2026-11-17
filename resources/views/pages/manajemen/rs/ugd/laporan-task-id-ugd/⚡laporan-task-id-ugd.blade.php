@@ -466,7 +466,7 @@ new class extends Component {
                         </div>
                     </div>
                     <div class="ml-auto flex items-center gap-2">
-                        <x-secondary-button type="button" wire:click="resetFilters" class="whitespace-nowrap">Reset</x-secondary-button>
+                        <x-secondary-button type="button" wire:click="resetFilters" class="whitespace-nowrap"><x-ikon nama="kembalikan" /> Reset</x-secondary-button>
                         <div class="w-24">
                             <x-select-input wire:model.live="itemsPerPage">
                                 <option value="10">10</option>

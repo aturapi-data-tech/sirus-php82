@@ -470,9 +470,7 @@ new class extends Component {
                                              x-outline-button (hijau lembut): jelas AKTIF — x-secondary-button (putih/abu) terbaca seperti tombol mati. --}}
                                         <x-outline-button type="button" class="whitespace-nowrap"
                                             wire:click="bukaRekamMedis('{{ $row->layanan_status }}', {{ (int) $row->txn_no }})">
-                                            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                                            </svg>
+                                            <x-ikon nama="dokumen" class="shrink-0" />
                                             Rekam Medis
                                         </x-outline-button>
                                     </td>

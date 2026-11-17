@@ -498,9 +498,7 @@ SQL
                         {{-- Tombol refresh manual (komponen ghost-button) --}}
                         <x-ghost-button wire:click="refreshData"
                             wire:loading.attr="disabled" wire:target="refreshData">
-                            <svg wire:loading.remove wire:target="refreshData" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                            </svg>
+                            <x-ikon nama="muat-ulang" wire:loading.remove wire:target="refreshData" />
                             <svg wire:loading wire:target="refreshData" class="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
                                 <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" opacity=".25"></circle>
                                 <path d="M4 12a8 8 0 018-8" stroke="currentColor" stroke-width="3" stroke-linecap="round"></path>
@@ -893,6 +891,7 @@ SQL
                                                                         message="Kirim ALTER SYSTEM KILL SESSION ke SID {{ $r['blocker_sid'] }} ({{ $r['blocker_user'] ?? '-' }})? Catatan: kalau sesi stuck di 'SQL*Net more data from client', Oracle hanya akan menandai KILLED — pakai Disconnect untuk paksa putus socket."
                                                                         confirmText="Ya, kill"
                                                                         cancelText="Batal">
+                                                                        <x-ikon nama="hentikan" />
                                                                         Kill Blocker
                                                                     </x-confirm-button>
                                                                     <x-confirm-button
@@ -902,6 +901,7 @@ SQL
                                                                         message="ALTER SYSTEM DISCONNECT SESSION lebih agresif memutus socket TCP — efektif untuk sesi blocker yang stuck 'SQL*Net more data from client'. Lanjut untuk SID {{ $r['blocker_sid'] }}?"
                                                                         confirmText="Ya, disconnect"
                                                                         cancelText="Batal">
+                                                                        <x-ikon nama="batalkan" />
                                                                         Disconnect
                                                                     </x-confirm-button>
                                                                 @else
@@ -910,6 +910,7 @@ SQL
                                                                          punya `action`, tanpa itu ia merender `$wire.;` (JS tak valid). --}}
                                                                     <x-danger-button :disabled="true"
                                                                         title="SID/serial blocker tidak tersedia">
+                                                                        <x-ikon nama="hentikan" />
                                                                         Kill Blocker
                                                                     </x-danger-button>
                                                                 @endif
@@ -922,11 +923,13 @@ SQL
                                                                         message="Catatan: cukup kill BLOCKER — semua waiter akan release otomatis. Kalau memang perlu kill waiter ini saja (SID {{ $r['waiter_sid'] }}), lanjut?"
                                                                         confirmText="Ya, kill"
                                                                         cancelText="Batal">
+                                                                        <x-ikon nama="hentikan" />
                                                                         Kill Waiter
                                                                     </x-confirm-button>
                                                                 @else
                                                                     <x-secondary-button :disabled="true"
                                                                         title="SID/serial waiter tidak tersedia">
+                                                                        <x-ikon nama="hentikan" />
                                                                         Kill Waiter
                                                                     </x-secondary-button>
                                                                 @endif
@@ -1047,6 +1050,7 @@ SQL
                                                                         message="Kirim ALTER SYSTEM KILL SESSION ke SID {{ $r['sid'] }} ({{ $r['username'] ?? '-' }})?"
                                                                         confirmText="Ya, kill"
                                                                         cancelText="Batal">
+                                                                        <x-ikon nama="hentikan" />
                                                                         Kill Session
                                                                     </x-confirm-button>
                                                                     <x-confirm-button
@@ -1056,12 +1060,14 @@ SQL
                                                                         message="DISCONNECT lebih agresif memutus socket TCP. Lanjut untuk SID {{ $r['sid'] }}?"
                                                                         confirmText="Ya, disconnect"
                                                                         cancelText="Batal">
+                                                                        <x-ikon nama="batalkan" />
                                                                         Disconnect
                                                                     </x-confirm-button>
                                                                 </div>
                                                             @else
                                                                 <x-danger-button :disabled="true"
                                                                     title="SID/serial sesi tidak tersedia">
+                                                                    <x-ikon nama="hentikan" />
                                                                     Kill Session
                                                                 </x-danger-button>
                                                             @endif
@@ -1188,11 +1194,13 @@ SQL
                                                                     message="Yakin kill SID {{ $r['sid'] }} ({{ $r['username'] ?? '-' }})?"
                                                                     confirmText="Ya, kill"
                                                                     cancelText="Batal">
+                                                                    <x-ikon nama="hentikan" />
                                                                     Kill Session
                                                                 </x-confirm-button>
                                                             @else
                                                                 <x-danger-button :disabled="true"
                                                                     title="SID/serial sesi tidak tersedia">
+                                                                    <x-ikon nama="hentikan" />
                                                                     Kill Session
                                                                 </x-danger-button>
                                                             @endif

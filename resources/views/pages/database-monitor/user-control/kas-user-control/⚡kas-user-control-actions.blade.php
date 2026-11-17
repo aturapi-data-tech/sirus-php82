@@ -224,6 +224,7 @@ new class extends Component {
                                 {{-- ✅ Cabut semua: x-danger-button + wire:confirm --}}
                                 <x-danger-button type="button" wire:click="revokeAll"
                                     wire:confirm="Yakin cabut semua akses kas {{ $userName }}? User tidak akan bisa memproses pembayaran.">
+                                    <x-ikon nama="batalkan" />
                                     Cabut Semua
                                 </x-danger-button>
                             @endif
@@ -307,7 +308,7 @@ new class extends Component {
                     @endif
 
                     {{-- ✅ Tutup footer: x-secondary-button --}}
-                    <x-secondary-button wire:click="closeModal">Tutup</x-secondary-button>
+                    <x-secondary-button wire:click="closeModal"><x-ikon nama="batal" /> Tutup</x-secondary-button>
                 </div>
             </div>
 

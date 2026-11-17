@@ -357,10 +357,10 @@ new class extends Component {
             {{-- FOOTER --}}
             <div class="sticky bottom-0 z-10 px-6 py-4 mt-auto bg-surface-soft border-t border-hairline dark:bg-gray-900 dark:border-gray-700">
                 <div class="flex justify-end gap-2">
-                    <x-secondary-button type="button" wire:click="closeModal">Batal</x-secondary-button>
+                    <x-secondary-button type="button" wire:click="closeModal"><x-ikon nama="batal" /> Batal</x-secondary-button>
                     @if ($siapDipakai)
                         <x-primary-button type="button" wire:click="save" wire:loading.attr="disabled">
-                            <span wire:loading.remove>Simpan</span>
+                            <span wire:loading.remove class="inline-flex items-center gap-2"><x-ikon nama="simpan" /> Simpan</span>
                             <span wire:loading>Menyimpan...</span>
                         </x-primary-button>
                     @endif
