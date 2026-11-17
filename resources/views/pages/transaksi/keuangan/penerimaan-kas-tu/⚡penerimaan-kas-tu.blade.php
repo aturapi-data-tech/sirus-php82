@@ -197,11 +197,12 @@ new class extends Component {
                     <table class="min-w-full -mt-2 text-base border-separate border-spacing-y-2">
                         <thead class="sticky top-0 z-10 [&_th]:bg-surface-card dark:[&_th]:bg-gray-800">
                             <tr class="text-sm font-semibold tracking-wide text-left uppercase text-muted dark:text-gray-300">
-                                <th class="px-4 py-3">Transaksi</th>
+                                {{-- Lebar tetap untuk kolom ringkas; Keterangan mengambil sisa ruang --}}
+                                <th class="px-6 py-3 w-56">Transaksi</th>
                                 <th class="px-4 py-3">Keterangan / Akun</th>
-                                <th class="px-4 py-3 text-right">Nominal</th>
-                                <th class="px-4 py-3">Kas / Petugas</th>
-                                <th class="px-4 py-3 text-center">Aksi</th>
+                                <th class="px-4 py-3 w-64">Kas / Petugas</th>
+                                <th class="px-4 py-3 text-right w-44">Nominal</th>
+                                <th class="px-4 py-3 text-center w-52">Aksi</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -230,13 +231,6 @@ new class extends Component {
                                         </div>
                                     </td>
 
-                                    {{-- NOMINAL — kolom sendiri, rata kanan --}}
-                                    <td class="px-4 py-4 text-right align-top">
-                                        <div class="font-mono text-base font-bold whitespace-nowrap text-brand-green dark:text-brand-lime">
-                                            Rp {{ number_format($row->tucashk_nominal ?? 0) }}
-                                        </div>
-                                    </td>
-
                                     {{-- KAS / PETUGAS --}}
                                     <td class="px-4 py-4 space-y-1 align-top">
                                         <div class="text-xs text-muted dark:text-gray-400">
@@ -247,6 +241,13 @@ new class extends Component {
                                             Petugas:
                                             <span class="font-medium text-brand-green dark:text-brand-lime">{{ $row->emp_name ?? $row->emp_id ?? '-' }}</span>
                                             <x-badge variant="success">Posted</x-badge>
+                                        </div>
+                                    </td>
+
+                                    {{-- NOMINAL — kolom sendiri, rata kanan --}}
+                                    <td class="px-4 py-4 text-right align-top">
+                                        <div class="font-mono text-base font-bold whitespace-nowrap text-brand-green dark:text-brand-lime">
+                                            Rp {{ number_format($row->tucashk_nominal ?? 0) }}
                                         </div>
                                     </td>
 
