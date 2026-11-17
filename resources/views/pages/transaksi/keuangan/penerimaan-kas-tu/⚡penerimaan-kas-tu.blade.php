@@ -256,10 +256,7 @@ new class extends Component {
                                         {{-- Edit kiri, Hapus kanan, dipisah garis — jarak lebar supaya tidak salah klik --}}
                                         <div class="flex items-center justify-between gap-4 mx-auto w-44">
                                             @can('kasTu.koreksi')
-                                                <x-secondary-button type="button"
-                                                    wire:click="openEdit('{{ $row->tucashk_no }}')">
-                                                    Edit
-                                                </x-secondary-button>
+                                                <x-action-edit wire:click="openEdit('{{ $row->tucashk_no }}')" />
                                             @endcan
                                             @if (auth()->user()?->can('kasTu.koreksi') && auth()->user()?->can('kasTu.hapus'))
                                                 <span class="w-px h-8 bg-hairline dark:bg-gray-700" aria-hidden="true"></span>
