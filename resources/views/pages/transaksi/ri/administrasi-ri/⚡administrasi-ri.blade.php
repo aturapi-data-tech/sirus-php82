@@ -54,6 +54,7 @@ new class extends Component {
         ['ermMenuId' => 'RiBonResep',  'ermMenuName' => 'Bon Resep'],
         ['ermMenuId' => 'RiRtnObat',   'ermMenuName' => 'Return Obat'],
         ['ermMenuId' => 'RiObatPinjam','ermMenuName' => 'Obat Pinjam'],
+        ['ermMenuId' => 'RiAngsuranAwal', 'ermMenuName' => 'Angsuran Awal'],
         ['ermMenuId' => 'RiKasir',    'ermMenuName' => 'Kasir Pulang'],
     ];
 
@@ -466,6 +467,12 @@ new class extends Component {
                                     wire:key="tab-obat-pinjam-ri-{{ $riHdrNo }}" />
                             </div>
 
+                            {{-- Titipan selama dirawat — tetap tampil saat terkunci (riwayat + cetak ulang kwitansi) --}}
+                            <div x-show="tab === 'RiAngsuranAwal'" x-cloak x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0 translate-y-1" x-transition:enter-end="opacity-100 translate-y-0">
+                                <livewire:pages::transaksi.ri.administrasi-ri.angsuran-awal-ri :riHdrNo="$riHdrNo"
+                                    wire:key="tab-angsuran-awal-ri-{{ $riHdrNo }}" />
+                            </div>
+
                             <div x-show="tab === 'RiKasir'" x-cloak x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0 translate-y-1" x-transition:enter-end="opacity-100 translate-y-0">
                                 <livewire:pages::transaksi.ri.administrasi-ri.kasir-ri :riHdrNo="$riHdrNo"
                                     wire:key="tab-kasir-ri-{{ $riHdrNo }}" />
@@ -523,4 +530,5 @@ new class extends Component {
     <livewire:pages::components.modul-dokumen.ri.kwitansi.cetak-kwitansi-ri-detail wire:key="cetak-kwitansi-ri-detail" />
     <livewire:pages::components.modul-dokumen.ri.kwitansi.cetak-kwitansi-ri-ringkas wire:key="cetak-kwitansi-ri-ringkas" />
     <livewire:pages::components.modul-dokumen.ri.kwitansi.cetak-rincian-obat-ri wire:key="cetak-rincian-obat-ri" />
+    <livewire:pages::components.modul-dokumen.ri.kwitansi.cetak-kwitansi-ri-angsuran-awal wire:key="cetak-kwitansi-ri-angsuran-awal" />
 </div>

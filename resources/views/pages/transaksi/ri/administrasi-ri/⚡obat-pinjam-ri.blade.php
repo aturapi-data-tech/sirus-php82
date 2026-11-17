@@ -252,7 +252,7 @@ new class extends Component {
                 @if (empty($formEntry['productId']))
                     {{-- Enter saat kolom cari masih kosong = selesai di tab ini → lompat ke tab berikutnya. --}}
                 <div x-ref="lovObatPinjam"
-                    x-on:keydown.enter="if (!$event.target.value?.trim()) $dispatch('administrasi-ri-goto-tab', { tab: 'RiKasir', focus: 'focus-input-bayar-ri' })">
+                    x-on:keydown.enter="if (!$event.target.value?.trim()) $dispatch('administrasi-ri-goto-tab', { tab: 'RiAngsuranAwal', focus: 'focus-angsuran-awal-ri' })">
                         <livewire:lov.product.lov-product target="product-obat-pinjam-ri" label="Produk / Obat"
                             placeholder="Ketik kode/nama produk..."
                             wire:key="lov-product-{{ $riHdrNo }}-{{ $renderVersions['modal-obat-pinjam-ri'] ?? 0 }}" />

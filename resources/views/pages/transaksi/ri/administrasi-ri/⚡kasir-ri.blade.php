@@ -23,8 +23,13 @@ new class extends Component {
     public int $angsuranAwal   = 0;
     public int $riDiskon       = 0;
     public int $totalSetelahDiskon = 0;
+    /** Uang yang masih ditagih ke pasien saat pulang = total − angsuran awal (≥ 0). */
     public int $sisaTagihan    = 0;
+    /** Angsuran awal melebihi total tagihan → kelebihan dikembalikan ke pasien. */
+    public int $kelebihanTitipan = 0;
     public int $kembalian      = 0;
+    /** Rincian angsuran awal (titipan) untuk kartu di samping ringkasan — baris kecil, per kunjungan. */
+    public array $daftarAngsuranAwal = [];
 
     // ── Detail Sum (untuk display) ──
     public int $sumRiVisit      = 0;
@@ -216,7 +221,9 @@ new class extends Component {
         $this->riDiskon                 = 0;
         $this->totalSetelahDiskon       = 0;
         $this->sisaTagihan              = 0;
+        $this->kelebihanTitipan         = 0;
         $this->kembalian                = 0;
+        $this->daftarAngsuranAwal       = [];
     }
 
     /* ===============================
@@ -313,9 +320,26 @@ new class extends Component {
             $this->sumRiTrfUgdRj -
             $this->sumRiRtnObat;
 
-        // Angsuran awal yang sudah dibayar selama perawatan
-        $this->angsuranAwal = (int) DB::table('rstxn_ripaymentdtls')
-            ->where('rihdr_no', $n)->sum('ripay_bayar');
+        // Angsuran awal (titipan) yang sudah dibayar selama perawatan — rincian + total
+        $this->daftarAngsuranAwal = DB::table('rstxn_ripaymentdtls as p')
+            ->leftJoin('acmst_accounts as a', 'a.acc_id', '=', 'p.acc_id')
+            ->leftJoin('immst_employers as e', 'e.emp_id', '=', 'p.emp_id')
+            ->where('p.rihdr_no', $n)
+            ->orderBy('p.ripay_date')
+            ->orderBy('p.ripay_no')
+            ->get([
+                'p.ripay_no',
+                DB::raw("to_char(p.ripay_date, 'dd/mm/yyyy hh24:mi') as ripay_date"),
+                'p.ripay_bayar',
+                'p.shift',
+                'p.acc_id',
+                'a.acc_name',
+                'p.emp_id',
+                'e.emp_name',
+            ])
+            ->map(fn($row) => (array) $row)
+            ->toArray();
+        $this->angsuranAwal = (int) collect($this->daftarAngsuranAwal)->sum('ripay_bayar');
 
         $this->recalcSisa();
     }
@@ -324,6 +348,7 @@ new class extends Component {
     {
         $this->totalSetelahDiskon = max(0, $this->totalAll - $this->riDiskon);
         $this->sisaTagihan        = max(0, $this->totalSetelahDiskon - $this->angsuranAwal);
+        $this->kelebihanTitipan   = max(0, $this->angsuranAwal - $this->totalSetelahDiskon);
         $this->hitungKembalian();
     }
 
@@ -344,7 +369,21 @@ new class extends Component {
     private function hitungKembalian(): void
     {
         $bayar = (int) ($this->bayar ?? 0);
-        $this->kembalian = $bayar >= $this->sisaTagihan ? $bayar - $this->sisaTagihan : 0;
+        // Nominal Bayar = TOTAL tagihan (termasuk titipan), bukan sisanya — lihat postTransaksi().
+        $this->kembalian = max(0, $bayar - $this->totalSetelahDiskon);
+    }
+
+    /** Isi Nominal Bayar dengan total tagihan (kasus lunas — paling sering). */
+    public function isiBayarTotal(): void
+    {
+        if ($this->isFormLocked) {
+            return;
+        }
+        $this->bayar = $this->totalSetelahDiskon;
+        $this->resetErrorBag('bayar');
+        $this->hitungKembalian();
+        $this->incrementVersion('kasir-ri');
+        $this->dispatch('focus-input-bayar-ri');
     }
 
     /* ===============================
@@ -586,6 +625,22 @@ new class extends Component {
 
         if (!$empId) {
             $this->dispatch('toast', type: 'error', message: 'EMP ID belum diisi di profil user. Hubungi administrator.');
+            return;
+        }
+
+        /*
+         * ATURAN ANGSURAN AWAL (keputusan user 2026-11-17, sejalan jurnal 6i):
+         * saat pulang seluruh titipan dianggap DIKEMBALIKAN ke pasien (jurnal "PENGEMBALIAN
+         * ANGSURAN AWAL"), lalu pelunasan dicatat sebesar Nominal Bayar. Maka kasir mengetik
+         * TOTAL tagihan, bukan sisa. Uang fisik = Nominal − titipan (negatif = kembalikan kelebihan).
+         * Nominal di bawah titipan (dan di bawah total) = kas tercatat kurang dari uang yang
+         * benar-benar sudah diterima → ditolak.
+         */
+        $angsuranAwalKini = (int) DB::table('rstxn_ripaymentdtls')->where('rihdr_no', $this->riHdrNo)->sum('ripay_bayar');
+        $batasBawah       = min($angsuranAwalKini, $this->totalSetelahDiskon);
+        if ((int) $this->bayar < $batasBawah) {
+            $this->addError('bayar', 'Nominal Bayar adalah TOTAL tagihan termasuk titipan — minimal Rp ' . number_format($batasBawah) . ' (angsuran awal yang sudah diterima).');
+            $this->dispatch('toast', type: 'error', message: 'Nominal Bayar kurang dari angsuran awal yang sudah diterima.');
             return;
         }
 
@@ -1057,6 +1112,7 @@ new class extends Component {
         </div>
 
         {{-- Ringkasan — dibaca dari atas ke bawah: Subtotal → Diskon → Total → Dibayar → Sisa --}}
+        <div class="grid items-start grid-cols-1 gap-4 xl:grid-cols-[28rem_minmax(0,1fr)]">
         <dl class="w-full max-w-md divide-y divide-hairline dark:divide-gray-700">
 
             <div class="flex items-center justify-between gap-4 py-2.5">
@@ -1089,25 +1145,128 @@ new class extends Component {
 
             @if ($angsuranAwal > 0)
                 <div class="flex items-center justify-between gap-4 py-2.5">
-                    <dt class="text-base text-muted dark:text-gray-400">Dibayar <span
-                            class="text-xs font-normal opacity-70">(angsuran awal)</span></dt>
+                    <dt class="text-base text-muted dark:text-gray-400">Angsuran Awal <span
+                            class="text-xs font-normal opacity-70">(titipan selama dirawat)</span></dt>
                     <dd class="text-2xl font-bold text-ink dark:text-gray-100">Rp
                         {{ number_format($angsuranAwal) }}</dd>
                 </div>
             @endif
 
-            <div class="flex items-center justify-between gap-4 py-2.5">
-                <dt
-                    class="text-base font-bold {{ $sisaTagihan > 0 ? 'text-error dark:text-rose-400' : 'text-success dark:text-success' }}">
-                    Sisa Tagihan
-                </dt>
-                <dd
-                    class="text-2xl font-bold {{ $sisaTagihan > 0 ? 'text-error dark:text-rose-300' : 'text-emerald-700 dark:text-emerald-300' }}">
-                    Rp {{ number_format($sisaTagihan) }}
-                </dd>
-            </div>
+            @if ($kelebihanTitipan > 0)
+                {{-- Titipan > total: kelebihannya dikembalikan ke pasien (uang fisik keluar dari kas) --}}
+                <div class="flex items-center justify-between gap-4 py-2.5">
+                    <dt class="text-base font-bold text-amber-700 dark:text-amber-400">
+                        Kelebihan Titipan <span class="text-xs font-normal opacity-70">(kembalikan ke pasien)</span>
+                    </dt>
+                    <dd class="text-2xl font-bold text-amber-700 dark:text-amber-300">
+                        Rp {{ number_format($kelebihanTitipan) }}
+                    </dd>
+                </div>
+            @else
+                <div class="flex items-center justify-between gap-4 py-2.5">
+                    <dt
+                        class="text-base font-bold {{ $sisaTagihan > 0 ? 'text-error dark:text-rose-400' : 'text-success dark:text-success' }}">
+                        Sisa Tagihan @if ($angsuranAwal > 0)
+                            <span class="text-xs font-normal opacity-70">(uang yang ditagih saat pulang)</span>
+                        @endif
+                    </dt>
+                    <dd
+                        class="text-2xl font-bold {{ $sisaTagihan > 0 ? 'text-error dark:text-rose-300' : 'text-emerald-700 dark:text-emerald-300' }}">
+                        Rp {{ number_format($sisaTagihan) }}
+                    </dd>
+                </div>
+            @endif
 
         </dl>
+
+        {{-- Rincian angsuran awal di samping ringkasan — hanya lihat; tambah/hapus di tab Angsuran Awal --}}
+        @if (!empty($daftarAngsuranAwal))
+            <div class="overflow-hidden bg-canvas border border-hairline rounded-2xl dark:border-gray-700 dark:bg-gray-900">
+                <div class="flex items-center justify-between gap-2 px-4 py-3 border-b border-hairline dark:border-gray-700">
+                    <h4 class="text-sm font-semibold text-body dark:text-gray-300">Rincian Angsuran Awal (Titipan)</h4>
+                    <x-badge variant="gray">{{ count($daftarAngsuranAwal) }} transaksi</x-badge>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm text-left">
+                        <thead class="text-xs font-semibold tracking-wide text-gray-600 uppercase dark:text-gray-300 bg-surface-soft dark:bg-gray-800/50">
+                            <tr>
+                                <th class="px-4 py-2">Tanggal</th>
+                                <th class="px-4 py-2">Akun Kas</th>
+                                <th class="px-4 py-2">Kasir</th>
+                                <th class="px-4 py-2 text-right">Nominal</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-hairline-soft dark:divide-gray-800">
+                            @foreach ($daftarAngsuranAwal as $row)
+                                <tr wire:key="kasir-ri-angsuran-{{ $row['ripay_no'] }}">
+                                    <td class="px-4 py-1.5 whitespace-nowrap">
+                                        <div class="font-mono text-sm text-muted dark:text-gray-400">{{ $row['ripay_date'] ?? '-' }}</div>
+                                        <div class="text-xs text-muted dark:text-gray-400">No. {{ $row['ripay_no'] }} · Shift {{ $row['shift'] ?? '-' }}</div>
+                                    </td>
+                                    <td class="px-4 py-1.5">
+                                        <div class="text-ink dark:text-gray-200">{{ $row['acc_name'] ?: '-' }}</div>
+                                        <div class="font-mono text-xs text-muted dark:text-gray-400">{{ $row['acc_id'] ?? '-' }}</div>
+                                    </td>
+                                    <td class="px-4 py-1.5 text-muted dark:text-gray-400">{{ $row['emp_name'] ?: ($row['emp_id'] ?? '-') }}</td>
+                                    <td class="px-4 py-1.5 font-semibold text-right text-ink dark:text-gray-200 whitespace-nowrap">
+                                        Rp {{ number_format($row['ripay_bayar'] ?? 0) }}
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                        <tfoot class="border-t border-hairline bg-surface-soft dark:bg-gray-800/50 dark:border-gray-700">
+                            <tr>
+                                <td colspan="3" class="px-4 py-2.5 text-sm font-semibold text-muted dark:text-gray-400">Total Angsuran Awal</td>
+                                <td class="px-4 py-2.5 text-sm font-bold text-right text-brand-green dark:text-brand-lime whitespace-nowrap">
+                                    Rp {{ number_format($angsuranAwal) }}
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+                {{-- Panduan aturan angsuran awal — panel biru-info baku (collapsible, default tertutup) --}}
+                <div x-data="{ open: false }"
+                    class="m-4 overflow-hidden border rounded-2xl bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-700">
+                    <button type="button" @click="open = !open"
+                        class="flex items-center justify-between w-full px-3 py-2 text-sm font-semibold text-blue-900 transition-colors hover:bg-blue-100 dark:text-blue-200 dark:hover:bg-blue-900/30">
+                        <span class="flex items-center gap-2">
+                            <svg class="w-4 h-4 text-blue-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Aturan Angsuran Awal saat Pulang
+                        </span>
+                        <svg class="w-4 h-4 text-blue-600 transition-transform" :class="open ? 'rotate-180' : ''" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </button>
+
+                    <div x-show="open" x-collapse class="px-3 pb-3 text-xs text-blue-900 dark:text-blue-200">
+                        <ul class="ml-4 space-y-1 list-disc">
+                            <li><strong>Cara sistem mencatat</strong> — saat pasien pulang, sistem otomatis menganggap titipan
+                                Rp {{ number_format($angsuranAwal) }} <em>dikembalikan dulu</em> ke pasien, lalu pasien
+                                <em>membayar seluruh tagihan</em> Rp {{ number_format($totalSetelahDiskon) }}.</li>
+                            <li><strong>Karena itu Nominal Bayar diisi TOTAL tagihan</strong>
+                                (Rp {{ number_format($totalSetelahDiskon) }}), <u>bukan</u> sisa setelah dipotong titipan.
+                                Tombol <em>Isi total</em> mengisinya otomatis.</li>
+                            <li><strong>Uang yang benar-benar diminta dari pasien</strong> hanya total − titipan
+                                @if ($kelebihanTitipan > 0)
+                                    — di sini titipan lebih besar, jadi kasir <strong>mengembalikan Rp {{ number_format($kelebihanTitipan) }}</strong> ke pasien.
+                                @else
+                                    = <strong>Rp {{ number_format($sisaTagihan) }}</strong>. Titipan sudah masuk kas sejak dibayar, jadi tidak ditagih lagi.
+                                @endif
+                            </li>
+                            <li><strong>Nominal di bawah titipan ditolak</strong> — kas akan tercatat lebih kecil dari uang yang sudah diterima.</li>
+                            <li><strong>Bayar kurang dari total = BON</strong> — piutang = total − nominal (titipan sudah termasuk di nominal).</li>
+                            <li><strong>Tambah / hapus titipan</strong> di tab <em>Angsuran Awal</em> selama pasien masih dirawat;
+                                hapus hanya Supervisor Tu / Admin. Setelah pulang terkunci.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        @endif
+        </div>
 
         @error('riDiskon')
             <x-input-error :messages="$message" class="mt-1" />
@@ -1163,8 +1322,18 @@ new class extends Component {
 
                 {{-- Input Bayar --}}
                 <div>
-                    <x-input-label value="Nominal Bayar (Rp)" class="mb-1" />
+                    <div class="flex items-center justify-between gap-2 mb-1">
+                        <x-input-label :value="$angsuranAwal > 0 ? 'Nominal Bayar — TOTAL tagihan' : 'Nominal Bayar (Rp)'" />
+                        @if ($siapBayar)
+                            <button type="button" wire:click="isiBayarTotal"
+                                class="text-xs font-semibold text-brand-green hover:underline dark:text-brand-lime"
+                                title="Isi dengan total tagihan Rp {{ number_format($totalSetelahDiskon) }}">
+                                Isi total
+                            </button>
+                        @endif
+                    </div>
                     <x-text-input-number wire:model="bayar" placeholder="0"
+                        wire:key="{{ $this->renderKey('kasir-ri', 'bayar') }}"
                         :error="$errors->has('bayar')"
                         :disabled="!$siapBayar"
                         x-ref="inputBayarRI"
@@ -1186,9 +1355,24 @@ new class extends Component {
 
             </div>
 
-            {{-- Hasil dari nominal yang diketik: kurang (jadi bon) / pas / kembalian --}}
+            {{-- Ada angsuran awal: Nominal Bayar = TOTAL tagihan, bukan sisa (aturan jurnal: titipan
+                 dianggap dikembalikan seluruhnya saat pulang, lalu pelunasan dicatat penuh). --}}
+            @if ($siapBayar && $angsuranAwal > 0)
+                <div class="max-w-2xl px-3 py-2 mt-3 text-xs border rounded-xl text-blue-800 bg-blue-50 border-blue-200 dark:text-blue-200 dark:bg-blue-900/20 dark:border-blue-800">
+                    Pasien punya angsuran awal <strong>Rp {{ number_format($angsuranAwal) }}</strong>.
+                    Isi Nominal Bayar dengan <strong>TOTAL tagihan (Rp {{ number_format($totalSetelahDiskon) }})</strong>, bukan sisanya —
+                    sistem menganggap titipan dikembalikan dulu, lalu pasien membayar seluruh tagihan.
+                    @if ($kelebihanTitipan > 0)
+                        Titipan melebihi tagihan: <strong>kembalikan Rp {{ number_format($kelebihanTitipan) }}</strong> ke pasien.
+                    @else
+                        Uang yang diterima dari pasien sekarang: <strong>Rp {{ number_format($sisaTagihan) }}</strong>.
+                    @endif
+                </div>
+            @endif
+
+            {{-- Hasil dari nominal yang diketik: kurang (jadi bon) / pas / kembalian — dibanding TOTAL --}}
             @if ($siapBayar && (int) ($bayar ?? 0) > 0)
-                @php $selisih = (int) ($bayar ?? 0) - $sisaTagihan; @endphp
+                @php $selisih = (int) ($bayar ?? 0) - $totalSetelahDiskon; @endphp
                 <dl class="max-w-md mt-3 border-t border-hairline dark:border-gray-700">
                     <div class="flex items-center justify-between gap-4 py-2.5">
                         @if ($selisih < 0)
@@ -1209,14 +1393,14 @@ new class extends Component {
 
             {{-- Badge status pembayaran --}}
             @if ($siapBayar)
-                @if ((int) ($bayar ?? 0) >= $sisaTagihan)
+                @if ((int) ($bayar ?? 0) >= $totalSetelahDiskon)
                     <div class="flex items-center gap-1.5 mt-3">
                         <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                         <span class="text-xs font-semibold text-success dark:text-success">
-                            Pembayaran akan diproses sebagai LUNAS{{ (int) $sisaTagihan === 0 ? ' (BPJS / tidak ada tagihan)' : '' }}
+                            Pembayaran akan diproses sebagai LUNAS{{ (int) $totalSetelahDiskon === 0 ? ' (BPJS / tidak ada tagihan)' : '' }}
                         </span>
                     </div>
                 @else

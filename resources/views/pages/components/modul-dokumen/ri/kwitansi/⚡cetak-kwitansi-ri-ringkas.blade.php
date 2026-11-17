@@ -130,6 +130,8 @@ new class extends Component {
 
         // Pembayaran (angsuran) yang sudah masuk
         $sudahBayar = (int) DB::table('rstxn_ripaymentpdtls')->where('rihdr_no', $riHdrNo)->sum('ripay_bayar');
+        // Angsuran awal (titipan) selama dirawat — ditampilkan di footer bila ada.
+        $angsuranAwal = (int) DB::table('rstxn_ripaymentdtls')->where('rihdr_no', $riHdrNo)->sum('ripay_bayar');
         $sisa       = max(0, $grandTotal - $sudahBayar);
 
         // Kasir & dokter
@@ -211,6 +213,7 @@ new class extends Component {
             'subsidi'          => $subsidi,
             'grandTotal'       => $grandTotal,
             'sudahBayar'       => $sudahBayar,
+            'angsuranAwal' => $angsuranAwal,
             'sisa'             => $sisa,
 
             'kasirName'  => $kasirName,

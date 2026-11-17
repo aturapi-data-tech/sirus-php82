@@ -239,6 +239,34 @@
                 {{ $rp($data['grandTotal']) }}
             </td>
         </tr>
+        {{-- Angsuran awal (titipan) — hanya bila ada. TOTAL BAYAR tetap total penuh (aturan jurnal:
+             titipan dianggap dikembalikan, pelunasan dicatat penuh); baris di bawah menjelaskan
+             uang yang benar-benar diterima / dikembalikan saat pulang. --}}
+        @if (($data['angsuranAwal'] ?? 0) > 0)
+            @php
+                // Uang fisik saat pulang = pelunasan tercatat − titipan (pelunasan memuat titipan).
+                $uangPulang = (int) ($data['sudahBayar'] ?? 0) - (int) $data['angsuranAwal'];
+            @endphp
+            <tr>
+                <td colspan="3" class="py-px px-1.5 text-right">ANGSURAN AWAL (titipan)</td>
+                <td class="py-px px-1.5 text-right tabular-nums">( {{ $rp($data['angsuranAwal']) }} )</td>
+            </tr>
+            @if ($uangPulang < 0)
+                <tr>
+                    <td colspan="3" class="py-0.5 px-1.5 text-right font-semibold border-t border-gray-600">KELEBIHAN TITIPAN DIKEMBALIKAN</td>
+                    <td class="py-0.5 px-1.5 text-right tabular-nums font-semibold border-t border-gray-600">
+                        {{ $rp(abs($uangPulang)) }}
+                    </td>
+                </tr>
+            @else
+                <tr>
+                    <td colspan="3" class="py-0.5 px-1.5 text-right font-semibold border-t border-gray-600">DIBAYAR SAAT PULANG</td>
+                    <td class="py-0.5 px-1.5 text-right tabular-nums font-semibold border-t border-gray-600">
+                        {{ $rp($uangPulang) }}
+                    </td>
+                </tr>
+            @endif
+        @endif
     </table>
 
     {{-- ══════════════════════════════════════

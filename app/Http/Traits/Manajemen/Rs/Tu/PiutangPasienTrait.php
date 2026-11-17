@@ -22,7 +22,11 @@ use Illuminate\Support\Facades\DB;
  *   sisa = GREATEST(0, total − diskon − sudah_bayar)
  *   - RJ/UGD: total = Σ pos biaya; bayar = Σ rjc_nominal (rstxn_*cashins); diskon = rj_diskon
  *   - RI    : total = Σ pos biaya RI (lihat kasir-ri totalAll); diskon = ri_diskon;
- *             bayar = Σ ripaymentdtls.ripay_bayar (angsuran) + Σ ripaymentpdtls.ripay_bayar (pelunasan)
+ *             bayar = Σ ripaymentpdtls.ripay_bayar (pelunasan) SAJA.
+ *             Angsuran awal (ripaymentdtls) TIDAK dikurangkan lagi: saat pulang titipan dianggap
+ *             dikembalikan seluruhnya (jurnal PENGEMBALIAN ANGSURAN AWAL) dan kasir mengetik total
+ *             tagihan penuh — jadi pelunasan sudah memuat porsi titipan. Memotongnya dua kali
+ *             membuat piutang terbaca kurang (keputusan user 2026-11-17).
  *
  * Query tiap jalur ditulis TERPISAH dengan nama tabel LITERAL (rstxn_rj, rstxn_ugd,
  * rstxn_ri) agar mudah di-grep saat audit — sengaja tidak memakai prefix dinamis.
@@ -186,7 +190,6 @@ trait PiutangPasienTrait
             ->leftJoinSub(DB::table('rstxn_ribonobats')->select('rihdr_no', DB::raw('NVL(SUM(ribon_price),0) as v'))->whereIn('rihdr_no', $hanyaH)->groupBy('rihdr_no'),                     'bon', 'bon.rihdr_no', '=', 'h.rihdr_no')
             ->leftJoinSub(DB::table('rstxn_riobats')->select('rihdr_no', DB::raw('NVL(SUM(riobat_qty * riobat_price),0) as v'))->whereIn('rihdr_no', $hanyaH)->groupBy('rihdr_no'),          'obt', 'obt.rihdr_no', '=', 'h.rihdr_no')
             ->leftJoinSub(DB::table('rstxn_riobatrtns')->select('rihdr_no', DB::raw('NVL(SUM(riobat_qty * riobat_price),0) as v'))->whereIn('rihdr_no', $hanyaH)->groupBy('rihdr_no'),       'rtn', 'rtn.rihdr_no', '=', 'h.rihdr_no')
-            ->leftJoinSub(DB::table('rstxn_ripaymentdtls')->select('rihdr_no', DB::raw('NVL(SUM(ripay_bayar),0) as v'))->whereIn('rihdr_no', $hanyaH)->groupBy('rihdr_no'),                  'pd',  'pd.rihdr_no',  '=', 'h.rihdr_no')
             ->leftJoinSub(DB::table('rstxn_ripaymentpdtls')->select('rihdr_no', DB::raw('NVL(SUM(ripay_bayar),0) as v'))->whereIn('rihdr_no', $hanyaH)->groupBy('rihdr_no'),                 'pp',  'pp.rihdr_no',  '=', 'h.rihdr_no')
             ->where('h.status_pulang', 'H')
             ->when($start && $end, fn($subQuery) => $subQuery->whereBetween('h.exit_date', [$start, $end]));
@@ -200,7 +203,7 @@ trait PiutangPasienTrait
             to_char(h.entry_date,'dd/mm/yyyy hh24:mi:ss') as tgl_masuk,
             CAST(NULL AS VARCHAR2(200)) as unit, '-' as dokter,
             k.klaim_status, k.klaim_desc, h.klaim_id,
-            ({$ekspresiBiaya}) as total, NVL(h.ri_diskon,0) as diskon, (NVL(pd.v,0) + NVL(pp.v,0)) as bayar");
+            ({$ekspresiBiaya}) as total, NVL(h.ri_diskon,0) as diskon, NVL(pp.v,0) as bayar");
     }
 
     /**
