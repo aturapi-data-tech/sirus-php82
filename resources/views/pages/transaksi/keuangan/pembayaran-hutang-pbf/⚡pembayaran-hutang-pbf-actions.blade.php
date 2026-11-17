@@ -399,10 +399,10 @@ new class extends Component {
                     </div>
 
                     <div class="flex justify-end gap-2">
-                        <x-secondary-button type="button" wire:click="closeModal">Batal</x-secondary-button>
+                        <x-secondary-button type="button" wire:click="closeModal"><x-ikon nama="batal" /> Batal</x-secondary-button>
                         <x-primary-button type="button" wire:click="processBayar" x-ref="btnProses"
                             wire:loading.attr="disabled" wire:target="processBayar">
-                            <span wire:loading.remove wire:target="processBayar">Proses Pembayaran</span>
+                            <span wire:loading.remove wire:target="processBayar" class="inline-flex items-center gap-2"><x-ikon nama="proses" /> Proses Pembayaran</span>
                             <span wire:loading wire:target="processBayar"><x-loading /> Memproses...</span>
                         </x-primary-button>
                     </div>

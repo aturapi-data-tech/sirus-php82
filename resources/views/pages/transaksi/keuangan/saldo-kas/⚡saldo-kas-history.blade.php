@@ -852,25 +852,22 @@ new class extends Component {
                     {{-- Dua tombol sama di kedua tampilan; cakupan mengikuti induk: Per Shift → shift terpilih, Harian → seluruh hari.
                          Shift kosong tetap boleh diunduh/dicetak (saldo awal = akhir), jadi tak di-disable di tab Per Shift. --}}
                     @php $tanpaData = $mode !== 'shift' && $this->rows->count() === 0; @endphp
-                    <x-info-button type="button" class="gap-2" wire:click="unduhData"
+                    <x-outline-button type="button" class="gap-2" wire:click="unduhData"
                         :disabled="$tanpaData"
                         wire:loading.attr="disabled" wire:target="unduhData"
                         title="{{ $mode === 'shift' ? 'Unduh rincian transaksi shift terpilih + saldo awal/akhir shift' : 'Unduh rincian transaksi sehari + saldo awal/akhir' }} untuk dibandingkan di Excel">
                         <span wire:loading.remove wire:target="unduhData" class="inline-flex items-center gap-2">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8">
-                                <path stroke-linecap="round" stroke-linejoin="round"
-                                    d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                            </svg>
+                            <x-ikon nama="unduh" />
                             Unduh Data Excel
                         </span>
                         <span wire:loading wire:target="unduhData" class="inline-flex items-center gap-2">
                             <x-loading /> Menyiapkan...
                         </span>
-                    </x-info-button>
+                    </x-outline-button>
                     <x-cetak-button wire:click="cetakRekapan" :disabled="$tanpaData"
                         label="Cetak Rekapan"
                         title="{{ $mode === 'shift' ? 'Rekapan serah terima kas shift terpilih — saldo awal, masuk, keluar, saldo akhir, kolom TTD' : 'Rekapan sehari — total uang tiap jenis transaksi' }}" />
-                    <x-secondary-button type="button" wire:click="closeModal">Tutup</x-secondary-button>
+                    <x-secondary-button type="button" wire:click="closeModal"><x-ikon nama="batal" /> Tutup</x-secondary-button>
                 </div>
             </div>
         </div>

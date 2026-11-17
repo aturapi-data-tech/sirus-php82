@@ -185,7 +185,7 @@ new class extends Component {
                         <p class="mt-1 text-xs text-muted dark:text-gray-400">Cari berdasarkan kode / nama / telp supplier</p>
                     </div>
                     @if ($suppId)
-                        <x-secondary-button type="button" wire:click="clearSupplier">Transaksi Baru</x-secondary-button>
+                        <x-secondary-button type="button" wire:click="clearSupplier"><x-ikon nama="kembalikan" /> Transaksi Baru</x-secondary-button>
                     @endif
                 </div>
                 <div class="px-5 py-5">
@@ -262,7 +262,7 @@ new class extends Component {
                         <div class="flex items-center justify-end gap-3">
                             <x-primary-button type="button" wire:click="simpan"
                                 wire:loading.attr="disabled" wire:target="simpan">
-                                <span wire:loading.remove wire:target="simpan">Simpan Topup</span>
+                                <span wire:loading.remove wire:target="simpan" class="inline-flex items-center gap-2"><x-ikon nama="simpan" /> Simpan Topup</span>
                                 <span wire:loading wire:target="simpan">Memproses...</span>
                             </x-primary-button>
                         </div>

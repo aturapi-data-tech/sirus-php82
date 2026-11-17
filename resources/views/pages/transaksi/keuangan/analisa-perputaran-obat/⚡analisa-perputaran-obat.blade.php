@@ -393,12 +393,13 @@ new class extends Component {
                                     </td>
 
                                     <td class="ds-c">
-                                        <x-secondary-button type="button"
+                                        <x-outline-button type="button"
                                             wire:click="openDetail('{{ $row->product_id }}')"
                                             class="whitespace-nowrap"
                                             title="Evaluasi menyeluruh: belanja, usulan order & harga jual">
+                                            <x-ikon nama="lihat" />
                                             Evaluasi
-                                        </x-secondary-button>
+                                        </x-outline-button>
                                     </td>
                                 </tr>
                             @empty
