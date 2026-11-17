@@ -490,6 +490,19 @@ new class extends Component {
                                                 @endif
                                             @endhasanyrole
 
+                                            {{-- Ubah tanggal/shift resep — HANYA saat Antrian & pasien belum pulang --}}
+                                            @can('ri.ubahDataResep')
+                                                @if ($row->status !== 'L' && !in_array(strtoupper($row->ri_status ?? ''), ['P', 'B'], true))
+                                                    <x-secondary-button
+                                                        wire:click="$dispatch('open-ubah-data-resep-ri', { slsNo: {{ $row->sls_no }} })"
+                                                        class="whitespace-nowrap justify-center"
+                                                        title="Ubah tanggal & shift resep">
+                                                        <x-ikon nama="ubah" ukuran="w-3.5 h-3.5" class="mr-1" />
+                                                        Ubah Tgl/Shift
+                                                    </x-secondary-button>
+                                                @endif
+                                            @endcan
+
                                         </div>
                                     </td>
                                 </tr>
@@ -525,6 +538,10 @@ new class extends Component {
         {{-- Child action components --}}
         <livewire:pages::transaksi.kasir.administrasi-kasir-ri.administrasi-kasir-ri
             wire:key="administrasi-kasir-ri-modal" />
+
+        {{-- Ubah tanggal & shift resep (listen 'open-ubah-data-resep-ri') --}}
+        <livewire:pages::transaksi.kasir.antrian-kasir-ri.ubah-data-resep-ri-actions
+            wire:key="ubah-data-resep-ri-actions" />
 
         {{-- PDF dispatcher (listen 'cetak-kwitansi-ri-obat.open') --}}
         <livewire:pages::components.modul-dokumen.ri.kwitansi.cetak-kwitansi-ri-obat

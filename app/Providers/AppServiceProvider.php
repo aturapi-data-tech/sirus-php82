@@ -69,6 +69,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('bpjs.hapusSuratKontrol', fn ($user) => $user->hasAnyRole(AksiRole::BPJS_HAPUS_SURAT_KONTROL));
         Gate::define('ugd.ubahDataKunjungan', fn ($user) => $user->hasAnyRole(AksiRole::UGD_UBAH_DATA_KUNJUNGAN));
         Gate::define('ri.ubahDataKunjungan', fn ($user) => $user->hasAnyRole(AksiRole::RI_UBAH_DATA_KUNJUNGAN));
+        Gate::define('ri.ubahDataResep', fn ($user) => $user->hasAnyRole(AksiRole::RI_UBAH_DATA_RESEP));
         Gate::define('ri.pindahKamar', fn ($user) => $user->hasAnyRole(AksiRole::RI_PINDAH_KAMAR));
         Gate::define('ri.resetAdministrasi', fn ($user) => $user->hasAnyRole(AksiRole::RI_RESET_ADMINISTRASI));
 
