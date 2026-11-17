@@ -332,11 +332,11 @@ new class extends Component {
 
             {{-- Footer — sticky bottom --}}
             <div class="sticky bottom-0 z-10 flex items-center justify-end gap-2 px-6 py-3 border-t border-hairline bg-canvas dark:bg-gray-900 dark:border-gray-700 shrink-0">
-                <x-secondary-button type="button" wire:click="closeGenerateModal">Batal</x-secondary-button>
+                <x-secondary-button type="button" wire:click="closeGenerateModal"><x-ikon nama="batal" /> Batal</x-secondary-button>
                 <x-primary-button type="button"
                     x-on:click="window.dispatchEvent(new Event('rad-generate.flush')); $nextTick(() => $wire.generatePdf())"
                     wire:loading.attr="disabled" wire:target="generatePdf">
-                    <span wire:loading.remove wire:target="generatePdf">Generate &amp; Simpan</span>
+                    <span wire:loading.remove wire:target="generatePdf" class="inline-flex items-center gap-2"><x-ikon nama="proses" /> Generate &amp; Simpan</span>
                     <span wire:loading wire:target="generatePdf"><x-loading /> Generating...</span>
                 </x-primary-button>
             </div>
@@ -365,9 +365,9 @@ new class extends Component {
                 />
             </div>
             <div class="flex items-center justify-end gap-2 px-6 py-3 border-t border-hairline dark:border-gray-700 bg-surface-soft dark:bg-gray-900/40">
-                <x-secondary-button type="button" wire:click="closeUploadPdfModal">Batal</x-secondary-button>
+                <x-secondary-button type="button" wire:click="closeUploadPdfModal"><x-ikon nama="batal" /> Batal</x-secondary-button>
                 <x-primary-button type="button" wire:click="uploadPdf" wire:loading.attr="disabled" wire:target="uploadPdf,pdfFile">
-                    <span wire:loading.remove wire:target="uploadPdf">Upload</span>
+                    <span wire:loading.remove wire:target="uploadPdf" class="inline-flex items-center gap-2"><x-ikon nama="unggah" /> Upload</span>
                     <span wire:loading wire:target="uploadPdf"><x-loading /> Uploading...</span>
                 </x-primary-button>
             </div>

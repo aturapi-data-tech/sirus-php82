@@ -413,10 +413,7 @@ new class extends Component {
                         <x-primary-button type="button"
                             wire:click="$dispatch('kamar-operasi-tambah.open', { sumber: '{{ $filterLayanan ?: 'RI' }}' })">
                             <span class="flex items-center gap-1.5">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M12 4v16m8-8H4" />
-                                </svg>
+                                <x-ikon nama="tambah" />
                                 Tambah Operasi
                             </span>
                         </x-primary-button>
@@ -681,10 +678,7 @@ new class extends Component {
                                                                     confirmText="Ya, batalkan" cancelText="Tutup"
                                                                     :disabled="!$indukAktif"
                                                                     class="w-full justify-start px-3 py-2 text-sm rounded-lg">
-                                                                    <svg class="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                                                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                                                            d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                                                                    </svg>
+                                                                    <x-ikon nama="batalkan" ukuran="w-5 h-5" class="mt-0.5 shrink-0" />
                                                                     <span>Batalkan Pendaftaran</span>
                                                                 </x-confirm-button>
                                                             @endhasanyrole

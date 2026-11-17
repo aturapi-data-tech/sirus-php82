@@ -531,6 +531,7 @@ new class extends Component {
                                 </div>
                             </div>
                             <x-secondary-button type="button" wire:click="changePatient" class="px-3 py-1 text-xs shrink-0">
+                                <x-ikon nama="ubah" ukuran="w-3.5 h-3.5" />
                                 Ganti
                             </x-secondary-button>
                         </div>
@@ -754,13 +755,11 @@ new class extends Component {
 
             {{-- FOOTER --}}
             <div class="sticky bottom-0 z-10 flex items-center justify-end gap-2 px-6 py-3 border-t border-hairline bg-canvas dark:bg-gray-900 dark:border-gray-700 shrink-0">
-                <x-secondary-button type="button" wire:click="closeTambahModal">Tutup</x-secondary-button>
+                <x-secondary-button type="button" wire:click="closeTambahModal"><x-ikon nama="batal" /> Tutup</x-secondary-button>
                 <x-primary-button type="button" wire:click="insertLab" wire:loading.attr="disabled"
                     wire:target="insertLab" :disabled="!$selectedRefNo || empty($selectedItems)">
                     <span wire:loading.remove wire:target="insertLab" class="inline-flex items-center gap-1">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                        </svg>
+                        <x-ikon nama="tambah" />
                         Tambah Order
                     </span>
                     <span wire:loading wire:target="insertLab"><x-loading class="w-4 h-4" /></span>

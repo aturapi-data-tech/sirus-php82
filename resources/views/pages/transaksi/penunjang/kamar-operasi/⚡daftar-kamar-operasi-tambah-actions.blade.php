@@ -319,6 +319,7 @@ new class extends Component {
                                             <td class="px-4 py-2 text-ink dark:text-gray-200">{{ $pasien->unit_name ?? '-' }}</td>
                                             <td class="px-4 py-2 text-center">
                                                 <x-primary-button type="button" wire:click="pilihPasien({{ $pasien->ref_no }})">
+                                                    <x-ikon nama="setujui" />
                                                     Pilih
                                                 </x-primary-button>
                                             </td>
@@ -349,6 +350,7 @@ new class extends Component {
                                 </div>
                             </div>
                             <x-secondary-button type="button" wire:click="batalPilihPasien" class="text-xs whitespace-nowrap">
+                                <x-ikon nama="ubah" ukuran="w-3.5 h-3.5" />
                                 Ganti Pasien
                             </x-secondary-button>
                         </div>
@@ -378,11 +380,11 @@ new class extends Component {
 
             {{-- FOOTER --}}
             <div class="flex items-center justify-end gap-2 px-6 py-4 border-t shrink-0 border-hairline dark:border-gray-700">
-                <x-secondary-button type="button" wire:click="closeTambah">Tutup</x-secondary-button>
+                <x-secondary-button type="button" wire:click="closeTambah"><x-ikon nama="batal" /> Tutup</x-secondary-button>
 
                 @if (!empty($pasienTerpilih))
                     <x-primary-button type="button" wire:click="simpanOperasi" wire:loading.attr="disabled" wire:target="simpanOperasi">
-                        <span wire:loading.remove wire:target="simpanOperasi">Simpan &amp; Lanjut Isi Tindakan</span>
+                        <span wire:loading.remove wire:target="simpanOperasi" class="inline-flex items-center gap-2"><x-ikon nama="simpan" /> Simpan &amp; Lanjut Isi Tindakan</span>
                         <span wire:loading wire:target="simpanOperasi" class="flex items-center gap-1.5">
                             <x-loading /> Menyimpan...
                         </span>
