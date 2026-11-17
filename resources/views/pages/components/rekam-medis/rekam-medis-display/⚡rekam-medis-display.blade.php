@@ -795,7 +795,7 @@ new class extends Component {
                                                                                 <x-primary-button type="button"
                                                                                     wire:click="copyResep('{{ $myQData->txn_no }}','{{ $myQData->layanan_status }}')"
                                                                                     class="text-sm px-3 py-1.5">
-                                                                                    <x-ikon nama="muat-ulang" class="mr-1" />
+                                                                                    <x-ikon nama="salin" class="mr-1" />
                                                                                     Copy Resep
                                                                                 </x-primary-button>
                                                                             @endhasanyrole
@@ -919,7 +919,7 @@ new class extends Component {
                                                                                     <span wire:loading.remove
                                                                                         wire:target="copyAssessmentPerawatUGD({{ $myQData->txn_no }})"
                                                                                         class="flex items-center gap-1">
-                                                                                        <x-ikon nama="muat-ulang" />
+                                                                                        <x-ikon nama="salin" />
                                                                                         Copy Asesmen Perawat
                                                                                     </span>
                                                                                     <span wire:loading
@@ -941,7 +941,7 @@ new class extends Component {
                                                                                     <span wire:loading.remove
                                                                                         wire:target="copyAssessmentDokterUGD({{ $myQData->txn_no }})"
                                                                                         class="flex items-center gap-1">
-                                                                                        <x-ikon nama="muat-ulang" />
+                                                                                        <x-ikon nama="salin" />
                                                                                         Copy Asesmen Dokter
                                                                                     </span>
                                                                                     <span wire:loading

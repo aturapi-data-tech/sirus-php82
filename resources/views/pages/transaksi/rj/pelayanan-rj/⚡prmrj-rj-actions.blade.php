@@ -788,7 +788,7 @@ new class extends Component {
                                             title="Salin Data Kunjungan"
                                             message="Isi bagian ini akan diganti dengan data kunjungan pasien yang terbaru. Ketikan Anda di bagian ini ikut hilang. Kriteria, Obat Khusus, dan tanda tangan tidak tersentuh."
                                             confirmText="Salin" class="shrink-0 px-2.5 py-1.5 text-sm">
-                                            <x-ikon nama="muat-ulang" />
+                                            <x-ikon nama="salin" />
                                             Salin Data Kunjungan
                                         </x-confirm-button>
                                     @endif

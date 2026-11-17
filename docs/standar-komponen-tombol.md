@@ -510,7 +510,7 @@ tampil di `/panduan-dev` (Komponen → Ikon Tombol).
 <x-ikon nama="kembalikan" ukuran="w-3.5 h-3.5" />
 ```
 
-### Katalog (30 aksi)
+### Katalog (31 aksi)
 
 | `nama` | Ikon | Dipakai untuk label |
 |---|---|---|
@@ -522,7 +522,8 @@ tampil di `/panduan-dev` (Komponen → Ikon Tombol).
 | `batalkan` | lingkaran dicoret | Batalkan transaksi/order/SEP, Batal Inap, Cabut, Unmount: membatalkan yang **sudah tercatat** |
 | `kembalikan` | panah balik | Kembalikan ke Antrian, Kosongkan Form, Reset, Bersihkan, Batal / Entri Baru |
 | `kembali` | panah kiri | Kembali ke Daftar, Kembali ke Entri Baru (navigasi mundur) |
-| `muat-ulang` | panah melingkar | Muat Ulang, Tarik Data, Sinkron, Grouping Ulang, Salin Ulang |
+| `muat-ulang` | panah melingkar | Muat Ulang, Tarik Data, Sinkron, Grouping Ulang |
+| `salin` | dua dokumen bertumpuk | Copy Resep, Copy Asesmen Perawat/Dokter, Salin ke Resep Baru, Salin Data Kunjungan, Salin ke Berkas |
 | `lihat` | mata | Lihat, Lihat Hasil/Foto, Preview, Pas Lebar/Layar |
 | `cari` | kaca pembesar | Cari, Cek (lookup master/BPJS) |
 | `kirim` | pesawat kertas | Kirim ke BPJS/SATUSEHAT/SISRUTE/DINKESTA, Post, TaskId |
@@ -667,6 +668,10 @@ memakai katalog (164 tombol; 2 tombol pilihan Kamar sengaja tanpa ikon).
 17 SVG khas yang sengaja dipertahankan (Scan Wajah, Auto-Print, tautan Master Pasien, spinner
 loading, dll.), 14 sengaja tanpa ikon (◀ ▶ pindah bulan, pilihan Utama/RG, Buka tab Kamar, zoom).
 Tombol baru WAJIB memakai `<x-ikon>` + komponen sesuai tabel di atas.
+- 2026-11-17 (koreksi pasca uji dev) ikon katalog baru **`salin`** (dua dokumen) — permintaan user untuk
+  Copy Resep; sebelumnya tombol salin dipetakan ke `muat-ulang` (panah melingkar), kurang jelas.
+  Dipakai di 8 tombol (Copy Resep, Copy Asesmen ×2, Salin ke Resep Baru, Salin Data Kunjungan,
+  Salin ke Berkas ×3).
 
 ### Status penerapan (pemindaian 2026-11-17)
 

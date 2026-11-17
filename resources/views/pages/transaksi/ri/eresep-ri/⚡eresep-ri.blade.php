@@ -827,7 +827,7 @@ new class extends Component {
                                                                 wire:click="copyResepHdr({{ $resepIndex }})"
                                                                 class="!py-2 !px-3 !text-sm w-full justify-center !bg-indigo-600 hover:!bg-indigo-700 !text-white focus:!ring-indigo-300 dark:!bg-indigo-600 dark:!text-white dark:hover:!bg-indigo-700 dark:focus:!ring-indigo-900"
                                                                 title="Buat resep baru dengan isi obat yang sama (tanpa TTD)">
-                                                                <x-ikon nama="muat-ulang" class="mr-1.5" />
+                                                                <x-ikon nama="salin" class="mr-1.5" />
                                                                 Salin ke Resep Baru
                                                             </x-primary-button>
                                                         @endif
