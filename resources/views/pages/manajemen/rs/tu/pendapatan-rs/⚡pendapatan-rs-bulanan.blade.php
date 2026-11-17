@@ -93,7 +93,7 @@ new class extends Component {
                     class="mt-1 block w-full sm:w-32 !font-bold" />
             </div>
             <div class="ml-auto">
-                <x-secondary-button type="button" wire:click="resetFilters" class="whitespace-nowrap">Reset</x-secondary-button>
+                <x-secondary-button type="button" wire:click="resetFilters" class="whitespace-nowrap"><x-ikon nama="kembalikan" /> Reset</x-secondary-button>
             </div>
         </div>
 

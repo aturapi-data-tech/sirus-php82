@@ -443,21 +443,18 @@ new class extends Component
                              yang sedang dibuka: rekap per dokter bisa dibuat ulang dari
                              rincian lewat pivot, sebaliknya tidak bisa. Nonaktif saat
                              bulannya kosong supaya tak mengunduh berkas berisi judul saja. --}}
-                        <x-info-button type="button" class="gap-2" wire:click="exportCsv"
+                        <x-outline-button type="button" class="gap-2" wire:click="exportCsv"
                             wire:loading.attr="disabled" wire:target="exportCsv"
                             :disabled="$this->ringkasan['jumlah'] === 0"
                             title="Unduh rincian operasi bulan ini sebagai CSV — satu baris satu operasi, 11 pos tarif dirinci">
                             <span wire:loading.remove wire:target="exportCsv" class="inline-flex items-center gap-2">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8">
-                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                        d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                                </svg>
+                                <x-ikon nama="unduh" />
                                 Export CSV
                             </span>
                             <span wire:loading wire:target="exportCsv" class="inline-flex items-center gap-2">
                                 <x-loading /> Menyiapkan...
                             </span>
-                        </x-info-button>
+                        </x-outline-button>
 
                         {{-- Tombol baku toolbar list: Refresh (muat ulang tanpa mengubah
                              filter) + Reset (kembalikan filter ke awal). --}}

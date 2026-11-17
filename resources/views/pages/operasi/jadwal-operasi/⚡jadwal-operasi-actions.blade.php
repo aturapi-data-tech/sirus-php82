@@ -348,6 +348,7 @@ new class extends Component {
                                 <x-text-input wire:model.live="form.jam_mulai" placeholder="HH:MM:SS" maxlength="8"
                                     :error="$errors->has('form.jam_mulai')" class="flex-1" />
                                 <x-secondary-button type="button" wire:click="setJamMulai" class="shrink-0 px-2 py-1 text-xs">
+                                    <x-ikon nama="waktu" ukuran="w-3.5 h-3.5" />
                                     Jam Sekarang
                                 </x-secondary-button>
                             </div>
@@ -359,6 +360,7 @@ new class extends Component {
                                 <x-text-input wire:model.live="form.jam_selesai" placeholder="HH:MM:SS" maxlength="8"
                                     :error="$errors->has('form.jam_selesai')" class="flex-1" />
                                 <x-secondary-button type="button" wire:click="setJamSelesai" class="shrink-0 px-2 py-1 text-xs">
+                                    <x-ikon nama="waktu" ukuran="w-3.5 h-3.5" />
                                     Jam Sekarang
                                 </x-secondary-button>
                             </div>
@@ -427,9 +429,9 @@ new class extends Component {
                         <span class="mx-0.5">di field terakhir untuk simpan</span>
                     </div>
                     <div class="flex justify-end gap-2">
-                        <x-secondary-button type="button" wire:click="closeModal">Batal</x-secondary-button>
+                        <x-secondary-button type="button" wire:click="closeModal"><x-ikon nama="batal" /> Batal</x-secondary-button>
                         <x-primary-button type="button" wire:click="save" wire:loading.attr="disabled">
-                            <span wire:loading.remove>Simpan</span>
+                            <span wire:loading.remove class="inline-flex items-center gap-2"><x-ikon nama="simpan" /> Simpan</span>
                             <span wire:loading>Saving...</span>
                         </x-primary-button>
                     </div>

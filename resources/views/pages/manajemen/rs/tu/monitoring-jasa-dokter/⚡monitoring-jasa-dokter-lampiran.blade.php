@@ -182,25 +182,22 @@ new class extends Component {
             {{-- FOOTER --}}
             <div class="px-6 py-3 border-t border-hairline bg-surface-soft dark:bg-gray-900 dark:border-gray-700">
                 <div class="flex items-center justify-end gap-2">
-                    <x-secondary-button type="button" wire:click="closeModal">Tutup</x-secondary-button>
+                    <x-secondary-button type="button" wire:click="closeModal"><x-ikon nama="batal" /> Tutup</x-secondary-button>
 
                     {{-- Unduh mengekspor APA YANG SEDANG TAMPIL — satu dokter atau semua,
                          mengikuti cara modal ini dibuka — supaya isi berkas tidak pernah
                          berbeda dari yang barusan dilihat. --}}
-                    <x-info-button type="button" class="gap-2" wire:click="unduhCsv"
+                    <x-outline-button type="button" class="gap-2" wire:click="unduhCsv"
                         wire:loading.attr="disabled" wire:target="unduhCsv"
                         title="Unduh sebagai CSV — siap dibuka di Excel">
                         <span wire:loading.remove wire:target="unduhCsv" class="inline-flex items-center gap-2">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8">
-                                <path stroke-linecap="round" stroke-linejoin="round"
-                                    d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                            </svg>
+                            <x-ikon nama="unduh" />
                             Unduh Excel
                         </span>
                         <span wire:loading wire:target="unduhCsv" class="inline-flex items-center gap-2">
                             <x-loading /> Menyiapkan...
                         </span>
-                    </x-info-button>
+                    </x-outline-button>
                 </div>
             </div>
 

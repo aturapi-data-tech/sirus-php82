@@ -153,7 +153,7 @@ new class extends Component {
                                 wire:model.live.debounce.500ms="thresholdMinutes" />
                         </div>
                         <x-secondary-button type="button" wire:click="refresh" wire:loading.attr="disabled">
-                            <span wire:loading.remove wire:target="refresh">↻ Refresh</span>
+                            <span wire:loading.remove wire:target="refresh" class="inline-flex items-center gap-2"><x-ikon nama="muat-ulang" /> Refresh</span>
                             <span wire:loading wire:target="refresh"><x-loading />...</span>
                         </x-secondary-button>
                     </div>

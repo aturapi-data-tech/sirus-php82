@@ -186,7 +186,8 @@ new class extends Component {
                             </x-select-input>
                         </div>
                         <x-primary-button type="button" wire:click="openCreate" :disabled="! $siapDipakai">
-                            + Catat Kejadian Down Time
+                            <x-ikon nama="tambah" />
+                            Catat Kejadian Down Time
                         </x-primary-button>
                         <x-toolbar-refresh-reset :label="null" />
                     </div>

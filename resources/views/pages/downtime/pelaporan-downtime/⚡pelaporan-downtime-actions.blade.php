@@ -462,14 +462,14 @@ new class extends Component {
             <div class="sticky bottom-0 z-10 flex flex-wrap items-center justify-end gap-2 px-6 py-3 border-t border-hairline bg-canvas dark:bg-gray-900 dark:border-gray-700">
                 @if ($siapDipakai)
                     <x-primary-button type="button" wire:click="save" wire:loading.attr="disabled" wire:target="save">
-                        <span wire:loading.remove wire:target="save">{{ $downtimeNo > 0 ? 'Simpan Laporan' : 'Simpan & Buat Laporan' }}</span>
+                        <span wire:loading.remove wire:target="save" class="inline-flex items-center gap-2"><x-ikon nama="simpan" /> {{ $downtimeNo > 0 ? 'Simpan Laporan' : 'Simpan & Buat Laporan' }}</span>
                         <span wire:loading wire:target="save">Menyimpan...</span>
                     </x-primary-button>
                 @endif
                 @if ($siapDipakai && $downtimeNo > 0)
                     <x-cetak-button wire:click="cetak" label="Cetak Laporan" title="Cetak laporan ini" />
                 @endif
-                <x-secondary-button type="button" wire:click="closeModal">Tutup</x-secondary-button>
+                <x-secondary-button type="button" wire:click="closeModal"><x-ikon nama="batal" /> Tutup</x-secondary-button>
             </div>
         </div>
     </x-modal>

@@ -306,7 +306,8 @@ new class extends Component {
                         </div>
                         {{-- ✅ Tambah: x-primary-button --}}
                         <x-primary-button type="button" wire:click="openCreate">
-                            + Tambah User
+                            <x-ikon nama="tambah" />
+                            Tambah User
                         </x-primary-button>
                     </div>
                 </div>
@@ -473,10 +474,11 @@ new class extends Component {
                                         <div class="space-y-2.5">
                                             <div class="flex flex-wrap gap-2">
                                             {{-- ✅ Edit: x-outline-button (sama seperti master-poli) --}}
-                                            <x-outline-button type="button"
+                                            <x-secondary-button type="button"
                                                 wire:click="openEdit({{ $row->id }})">
+                                                <x-ikon nama="ubah" />
                                                 Edit User
-                                            </x-outline-button>
+                                            </x-secondary-button>
 
                                             {{-- ✅ Kelola Kas: x-secondary-button (aksi sekunder/manajemen).
                                                  Mati bila EMP ID kosong & belum punya kas; yang sudah punya kas tetap bisa dibuka untuk mencabut. --}}
@@ -484,6 +486,7 @@ new class extends Component {
                                                 :disabled="!$row->emp_id && $row->kas_count == 0"
                                                 :title="!$row->emp_id && $row->kas_count == 0 ? 'Isi EMP ID dulu lewat Edit User' : null"
                                                 wire:click="openKasManage({{ $row->id }})">
+                                                <x-ikon nama="dokumen" />
                                                 Kelola Kas
                                                 @if ($row->kas_count > 0)
                                                     <span
@@ -497,6 +500,7 @@ new class extends Component {
                                             <x-confirm-button variant="danger" :action="'requestDelete(' . $row->id . ')'" title="Hapus User"
                                                 message="Yakin hapus user {{ $row->myuser_name }}? Semua data terkait termasuk akses kas akan dihapus."
                                                 confirmText="Ya, hapus" cancelText="Batal">
+                                                <x-ikon nama="hapus" />
                                                 Hapus
                                             </x-confirm-button>
                                             </div>

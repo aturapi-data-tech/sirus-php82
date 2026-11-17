@@ -786,10 +786,7 @@ new class extends Component {
                         {{-- Ikon awan-unduh: menegaskan datanya ditarik dari luar (BPJS),
                              bukan dibaca dari database kita. --}}
                         <span wire:loading.remove wire:target="tarikDaftar" class="inline-flex items-center gap-1.5">
-                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round"
-                                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6H16a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
-                            </svg>
+                            <x-ikon nama="muat-ulang" />
                             Ambil Data
                         </span>
                         <span wire:loading wire:target="tarikDaftar" class="inline-flex items-center gap-1.5">
@@ -801,36 +798,30 @@ new class extends Component {
                         {{-- Diagnosa & poli tujuan hanya ada di endpoint detail BPJS (1 panggilan
                              per rujukan), jadi ditarik bertahap. Penjelasan panjang cukup di title
                              — dulu memakan satu spanduk penuh di badan halaman. --}}
-                        <x-warning-button type="button" wire:click="lengkapiDetail" wire:loading.attr="disabled"
+                        <x-outline-button type="button" wire:click="lengkapiDetail" wire:loading.attr="disabled"
                             wire:target="lengkapiDetail"
                             title="{{ $this->ringkasan['detailBelum'] }} baris belum punya Diagnosa & Poli Tujuan. Keduanya hanya ada di endpoint detail BPJS — satu panggilan per rujukan, jadi diambil bertahap 25 baris tiap klik. Hasilnya disimpan 30 hari, penarikan berikutnya langsung terisi.">
                             <span wire:loading.remove wire:target="lengkapiDetail" class="inline-flex items-center gap-1.5">
-                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
+                                <x-ikon nama="lihat" />
                                 Detail ({{ number_format($this->ringkasan['detailBelum']) }})
                             </span>
                             <span wire:loading wire:target="lengkapiDetail" class="inline-flex items-center gap-1.5">
                                 <x-loading /> Detail...
                             </span>
-                        </x-warning-button>
+                        </x-outline-button>
                     @endif
 
                     @if ($periodeTarik !== '' && !$this->kedaluwarsa)
-                        <x-secondary-button type="button" wire:click="eksporCsv" wire:loading.attr="disabled"
+                        <x-outline-button type="button" wire:click="eksporCsv" wire:loading.attr="disabled"
                             wire:target="eksporCsv" title="Unduh CSV — rincian + rekap Poli &amp; Dokter Perujuk, Faskes Tujuan &amp; Diagnosa, dan Diagnosa, mengikuti filter yang sedang aktif">
                             <span wire:loading.remove wire:target="eksporCsv" class="inline-flex items-center gap-1.5">
-                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                </svg>
+                                <x-ikon nama="unduh" />
                                 CSV
                             </span>
                             <span wire:loading wire:target="eksporCsv" class="inline-flex items-center gap-1.5">
                                 <x-loading /> CSV...
                             </span>
-                        </x-secondary-button>
+                        </x-outline-button>
                     @endif
 
                     <x-toolbar-refresh-reset :label="null" />

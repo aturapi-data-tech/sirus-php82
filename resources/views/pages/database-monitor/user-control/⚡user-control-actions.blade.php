@@ -491,11 +491,11 @@ new class extends Component {
                         @endif
                     </div>
                     <div class="flex gap-3">
-                        <x-secondary-button wire:click="closeModal">Batal</x-secondary-button>
+                        <x-secondary-button wire:click="closeModal"><x-ikon nama="batal" /> Batal</x-secondary-button>
                         @if (!$isFormLocked)
                             <x-primary-button wire:click.prevent="save" wire:loading.attr="disabled"
                                 wire:target="save" class="min-w-[100px]">
-                                <span wire:loading.remove>{{ $formMode === 'edit' ? 'Perbarui' : 'Simpan' }}</span>
+                                <span wire:loading.remove class="inline-flex items-center gap-2"><x-ikon nama="simpan" /> {{ $formMode === 'edit' ? 'Perbarui' : 'Simpan' }}</span>
                                 <span wire:loading><x-loading /> Menyimpan...</span>
                             </x-primary-button>
                         @endif

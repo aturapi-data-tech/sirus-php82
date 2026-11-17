@@ -521,10 +521,7 @@ new class extends Component {
                 <x-primary-button type="button" wire:click="mountAll" wire:loading.attr="disabled"
                     wire:target="mountAll" class="whitespace-nowrap" title="Mount semua share yang belum tersambung">
                     <span wire:loading.remove wire:target="mountAll" class="flex items-center gap-1">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                        </svg>
+                        <x-ikon nama="proses" />
                         Mount All
                     </span>
                     <span wire:loading wire:target="mountAll" class="flex items-center gap-1">
@@ -535,10 +532,7 @@ new class extends Component {
                 <x-warning-button type="button" wire:click="unmountAll" wire:loading.attr="disabled"
                     wire:target="unmountAll" class="whitespace-nowrap" title="Unmount semua share yang sedang tersambung">
                     <span wire:loading.remove wire:target="unmountAll" class="flex items-center gap-1">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                        </svg>
+                        <x-ikon nama="batalkan" />
                         Unmount All
                     </span>
                     <span wire:loading wire:target="unmountAll" class="flex items-center gap-1">
@@ -560,10 +554,7 @@ new class extends Component {
                             class="whitespace-nowrap"
                             title="Install paket poppler-utils (pdfunite) — perlu untuk fitur Gabung Berkas BPJS">
                             <span wire:loading.remove wire:target="installPdfunite" class="flex items-center gap-1">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
-                                </svg>
+                                <x-ikon nama="proses" />
                                 Install poppler-utils
                             </span>
                             <span wire:loading wire:target="installPdfunite" class="flex items-center gap-1">
@@ -601,24 +592,24 @@ new class extends Component {
                         </div>
 
                         <div class="flex items-center gap-2 ml-auto">
-                            <x-ghost-button type="button" wire:click="checkMounted" wire:loading.attr="disabled"
+                            <x-outline-button type="button" wire:click="checkMounted" wire:loading.attr="disabled"
                                 wire:target="checkMounted" class="whitespace-nowrap">
-                                <span wire:loading.remove wire:target="checkMounted">Cek Status</span>
+                                <span wire:loading.remove wire:target="checkMounted" class="inline-flex items-center gap-2"><x-ikon nama="cari" /> Cek Status</span>
                                 <span wire:loading wire:target="checkMounted"><x-loading /></span>
-                            </x-ghost-button>
+                            </x-outline-button>
                             <x-secondary-button type="button" wire:click="createMountPoint" wire:loading.attr="disabled"
                                 wire:target="createMountPoint" class="whitespace-nowrap" title="Buat folder mount point (idempotent)">
-                                <span wire:loading.remove wire:target="createMountPoint">Buat Folder</span>
+                                <span wire:loading.remove wire:target="createMountPoint" class="inline-flex items-center gap-2"><x-ikon nama="tambah" /> Buat Folder</span>
                                 <span wire:loading wire:target="createMountPoint"><x-loading /></span>
                             </x-secondary-button>
                             <x-primary-button type="button" wire:click="mountShare" wire:loading.attr="disabled"
                                 wire:target="mountShare" :disabled="$isMounted" class="whitespace-nowrap">
-                                <span wire:loading.remove wire:target="mountShare">Mount</span>
+                                <span wire:loading.remove wire:target="mountShare" class="inline-flex items-center gap-2"><x-ikon nama="proses" /> Mount</span>
                                 <span wire:loading wire:target="mountShare"><x-loading /></span>
                             </x-primary-button>
                             <x-warning-button type="button" wire:click="unmountShare" wire:loading.attr="disabled"
                                 wire:target="unmountShare" :disabled="!$isMounted" class="whitespace-nowrap">
-                                <span wire:loading.remove wire:target="unmountShare">Unmount</span>
+                                <span wire:loading.remove wire:target="unmountShare" class="inline-flex items-center gap-2"><x-ikon nama="batalkan" /> Unmount</span>
                                 <span wire:loading wire:target="unmountShare"><x-loading /></span>
                             </x-warning-button>
                         </div>
@@ -666,24 +657,24 @@ new class extends Component {
                         </div>
 
                         <div class="flex items-center gap-2 ml-auto">
-                            <x-ghost-button type="button" wire:click="checkMountedUpload" wire:loading.attr="disabled"
+                            <x-outline-button type="button" wire:click="checkMountedUpload" wire:loading.attr="disabled"
                                 wire:target="checkMountedUpload" class="whitespace-nowrap">
-                                <span wire:loading.remove wire:target="checkMountedUpload">Cek Status</span>
+                                <span wire:loading.remove wire:target="checkMountedUpload" class="inline-flex items-center gap-2"><x-ikon nama="cari" /> Cek Status</span>
                                 <span wire:loading wire:target="checkMountedUpload"><x-loading /></span>
-                            </x-ghost-button>
+                            </x-outline-button>
                             <x-secondary-button type="button" wire:click="createMountPointUpload" wire:loading.attr="disabled"
                                 wire:target="createMountPointUpload" class="whitespace-nowrap" title="Buat folder mount point (idempotent)">
-                                <span wire:loading.remove wire:target="createMountPointUpload">Buat Folder</span>
+                                <span wire:loading.remove wire:target="createMountPointUpload" class="inline-flex items-center gap-2"><x-ikon nama="tambah" /> Buat Folder</span>
                                 <span wire:loading wire:target="createMountPointUpload"><x-loading /></span>
                             </x-secondary-button>
                             <x-primary-button type="button" wire:click="mountShareUpload" wire:loading.attr="disabled"
                                 wire:target="mountShareUpload" :disabled="$isMountedUpload" class="whitespace-nowrap">
-                                <span wire:loading.remove wire:target="mountShareUpload">Mount</span>
+                                <span wire:loading.remove wire:target="mountShareUpload" class="inline-flex items-center gap-2"><x-ikon nama="proses" /> Mount</span>
                                 <span wire:loading wire:target="mountShareUpload"><x-loading /></span>
                             </x-primary-button>
                             <x-warning-button type="button" wire:click="unmountShareUpload" wire:loading.attr="disabled"
                                 wire:target="unmountShareUpload" :disabled="!$isMountedUpload" class="whitespace-nowrap">
-                                <span wire:loading.remove wire:target="unmountShareUpload">Unmount</span>
+                                <span wire:loading.remove wire:target="unmountShareUpload" class="inline-flex items-center gap-2"><x-ikon nama="batalkan" /> Unmount</span>
                                 <span wire:loading wire:target="unmountShareUpload"><x-loading /></span>
                             </x-warning-button>
                         </div>
@@ -730,24 +721,24 @@ new class extends Component {
                         </div>
 
                         <div class="flex items-center gap-2 ml-auto">
-                            <x-ghost-button type="button" wire:click="checkMountedLab" wire:loading.attr="disabled"
+                            <x-outline-button type="button" wire:click="checkMountedLab" wire:loading.attr="disabled"
                                 wire:target="checkMountedLab" class="whitespace-nowrap">
-                                <span wire:loading.remove wire:target="checkMountedLab">Cek Status</span>
+                                <span wire:loading.remove wire:target="checkMountedLab" class="inline-flex items-center gap-2"><x-ikon nama="cari" /> Cek Status</span>
                                 <span wire:loading wire:target="checkMountedLab"><x-loading /></span>
-                            </x-ghost-button>
+                            </x-outline-button>
                             <x-secondary-button type="button" wire:click="createMountPointLab" wire:loading.attr="disabled"
                                 wire:target="createMountPointLab" class="whitespace-nowrap" title="Buat folder mount point (idempotent)">
-                                <span wire:loading.remove wire:target="createMountPointLab">Buat Folder</span>
+                                <span wire:loading.remove wire:target="createMountPointLab" class="inline-flex items-center gap-2"><x-ikon nama="tambah" /> Buat Folder</span>
                                 <span wire:loading wire:target="createMountPointLab"><x-loading /></span>
                             </x-secondary-button>
                             <x-primary-button type="button" wire:click="mountShareLab" wire:loading.attr="disabled"
                                 wire:target="mountShareLab" :disabled="$isMountedLab" class="whitespace-nowrap">
-                                <span wire:loading.remove wire:target="mountShareLab">Mount</span>
+                                <span wire:loading.remove wire:target="mountShareLab" class="inline-flex items-center gap-2"><x-ikon nama="proses" /> Mount</span>
                                 <span wire:loading wire:target="mountShareLab"><x-loading /></span>
                             </x-primary-button>
                             <x-warning-button type="button" wire:click="unmountShareLab" wire:loading.attr="disabled"
                                 wire:target="unmountShareLab" :disabled="!$isMountedLab" class="whitespace-nowrap">
-                                <span wire:loading.remove wire:target="unmountShareLab">Unmount</span>
+                                <span wire:loading.remove wire:target="unmountShareLab" class="inline-flex items-center gap-2"><x-ikon nama="batalkan" /> Unmount</span>
                                 <span wire:loading wire:target="unmountShareLab"><x-loading /></span>
                             </x-warning-button>
                         </div>
@@ -794,24 +785,24 @@ new class extends Component {
                         </div>
 
                         <div class="flex items-center gap-2 ml-auto">
-                            <x-ghost-button type="button" wire:click="checkMountedBpjs" wire:loading.attr="disabled"
+                            <x-outline-button type="button" wire:click="checkMountedBpjs" wire:loading.attr="disabled"
                                 wire:target="checkMountedBpjs" class="whitespace-nowrap">
-                                <span wire:loading.remove wire:target="checkMountedBpjs">Cek Status</span>
+                                <span wire:loading.remove wire:target="checkMountedBpjs" class="inline-flex items-center gap-2"><x-ikon nama="cari" /> Cek Status</span>
                                 <span wire:loading wire:target="checkMountedBpjs"><x-loading /></span>
-                            </x-ghost-button>
+                            </x-outline-button>
                             <x-secondary-button type="button" wire:click="createMountPointBpjs" wire:loading.attr="disabled"
                                 wire:target="createMountPointBpjs" class="whitespace-nowrap" title="Buat folder mount point (idempotent)">
-                                <span wire:loading.remove wire:target="createMountPointBpjs">Buat Folder</span>
+                                <span wire:loading.remove wire:target="createMountPointBpjs" class="inline-flex items-center gap-2"><x-ikon nama="tambah" /> Buat Folder</span>
                                 <span wire:loading wire:target="createMountPointBpjs"><x-loading /></span>
                             </x-secondary-button>
                             <x-primary-button type="button" wire:click="mountShareBpjs" wire:loading.attr="disabled"
                                 wire:target="mountShareBpjs" :disabled="$isMountedBpjs" class="whitespace-nowrap">
-                                <span wire:loading.remove wire:target="mountShareBpjs">Mount</span>
+                                <span wire:loading.remove wire:target="mountShareBpjs" class="inline-flex items-center gap-2"><x-ikon nama="proses" /> Mount</span>
                                 <span wire:loading wire:target="mountShareBpjs"><x-loading /></span>
                             </x-primary-button>
                             <x-warning-button type="button" wire:click="unmountShareBpjs" wire:loading.attr="disabled"
                                 wire:target="unmountShareBpjs" :disabled="!$isMountedBpjs" class="whitespace-nowrap">
-                                <span wire:loading.remove wire:target="unmountShareBpjs">Unmount</span>
+                                <span wire:loading.remove wire:target="unmountShareBpjs" class="inline-flex items-center gap-2"><x-ikon nama="batalkan" /> Unmount</span>
                                 <span wire:loading wire:target="unmountShareBpjs"><x-loading /></span>
                             </x-warning-button>
                         </div>
@@ -859,24 +850,24 @@ new class extends Component {
                         </div>
 
                         <div class="flex items-center gap-2 ml-auto">
-                            <x-ghost-button type="button" wire:click="checkMountedDokumen" wire:loading.attr="disabled"
+                            <x-outline-button type="button" wire:click="checkMountedDokumen" wire:loading.attr="disabled"
                                 wire:target="checkMountedDokumen" class="whitespace-nowrap">
-                                <span wire:loading.remove wire:target="checkMountedDokumen">Cek Status</span>
+                                <span wire:loading.remove wire:target="checkMountedDokumen" class="inline-flex items-center gap-2"><x-ikon nama="cari" /> Cek Status</span>
                                 <span wire:loading wire:target="checkMountedDokumen"><x-loading /></span>
-                            </x-ghost-button>
+                            </x-outline-button>
                             <x-secondary-button type="button" wire:click="createMountPointDokumen" wire:loading.attr="disabled"
                                 wire:target="createMountPointDokumen" class="whitespace-nowrap" title="Buat folder mount point (idempotent)">
-                                <span wire:loading.remove wire:target="createMountPointDokumen">Buat Folder</span>
+                                <span wire:loading.remove wire:target="createMountPointDokumen" class="inline-flex items-center gap-2"><x-ikon nama="tambah" /> Buat Folder</span>
                                 <span wire:loading wire:target="createMountPointDokumen"><x-loading /></span>
                             </x-secondary-button>
                             <x-primary-button type="button" wire:click="mountShareDokumen" wire:loading.attr="disabled"
                                 wire:target="mountShareDokumen" :disabled="$isMountedDokumen" class="whitespace-nowrap">
-                                <span wire:loading.remove wire:target="mountShareDokumen">Mount</span>
+                                <span wire:loading.remove wire:target="mountShareDokumen" class="inline-flex items-center gap-2"><x-ikon nama="proses" /> Mount</span>
                                 <span wire:loading wire:target="mountShareDokumen"><x-loading /></span>
                             </x-primary-button>
                             <x-warning-button type="button" wire:click="unmountShareDokumen" wire:loading.attr="disabled"
                                 wire:target="unmountShareDokumen" :disabled="!$isMountedDokumen" class="whitespace-nowrap">
-                                <span wire:loading.remove wire:target="unmountShareDokumen">Unmount</span>
+                                <span wire:loading.remove wire:target="unmountShareDokumen" class="inline-flex items-center gap-2"><x-ikon nama="batalkan" /> Unmount</span>
                                 <span wire:loading wire:target="unmountShareDokumen"><x-loading /></span>
                             </x-warning-button>
                         </div>

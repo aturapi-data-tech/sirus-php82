@@ -183,7 +183,8 @@ new class extends Component {
                             </x-select-input>
                         </div>
                         <x-primary-button type="button" wire:click="openCreate">
-                            + Tambah Role
+                            <x-ikon nama="tambah" />
+                            Tambah Role
                         </x-primary-button>
                     </div>
                 </div>
@@ -247,6 +248,7 @@ new class extends Component {
                                         <div class="flex flex-wrap gap-2">
                                             <x-secondary-button type="button"
                                                 wire:click="openEdit({{ $row->id }})">
+                                                <x-ikon nama="ubah" />
                                                 Edit
                                             </x-secondary-button>
 

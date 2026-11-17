@@ -188,7 +188,7 @@ new class extends Component {
                     <input type="checkbox" wire:model.live="filterBelumSaja" class="rounded border-hairline text-brand-green focus:ring-brand-green">
                     Belum terkirim saja
                 </label>
-                <x-secondary-button type="button" wire:click="resetFilters">Reset</x-secondary-button>
+                <x-secondary-button type="button" wire:click="resetFilters"><x-ikon nama="kembalikan" /> Reset</x-secondary-button>
             </div>
 
             {{-- ── RINGKASAN BULAN TERPILIH ── --}}

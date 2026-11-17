@@ -370,10 +370,10 @@ new class extends Component {
                         <span class="mx-0.5">untuk berpindah field</span>
                     </div>
                     <div class="flex justify-end gap-2">
-                        <x-secondary-button type="button" wire:click="closeModal">Batal</x-secondary-button>
+                        <x-secondary-button type="button" wire:click="closeModal"><x-ikon nama="batal" /> Batal</x-secondary-button>
                         <x-primary-button type="button" wire:click="save" wire:loading.attr="disabled"
                             wire:target="save">
-                            <span wire:loading.remove wire:target="save">{{ $formMode === 'edit' ? 'Perbarui' : 'Simpan' }}</span>
+                            <span wire:loading.remove wire:target="save" class="inline-flex items-center gap-2"><x-ikon nama="simpan" /> {{ $formMode === 'edit' ? 'Perbarui' : 'Simpan' }}</span>
                             <span wire:loading wire:target="save">Menyimpan...</span>
                         </x-primary-button>
                     </div>

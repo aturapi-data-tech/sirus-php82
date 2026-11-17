@@ -229,7 +229,8 @@ new class extends Component {
                             </x-select-input>
                         </div>
                         <x-primary-button type="button" wire:click="openCreate" :disabled="! $siapDipakai">
-                            + Catat Suhu
+                            <x-ikon nama="tambah" />
+                            Catat Suhu
                         </x-primary-button>
                         @if ($siapDipakai && $this->catatanList !== [])
                             <x-cetak-button wire:click="cetak" label="Cetak Bulan Ini" title="Cetak formulir bulan ini" />

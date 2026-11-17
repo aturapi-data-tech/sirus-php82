@@ -112,7 +112,8 @@ new class extends Component {
                             </x-select-input>
                         </div>
                         <x-primary-button type="button" wire:click="openCreate">
-                            + Tambah Jadwal Operasi Baru
+                            <x-ikon nama="tambah" />
+                            Tambah Jadwal Operasi Baru
                         </x-primary-button>
                     </div>
                 </div>
@@ -174,6 +175,7 @@ new class extends Component {
                                         <div class="flex flex-wrap gap-2">
                                             <x-secondary-button type="button"
                                                 wire:click="openEdit('{{ $row->no_rawat }}')">
+                                                <x-ikon nama="ubah" />
                                                 Edit
                                             </x-secondary-button>
                                             <x-hapus-button :action="'requestDelete(\'' . $row->no_rawat . '\')'" title="Hapus Jadwal Operasi" message="Yakin hapus jadwal {{ $row->reg_no }} – {{ $row->nm_paket }}?" />
