@@ -46,19 +46,19 @@
             <div class="flex items-center gap-1.5">
                 @if ($navTotal > 1)
                     <x-secondary-button type="button" wire:click="prevRecord" wire:loading.attr="disabled" :disabled="$navPos <= 1" class="gap-1">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" /></svg>
+                        <x-ikon nama="sebelumnya" />
                         Sebelumnya
                     </x-secondary-button>
                     <span class="px-2 text-sm font-medium tabular-nums text-muted">{{ $navPos }} / {{ $navTotal }}</span>
                     <x-secondary-button type="button" wire:click="nextRecord" wire:loading.attr="disabled" :disabled="$navPos >= $navTotal" class="gap-1">
                         Berikutnya
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+                        <x-ikon nama="berikutnya" />
                     </x-secondary-button>
                 @endif
             </div>
 
             <div class="flex items-center gap-2">
-                <x-secondary-button type="button" x-on:click="$dispatch('close-modal', { name: '{{ $name }}' })">Tutup</x-secondary-button>
+                <x-secondary-button type="button" x-on:click="$dispatch('close-modal', { name: '{{ $name }}' })"><x-ikon nama="batal" /> Tutup</x-secondary-button>
                 @if ($showCetak ?? filled($cetakId))
                 <x-cetak-button wire:click="cetak('{{ $cetakId }}')" label="Cetak PDF" />
                 @endif

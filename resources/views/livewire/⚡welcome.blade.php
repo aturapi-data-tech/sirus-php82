@@ -60,11 +60,13 @@ new class extends Component {
                         <div class="flex flex-wrap items-center gap-3 mt-8">
                             <a href="{{ Route::has('login') ? route('login') : '#' }}" wire:navigate>
                                 <x-primary-button type="button" class="px-5 py-3">
+                                    <x-ikon nama="masuk" />
                                     Masuk
                                 </x-primary-button>
                             </a>
 
                             <x-secondary-button type="button" onclick="location.href='#tentang'">
+                                <x-ikon nama="bantuan" />
                                 Pelajari lebih lanjut
                             </x-secondary-button>
                         </div>

@@ -56,7 +56,7 @@
 
             <div class="flex flex-wrap items-center justify-end gap-3">
                 @if ($kembali)
-                    <x-secondary-button type="button" wire:click="{{ $kembali }}">Kembali ke Daftar</x-secondary-button>
+                    <x-secondary-button type="button" wire:click="{{ $kembali }}"><x-ikon nama="kembali" ukuran="w-5 h-5" /> Kembali ke Daftar</x-secondary-button>
                 @endif
 
                 {{ $tombol ?? '' }}
@@ -64,18 +64,14 @@
                 @if ($lihat && $selesaiLihat)
                     <x-primary-button wire:click.prevent="{{ $selesaiLihat }}" wire:target="{{ $selesaiLihat }}"
                         wire:loading.attr="disabled" class="gap-1.5 min-w-[160px] justify-center">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                        </svg>
+                        <x-ikon nama="kembali" ukuran="w-5 h-5" />
                         Selesai Melihat
                     </x-primary-button>
                 @elseif ($bisaSimpan && $simpan)
                     <x-primary-button wire:click.prevent="{{ $simpan }}" wire:loading.attr="disabled"
                         wire:target="{{ $simpan }}" class="gap-2 min-w-[160px] justify-center">
                         <span wire:loading.remove wire:target="{{ $simpan }}" class="flex items-center gap-1.5">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 21v-8H7v8M7 3v5h8M5 3h11l4 4v12a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z" />
-                            </svg>
+                            <x-ikon nama="simpan" ukuran="w-5 h-5" />
                             {{ $labelSimpan }}
                         </span>
                         <span wire:loading wire:target="{{ $simpan }}"><x-loading class="w-4 h-4" /> Menyimpan...</span>
@@ -89,13 +85,11 @@
                 {!! $ikonInfo !!}
                 <span>Setiap entri berdiri sendiri — <strong>Isi Formulir Baru</strong> untuk entri baru, <strong>Lanjutkan Pengisian</strong> untuk melanjutkan draft.</span>
             </p>
-            <x-secondary-button type="button" wire:click="{{ $tutup }}">Tutup</x-secondary-button>
+            <x-secondary-button type="button" wire:click="{{ $tutup }}"><x-ikon nama="batal" ukuran="w-5 h-5" /> Tutup</x-secondary-button>
             @if (!$terkunci && $tambah)
                 <x-primary-button type="button" wire:click="{{ $tambah }}" wire:target="{{ $tambah }}"
                     wire:loading.attr="disabled" class="gap-1.5 min-w-[150px] justify-center">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                    </svg>
+                    <x-ikon nama="tambah" ukuran="w-5 h-5" />
                     Isi Formulir Baru
                 </x-primary-button>
             @endif

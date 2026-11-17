@@ -44,10 +44,12 @@
                  Halaman publik lain (display TV, dll) tidak butuh tombol Masuk. --}}
             @if (request()->path() === '/')
                 <x-primary-button type="button" onclick="location.href='{{ route('login') }}'">
+                    <x-ikon nama="masuk" />
                     Masuk
                 </x-primary-button>
 
                 <x-secondary-button type="button" onclick="location.href='#tentang'">
+                    <x-ikon nama="bantuan" />
                     Bantuan
                 </x-secondary-button>
             @endif

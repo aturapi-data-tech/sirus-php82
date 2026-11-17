@@ -510,7 +510,7 @@ tampil di `/panduan-dev` (Komponen → Ikon Tombol).
 <x-ikon nama="kembalikan" ukuran="w-3.5 h-3.5" />
 ```
 
-### Katalog (26 aksi)
+### Katalog (30 aksi)
 
 | `nama` | Ikon | Dipakai untuk label |
 |---|---|---|
@@ -540,6 +540,9 @@ tampil di `/panduan-dev` (Komponen → Ikon Tombol).
 | `waktu` | jam | Jam Sekarang, Hari Ini (isian tanggal tetap pakai `x-now-button`) |
 | `cetak` | printer | Print Etiket / cetak langsung via print agent. Tombol cetak biasa tetap `x-cetak-button` |
 | `pindah` | dua panah berlawanan | Pindah Kamar, Transfer pasien/biaya ke UGD/RI |
+| `sebelumnya` / `berikutnya` | chevron kiri / kanan | Navigasi antar-record (Rekam Medis). Ikon mengikuti ARAH di layar, bukan nama tombol (lihat `rm/record-nav`) |
+| `masuk` | pintu masuk | Masuk / Login |
+| `bantuan` | tanda tanya | Bantuan, Pelajari lebih lanjut |
 
 ### Aturan
 
@@ -654,8 +657,16 @@ memakai katalog (164 tombol; 2 tombol pilihan Kamar sengaja tanpa ikon).
   Simpan & Pindah = disket; "Keluar tanpa simpan" tetap ikon pintu keluar). Tombol **"Ya" di dialog mengikuti `variant`** (keputusan user 2026-11-17; sebelumnya
   selalu merah): `danger` / `danger-soft` / default → `x-danger-button` merah; `warning-soft` →
   `x-warning-button` kuning; `primary` / `secondary` / `outline` → `x-primary-button` hijau.
+- 2026-11-17 **Komponen kecil bersama** (32 tombol): footer/aksi-entri/kartu modul dokumen (dipakai
+  semua formulir bertanda tangan), signature-pad/result/ttd-petugas, rm/dokumen-view-modal &
+  record-nav, panduan penulisan RM, daftar surat kontrol BPJS, surveilans HAIs, parameter TT,
+  topbar & welcome, `x-action-edit` / `x-action-delete`. Ikon katalog baru: `sebelumnya`,
+  `berikutnya` (chevron), `masuk`, `bantuan`. Pas Lebar / Pas Layar (zoom pratinjau) dibiarkan.
 
-Area lain menyusul per modul: pasang ikon + samakan komponen + ganti SVG manual sekaligus.
+**Status akhir 2026-11-17:** 1.190 tombol berteks — 1.067 `<x-ikon>`, 92 `x-satu-sehat.ikon-tombol`,
+17 SVG khas yang sengaja dipertahankan (Scan Wajah, Auto-Print, tautan Master Pasien, spinner
+loading, dll.), 14 sengaja tanpa ikon (◀ ▶ pindah bulan, pilihan Utama/RG, Buka tab Kamar, zoom).
+Tombol baru WAJIB memakai `<x-ikon>` + komponen sesuai tabel di atas.
 
 ### Status penerapan (pemindaian 2026-11-17)
 

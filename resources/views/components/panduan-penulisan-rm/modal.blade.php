@@ -192,7 +192,7 @@
                     </svg>
                     <span>Ragu? <strong>Tulis lengkap.</strong> Singkatan baru diusulkan ke Komite/Tim Rekam Medis melalui kepala unit.</span>
                 </p>
-                <x-secondary-button type="button" x-on:click="$dispatch('close-modal', { name: 'panduan-penulisan-rm' })">Tutup</x-secondary-button>
+                <x-secondary-button type="button" x-on:click="$dispatch('close-modal', { name: 'panduan-penulisan-rm' })"><x-ikon nama="batal" /> Tutup</x-secondary-button>
             </div>
         </div>
     </div>

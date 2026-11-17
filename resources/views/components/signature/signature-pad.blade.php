@@ -96,16 +96,12 @@
 
     <div class="flex gap-2 mt-3">
         <x-secondary-button type="button" x-on:click="clear()" class="text-xs gap-1">
-            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <x-ikon nama="kembalikan" ukuran="w-3 h-3" />
             Bersihkan
         </x-secondary-button>
 
         <x-primary-button type="button" x-on:click="save()" class="text-xs gap-1">
-            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-            </svg>
+            <x-ikon nama="setujui" ukuran="w-3 h-3" />
             Gunakan TTD ini
         </x-primary-button>
     </div>
