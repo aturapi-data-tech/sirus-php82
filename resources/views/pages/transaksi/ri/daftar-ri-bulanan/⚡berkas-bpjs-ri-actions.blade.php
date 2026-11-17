@@ -732,7 +732,7 @@ new class extends Component {
 
                                         @if (!empty($info['file']))
                                             <x-outline-button type="button"
-                                                wire:click="openViewPDF({{ json_encode($info['file']) }}, {{ json_encode($info['label'] ?? 'Lihat Berkas BPJS') }})">Lihat</x-outline-button>
+                                                wire:click="openViewPDF({{ json_encode($info['file']) }}, {{ json_encode($info['label'] ?? 'Lihat Berkas BPJS') }})"><x-ikon nama="lihat" /> Lihat</x-outline-button>
                                         @endif
 
                                         {{-- Generate auto: slot 1 (SEP), 4 (SKDP),
@@ -742,13 +742,13 @@ new class extends Component {
                                         @if ($slot === 1)
                                             <x-info-button type="button" wire:click="generateSep"
                                                 wire:loading.attr="disabled" wire:target="generateSep" class="text-xs">
-                                                <span wire:loading.remove wire:target="generateSep">Generate</span>
+                                                <span wire:loading.remove wire:target="generateSep" class="inline-flex items-center gap-2"><x-ikon nama="proses" ukuran="w-3.5 h-3.5" /> Generate</span>
                                                 <span wire:loading wire:target="generateSep">...</span>
                                             </x-info-button>
                                         @elseif ($slot === 4)
                                             <x-info-button type="button" wire:click="generateSkdp"
                                                 wire:loading.attr="disabled" wire:target="generateSkdp" class="text-xs">
-                                                <span wire:loading.remove wire:target="generateSkdp">Generate</span>
+                                                <span wire:loading.remove wire:target="generateSkdp" class="inline-flex items-center gap-2"><x-ikon nama="proses" ukuran="w-3.5 h-3.5" /> Generate</span>
                                                 <span wire:loading wire:target="generateSkdp">...</span>
                                             </x-info-button>
                                         @elseif (($info['meta']['type'] ?? null) === 'lab')
@@ -757,19 +757,19 @@ new class extends Component {
                                                 wire:loading.attr="disabled"
                                                 wire:target="generateLab('{{ $info['meta']['checkup_no'] }}', {{ $slot }})"
                                                 class="text-xs">
-                                                <span wire:loading.remove wire:target="generateLab('{{ $info['meta']['checkup_no'] }}', {{ $slot }})">Generate</span>
+                                                <span wire:loading.remove wire:target="generateLab('{{ $info['meta']['checkup_no'] }}', {{ $slot }})" class="inline-flex items-center gap-2"><x-ikon nama="proses" ukuran="w-3.5 h-3.5" /> Generate</span>
                                                 <span wire:loading wire:target="generateLab('{{ $info['meta']['checkup_no'] }}', {{ $slot }})">...</span>
                                             </x-info-button>
                                         @elseif (($info['meta']['type'] ?? null) === 'rad')
                                             @if (!empty($info['meta']['radUploadPdf']))
                                                 <x-outline-button type="button"
                                                     wire:click="openRadResultPDF({{ json_encode($info['meta']['radUploadPdf']) }}, 'Hasil Bacaan Radiologi')"
-                                                    class="text-xs">Lihat Hasil</x-outline-button>
+                                                    class="text-xs"><x-ikon nama="lihat" ukuran="w-3.5 h-3.5" /> Lihat Hasil</x-outline-button>
                                             @endif
                                             @if (!empty($info['meta']['radUploadFoto']))
                                                 <x-outline-button type="button"
                                                     wire:click="openRadResultPDF({{ json_encode($info['meta']['radUploadFoto']) }}, 'Foto Radiologi')"
-                                                    class="text-xs">Lihat Foto</x-outline-button>
+                                                    class="text-xs"><x-ikon nama="lihat" ukuran="w-3.5 h-3.5" /> Lihat Foto</x-outline-button>
                                             @endif
                                             @php $radCopied = !empty($info['file']); @endphp
                                             <x-info-button type="button"
@@ -777,7 +777,7 @@ new class extends Component {
                                                 wire:loading.attr="disabled"
                                                 wire:target="generateRadiologi({{ $info['meta']['rirad_no'] }}, {{ $slot }})"
                                                 class="text-xs">
-                                                <span wire:loading.remove wire:target="generateRadiologi({{ $info['meta']['rirad_no'] }}, {{ $slot }})">{{ $radCopied ? 'Salin ulang' : 'Salin ke Berkas' }}</span>
+                                                <span wire:loading.remove wire:target="generateRadiologi({{ $info['meta']['rirad_no'] }}, {{ $slot }})" class="inline-flex items-center gap-2"><x-ikon nama="muat-ulang" ukuran="w-3.5 h-3.5" /> {{ $radCopied ? 'Salin ulang' : 'Salin ke Berkas' }}</span>
                                                 <span wire:loading wire:target="generateRadiologi({{ $info['meta']['rirad_no'] }}, {{ $slot }})">...</span>
                                             </x-info-button>
                                         @endif
@@ -787,7 +787,7 @@ new class extends Component {
                                                 x-on:click="$refs.uploadInput{{ $slot }}.click()"
                                                 wire:loading.attr="disabled" wire:target="uploadBerkasForSlot,uploadFile"
                                                 class="text-xs">
-                                                <span wire:loading.remove wire:target="uploadBerkasForSlot,uploadFile">Replace</span>
+                                                <span wire:loading.remove wire:target="uploadBerkasForSlot,uploadFile" class="inline-flex items-center gap-2"><x-ikon nama="unggah" ukuran="w-3.5 h-3.5" /> Replace</span>
                                                 <span wire:loading wire:target="uploadBerkasForSlot,uploadFile">...</span>
                                             </x-secondary-button>
                                             <x-hapus-button wire:click="hapusBerkas({{ $slot }})" confirm="Yakin hapus berkas {{ $info['label'] }}?" />
@@ -796,7 +796,7 @@ new class extends Component {
                                                 x-on:click="$refs.uploadInput{{ $slot }}.click()"
                                                 wire:loading.attr="disabled" wire:target="uploadBerkasForSlot,uploadFile"
                                                 class="text-xs">
-                                                <span wire:loading.remove wire:target="uploadBerkasForSlot,uploadFile">Upload</span>
+                                                <span wire:loading.remove wire:target="uploadBerkasForSlot,uploadFile" class="inline-flex items-center gap-2"><x-ikon nama="unggah" ukuran="w-3.5 h-3.5" /> Upload</span>
                                                 <span wire:loading wire:target="uploadBerkasForSlot,uploadFile">...</span>
                                             </x-primary-button>
                                         @endif
@@ -824,10 +824,10 @@ new class extends Component {
             <div class="flex items-center justify-between gap-2 px-6 py-3 border-t border-hairline dark:border-gray-700 bg-surface-soft dark:bg-gray-900/40">
                 <x-info-button type="button" wire:click="gabungBerkas"
                     wire:loading.attr="disabled" wire:target="gabungBerkas">
-                    <span wire:loading.remove wire:target="gabungBerkas">Gabung jadi 1 PDF</span>
+                    <span wire:loading.remove wire:target="gabungBerkas" class="inline-flex items-center gap-2"><x-ikon nama="proses" /> Gabung jadi 1 PDF</span>
                     <span wire:loading wire:target="gabungBerkas">Menggabungkan...</span>
                 </x-info-button>
-                <x-secondary-button type="button" wire:click="closeModal">Tutup</x-secondary-button>
+                <x-secondary-button type="button" wire:click="closeModal"><x-ikon nama="batal" /> Tutup</x-secondary-button>
             </div>
         </div>
     </x-modal>

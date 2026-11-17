@@ -988,22 +988,18 @@ new class extends Component {
 
         {{-- Footer aksi Section A --}}
         <div class="flex flex-wrap items-center justify-end gap-2 mt-3">
-            <x-secondary-button type="button" wire:click="kembaliKeDaftar">Kembali ke Daftar</x-secondary-button>
+            <x-secondary-button type="button" wire:click="kembaliKeDaftar"><x-ikon nama="kembali" /> Kembali ke Daftar</x-secondary-button>
             @if ($viewOnlyA)
                 <x-primary-button wire:click.prevent="cancelEditA" wire:target="cancelEditA" wire:loading.attr="disabled"
                     class="gap-1.5">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                    </svg>
+                    <x-ikon nama="kembali" ukuran="w-5 h-5" />
                     Selesai Melihat
                 </x-primary-button>
             @elseif (!$isFormLocked)
                 <x-primary-button wire:click.prevent="saveDraftA" wire:loading.attr="disabled" wire:target="saveDraftA"
                     class="gap-2 min-w-[160px] justify-center">
                     <span wire:loading.remove wire:target="saveDraftA" class="flex items-center gap-1.5">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 21v-8H7v8M7 3v5h8M5 3h11l4 4v12a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z" />
-                        </svg>
+                        <x-ikon nama="simpan" ukuran="w-5 h-5" />
                         {{ $editingKeyA ? 'Simpan Perubahan' : 'Simpan Draft' }}
                     </span>
                     <span wire:loading wire:target="saveDraftA"><x-loading class="w-4 h-4" /> Menyimpan...</span>
@@ -1102,7 +1098,7 @@ new class extends Component {
                                                 </span>
                                                 @if (!$isFormLocked)
                                                     <x-info-button type="button" wire:click="tambahFormB('{{ $rowKey }}')"
-                                                        title="Tambah Form B untuk Form A ini">+ Form B</x-info-button>
+                                                        title="Tambah Form B untuk Form A ini"><x-ikon nama="tambah" /> Form B</x-info-button>
                                                 @endif
                                             </div>
 
@@ -1161,13 +1157,11 @@ new class extends Component {
                 </svg>
                 <span>Setiap entri berdiri sendiri — <strong>Isi Formulir Baru</strong> untuk entri baru, <strong>Lanjutkan Pengisian</strong> untuk melanjutkan draft.</span>
             </p>
-            <x-secondary-button type="button" wire:click="closeModal">Tutup</x-secondary-button>
+            <x-secondary-button type="button" wire:click="closeModal"><x-ikon nama="batal" /> Tutup</x-secondary-button>
             @unless ($isFormLocked)
                 <x-primary-button type="button" wire:click="tambahEntri" wire:target="tambahEntri"
                     wire:loading.attr="disabled" class="gap-1.5 min-w-[150px] justify-center">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                    </svg>
+                    <x-ikon nama="tambah" ukuran="w-5 h-5" />
                     Isi Formulir Baru
                 </x-primary-button>
             @endunless
@@ -1242,25 +1236,19 @@ new class extends Component {
             @if ($viewOnlyB)
                 <x-primary-button wire:click.prevent="tutupFormB" wire:target="tutupFormB" wire:loading.attr="disabled"
                     class="gap-1.5">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                    </svg>
+                    <x-ikon nama="kembali" ukuran="w-5 h-5" />
                     Selesai Melihat
                 </x-primary-button>
             @elseif (!$isFormLocked)
                 <x-outline-button wire:click.prevent="kembaliKeDaftar" wire:target="kembaliKeDaftar" wire:loading.attr="disabled"
                     class="gap-1.5" title="Tutup formulir Form B, kembali ke daftar entri">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
+                    <x-ikon nama="kembali" ukuran="w-5 h-5" />
                     Kembali ke Daftar
                 </x-outline-button>
                 <x-primary-button wire:click.prevent="saveDraftB" wire:loading.attr="disabled" wire:target="saveDraftB"
                     class="gap-2 min-w-[160px] justify-center">
                     <span wire:loading.remove wire:target="saveDraftB" class="flex items-center gap-1.5">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 21v-8H7v8M7 3v5h8M5 3h11l4 4v12a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z" />
-                        </svg>
+                        <x-ikon nama="simpan" ukuran="w-5 h-5" />
                         {{ $editingKeyB ? 'Simpan Perubahan' : 'Simpan Draft' }}
                     </span>
                     <span wire:loading wire:target="saveDraftB"><x-loading class="w-4 h-4" /> Menyimpan...</span>

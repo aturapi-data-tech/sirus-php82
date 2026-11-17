@@ -781,12 +781,12 @@ new class extends Component {
                     @elseif ($viewOnly)
                         <div class="flex flex-wrap items-center justify-between gap-2 px-4 py-2 text-sm border rounded-lg text-blue-800 bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-300">
                             <span>Menampilkan entri terkunci — hanya lihat.</span>
-                            <x-secondary-button type="button" wire:click="cancelEdit" class="px-3 py-1 text-sm">Kembali ke entri baru</x-secondary-button>
+                            <x-secondary-button type="button" wire:click="cancelEdit" class="px-3 py-1 text-sm"><x-ikon nama="kembali" /> Kembali ke entri baru</x-secondary-button>
                         </div>
                     @elseif ($editingKey)
                         <div class="flex flex-wrap items-center justify-between gap-2 px-4 py-2 text-sm border rounded-lg text-amber-800 bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-300">
                             <span>Melanjutkan draft entri <b>{{ $editingKey }}</b>.</span>
-                            <x-secondary-button type="button" wire:click="cancelEdit" class="px-3 py-1 text-sm">Batal / entri baru</x-secondary-button>
+                            <x-secondary-button type="button" wire:click="cancelEdit" class="px-3 py-1 text-sm"><x-ikon nama="batal" /> Batal / entri baru</x-secondary-button>
                         </div>
                     @endif
 
@@ -1008,9 +1008,7 @@ new class extends Component {
 
                                         <div class="flex justify-end mt-3">
                                             <x-primary-button type="button" wire:click="tambahPemasangan" class="gap-1">
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                                                </svg>
+                                                <x-ikon nama="tambah" />
                                                 Tambah
                                             </x-primary-button>
                                         </div>
@@ -1243,7 +1241,7 @@ new class extends Component {
                 :mengedit="$editingKey">
                 <x-slot:tombol>
                     @if ($editingKey && !$isFormLocked && !$viewOnly)
-                        <x-secondary-button type="button" wire:click="cancelEdit">Batal Edit</x-secondary-button>
+                        <x-secondary-button type="button" wire:click="cancelEdit"><x-ikon nama="batal" /> Batal Edit</x-secondary-button>
                     @endif
                 </x-slot:tombol>
             </x-modul-dokumen.footer>

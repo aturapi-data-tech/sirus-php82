@@ -170,6 +170,7 @@ new class extends Component {
                                             title="Reset {{ $row['label'] }}"
                                             message="Semua {{ number_format($row['jumlah']) }} baris {{ $row['label'] }} kunjungan ini akan dihapus. Lanjutkan?"
                                             confirmText="Ya, Reset" wire:key="reset-{{ $row['tabel'] }}-{{ $row['jumlah'] }}">
+                                            <x-ikon nama="kembalikan" />
                                             Reset
                                         </x-confirm-button>
                                     @else

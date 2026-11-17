@@ -26,7 +26,7 @@
         <x-text-input wire:model="formObat.aturanPakai" placeholder="Aturan pakai (opsional), mis. 1 tablet 3x sehari sesudah makan"
             maxlength="200" :error="$errors->has('formObat.aturanPakai')" class="w-full" />
         <x-primary-button type="button" wire:click="tambahObat" wire:loading.attr="disabled" wire:target="tambahObat"
-            class="justify-center w-full">Tambah</x-primary-button>
+            class="justify-center w-full"><x-ikon nama="tambah" /> Tambah</x-primary-button>
 
         <x-modul-dokumen.tabel-daftar :kolom="['Obat (KFA)', 'Status' => 'w-36', 'Petugas' => 'w-44', 'Aksi' => 'text-center w-14']">
             @forelse ($koding['pengobatan']['obatList'] ?? [] as $index => $baris)

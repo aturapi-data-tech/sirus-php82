@@ -764,6 +764,7 @@ new class extends Component {
                                 </div>
                             </div>
                             <x-secondary-button type="button" wire:click="batalEdit" class="shrink-0">
+                                <x-ikon nama="batal" />
                                 Batal
                             </x-secondary-button>
                         </div>

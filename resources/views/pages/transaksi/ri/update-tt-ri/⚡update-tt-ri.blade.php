@@ -423,11 +423,7 @@ new class extends Component {
                 <x-secondary-button wire:click="refresh" wire:loading.attr="disabled" wire:target="refresh"
                     class="shrink-0 gap-2">
                     <x-loading size="xs" wire:loading wire:target="refresh" />
-                    <svg wire:loading.remove wire:target="refresh" class="w-4 h-4" fill="none" stroke="currentColor"
-                        viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M4 4v5h.582M20 20v-5h-.581M4.582 9A7.001 7.001 0 0112 5c2.276 0 4.293.965 5.71 2.5M19.418 15A7.001 7.001 0 0112 19c-2.276 0-4.293-.965-5.71-2.5" />
-                    </svg>
+                    <x-ikon nama="muat-ulang" wire:loading.remove wire:target="refresh" />
                     Refresh DB
                 </x-secondary-button>
             </div>
@@ -528,22 +524,14 @@ new class extends Component {
                             wire:target="kirimAplicSemua" wire:confirm="Kirim semua kamar ke Aplicares BPJS?"
                             class="gap-2">
                             <x-loading size="xs" wire:loading wire:target="kirimAplicSemua" />
-                            <svg wire:loading.remove wire:target="kirimAplicSemua" class="w-3.5 h-3.5" fill="none"
-                                stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                            </svg>
+                            <x-ikon nama="kirim" ukuran="w-3.5 h-3.5" wire:loading.remove wire:target="kirimAplicSemua" />
                             Kirim Semua ke Aplicares
                         </x-primary-button>
                         <x-primary-button wire:click="kirimSirsSemua" wire:loading.attr="disabled"
                             wire:target="kirimSirsSemua" wire:confirm="Kirim semua kamar ke SIRS Kemenkes?"
                             class="gap-2 !bg-green-600 hover:!bg-green-700 dark:!bg-green-700 dark:hover:!bg-green-600">
                             <x-loading size="xs" wire:loading wire:target="kirimSirsSemua" />
-                            <svg wire:loading.remove wire:target="kirimSirsSemua" class="w-3.5 h-3.5" fill="none"
-                                stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                            </svg>
+                            <x-ikon nama="kirim" ukuran="w-3.5 h-3.5" wire:loading.remove wire:target="kirimSirsSemua" />
                             Kirim Semua ke SIRS
                         </x-primary-button>
                     </div>
@@ -1051,6 +1039,7 @@ new class extends Component {
                         </span>
                         <x-ghost-button wire:click="$set('logLines', [])"
                             class="!text-muted-soft hover:!text-red-500 !px-2 !py-1 !text-xs">
+                            <x-ikon nama="hapus" ukuran="w-3.5 h-3.5" />
                             Hapus Log
                         </x-ghost-button>
                     </div>
@@ -1155,6 +1144,7 @@ new class extends Component {
         {{-- Footer: tutup saja, aksi kirim sudah pindah ke per-row preview --}}
         <div class="flex justify-end gap-2 px-6 py-4 border-t border-hairline dark:border-gray-700 bg-surface-soft/60 dark:bg-gray-800/40">
             <x-secondary-button type="button" x-on:click="$dispatch('close-modal', { name: 'detail-kamar-pasien' })">
+                <x-ikon nama="batal" />
                 Tutup
             </x-secondary-button>
         </div>

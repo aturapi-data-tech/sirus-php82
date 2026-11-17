@@ -1333,7 +1333,7 @@ new class extends Component {
                                         :error="$errors->has('form.tindakLanjut.edukasiLanjutanTanggal')"
                                         :disabled="$formReadOnly" />
                                     <x-secondary-button wire:click="setEdukasiLanjutanToday" type="button"
-                                        :disabled="$formReadOnly">Hari Ini</x-secondary-button>
+                                        :disabled="$formReadOnly"><x-ikon nama="waktu" /> Hari Ini</x-secondary-button>
                                 </div>
                             </div>
                             <div class="md:col-span-2">

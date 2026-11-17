@@ -871,10 +871,7 @@ new class extends Component {
                 <x-primary-button type="button" wire:click="addRekonsiliasiObat" wire:loading.attr="disabled"
                     wire:target="addRekonsiliasiObat" class="justify-center gap-1.5 w-full">
                     <span wire:loading.remove wire:target="addRekonsiliasiObat" class="flex items-center gap-1.5">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2"
-                            viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
-                        </svg>
+                        <x-ikon nama="tambah" />
                         Tambah
                     </span>
                     <span wire:loading wire:target="addRekonsiliasiObat" class="flex items-center gap-1.5">
@@ -1151,10 +1148,7 @@ new class extends Component {
                         <x-confirm-button variant="warning-soft" action="bukaKunciTtd()" title="Buka Kunci TTD"
                             message="TTD dokter pengkaji akan dicabut dan harus ditandatangani ulang. Lanjutkan?"
                             confirmText="Ya, Buka Kunci" class="gap-1.5 whitespace-nowrap">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M8 11V7a4 4 0 118 0m-8 4h10a2 2 0 012 2v5a2 2 0 01-2 2H8a2 2 0 01-2-2v-5a2 2 0 012-2z" />
-                            </svg>
+                            <x-ikon nama="buka-kunci" />
                             Buka Kunci TTD
                         </x-confirm-button>
                     </div>

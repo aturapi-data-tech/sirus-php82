@@ -576,6 +576,7 @@ new class extends Component {
                                                     wire:click="$dispatch('task-id-apotek-proses-ri', { slsNo: {{ $row->sls_no }}, aksi: '6' })"
                                                     class="!px-4 {{ $row->task_id6 ? '!opacity-60' : '' }}"
                                                     title="{{ $row->task_id6 ? 'Sudah dijalankan, klik untuk update' : 'Klik untuk mencatat TaskId6 (Masuk Apotek)' }}">
+                                                    <x-ikon nama="kirim" />
                                                     TaskId6
                                                 </x-success-button>
 
@@ -583,6 +584,7 @@ new class extends Component {
                                                     wire:click="$dispatch('task-id-apotek-proses-ri', { slsNo: {{ $row->sls_no }}, aksi: '7' })"
                                                     class="!px-4 !py-2 text-sm {{ $row->task_id7 ? '!opacity-60' : '' }}"
                                                     title="{{ $row->task_id7 ? 'Sudah dijalankan, klik untuk update' : 'Klik untuk mencatat TaskId7 (Keluar Apotek)' }}">
+                                                    <x-ikon nama="kirim" />
                                                     TaskId7
                                                 </x-primary-button>
                                                 @endhasanyrole
@@ -593,21 +595,13 @@ new class extends Component {
                                                 <x-secondary-button wire:click="openTelaah({{ $row->sls_no }})"
                                                     class="text-sm whitespace-nowrap justify-center !opacity-60"
                                                     title="Telaah Resep & Obat sudah ditelaah, klik untuk lihat detail">
-                                                    <svg class="w-3.5 h-3.5 mr-1" fill="none"
-                                                        stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                    </svg>
+                                                    <x-ikon nama="setujui" ukuran="w-3.5 h-3.5" class="mr-1" />
                                                     Telaah Resep &amp; Obat ✓
                                                 </x-secondary-button>
                                             @else
                                                 <x-secondary-button wire:click="openTelaah({{ $row->sls_no }})"
                                                     class="text-sm whitespace-nowrap justify-center !bg-teal-600 !text-white !border-teal-700 hover:!bg-teal-700 dark:!bg-teal-600 dark:!text-white dark:!border-teal-700 dark:hover:!bg-teal-700">
-                                                    <svg class="w-3.5 h-3.5 mr-1" fill="none"
-                                                        stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                                            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                                                    </svg>
+                                                    <x-ikon nama="setujui" ukuran="w-3.5 h-3.5" class="mr-1" />
                                                     Telaah Resep &amp; Obat
                                                 </x-secondary-button>
                                             @endif
@@ -632,11 +626,7 @@ new class extends Component {
                                                         wire:click="openAdministrasi({{ $row->sls_no }}, '{{ $row->status === 'L' ? 'kasir' : 'obat' }}')"
                                                         class="text-sm whitespace-nowrap justify-center !bg-purple-600 !text-white !border-purple-700 hover:!bg-purple-700 dark:!bg-purple-600 dark:!text-white dark:!border-purple-700 dark:hover:!bg-purple-700"
                                                         title="{{ $row->status === 'L' ? 'Sudah diproses kasir — buka tab Kasir untuk lihat / cetak' : 'Buka administrasi obat' }}">
-                                                        <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor"
-                                                            viewBox="0 0 24 24" stroke-width="2">
-                                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                                d="M2 8h20v12a1 1 0 01-1 1H3a1 1 0 01-1-1V8zm0 0V6a1 1 0 011-1h18a1 1 0 011 1v2M12 14a2 2 0 100-4 2 2 0 000 4z" />
-                                                        </svg>
+                                                        <x-ikon nama="pembayaran" ukuran="w-3.5 h-3.5" class="mr-1" />
                                                         Administrasi
                                                     </x-secondary-button>
                                                 @endhasanyrole

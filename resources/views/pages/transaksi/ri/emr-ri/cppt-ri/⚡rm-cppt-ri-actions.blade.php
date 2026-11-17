@@ -721,6 +721,7 @@ new class extends Component {
                             </span>
                             <x-secondary-button type="button" wire:click="cancelEditCPPT"
                                 wire:loading.attr="disabled" class="shrink-0">
+                                <x-ikon nama="batal" />
                                 Batal
                             </x-secondary-button>
                         </div>
@@ -1049,12 +1050,7 @@ new class extends Component {
                                                     class="!text-emerald-600 !bg-emerald-50 !border-emerald-200 hover:!bg-emerald-100 hover:!text-emerald-700 hover:!border-emerald-300 dark:!text-emerald-400 dark:!bg-emerald-900/20 dark:!border-emerald-800/30 dark:hover:!bg-emerald-900/30 dark:hover:!text-emerald-300"
                                                     title="Review / TTD DPJP Utama">
                                                     <span class="inline-flex items-center gap-1">
-                                                        <svg class="w-5 h-5" fill="none" stroke="currentColor"
-                                                            viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                                stroke-width="2"
-                                                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                        </svg>
+                                                        <x-ikon nama="setujui" ukuran="w-5 h-5" />
                                                         <span class="text-sm font-semibold">Review DPJP</span>
                                                     </span>
                                                 </x-outline-button>
@@ -1066,12 +1062,7 @@ new class extends Component {
                                                     class="!text-muted !bg-surface-soft !border-hairline hover:!bg-surface-soft hover:!text-body hover:!border-gray-300 dark:!text-muted-soft dark:!bg-gray-800/40 dark:!border-gray-700 dark:hover:!bg-gray-800/60"
                                                     title="Batal review DPJP">
                                                     <span class="inline-flex items-center gap-1">
-                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor"
-                                                        viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                                            stroke-width="2"
-                                                            d="M6 18L18 6M6 6l12 12" />
-                                                    </svg>
+                                                    <x-ikon nama="batal" ukuran="w-5 h-5" />
                                                         <span class="text-sm font-semibold">Batal Review</span>
                                                     </span>
                                                 </x-outline-button>

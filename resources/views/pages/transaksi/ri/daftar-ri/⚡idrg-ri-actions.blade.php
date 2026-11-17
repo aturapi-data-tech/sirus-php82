@@ -266,10 +266,7 @@ new class extends Component {
                                                 Livewire.dispatch('idrg-prosedur-ri.set', { riHdrNo: '{{ $riHdrNo }}' });
                                             "
                                             class="!bg-brand hover:!bg-brand/90 min-w-[260px] {{ $idrgBothSaved ? '!bg-emerald-600' : '' }}">
-                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                                            </svg>
+                                            <x-ikon nama="simpan" class="mr-1" />
                                             {{ $idrgBothSaved ? 'Set Ulang Diagnosa & Prosedur iDRG' : 'Set Diagnosa & Prosedur iDRG' }}
                                         </x-primary-button>
                                     </div>
@@ -309,10 +306,7 @@ new class extends Component {
                                                 Livewire.dispatch('idrg-prosedur-inacbg-ri.set', { riHdrNo: '{{ $riHdrNo }}' });
                                             "
                                             class="!bg-brand hover:!bg-brand/90 min-w-[260px] {{ $inacbgBothSaved ? '!bg-emerald-600' : '' }}">
-                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                                            </svg>
+                                            <x-ikon nama="simpan" class="mr-1" />
                                             {{ $inacbgBothSaved ? 'Set Ulang Diagnosa & Prosedur INACBG' : 'Set Diagnosa & Prosedur INACBG' }}
                                         </x-primary-button>
                                     </div>
@@ -368,6 +362,7 @@ new class extends Component {
             <div class="sticky bottom-0 z-10 px-6 py-4 bg-surface-soft border-t border-hairline dark:bg-gray-900 dark:border-gray-700">
                 <div class="flex justify-end gap-3">
                     <x-secondary-button wire:click="closeModal">
+                        <x-ikon nama="batal" />
                         Tutup
                     </x-secondary-button>
                 </div>

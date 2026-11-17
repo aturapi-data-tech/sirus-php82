@@ -1157,10 +1157,7 @@ new class extends Component {
                     {{-- Tombol Tambah --}}
                     <div class="col-span-1">
                         <x-primary-button type="button" wire:click="addLevelingDokter" :disabled="empty($levelingDokter['drId'])">
-                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M12 4v16m8-8H4" />
-                            </svg>
+                            <x-ikon nama="tambah" class="mr-1" />
                             Tambah Dokter
                         </x-primary-button>
                     </div>
@@ -1232,10 +1229,7 @@ new class extends Component {
                         <x-confirm-button variant="warning-soft" action="bukaKunciTtd()" title="Buka Kunci TTD"
                             message="TTD petugas pengkaji akan dicabut dan harus ditandatangani ulang. Lanjutkan?"
                             confirmText="Ya, Buka Kunci" class="gap-1.5 whitespace-nowrap">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M8 11V7a4 4 0 118 0m-8 4h10a2 2 0 012 2v5a2 2 0 01-2 2H8a2 2 0 01-2-2v-5a2 2 0 012-2z" />
-                            </svg>
+                            <x-ikon nama="buka-kunci" />
                             Buka Kunci TTD
                         </x-confirm-button>
                     </div>

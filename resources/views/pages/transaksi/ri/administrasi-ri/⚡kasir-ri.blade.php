@@ -909,6 +909,7 @@ new class extends Component {
             <x-confirm-button variant="danger" :action="'batalTransaksi()'" title="Batal Transaksi Pulang"
                 message="Yakin ingin membatalkan? Status pasien akan dikembalikan ke Rawat Inap dan data payment dihapus."
                 confirmText="Ya, batalkan" cancelText="Batal">
+                <x-ikon nama="batalkan" />
                 Batal Transaksi
             </x-confirm-button>
             @endhasanyrole
@@ -939,6 +940,7 @@ new class extends Component {
                         <x-confirm-button variant="danger" :action="'batalTglPulang()'" title="Ulangi Proses Tgl Pulang"
                             message="Buka lagi kamar terakhir? Tanggal keluar & hari kamar dikosongkan (hari kembali berjalan), lalu Proses Tgl Pulang bisa diulang — mis. ada tambahan/pindah kamar atau tanggal pulang salah."
                             confirmText="Ya, buka lagi" cancelText="Batal">
+                            <x-ikon nama="kembalikan" />
                             Ulangi
                         </x-confirm-button>
                     </div>
@@ -959,7 +961,7 @@ new class extends Component {
 
                     <x-primary-button wire:click="updateTglPulang" wire:loading.attr="disabled"
                         wire:target="updateTglPulang">
-                        <span wire:loading.remove wire:target="updateTglPulang">Proses Tgl Pulang</span>
+                        <span wire:loading.remove wire:target="updateTglPulang" class="inline-flex items-center gap-2"><x-ikon nama="proses" /> Proses Tgl Pulang</span>
                         <span wire:loading wire:target="updateTglPulang"><x-loading /></span>
                     </x-primary-button>
                 @endif
@@ -999,6 +1001,7 @@ new class extends Component {
                         Buka tab Kamar
                     </x-secondary-button>
                     <x-primary-button wire:click="konfirmasiHariKamar" wire:loading.attr="disabled" wire:target="konfirmasiHariKamar">
+                        <x-ikon nama="setujui" />
                         Hari kamar sudah benar — lanjut
                     </x-primary-button>
                 </div>
@@ -1175,7 +1178,7 @@ new class extends Component {
                     <x-primary-button wire:click="postTransaksi" wire:loading.attr="disabled"
                         wire:target="postTransaksi"
                         :disabled="!$siapBayar">
-                        <span wire:loading.remove wire:target="postTransaksi">Proses Pulang</span>
+                        <span wire:loading.remove wire:target="postTransaksi" class="inline-flex items-center gap-2"><x-ikon nama="proses" /> Proses Pulang</span>
                         <span wire:loading wire:target="postTransaksi"><x-loading /></span>
                     </x-primary-button>
                 </div>
@@ -1242,6 +1245,7 @@ new class extends Component {
                     <x-confirm-button variant="danger" :action="'batalInap()'" title="Batal Inap"
                         message="Batalkan pendaftaran inap ini? Status akan menjadi BATAL (F). Aksi hanya berhasil jika RI belum punya transaksi apa pun."
                         confirmText="Ya, batal inap" cancelText="Batal">
+                        <x-ikon nama="batalkan" />
                         Batal Inap
                     </x-confirm-button>
                 </div>

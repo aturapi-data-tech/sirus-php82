@@ -534,7 +534,7 @@ new class extends Component {
                         <x-text-input wire:model.live="perencanaan.tindakLanjut.tglPulang" class="flex-1"
                             placeholder="dd/mm/yyyy" :disabled="$isFormLocked" />
                         @if (!$isFormLocked)
-                            <x-secondary-button wire:click="setTglPulang" type="button" class="text-xs">Hari
+                            <x-secondary-button wire:click="setTglPulang" type="button" class="text-xs"><x-ikon nama="waktu" ukuran="w-3.5 h-3.5" /> Hari
                                 Ini</x-secondary-button>
                         @endif
                     </div>
@@ -597,10 +597,7 @@ new class extends Component {
                                     wire:confirm="Kirim update tanggal pulang ke BPJS?"
                                     wire:loading.attr="disabled">
                                     <span wire:loading.remove wire:target="updateTglPulangBPJS" class="inline-flex items-center gap-2">
-                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
-                                        </svg>
+                                        <x-ikon nama="kirim" />
                                         Update Pasien Pulang BPJS
                                     </span>
                                     <span wire:loading wire:target="updateTglPulangBPJS" class="inline-flex items-center gap-2">
@@ -704,7 +701,7 @@ new class extends Component {
                             </div>
                         </div>
                         <x-ghost-button type="button" wire:click="tambahPelayanan" wire:loading.attr="disabled"
-                            :disabled="$isFormLocked" class="text-xs">+ Tambah Pelayanan</x-ghost-button>
+                            :disabled="$isFormLocked" class="text-xs"><x-ikon nama="tambah" ukuran="w-3.5 h-3.5" /> Tambah Pelayanan</x-ghost-button>
                     </div>
 
                     @php
@@ -801,7 +798,7 @@ new class extends Component {
                             </div>
                         </div>
                         <x-ghost-button type="button" wire:click="tambahAlat" wire:loading.attr="disabled"
-                            :disabled="$isFormLocked" class="text-xs">+ Tambah Alat Bantu</x-ghost-button>
+                            :disabled="$isFormLocked" class="text-xs"><x-ikon nama="tambah" ukuran="w-3.5 h-3.5" /> Tambah Alat Bantu</x-ghost-button>
                     </div>
 
                     @php
