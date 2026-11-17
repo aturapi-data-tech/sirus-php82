@@ -260,7 +260,7 @@ new class extends Component {
             <div class="flex items-end lg:col-span-2">
                 <x-primary-button id="ok-tombol-omlop" type="button" wire:click="tambah" wire:loading.attr="disabled"
                     wire:target="tambah" class="justify-center w-full text-xs">
-                    <span wire:loading.remove wire:target="tambah">Tambah</span>
+                    <span wire:loading.remove wire:target="tambah" class="inline-flex items-center gap-2"><x-ikon nama="tambah" ukuran="w-3.5 h-3.5" /> Tambah</span>
                     <span wire:loading wire:target="tambah" class="flex items-center gap-1">
                         <x-loading /> ...
                     </span>

@@ -509,7 +509,7 @@ tampil di `/panduan-dev` (Komponen → Ikon Tombol).
 <x-ikon nama="kembalikan" ukuran="w-3.5 h-3.5" />
 ```
 
-### Katalog (24 aksi)
+### Katalog (25 aksi)
 
 | `nama` | Ikon | Dipakai untuk label |
 |---|---|---|
@@ -537,6 +537,7 @@ tampil di `/panduan-dev` (Komponen → Ikon Tombol).
 | `riwayat` | papan klip | Log, Log Aktivitas, Riwayat |
 | `pembayaran` | dompet | Administrasi, Bayar, Kasir |
 | `waktu` | jam | Jam Sekarang, Hari Ini (isian tanggal tetap pakai `x-now-button`) |
+| `cetak` | printer | Print Etiket / cetak langsung via print agent. Tombol cetak biasa tetap `x-cetak-button` |
 
 ### Aturan
 
@@ -589,6 +590,7 @@ dan `/panduan-dev#ikon-tombol` menampilkannya. Ditetapkan dari pemindaian 1.236 
 | `unggah`, `ttd` | `x-primary-button` (pendamping → `x-secondary-button`) |
 | `dokumen`, `pembayaran` | toolbar EMR → palet semantik (indigo / teal); lainnya → `x-outline-button` |
 | `waktu` | isian tanggal → `x-now-button` |
+| `cetak` | `x-cetak-button`; cetak khusus yang tak bisa memakainya (print agent etiket) → `x-secondary-button` + `<x-ikon nama="cetak">` |
 
 **Pengecualian yang disengaja:** tombol navigasi ke modul lain (`<a wire:navigate>` + Pendaftaran
 RJ/UGD/RI) tetap `x-outline-button`; tombol pilihan dari daftar (isi kode + nama) tanpa ikon;
@@ -607,6 +609,10 @@ memakai katalog (164 tombol; 2 tombol pilihan Kamar sengaja tanpa ikon).
 - 2026-11-17 **Gudang** (45 tombol, sebelumnya 0 berikon): 37 ikon dipasang, 8 SVG manual diganti.
   Komponen: baris tabel Edit/Ubah Data → secondary, Lihat/Lihat Data → outline, Hapus → danger-soft;
   "+ Masukkan" (tambah baris barang) → secondary; Simpan Sementara (pendamping Proses Stok) → secondary.
+- 2026-11-17 **Penunjang** (Lab, Radiologi, Kamar Operasi; 53 tombol, sebelumnya 0 berikon): 27 ikon
+  dipasang, 26 SVG manual diganti. Ikon baru `cetak` untuk Print Etiket (print agent). Import Hasil
+  Mindray: warna biru buatan sendiri dibuang → secondary, ikon `muat-ulang`. Pengecualian: Detail
+  Pemeriksaan (satu-satunya aksi di baris worklist Lab) tetap primary; pemicu menu titik-3 dilewati.
 
 Area lain menyusul per modul: pasang ikon + samakan komponen + ganti SVG manual sekaligus.
 

@@ -616,10 +616,7 @@ new class extends Component {
                                         :disabled="$indukTerkunci" title="Batalkan Pendaftaran"
                                         message="Batalkan pendaftaran kamar operasi ini? Status akan menjadi Dibatalkan dan tidak bisa diubah lagi."
                                         confirmText="Ya, batalkan" cancelText="Tutup" class="text-xs">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                                        </svg>
+                                        <x-ikon nama="batalkan" />
                                         Batalkan Pendaftaran
                                     </x-confirm-button>
                                 </span>
@@ -631,10 +628,7 @@ new class extends Component {
                                         :disabled="$indukTerkunci" title="Batalkan Transaksi"
                                         :message="'Batalkan transfer biaya operasi ini? Seluruh baris biaya di tagihan ' . $this->labelSumber() . ' akan dihapus dan status kembali ke Proses Transaksi.'"
                                         confirmText="Ya, batalkan" cancelText="Batal" class="text-xs">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                                        </svg>
+                                        <x-ikon nama="batalkan" />
                                         Batal Transaksi
                                     </x-confirm-button>
                                 </span>
@@ -657,7 +651,7 @@ new class extends Component {
                         @if ($statusOk === 'A')
                             <x-secondary-button type="button" wire:click="hitungTarifOk" wire:loading.attr="disabled"
                                 wire:target="hitungTarifOk" class="text-xs">
-                                <span wire:loading.remove wire:target="hitungTarifOk">Hitung Ulang Tarif</span>
+                                <span wire:loading.remove wire:target="hitungTarifOk" class="inline-flex items-center gap-2"><x-ikon nama="proses" ukuran="w-3.5 h-3.5" /> Hitung Ulang Tarif</span>
                                 <span wire:loading wire:target="hitungTarifOk" class="flex items-center gap-1.5">
                                     <x-loading /> Menghitung...
                                 </span>
@@ -680,6 +674,7 @@ new class extends Component {
                                     :disabled="$indukTerkunci" :title="'Transfer Biaya ke ' . $labelTujuanTransfer"
                                     :message="'Transfer seluruh pos tarif operasi ini ke tagihan ' . $labelTujuanTransfer . '? Setelah ditransfer, tarif tidak bisa diubah lagi.'"
                                     confirmText="Ya, transfer" cancelText="Batal" class="text-xs">
+                                    <x-ikon nama="kirim" ukuran="w-3.5 h-3.5" />
                                     {{ $labelTombolTransfer }}
                                 </x-confirm-button>
                             </span>
@@ -691,7 +686,7 @@ new class extends Component {
                             <x-badge variant="danger">Transaksi dibatalkan &mdash; hanya bisa dilihat</x-badge>
                         @endif
 
-                        <x-secondary-button type="button" wire:click="closeActions">Tutup</x-secondary-button>
+                        <x-secondary-button type="button" wire:click="closeActions"><x-ikon nama="batal" /> Tutup</x-secondary-button>
                     </div>
                 </div>
             </div>

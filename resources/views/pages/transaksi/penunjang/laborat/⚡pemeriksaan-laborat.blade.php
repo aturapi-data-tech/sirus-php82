@@ -781,9 +781,7 @@ new class extends Component {
                         <x-primary-button type="button" wire:click="tambahItemTerpilih"
                             wire:loading.attr="disabled" wire:target="tambahItemTerpilih">
                             <span wire:loading.remove wire:target="tambahItemTerpilih" class="flex items-center gap-1.5">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                                </svg>
+                                <x-ikon nama="tambah" />
                                 Tambah Pemeriksaan Terpilih
                             </span>
                             <span wire:loading wire:target="tambahItemTerpilih" class="flex items-center gap-1.5">
@@ -855,13 +853,9 @@ new class extends Component {
         @if ($labStatus === 'C')
         <div class="flex items-center gap-2">
             <x-secondary-button type="button" wire:click="importMindray" wire:loading.attr="disabled"
-                wire:target="importMindray"
-                class="!bg-blue-50 !text-blue-700 !border-blue-300 hover:!bg-blue-100">
+                wire:target="importMindray">
                 <span wire:loading.remove wire:target="importMindray" class="flex items-center gap-1.5">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                    </svg>
+                    <x-ikon nama="muat-ulang" />
                     Import Hasil Mindray
                 </span>
                 <span wire:loading wire:target="importMindray" class="flex items-center gap-1.5">

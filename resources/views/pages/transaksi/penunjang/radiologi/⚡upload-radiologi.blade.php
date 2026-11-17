@@ -584,10 +584,7 @@ new class extends Component {
                         <x-primary-button type="button"
                             wire:click="$dispatch('radiologi.tambah.open', { source: '{{ $filterSource === 'ALL' ? 'RJ' : $filterSource }}' })"
                             class="gap-1.5 whitespace-nowrap">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M12 4v16m8-8H4" />
-                            </svg>
+                            <x-ikon nama="tambah" />
                             Tambah Pemeriksaan
                         </x-primary-button>
 
@@ -767,17 +764,14 @@ new class extends Component {
                                                         class="px-3 py-1 text-xs">
                                                         <span wire:loading.remove wire:target="saveTarif"
                                                             class="inline-flex items-center gap-1">
-                                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor"
-                                                                viewBox="0 0 24 24">
-                                                                <path stroke-linecap="round" stroke-linejoin="round"
-                                                                    stroke-width="2" d="M5 13l4 4L19 7" />
-                                                            </svg>
+                                                            <x-ikon nama="simpan" ukuran="w-3.5 h-3.5" />
                                                             Simpan
                                                         </span>
                                                         <span wire:loading wire:target="saveTarif"><x-loading class="w-4 h-4" /></span>
                                                     </x-primary-button>
                                                     <x-secondary-button type="button" wire:click="cancelEditTarif"
                                                         class="px-3 py-1 text-xs">
+                                                        <x-ikon nama="batal" ukuran="w-3.5 h-3.5" />
                                                         Batal
                                                     </x-secondary-button>
                                                 </div>
@@ -790,12 +784,7 @@ new class extends Component {
                                                         wire:click="startEditTarif('{{ $row->src }}', {{ $row->dtl_no }}, {{ $row->ref_no }}, {{ (int) $row->rad_price }})"
                                                         class="px-3 py-1 text-xs">
                                                         <span class="inline-flex items-center gap-1">
-                                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor"
-                                                                viewBox="0 0 24 24">
-                                                                <path stroke-linecap="round" stroke-linejoin="round"
-                                                                    stroke-width="2"
-                                                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                                            </svg>
+                                                            <x-ikon nama="ubah" ukuran="w-3.5 h-3.5" />
                                                             Edit
                                                         </span>
                                                     </x-secondary-button>
@@ -855,12 +844,7 @@ new class extends Component {
                                                     wire:click="$dispatch('radiologi.foto.open', { source: '{{ $row->src }}', dtlNo: {{ $row->dtl_no }}, refNo: {{ $row->ref_no }} })"
                                                     class="px-3 py-1.5 text-sm">
                                                     <span class="flex items-center gap-1.5">
-                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor"
-                                                            viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                                stroke-width="2"
-                                                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                                        </svg>
+                                                        <x-ikon nama="unggah" />
                                                         Replace
                                                     </span>
                                                 </x-secondary-button>
@@ -869,12 +853,7 @@ new class extends Component {
                                                     wire:click="$dispatch('radiologi.foto.open', { source: '{{ $row->src }}', dtlNo: {{ $row->dtl_no }}, refNo: {{ $row->ref_no }} })"
                                                     class="px-3 py-1.5 text-sm">
                                                     <span class="flex items-center gap-1.5">
-                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor"
-                                                            viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                                stroke-width="2"
-                                                                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                                                        </svg>
+                                                        <x-ikon nama="unggah" />
                                                         Upload
                                                     </span>
                                                 </x-primary-button>
@@ -907,12 +886,7 @@ new class extends Component {
                                                     wire:click="$dispatch('radiologi.bacaan.generate.open', { source: '{{ $row->src }}', dtlNo: {{ $row->dtl_no }}, refNo: {{ $row->ref_no }} })"
                                                     class="px-3 py-1.5 text-sm">
                                                     <span class="flex items-center gap-1.5">
-                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor"
-                                                            viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                                stroke-width="2"
-                                                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                                        </svg>
+                                                        <x-ikon nama="ubah" />
                                                         {{ !empty($row->hasil_bacaan) ? 'Edit' : 'Generate' }}
                                                     </span>
                                                 </x-secondary-button>
@@ -921,12 +895,7 @@ new class extends Component {
                                                     wire:click="$dispatch('radiologi.bacaan.generate.open', { source: '{{ $row->src }}', dtlNo: {{ $row->dtl_no }}, refNo: {{ $row->ref_no }} })"
                                                     class="px-3 py-1.5 text-sm">
                                                     <span class="flex items-center gap-1.5">
-                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor"
-                                                            viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                                stroke-width="2"
-                                                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                                        </svg>
+                                                        <x-ikon nama="proses" />
                                                         Generate
                                                     </span>
                                                 </x-primary-button>
@@ -935,12 +904,7 @@ new class extends Component {
                                                 wire:click="$dispatch('radiologi.bacaan.upload.open', { source: '{{ $row->src }}', dtlNo: {{ $row->dtl_no }}, refNo: {{ $row->ref_no }} })"
                                                 class="px-3 py-1.5 text-sm">
                                                 <span class="flex items-center gap-1.5">
-                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor"
-                                                        viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                                            stroke-width="2"
-                                                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                                                    </svg>
+                                                    <x-ikon nama="unggah" />
                                                     Upload
                                                 </span>
                                             </x-secondary-button>
@@ -956,10 +920,7 @@ new class extends Component {
                                                     title="Batalkan Order Radiologi"
                                                     message="Batalkan order radiologi ini? Order akan dihapus permanen."
                                                     confirmText="Ya, batalkan" cancelText="Batal" class="text-xs">
-                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                    </svg>
+                                                    <x-ikon nama="batalkan" />
                                                     Batalkan Order
                                                 </x-confirm-button>
                                             </div>

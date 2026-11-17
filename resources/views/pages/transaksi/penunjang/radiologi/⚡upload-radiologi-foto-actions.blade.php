@@ -120,9 +120,9 @@ new class extends Component {
                 />
             </div>
             <div class="flex items-center justify-end gap-2 px-6 py-3 border-t border-hairline dark:border-gray-700 bg-surface-soft dark:bg-gray-900/40">
-                <x-secondary-button type="button" wire:click="closeUploadFotoModal">Batal</x-secondary-button>
+                <x-secondary-button type="button" wire:click="closeUploadFotoModal"><x-ikon nama="batal" /> Batal</x-secondary-button>
                 <x-primary-button type="button" wire:click="uploadFoto" wire:loading.attr="disabled" wire:target="uploadFoto,fotoFile">
-                    <span wire:loading.remove wire:target="uploadFoto">Upload</span>
+                    <span wire:loading.remove wire:target="uploadFoto" class="inline-flex items-center gap-2"><x-ikon nama="unggah" /> Upload</span>
                     <span wire:loading wire:target="uploadFoto"><x-loading /> Uploading...</span>
                 </x-primary-button>
             </div>

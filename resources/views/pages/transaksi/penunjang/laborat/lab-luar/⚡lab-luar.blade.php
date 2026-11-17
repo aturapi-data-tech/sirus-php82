@@ -252,7 +252,7 @@ new class extends Component {
                 </select>
             </div>
             <div class="flex items-end">
-                <x-secondary-button type="button" wire:click="resetFilters">Reset</x-secondary-button>
+                <x-secondary-button type="button" wire:click="resetFilters"><x-ikon nama="kembalikan" /> Reset</x-secondary-button>
             </div>
         </div>
     </div>
@@ -325,11 +325,11 @@ new class extends Component {
                                     </a>
                                     <x-secondary-button type="button"
                                         wire:click="openUploadModal({{ $r->checkup_no }}, {{ $r->labout_dtl }})"
-                                        class="text-xs">Replace</x-secondary-button>
+                                        class="text-xs"><x-ikon nama="unggah" ukuran="w-3.5 h-3.5" /> Replace</x-secondary-button>
                                 @else
                                     <x-primary-button type="button"
                                         wire:click="openUploadModal({{ $r->checkup_no }}, {{ $r->labout_dtl }})"
-                                        class="text-xs">Upload Hasil</x-primary-button>
+                                        class="text-xs"><x-ikon nama="unggah" ukuran="w-3.5 h-3.5" /> Upload Hasil</x-primary-button>
                                 @endif
                             </td>
                         </tr>
@@ -375,9 +375,9 @@ new class extends Component {
                 </div>
             </div>
             <div class="flex items-center justify-end gap-2 px-6 py-3 border-t border-hairline dark:border-gray-700 bg-surface-soft dark:bg-gray-900/40">
-                <x-secondary-button type="button" wire:click="closeUploadModal">Batal</x-secondary-button>
+                <x-secondary-button type="button" wire:click="closeUploadModal"><x-ikon nama="batal" /> Batal</x-secondary-button>
                 <x-primary-button type="button" wire:click="uploadHasil" wire:loading.attr="disabled" wire:target="uploadHasil,pdfFile">
-                    <span wire:loading.remove wire:target="uploadHasil">Upload</span>
+                    <span wire:loading.remove wire:target="uploadHasil" class="inline-flex items-center gap-2"><x-ikon nama="unggah" /> Upload</span>
                     <span wire:loading wire:target="uploadHasil"><x-loading /> Uploading...</span>
                 </x-primary-button>
             </div>
