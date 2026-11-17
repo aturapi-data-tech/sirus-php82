@@ -636,9 +636,15 @@ new class extends Component {
                         <x-badge :variant="$mode === 'shift' ? 'success' : 'info'">{{ $mode === 'shift' ? 'Per Shift' : 'Harian' }}</x-badge>
                         <span class="font-mono font-semibold text-ink dark:text-gray-100">{{ $tanggalHarianInput }}</span>
                         @if ($mode === 'shift')
+                            {{-- Jam shift menggantikan baris "Shift N" di dalam tabel (cuma satu shift yang tampil). --}}
+                            @php $rentangShift = $this->shiftGroups[0]->range ?? null; @endphp
                             <span class="font-semibold text-ink dark:text-gray-100">— Shift {{ $shiftPilihan }}</span>
+                            @if ($rentangShift)
+                                <span class="text-sm text-muted dark:text-gray-400">({{ $rentangShift }})</span>
+                            @endif
+                        @else
+                            <span class="text-xs text-muted-soft">(ubah di halaman Cek Saldo Kas)</span>
                         @endif
-                        <span class="text-xs text-muted-soft">(ubah di halaman Cek Saldo Kas)</span>
                     </div>
 
                 {{-- Rekap per jenis transaksi — kartu collapsible (gaya kartu step casemix) --}}
@@ -736,12 +742,7 @@ new class extends Component {
                             @if ($mode === 'shift')
                                 {{-- Mode Per Shift: hanya shift terpilih; total & saldo akhirnya di kaki tabel --}}
                                 @forelse ($this->shiftGroups as $group)
-                                    {{-- Sticky tepat di bawah thead (tinggi thead = top-9) supaya shift tetap terbaca saat scroll. --}}
-                                    <tr>
-                                        <td colspan="6" class="sticky z-10 top-9 px-3 py-1.5 text-xs font-bold tracking-wide uppercase border-b shadow-sm bg-emerald-50 border-emerald-200 text-emerald-800 dark:bg-emerald-900 dark:border-emerald-700 dark:text-emerald-200">
-                                            Shift {{ $group->shift }}@if ($group->range)<span class="ml-1 font-normal normal-case text-muted">({{ $group->range }})</span>@endif
-                                        </td>
-                                    </tr>
+                                    {{-- Label shift + jamnya ada di baris info atas modal, tidak diulang di tabel. --}}
                                     @foreach ($group->items as $i => $row)
                                         <tr wire:key="shift-{{ $group->shift }}-{{ $i }}-{{ $row->txn_date }}"
                                             class="{{ $i % 2 ? 'bg-surface-soft/40 dark:bg-gray-800/20' : '' }} hover:bg-surface-soft dark:hover:bg-gray-800/60">
