@@ -455,14 +455,14 @@ new class extends Component {
                     <div class="flex flex-wrap items-center justify-end gap-2 pt-2">
                         {{-- Daftar surat kontrol BPJS milik kartu pasien (lihat + hapus di VClaim) — mepet kiri --}}
                         @if (!$isFormLocked && auth()->user()?->can('bpjs.hapusSuratKontrol'))
-                            <x-secondary-button type="button" wire:click="bukaDaftarSuratKontrol" wire:loading.attr="disabled"
+                            <x-outline-button type="button" wire:click="bukaDaftarSuratKontrol" wire:loading.attr="disabled"
                                 wire:target="bukaDaftarSuratKontrol" class="mr-auto">
                                 <span wire:loading.remove wire:target="bukaDaftarSuratKontrol" class="inline-flex items-center gap-2">
                                     <x-ikon nama="lihat" />
                                     Daftar Surat Kontrol BPJS
                                 </span>
                                 <span wire:loading wire:target="bukaDaftarSuratKontrol" class="inline-flex items-center gap-2"><x-loading /> Memuat...</span>
-                            </x-secondary-button>
+                            </x-outline-button>
                         @endif
 
                         {{-- Cetak --}}
@@ -472,7 +472,7 @@ new class extends Component {
 
                         {{-- Simpan --}}
                         @if (!$isFormLocked)
-                            <x-success-button type="button" wire:click="save" wire:loading.attr="disabled">
+                            <x-info-button type="button" wire:click="save" wire:loading.attr="disabled">
                                 <span wire:loading.remove wire:target="save" class="inline-flex items-center gap-2">
                                     <x-ikon nama="kirim" />
                                     Simpan & Kirim SKDP ke BPJS
@@ -481,7 +481,7 @@ new class extends Component {
                                     <x-loading />
                                     Mengirim ke BPJS...
                                 </span>
-                            </x-success-button>
+                            </x-info-button>
                         @endif
                     </div>
                 @endif

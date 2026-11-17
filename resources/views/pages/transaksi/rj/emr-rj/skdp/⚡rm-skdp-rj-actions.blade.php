@@ -490,7 +490,7 @@ new class extends Component {
                         @php $isBPJS = $klaimStatus === 'BPJS' || $klaimId === 'JM'; @endphp
                         <div class="flex flex-wrap items-center justify-end gap-2 pt-1">
                             @if ($isBPJS && !$isFormLocked)
-                                <x-success-button type="button" wire:click="save"
+                                <x-info-button type="button" wire:click="save"
                                     wire:loading.attr="disabled" wire:target="save">
                                     <span wire:loading.remove wire:target="save"
                                         class="inline-flex items-center gap-1">
@@ -501,7 +501,7 @@ new class extends Component {
                                         class="inline-flex items-center gap-1">
                                         <x-loading /> Mengirim ke BPJS...
                                     </span>
-                                </x-success-button>
+                                </x-info-button>
                             @endif
 
                             <x-cetak-button wire:click="cetakSKDP" label="Cetak SKDP" />
@@ -514,16 +514,16 @@ new class extends Component {
                         <div class="flex flex-wrap items-center justify-end gap-2 pt-2">
                             {{-- Daftar surat kontrol BPJS milik kartu pasien (lihat + hapus di VClaim) — mepet kiri --}}
                             @if ($isBPJS && auth()->user()?->can('bpjs.hapusSuratKontrol'))
-                                <x-secondary-button type="button" wire:click="bukaDaftarSuratKontrol" wire:loading.attr="disabled"
+                                <x-outline-button type="button" wire:click="bukaDaftarSuratKontrol" wire:loading.attr="disabled"
                                     wire:target="bukaDaftarSuratKontrol" class="mr-auto">
                                     <span wire:loading.remove wire:target="bukaDaftarSuratKontrol" class="inline-flex items-center gap-2">
                                         <x-ikon nama="lihat" />
                                         Daftar Surat Kontrol BPJS
                                     </span>
                                     <span wire:loading wire:target="bukaDaftarSuratKontrol" class="inline-flex items-center gap-2"><x-loading /> Memuat...</span>
-                                </x-secondary-button>
+                                </x-outline-button>
                             @endif
-                            <x-success-button type="button" wire:click="save" wire:loading.attr="disabled"
+                            <x-info-button type="button" wire:click="save" wire:loading.attr="disabled"
                                 wire:target="save">
                                 <span wire:loading.remove wire:target="save" class="inline-flex items-center gap-2">
                                     @if ($isBPJS)
@@ -538,7 +538,7 @@ new class extends Component {
                                     <x-loading />
                                     {{ $isBPJS ? 'Mengirim ke BPJS...' : 'Menyimpan...' }}
                                 </span>
-                            </x-success-button>
+                            </x-info-button>
                         </div>
                     @endif
                 @endif

@@ -621,7 +621,6 @@ new class extends Component {
                             @if (!$isFormLocked)
                                 <div class="flex justify-end pt-3">
                                     <x-primary-button type="button" wire:click="nextStep">
-                                        <x-ikon nama="ubah" />
                                         Lanjut ke Obat &rarr;
                                     </x-primary-button>
                                 </div>
@@ -681,10 +680,10 @@ new class extends Component {
                                 <div class="space-y-2">
                                     <div class="flex gap-2">
                                         <x-text-input wire:model="searchObat" class="flex-1" placeholder="Cari obat generik PRB (min 3 huruf)..." x-on:keyup.enter="$wire.cariObatPRB()" />
-                                        <x-secondary-button type="button" wire:click="cariObatPRB" wire:loading.attr="disabled" class="text-sm shrink-0">
+                                        <x-outline-button type="button" wire:click="cariObatPRB" wire:loading.attr="disabled" class="text-sm shrink-0">
                                             <span wire:loading.remove wire:target="cariObatPRB" class="inline-flex items-center gap-2"><x-ikon nama="cari" /> Cari Obat</span>
                                             <span wire:loading wire:target="cariObatPRB"><x-loading /></span>
-                                        </x-secondary-button>
+                                        </x-outline-button>
                                     </div>
 
                                     {{-- LOV Obat --}}
@@ -740,8 +739,8 @@ new class extends Component {
 
                             {{-- Prev / Next --}}
                             <div class="flex justify-between pt-3">
-                                <x-secondary-button type="button" wire:click="prevStep"><x-ikon nama="kembali" /> &larr; Kembali</x-secondary-button>
-                                <x-primary-button type="button" wire:click="nextStep"><x-ikon nama="ubah" /> Lanjut ke Kirim &rarr;</x-primary-button>
+                                <x-secondary-button type="button" wire:click="prevStep"><x-ikon nama="kembali" /> Kembali</x-secondary-button>
+                                <x-primary-button type="button" wire:click="nextStep">Lanjut ke Kirim &rarr;</x-primary-button>
                             </div>
                         </div>
                     @endif
@@ -798,7 +797,7 @@ new class extends Component {
 
                             {{-- Prev / Kirim / Hapus --}}
                             <div class="flex items-center justify-between pt-3">
-                                <x-secondary-button type="button" wire:click="prevStep"><x-ikon nama="kembali" /> &larr; Kembali</x-secondary-button>
+                                <x-secondary-button type="button" wire:click="prevStep"><x-ikon nama="kembali" /> Kembali</x-secondary-button>
 
                                 @if (!$isFormLocked)
                                     <div class="flex gap-2">
@@ -806,13 +805,13 @@ new class extends Component {
                                             <x-hapus-button wire:click="hapusPRB" confirm="Yakin hapus PRB {{ $formPRB['noSrb'] }} dari BPJS?" label="Hapus PRB" />
                                         @endif
 
-                                        <x-success-button type="button" wire:click="save" wire:loading.attr="disabled">
+                                        <x-info-button type="button" wire:click="save" wire:loading.attr="disabled">
                                             <span wire:loading.remove wire:target="save" class="inline-flex items-center gap-2">
                                                 <x-ikon nama="simpan" />
                                                 {{ !empty($formPRB['noSrb']) ? 'Update PRB ke BPJS' : 'Kirim PRB ke BPJS' }}
                                             </span>
                                             <span wire:loading wire:target="save" class="inline-flex items-center gap-2"><x-loading /> Mengirim...</span>
-                                        </x-success-button>
+                                        </x-info-button>
                                     </div>
                                 @endif
                             </div>

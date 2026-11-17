@@ -826,7 +826,7 @@ new class extends Component {
                 <div class="flex items-center justify-between gap-2">
                     <x-rm.record-nav :pos="$navPos" :total="$navTotal" />
                     <div class="flex items-center gap-2">
-                    <x-secondary-button type="button" wire:click="closeModal">Tutup</x-secondary-button>
+                    <x-secondary-button type="button" wire:click="closeModal"><x-ikon nama="batal" /> Tutup</x-secondary-button>
                     {{-- Cetak Ringkasan Pulang pakai x-info-button, BUKAN primary: standar
                          membatasi satu x-primary-button per modal (aksi utama = Cetak Resume). --}}
                     @if ($hasRingkasanPulang)

@@ -291,6 +291,7 @@ new class extends Component {
                                         @if ($editKey !== $kunci)
                                             <x-outline-button type="button" class="!px-2 !py-1 text-xs whitespace-nowrap"
                                                 wire:click="mulaiEdit('{{ $item['sumber'] }}', '{{ $item['trx_no'] }}', '{{ $item['tglKontrol'] }}')">
+                                                <x-ikon nama="ubah" ukuran="w-3.5 h-3.5" />
                                                 Ubah Tanggal
                                             </x-outline-button>
                                         @endif
@@ -309,14 +310,16 @@ new class extends Component {
                                                 :error="$errors->has('tglBaru')" class="w-36 text-sm" />
                                             <x-secondary-button type="button" class="text-xs whitespace-nowrap"
                                                 wire:click="setTglBaruHariIni">
+                                                <x-ikon nama="waktu" ukuran="w-3.5 h-3.5" />
                                                 Hari Ini
                                             </x-secondary-button>
                                             <x-primary-button type="button" class="text-xs whitespace-nowrap"
                                                 wire:click="simpanTgl" wire:loading.attr="disabled" wire:target="simpanTgl">
-                                                <span wire:loading.remove wire:target="simpanTgl">Simpan & Update BPJS</span>
+                                                <span wire:loading.remove wire:target="simpanTgl" class="inline-flex items-center gap-2"><x-ikon nama="kirim" ukuran="w-3.5 h-3.5" /> Simpan & Update BPJS</span>
                                                 <span wire:loading wire:target="simpanTgl"><x-loading /> Menyimpan...</span>
                                             </x-primary-button>
                                             <x-secondary-button type="button" class="text-xs" wire:click="batalEdit">
+                                                <x-ikon nama="batal" ukuran="w-3.5 h-3.5" />
                                                 Batal
                                             </x-secondary-button>
                                         </div>
@@ -369,7 +372,7 @@ new class extends Component {
                 <p class="text-xs text-muted-soft">
                     Total {{ $this->riwayat->count() }} jadwal kontrol — terbaru di atas.
                 </p>
-                <x-secondary-button type="button" wire:click="closeModal">Tutup</x-secondary-button>
+                <x-secondary-button type="button" wire:click="closeModal"><x-ikon nama="batal" /> Tutup</x-secondary-button>
             </div>
         </div>
     </x-modal>

@@ -430,7 +430,7 @@
                             {{-- Administrasi — teal solid --}}
                             <x-primary-button type="button" wire:click="openAdministrasiPasien('{{ $riHdrNo }}')"
                                 wire:loading.attr="disabled" wire:target="openAdministrasiPasien"
-                                class="gap-1 !bg-teal-600 hover:!bg-teal-700 !text-white focus:!ring-teal-300 dark:!bg-teal-600 dark:!text-white dark:hover:!bg-teal-700 dark:focus:!ring-teal-900">
+                                class="gap-1 !bg-purple-600 hover:!bg-purple-700 !text-white dark:!bg-purple-600 dark:!text-white dark:hover:!bg-purple-700">
                                 <span wire:loading.remove wire:target="openAdministrasiPasien"
                                     class="flex items-center gap-1">
                                     <x-ikon nama="pembayaran" />Administrasi

@@ -602,22 +602,14 @@ new class extends Component {
                                                         @if ($isSelesai)
                                                             <div class="flex items-center gap-2 mt-3">
                                                                 {{-- Tombol Hasil Laboratorium --}}
-                                                                <x-info-button type="button"
+                                                                <x-outline-button type="button"
                                                                     wire:click="openDetail('{{ $row->checkup_no }}', '{{ $row->checkup_rjri }}')"
                                                                     wire:loading.attr="disabled"
                                                                     wire:target="openDetail('{{ $row->checkup_no }}', '{{ $row->checkup_rjri }}')">
                                                                     <span wire:loading.remove
                                                                         wire:target="openDetail('{{ $row->checkup_no }}', '{{ $row->checkup_rjri }}')"
                                                                         class="flex items-center gap-1">
-                                                                        <svg class="w-4 h-4" fill="none"
-                                                                            stroke="currentColor" viewBox="0 0 24 24">
-                                                                            <path stroke-linecap="round"
-                                                                                stroke-linejoin="round" stroke-width="2"
-                                                                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                                            <path stroke-linecap="round"
-                                                                                stroke-linejoin="round" stroke-width="2"
-                                                                                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                                                        </svg>
+                                                                        <x-ikon nama="lihat" />
                                                                         Hasil Laboratorium
                                                                     </span>
                                                                     <span wire:loading
@@ -625,7 +617,7 @@ new class extends Component {
                                                                         class="flex items-center gap-1">
                                                                         <x-loading /> Memuat...
                                                                     </span>
-                                                                </x-info-button>
+                                                                </x-outline-button>
 
                                                                 {{-- Tombol Cetak --}}
                                                                     <x-cetak-button wire:click="cetakLaborat('{{ $row->checkup_no }}')" />
@@ -1059,6 +1051,7 @@ new class extends Component {
                     {{-- Kanan: action buttons --}}
                     <div class="flex items-center gap-3">
                         <x-secondary-button wire:click="closeDetail">
+                            <x-ikon nama="batal" />
                             Tutup
                         </x-secondary-button>
 
@@ -1068,10 +1061,7 @@ new class extends Component {
                                 wire:target="kirimKePenunjang">
                                 <span wire:loading.remove wire:target="kirimKePenunjang"
                                     class="flex items-center gap-1">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                    </svg>
+                                    <x-ikon nama="kirim" />
                                     Kirim ke Penunjang
                                 </span>
                                 <span wire:loading wire:target="kirimKePenunjang" class="flex items-center gap-1">

@@ -593,7 +593,7 @@ new class extends Component {
                             <x-text-input wire:model.live="perencanaan.tindakLanjut.noSep"
                                 class="flex-1 font-mono" :disabled="$isFormLocked" />
                             @if (!$isFormLocked)
-                                <x-success-button wire:click="updateTglPulangBPJS" type="button"
+                                <x-info-button wire:click="updateTglPulangBPJS" type="button"
                                     wire:confirm="Kirim update tanggal pulang ke BPJS?"
                                     wire:loading.attr="disabled">
                                     <span wire:loading.remove wire:target="updateTglPulangBPJS" class="inline-flex items-center gap-2">
@@ -603,7 +603,7 @@ new class extends Component {
                                     <span wire:loading wire:target="updateTglPulangBPJS" class="inline-flex items-center gap-2">
                                         <x-loading /> Mengirim ke BPJS...
                                     </span>
-                                </x-success-button>
+                                </x-info-button>
                             @endif
                         </div>
                         <p class="mt-1 text-xs text-muted">
@@ -700,8 +700,8 @@ new class extends Component {
                                 <x-input-error :messages="$errors->get('formPelayanan.ketJenis')" class="mt-1" />
                             </div>
                         </div>
-                        <x-ghost-button type="button" wire:click="tambahPelayanan" wire:loading.attr="disabled"
-                            :disabled="$isFormLocked" class="text-xs"><x-ikon nama="tambah" ukuran="w-3.5 h-3.5" /> Tambah Pelayanan</x-ghost-button>
+                        <x-secondary-button type="button" wire:click="tambahPelayanan" wire:loading.attr="disabled"
+                            :disabled="$isFormLocked" class="text-xs"><x-ikon nama="tambah" ukuran="w-3.5 h-3.5" /> Tambah Pelayanan</x-secondary-button>
                     </div>
 
                     @php
@@ -797,8 +797,8 @@ new class extends Component {
                                 <x-input-error :messages="$errors->get('formAlat.ketAlat')" class="mt-1" />
                             </div>
                         </div>
-                        <x-ghost-button type="button" wire:click="tambahAlat" wire:loading.attr="disabled"
-                            :disabled="$isFormLocked" class="text-xs"><x-ikon nama="tambah" ukuran="w-3.5 h-3.5" /> Tambah Alat Bantu</x-ghost-button>
+                        <x-secondary-button type="button" wire:click="tambahAlat" wire:loading.attr="disabled"
+                            :disabled="$isFormLocked" class="text-xs"><x-ikon nama="tambah" ukuran="w-3.5 h-3.5" /> Tambah Alat Bantu</x-secondary-button>
                     </div>
 
                     @php

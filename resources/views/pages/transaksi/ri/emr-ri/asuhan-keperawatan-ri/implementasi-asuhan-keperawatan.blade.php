@@ -13,10 +13,10 @@
         @if (!$isFormLocked)
             <div class="flex justify-end mb-3">
                 @if ($activeImplIndex !== $idx)
-                    <x-outline-button type="button" wire:click="openFormImpl({{ $idx }})">
+                    <x-secondary-button type="button" wire:click="openFormImpl({{ $idx }})">
                         <x-ikon nama="tambah" ukuran="w-3.5 h-3.5" class="mr-1" />
                         Tambah SOAP
-                    </x-outline-button>
+                    </x-secondary-button>
                 @else
                     <x-secondary-button type="button" wire:click="closeFormImpl">
                         <x-ikon nama="batal" />

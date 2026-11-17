@@ -474,12 +474,12 @@ new class extends Component {
                                             {{-- Administrasi (Obat + Kasir) — pola purple ala UGD --}}
                                             @hasanyrole('Admin|Tu|Manager Umum|Supervisor Tu')
                                                 @if ($row->status === 'L')
-                                                    <x-success-button
+                                                    <x-outline-button
                                                         wire:click="openAdministrasi({{ $row->sls_no }}, 'kasir')"
                                                         class="whitespace-nowrap justify-center">
                                                         <x-ikon nama="lihat" ukuran="w-3.5 h-3.5" class="mr-1" />
                                                         Lihat / Cetak
-                                                    </x-success-button>
+                                                    </x-outline-button>
                                                 @else
                                                     <x-secondary-button
                                                         wire:click="openAdministrasi({{ $row->sls_no }}, 'obat')"

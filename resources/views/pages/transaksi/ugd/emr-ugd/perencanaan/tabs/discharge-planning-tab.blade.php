@@ -52,8 +52,8 @@
                             <x-input-error :messages="$errors->get('formPelayanan.ketJenis')" class="mt-1" />
                         </div>
                     </div>
-                    <x-ghost-button type="button" wire:click="tambahPelayanan" wire:loading.attr="disabled"
-                        :disabled="$isFormLocked" class="text-xs"><x-ikon nama="tambah" ukuran="w-3.5 h-3.5" /> Tambah Pelayanan</x-ghost-button>
+                    <x-secondary-button type="button" wire:click="tambahPelayanan" wire:loading.attr="disabled"
+                        :disabled="$isFormLocked" class="text-xs"><x-ikon nama="tambah" ukuran="w-3.5 h-3.5" /> Tambah Pelayanan</x-secondary-button>
                 </div>
 
                 @php
@@ -146,8 +146,8 @@
                             <x-input-error :messages="$errors->get('formAlat.ketAlat')" class="mt-1" />
                         </div>
                     </div>
-                    <x-ghost-button type="button" wire:click="tambahAlat" wire:loading.attr="disabled"
-                        :disabled="$isFormLocked" class="text-xs"><x-ikon nama="tambah" ukuran="w-3.5 h-3.5" /> Tambah Alat Bantu</x-ghost-button>
+                    <x-secondary-button type="button" wire:click="tambahAlat" wire:loading.attr="disabled"
+                        :disabled="$isFormLocked" class="text-xs"><x-ikon nama="tambah" ukuran="w-3.5 h-3.5" /> Tambah Alat Bantu</x-secondary-button>
                 </div>
 
                 @php

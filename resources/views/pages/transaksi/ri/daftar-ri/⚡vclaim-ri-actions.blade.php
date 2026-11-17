@@ -1627,14 +1627,14 @@ new class extends Component {
                     <div class="flex gap-2 shrink-0">
                         <x-secondary-button type="button" wire:click="closeModal"><x-ikon nama="batal" /> Batal</x-secondary-button>
                         @if ($activeTab === 'spri')
-                            <x-primary-button type="button" wire:click="simpanSPRI" wire:loading.attr="disabled"
-                                class="!bg-purple-600 hover:!bg-purple-700 focus:!ring-purple-500">
+                            <x-info-button type="button" wire:click="simpanSPRI" wire:loading.attr="disabled"
+                               >
                                 <span wire:loading.remove>
                                     <x-ikon nama="kirim" class="inline mr-1 -ml-1" />
                                     {{ empty($SPRIForm['noSPRIBPJS']) ? 'Insert SPRI ke BPJS' : 'Update SPRI ke BPJS' }}
                                 </span>
                                 <span wire:loading><x-loading /> Memproses...</span>
-                            </x-primary-button>
+                            </x-info-button>
                         @else
                             @if ($isFormLocked)
                                 {{-- SEP sudah ada: tombol Edit & Update --}}

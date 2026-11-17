@@ -1391,7 +1391,7 @@ new class extends Component {
                                                             wire:click="$dispatch('task-id-batal-proses-rj', { rjNo: {{ $row->rj_no }} })"
                                                             class="!px-4 !py-2 text-sm {{ $row->task_id99 ? '!opacity-60' : '' }}"
                                                             title="{{ $row->task_id99 ? 'Sudah dijalankan, klik untuk update' : 'Batal antrean BPJS (Task ID 99) — hanya sebelum TaskId4/5. Bukan batal transaksi (itu di Kasir).' }}">
-                                                            <x-ikon nama="batal" />
+                                                            <x-ikon nama="batalkan" />
                                                             <span class="flex flex-col items-center leading-tight">
                                                                 <span>Batal</span>
                                                                 <span class="text-[11px] font-normal opacity-90">Task 99</span>

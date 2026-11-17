@@ -743,7 +743,7 @@ new class extends Component {
 
                         @if ($isFormLocked && !empty($gc['petugasPemeriksa']))
                             @can('dokumen.bukaKunci')
-                                <x-confirm-button action="bukaKunci()"
+                                <x-confirm-button variant="warning-soft" action="bukaKunci()"
                                     title="Buka Kunci General Consent"
                                     message="TTD petugas akan dicabut & form dapat diedit kembali. Lanjutkan?"
                                     confirmText="Ya, Buka Kunci"

@@ -993,6 +993,7 @@ new class extends Component {
                         <x-rm.record-nav :pos="$navPos" :total="$navTotal" />
                         <div class="flex gap-2">
                             <x-secondary-button type="button" wire:click="closeModal">
+                                <x-ikon nama="batal" />
                                 Tutup
                             </x-secondary-button>
 

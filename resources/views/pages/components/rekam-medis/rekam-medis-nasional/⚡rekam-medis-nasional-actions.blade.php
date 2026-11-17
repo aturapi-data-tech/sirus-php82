@@ -207,7 +207,7 @@ new class extends Component {
             <div class="flex flex-wrap items-center gap-3">
                 <x-primary-button type="button" wire:click="bukaRekamMedis" wire:loading.attr="disabled" wire:target="bukaRekamMedis"
                     :disabled="!empty($this->prasyaratKurang())">
-                    <span wire:loading.remove wire:target="bukaRekamMedis">Buka Rekam Medis Nasional</span>
+                    <span wire:loading.remove wire:target="bukaRekamMedis" class="inline-flex items-center gap-2"><x-ikon nama="dokumen" /> Buka Rekam Medis Nasional</span>
                     <span wire:loading wire:target="bukaRekamMedis" class="flex items-center gap-1"><x-loading /> Memuat...</span>
                 </x-primary-button>
                 @if ($tautanRekamMedis !== '')
@@ -227,11 +227,13 @@ new class extends Component {
                     </ol>
                     <div class="flex flex-wrap items-center gap-2">
                         <x-secondary-button type="button" wire:click="mintaPersetujuan(false)" wire:loading.attr="disabled" wire:target="mintaPersetujuan">
+                            <x-ikon nama="setujui" />
                             Persetujuan Pasien (Kode Akses)
                         </x-secondary-button>
                         <x-confirm-button variant="danger-soft" action="mintaPersetujuan(true)" title="Akses Darurat"
                             message="Akses darurat membuka rekam medis nasional TANPA persetujuan pasien dan tercatat sebagai akses darurat. Lanjutkan hanya bila kondisi pasien benar-benar darurat."
                             confirmText="Ya, darurat">
+                            <x-ikon nama="buka-kunci" />
                             Akses Darurat
                         </x-confirm-button>
                     </div>
@@ -246,7 +248,7 @@ new class extends Component {
         </div>
 
         <div class="flex justify-end gap-2 px-6 py-3 border-t bg-canvas border-hairline dark:bg-gray-900 dark:border-gray-700">
-            <x-secondary-button type="button" wire:click="closeModal">Tutup</x-secondary-button>
+            <x-secondary-button type="button" wire:click="closeModal"><x-ikon nama="batal" /> Tutup</x-secondary-button>
         </div>
     </x-modal>
 </div>

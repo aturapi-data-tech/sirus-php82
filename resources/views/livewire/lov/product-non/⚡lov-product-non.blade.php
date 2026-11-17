@@ -195,6 +195,7 @@ new class extends Component {
                 <x-text-input type="text" class="flex-1 block w-full" :value="$selected['product_name'] ?? ''" disabled />
                 @if (!$readonly)
                     <x-secondary-button type="button" wire:click="clearSelected" class="px-4 whitespace-nowrap">
+                        <x-ikon nama="ubah" />
                         Ubah
                     </x-secondary-button>
                 @endif

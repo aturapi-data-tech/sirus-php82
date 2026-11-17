@@ -844,10 +844,10 @@ new class extends Component {
 
                     {{-- Buttons --}}
                     <div class="flex items-center justify-between pt-1">
-                        <x-ghost-button wire:click="resetFormEntry" type="button" class="text-sm">
+                        <x-secondary-button wire:click="resetFormEntry" type="button" class="text-sm">
                             <x-ikon nama="kembalikan" ukuran="w-3.5 h-3.5" class="mr-1" />
                             Reset
-                        </x-ghost-button>
+                        </x-secondary-button>
                         <x-primary-button wire:click="addAsuhanKeperawatan" type="button">
                             <x-ikon nama="simpan" class="mr-1" />
                             Simpan Asuhan Keperawatan
