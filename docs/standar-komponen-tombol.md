@@ -564,5 +564,7 @@ hapus 6 · waktu 5 · buka-kunci 3 · dokumen 2 · riwayat 1 · **belum terpetak
 navigasi ◀ ▶, "Ambil IHS", "Pakai Pengganti", "Rawat Gabung", dll. Putuskan per kasus).
 Per area: RI 115, RJ 101, UGD 99, komponen 70, Gudang 37, Penunjang 27, Keuangan 26, Master ±150.
 
-Penerapan dilakukan **per modul** (bukan sapuan sekaligus), dimulai Kasir RJ/UGD/RI + Kas TU
-(2026-11-17, sudah). Saat menyentuh sebuah halaman, pasang ikon pada tombol-tombolnya sesuai tabel.
+Penerapan dilakukan **per modul** (bukan sapuan sekaligus):
+- 2026-11-17 Kasir RJ/UGD/RI + Kas TU (13 tombol), sudah.
+- 2026-11-17 **Master** (139 tombol, 66 file, 27 modul), sudah. Sengaja tanpa ikon: 2 tombol pilihan
+  kelas/TT di daftar Master Kamar (isinya kode + nama, bukan aksi). Saat menyentuh sebuah halaman, pasang ikon pada tombol-tombolnya sesuai tabel.

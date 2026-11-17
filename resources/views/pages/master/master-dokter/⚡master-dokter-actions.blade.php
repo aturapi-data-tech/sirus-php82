@@ -536,9 +536,9 @@ new class extends Component {
                         Pastikan data sudah benar sebelum menyimpan.
                     </p>
                     <div class="flex gap-2">
-                        <x-secondary-button type="button" x-on:click="tryClose()">Batal</x-secondary-button>
+                        <x-secondary-button type="button" x-on:click="tryClose()"><x-ikon nama="batal" /> Batal</x-secondary-button>
                         <x-primary-button type="button" wire:click="save" wire:loading.attr="disabled">
-                            <span wire:loading.remove>Simpan</span>
+                            <span wire:loading.remove class="inline-flex items-center gap-2"><x-ikon nama="simpan" /> Simpan</span>
                             <span wire:loading><x-loading /> Menyimpan...</span>
                         </x-primary-button>
                     </div>

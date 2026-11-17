@@ -156,7 +156,8 @@ new class extends Component {
                         </div>
                         @if ($selectedClabId)
                             <x-primary-button type="button" wire:click="openCreateClabitem" class="whitespace-nowrap">
-                                + Tambah Pemeriksaan
+                                <x-ikon nama="tambah" />
+                                Tambah Pemeriksaan
                             </x-primary-button>
                         @endif
                         <x-toolbar-refresh-reset :label="null" />

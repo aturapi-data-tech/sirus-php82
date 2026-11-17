@@ -571,7 +571,7 @@ new class extends Component {
                     <div class="p-5 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
                         <div class="flex items-center justify-between mb-4">
                             <h3 class="text-sm font-semibold text-body dark:text-gray-300 border-b border-hairline-soft dark:border-gray-800 pb-2">SLKI (Standar Luaran Keperawatan Indonesia)</h3>
-                            <x-outline-button type="button" wire:click="addSlki">+ Tambah SLKI</x-outline-button>
+                            <x-outline-button type="button" wire:click="addSlki"><x-ikon nama="tambah" /> Tambah SLKI</x-outline-button>
                         </div>
 
                         @forelse($slkiItems as $idx => $slki)
@@ -608,7 +608,7 @@ new class extends Component {
                     <div class="p-5 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
                         <div class="flex items-center justify-between mb-4">
                             <h3 class="text-sm font-semibold text-body dark:text-gray-300 border-b border-hairline-soft dark:border-gray-800 pb-2">SIKI (Standar Intervensi Keperawatan Indonesia)</h3>
-                            <x-outline-button type="button" wire:click="addSiki">+ Tambah SIKI</x-outline-button>
+                            <x-outline-button type="button" wire:click="addSiki"><x-ikon nama="tambah" /> Tambah SIKI</x-outline-button>
                         </div>
 
                         @forelse($sikiItems as $idx => $siki)
@@ -676,11 +676,12 @@ new class extends Component {
 
                     <div class="flex justify-end gap-2">
                         <x-secondary-button type="button" x-on:click="tryClose()">
+                            <x-ikon nama="batal" />
                             Batal
                         </x-secondary-button>
 
                         <x-primary-button type="button" wire:click="save" wire:loading.attr="disabled">
-                            <span wire:loading.remove>Simpan</span>
+                            <span wire:loading.remove class="inline-flex items-center gap-2"><x-ikon nama="simpan" /> Simpan</span>
                             <span wire:loading>Saving...</span>
                         </x-primary-button>
                     </div>

@@ -277,12 +277,13 @@ new class extends Component {
 
                         <x-outline-button type="button" wire:click="cekStatusLoinc"
                             wire:loading.attr="disabled" wire:target="cekStatusLoinc">
-                            <span wire:loading.remove wire:target="cekStatusLoinc">Cek Status LOINC</span>
+                            <span wire:loading.remove wire:target="cekStatusLoinc" class="inline-flex items-center gap-2"><x-ikon nama="cari" /> Cek Status LOINC</span>
                             <span wire:loading wire:target="cekStatusLoinc">Mengecek...</span>
                         </x-outline-button>
 
                         <x-primary-button type="button" wire:click="openCreate">
-                            + Tambah Data Radiologis Baru
+                            <x-ikon nama="tambah" />
+                            Tambah Data Radiologis Baru
                         </x-primary-button>
                         <x-toolbar-refresh-reset :label="null" />
                     </div>

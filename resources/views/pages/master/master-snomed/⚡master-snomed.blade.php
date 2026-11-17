@@ -129,7 +129,8 @@ new class extends Component {
                             </x-select-input>
                         </div>
                         <x-primary-button type="button" wire:click="openCreate">
-                            + Tambah Kode SNOMED
+                            <x-ikon nama="tambah" />
+                            Tambah Kode SNOMED
                         </x-primary-button>
                         <x-toolbar-refresh-reset :label="null" />
                     </div>

@@ -132,7 +132,8 @@ new class extends Component {
                         </div>
 
                         <x-primary-button type="button" wire:click="openCreate">
-                            + Tambah Data Diagnosa Baru
+                            <x-ikon nama="tambah" />
+                            Tambah Data Diagnosa Baru
                         </x-primary-button>
                         <x-toolbar-refresh-reset :label="null" />
                     </div>

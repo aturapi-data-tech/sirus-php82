@@ -149,6 +149,7 @@ new class extends Component {
                         @if ($filterActive)
                             <div>
                                 <x-secondary-button type="button" wire:click="resetFilters" class="px-3 py-2 text-xs">
+                                    <x-ikon nama="kembalikan" ukuran="w-3.5 h-3.5" />
                                     Reset Filter
                                 </x-secondary-button>
                             </div>
@@ -167,7 +168,8 @@ new class extends Component {
                             </x-select-input>
                         </div>
                         <x-primary-button type="button" wire:click="openCreate">
-                            + Tambah Akun
+                            <x-ikon nama="tambah" />
+                            Tambah Akun
                         </x-primary-button>
                         <x-toolbar-refresh-reset :label="null" />
                     </div>

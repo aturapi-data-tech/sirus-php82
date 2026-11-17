@@ -342,7 +342,8 @@ new class extends Component {
                         </div>
                         @if ($selectedBangsalId)
                             <x-primary-button type="button" wire:click="openCreateKamar">
-                                + Tambah Data Kamar Baru
+                                <x-ikon nama="tambah" />
+                                Tambah Data Kamar Baru
                             </x-primary-button>
                         @endif
                         <x-toolbar-refresh-reset :label="null" />

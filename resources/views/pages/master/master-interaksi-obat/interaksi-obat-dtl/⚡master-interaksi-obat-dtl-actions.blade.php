@@ -235,7 +235,8 @@ new class extends Component {
                                     <x-primary-button type="button"
                                         wire:click="addProduk(@js($p->product_id))"
                                         wire:loading.attr="disabled" class="px-3 py-1 text-xs shrink-0">
-                                        + Tambah
+                                        <x-ikon nama="tambah" ukuran="w-3.5 h-3.5" />
+                                        Tambah
                                     </x-primary-button>
                                 @endif
                             </div>
@@ -255,7 +256,7 @@ new class extends Component {
             {{-- FOOTER --}}
             <div class="sticky bottom-0 z-10 px-6 py-4 mt-auto bg-surface-soft border-t border-hairline dark:bg-gray-900 dark:border-gray-700">
                 <div class="flex justify-end gap-2">
-                    <x-secondary-button type="button" wire:click="closeModal">Selesai</x-secondary-button>
+                    <x-secondary-button type="button" wire:click="closeModal"><x-ikon nama="setujui" /> Selesai</x-secondary-button>
                 </div>
             </div>
 

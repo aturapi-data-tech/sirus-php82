@@ -644,7 +644,7 @@ new class extends Component {
 
                     <x-primary-button wire:click="loadJadwalBpjs" wire:loading.attr="disabled" wire:target="loadJadwalBpjs" class="shrink-0">
                         <div wire:loading wire:target="loadJadwalBpjs" class="mr-1"><x-loading /></div>
-                        <span wire:loading.remove wire:target="loadJadwalBpjs">Muat Jadwal</span>
+                        <span wire:loading.remove wire:target="loadJadwalBpjs" class="inline-flex items-center gap-2"><x-ikon nama="muat-ulang" /> Muat Jadwal</span>
                     </x-primary-button>
                 </div>
 
@@ -743,6 +743,7 @@ new class extends Component {
                                     @else
                                         <x-primary-button type="button"
                                             wire:click="syncJadwal('{{ $entriJadwal['kodepoli'] }}','{{ $entriJadwal['kodedokter'] }}','{{ addslashes($entriJadwal['namadokter']) }}',{{ (int)$entriJadwal['hari'] }},'{{ $entriJadwal['jadwal'] }}',{{ (int)$entriJadwal['kapasitaspasien'] }})">
+                                            <x-ikon nama="setujui" />
                                             Terapkan
                                         </x-primary-button>
                                     @endif
@@ -770,19 +771,20 @@ new class extends Component {
                 <div class="flex items-center gap-2">
                     <x-primary-button wire:click="loadJadwalBpjs" wire:loading.attr="disabled" wire:target="loadJadwalBpjs">
                         <div wire:loading wire:target="loadJadwalBpjs" class="mr-1"><x-loading /></div>
-                        <span wire:loading.remove wire:target="loadJadwalBpjs">Muat Ulang</span>
+                        <span wire:loading.remove wire:target="loadJadwalBpjs" class="inline-flex items-center gap-2"><x-ikon nama="muat-ulang" /> Muat Ulang</span>
                     </x-primary-button>
 
                     @if(count($jadwalBpjs))
                     <x-primary-button wire:click="syncSemua" wire:loading.attr="disabled" wire:target="syncSemua"
                         wire:confirm="Terapkan semua {{ count($jadwalBpjs) }} jadwal poli ini ke database RS?">
                         <div wire:loading wire:target="syncSemua" class="mr-1"><x-loading /></div>
-                        <span wire:loading.remove wire:target="syncSemua">Terapkan Semua ({{ count($jadwalBpjs) }})</span>
+                        <span wire:loading.remove wire:target="syncSemua" class="inline-flex items-center gap-2"><x-ikon nama="setujui" /> Terapkan Semua ({{ count($jadwalBpjs) }})</span>
                     </x-primary-button>
                     @endif
                 </div>
 
                 <x-secondary-button x-on:click="$dispatch('close-modal', { name: 'modal-jadwal-poli' })">
+                    <x-ikon nama="batal" />
                     Tutup
                 </x-secondary-button>
             </div>

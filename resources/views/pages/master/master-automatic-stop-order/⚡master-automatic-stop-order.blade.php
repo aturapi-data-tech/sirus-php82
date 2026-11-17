@@ -184,9 +184,9 @@ new class extends Component {
                             </x-select-input>
                         </div>
                         @if ($tampilan === 'produk')
-                            <x-primary-button type="button" wire:click="openCreateProduk">+ Petakan Obat</x-primary-button>
+                            <x-primary-button type="button" wire:click="openCreateProduk"><x-ikon nama="tambah" /> Petakan Obat</x-primary-button>
                         @else
-                            <x-primary-button type="button" wire:click="openCreate">+ Tambah Golongan</x-primary-button>
+                            <x-primary-button type="button" wire:click="openCreate"><x-ikon nama="tambah" /> Tambah Golongan</x-primary-button>
                         @endif
                         <x-toolbar-refresh-reset :label="null" />
                     </div>

@@ -785,6 +785,7 @@ new class extends Component {
                                     @if ($formMode === 'create')
                                         <x-outline-button type="button" wire:click="generateKodePemeriksaan" wire:loading.attr="disabled"
                                             wire:target="generateKodePemeriksaan" class="!px-3 shrink-0" title="Buat kode unik dari nama pemeriksaan">
+                                            <x-ikon nama="proses" />
                                             Generate
                                         </x-outline-button>
                                     @endif
@@ -1104,7 +1105,7 @@ new class extends Component {
                                 </div>
                                 <x-input-error :messages="$errors->get('kategoriList')" />
                                 <div class="flex flex-wrap items-center gap-2">
-                                    <x-secondary-button type="button" wire:click="tambahKategori">+ Tambah Kategori</x-secondary-button>
+                                    <x-secondary-button type="button" wire:click="tambahKategori"><x-ikon nama="tambah" /> Tambah Kategori</x-secondary-button>
                                 </div>
                                 <div>
                                     <x-input-label value="Nilai Rujukan di Cetakan" />
@@ -1113,7 +1114,7 @@ new class extends Component {
                                             :error="$errors->has('teksRujukanKategori')" :placeholder="$this->teksNormalKategori() ?: 'mis. NEGATIF'"
                                             style="text-transform:uppercase" />
                                         <x-secondary-button type="button" wire:click="isiTeksRujukanDariKategori" class="!px-3 shrink-0 whitespace-nowrap"
-                                            title="Isi dari gabungan kategori">Isi dari Kategori</x-secondary-button>
+                                            title="Isi dari gabungan kategori"><x-ikon nama="tambah" /> Isi dari Kategori</x-secondary-button>
                                     </div>
                                     <x-input-error :messages="$errors->get('teksRujukanKategori')" class="mt-1" />
                                     <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">Tampil di kolom Nilai Rujukan hasil lab (maks. 100 karakter, tanpa simbol khusus).
@@ -1245,7 +1246,7 @@ new class extends Component {
                                         <x-outline-button type="button" wire:click="cekLoincKeSatuSehat"
                                             :disabled="trim($formClabitem['loinc_code'] ?? '') === ''" wire:loading.attr="disabled"
                                             wire:target="cekLoincKeSatuSehat">
-                                            <span wire:loading.remove wire:target="cekLoincKeSatuSehat">Cek Kode LOINC</span>
+                                            <span wire:loading.remove wire:target="cekLoincKeSatuSehat" class="inline-flex items-center gap-2"><x-ikon nama="cari" /> Cek Kode LOINC</span>
                                             <span wire:loading wire:target="cekLoincKeSatuSehat">Mengecek...</span>
                                         </x-outline-button>
                                     </div>
@@ -1288,9 +1289,9 @@ new class extends Component {
                         <span class="mx-0.5">untuk berpindah field</span>
                     </div>
                     <div class="flex justify-end gap-2">
-                        <x-secondary-button type="button" x-on:click="tryClose()">Batal</x-secondary-button>
+                        <x-secondary-button type="button" x-on:click="tryClose()"><x-ikon nama="batal" /> Batal</x-secondary-button>
                         <x-primary-button type="button" wire:click="save" wire:loading.attr="disabled">
-                            <span wire:loading.remove wire:target="save">Simpan</span>
+                            <span wire:loading.remove wire:target="save" class="inline-flex items-center gap-2"><x-ikon nama="simpan" /> Simpan</span>
                             <span wire:loading wire:target="save">Saving...</span>
                         </x-primary-button>
                     </div>

@@ -119,7 +119,8 @@ new class extends Component {
                             </x-select-input>
                         </div>
                         <x-primary-button type="button" wire:click="openCreate">
-                            + Tambah Catatan
+                            <x-ikon nama="tambah" />
+                            Tambah Catatan
                         </x-primary-button>
                         <x-toolbar-refresh-reset :label="null" />
                     </div>

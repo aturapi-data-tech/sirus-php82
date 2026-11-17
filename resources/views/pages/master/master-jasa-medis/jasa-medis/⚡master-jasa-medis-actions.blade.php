@@ -506,9 +506,9 @@ new class extends Component {
                                     </div>
                                     <div class="flex gap-2 items-end shrink-0">
                                         <x-primary-button type="button" wire:click="addPaketLainLain"
-                                            class="text-xs px-3 py-1.5">+ Tambah</x-primary-button>
+                                            class="text-xs px-3 py-1.5"><x-ikon nama="tambah" ukuran="w-3.5 h-3.5" /> Tambah</x-primary-button>
                                         <x-secondary-button type="button" wire:click="cancelFormPaketLain"
-                                            class="text-xs px-3 py-1.5">Batal</x-secondary-button>
+                                            class="text-xs px-3 py-1.5"><x-ikon nama="batal" ukuran="w-3.5 h-3.5" /> Batal</x-secondary-button>
                                     </div>
                                 </div>
                             @endif
@@ -597,9 +597,9 @@ new class extends Component {
                                     </div>
                                     <div class="flex gap-2 items-end shrink-0">
                                         <x-primary-button type="button" wire:click="addPaketObat"
-                                            class="text-xs px-3 py-1.5">+ Tambah</x-primary-button>
+                                            class="text-xs px-3 py-1.5"><x-ikon nama="tambah" ukuran="w-3.5 h-3.5" /> Tambah</x-primary-button>
                                         <x-secondary-button type="button" wire:click="cancelFormPaketObat"
-                                            class="text-xs px-3 py-1.5">Batal</x-secondary-button>
+                                            class="text-xs px-3 py-1.5"><x-ikon nama="batal" ukuran="w-3.5 h-3.5" /> Batal</x-secondary-button>
                                     </div>
                                 </div>
                             @endif
@@ -666,10 +666,11 @@ new class extends Component {
                     </div>
                     <div class="flex justify-end gap-2">
                         <x-secondary-button type="button" x-on:click="tryClose()">
+                            <x-ikon nama="batal" />
                             Batal
                         </x-secondary-button>
                         <x-primary-button type="button" wire:click="save" wire:loading.attr="disabled" wire:target="save">
-                            <span wire:loading.remove wire:target="save">Simpan</span>
+                            <span wire:loading.remove wire:target="save" class="inline-flex items-center gap-2"><x-ikon nama="simpan" /> Simpan</span>
                             <span wire:loading wire:target="save"><x-loading class="w-4 h-4" /> Menyimpan...</span>
                         </x-primary-button>
                     </div>

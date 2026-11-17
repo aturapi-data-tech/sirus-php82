@@ -257,13 +257,13 @@ new class extends Component {
                     {{-- RIGHT ACTIONS --}}
                     <div class="flex items-center justify-end gap-2">
                         <a href="{{ route('rj.daftar') }}" wire:navigate>
-                            <x-outline-button type="button">Pendaftaran Rawat Jalan</x-outline-button>
+                            <x-outline-button type="button"><x-ikon nama="tambah" /> Pendaftaran Rawat Jalan</x-outline-button>
                         </a>
                         <a href="{{ route('ugd.daftar') }}" wire:navigate>
-                            <x-outline-button type="button">Pendaftaran UGD</x-outline-button>
+                            <x-outline-button type="button"><x-ikon nama="tambah" /> Pendaftaran UGD</x-outline-button>
                         </a>
                         <a href="{{ route('ri.daftar') }}" wire:navigate>
-                            <x-outline-button type="button">Pendaftaran Rawat Inap</x-outline-button>
+                            <x-outline-button type="button"><x-ikon nama="tambah" /> Pendaftaran Rawat Inap</x-outline-button>
                         </a>
 
                         <div class="w-56">
@@ -286,7 +286,8 @@ new class extends Component {
                         </div>
 
                         <x-primary-button type="button" wire:click="openCreate">
-                            + Tambah Data Pasien Baru
+                            <x-ikon nama="tambah" />
+                            Tambah Data Pasien Baru
                         </x-primary-button>
                         <x-toolbar-refresh-reset :label="null" />
                     </div>
@@ -309,11 +310,12 @@ new class extends Component {
                             @endif
                         </div>
                         @if ($ihsBerjalan)
-                            <x-secondary-button type="button" wire:click="hentikanAmbilIhs">Hentikan</x-secondary-button>
+                            <x-secondary-button type="button" wire:click="hentikanAmbilIhs"><x-ikon nama="hentikan" /> Hentikan</x-secondary-button>
                         @else
                             <x-primary-button type="button" wire:click="mulaiAmbilIhs" wire:loading.attr="disabled"
                                 wire:target="mulaiAmbilIhs"
                                 wire:confirm="Cari dan daftarkan IHS untuk pasien di daftar ini ke SATUSEHAT?">
+                                <x-ikon nama="muat-ulang" />
                                 Ambil IHS
                             </x-primary-button>
                         @endif

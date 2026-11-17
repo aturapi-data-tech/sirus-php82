@@ -1059,7 +1059,7 @@ new class extends Component {
                                                 x-on:keydown.enter.prevent="$refs.productNameSatusehat.focus()" />
                                             <x-outline-button type="button" wire:click="cekKodeKfa" class="whitespace-nowrap"
                                                 wire:loading.attr="disabled" wire:target="cekKodeKfa,pakaiPenggantiKfa">
-                                                <span wire:loading.remove wire:target="cekKodeKfa">Cek Kode KFA</span>
+                                                <span wire:loading.remove wire:target="cekKodeKfa" class="inline-flex items-center gap-2"><x-ikon nama="cari" /> Cek Kode KFA</span>
                                                 <span wire:loading wire:target="cekKodeKfa">Mengecek...</span>
                                             </x-outline-button>
                                         </div>
@@ -1095,7 +1095,7 @@ new class extends Component {
                                                 @if ($produkKfa['pengganti_kode'] !== '')
                                                     <div class="flex flex-wrap items-center gap-2 mt-1">
                                                         <span>Pengganti dari KFA: {{ $produkKfa['pengganti_nama'] ?: '-' }} ({{ $produkKfa['pengganti_kode'] }})</span>
-                                                        <x-secondary-button type="button" wire:click="pakaiPenggantiKfa">Pakai Pengganti</x-secondary-button>
+                                                        <x-secondary-button type="button" wire:click="pakaiPenggantiKfa"><x-ikon nama="setujui" /> Pakai Pengganti</x-secondary-button>
                                                     </div>
                                                 @endif
                                             @endif
@@ -1103,7 +1103,7 @@ new class extends Component {
                                             @if (mb_strtolower(trim((string) $productNameSatusehat)) !== mb_strtolower(trim($produkKfa['name'])))
                                                 <div class="flex flex-wrap items-center gap-2 mt-2">
                                                     <span>Nama KFA di form {{ filled($productNameSatusehat) ? 'berbeda: ' . $productNameSatusehat : 'masih kosong' }}.</span>
-                                                    <x-secondary-button type="button" wire:click="pakaiNamaKfa">Pakai Nama dari KFA</x-secondary-button>
+                                                    <x-secondary-button type="button" wire:click="pakaiNamaKfa"><x-ikon nama="setujui" /> Pakai Nama dari KFA</x-secondary-button>
                                                 </div>
                                             @endif
 
@@ -1142,11 +1142,12 @@ new class extends Component {
 
                     <div class="flex justify-end gap-2">
                         <x-secondary-button type="button" x-on:click="tryClose()">
+                            <x-ikon nama="batal" />
                             Batal
                         </x-secondary-button>
 
                         <x-primary-button type="button" wire:click="save" wire:loading.attr="disabled">
-                            <span wire:loading.remove>Simpan</span>
+                            <span wire:loading.remove class="inline-flex items-center gap-2"><x-ikon nama="simpan" /> Simpan</span>
                             <span wire:loading>Saving...</span>
                         </x-primary-button>
                     </div>

@@ -425,7 +425,8 @@ new class extends Component {
                         </div>
 
                         <x-primary-button type="button" wire:click="openCreate">
-                            + Tambah Data Dokter Baru
+                            <x-ikon nama="tambah" />
+                            Tambah Data Dokter Baru
                         </x-primary-button>
                         <x-toolbar-refresh-reset :label="null" />
                     </div>
@@ -706,7 +707,7 @@ new class extends Component {
                     <div class="sticky bottom-0 z-10 px-4 py-3 bg-canvas border-t border-hairline rounded-b-2xl dark:bg-gray-900 dark:border-gray-700 flex justify-end">
                         <x-primary-button type="button" wire:click="saveTarifKelas"
                             wire:loading.attr="disabled" wire:target="saveTarifKelas">
-                            <span wire:loading.remove wire:target="saveTarifKelas">Simpan Tarif</span>
+                            <span wire:loading.remove wire:target="saveTarifKelas" class="inline-flex items-center gap-2"><x-ikon nama="simpan" /> Simpan Tarif</span>
                             <span wire:loading wire:target="saveTarifKelas"><x-loading class="w-4 h-4" /> Menyimpan...</span>
                         </x-primary-button>
                     </div>

@@ -44,7 +44,7 @@
                 wire:confirm="Yakin reset status kunci pasien ini menjadi bebas (null)?"
                 wire:loading.attr="disabled"
                 :disabled="!$isLocked">
-                <span wire:loading.remove wire:target="resetLockStatus">Reset Status Kunci</span>
+                <span wire:loading.remove wire:target="resetLockStatus" class="inline-flex items-center gap-2"><x-ikon nama="kembalikan" /> Reset Status Kunci</span>
                 <span wire:loading wire:target="resetLockStatus">
                     <x-loading />
                     Memproses...
