@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Database\QueryException;
 use App\Http\Traits\Txn\Rj\EmrRJTrait;
 use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
+use App\Support\PesanOkPending;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 
 new class extends Component {
@@ -80,8 +81,8 @@ new class extends Component {
 
         // Guard: transaksi Kamar Operasi belum ditransfer (lihat transferKeUGD).
         if ($this->checkOkPendingRJ($rjNo)) {
-            $nomorOk = implode(', ', $this->daftarOkPendingRJ($rjNo));
-            $this->dispatch('toast', type: 'error', message: "Transaksi Tindakan Operasi No. {$nomorOk} belum ditransfer ke biaya RJ, transfer tidak bisa dilakukan.");
+            $pesan = PesanOkPending::rangkai($this->daftarOkPendingRJ($rjNo), 'RJ', $rjNo, 'Transfer RJ ke UGD tidak bisa dilakukan.');
+            $this->dispatch('toast', type: 'error', message: $pesan, opts: PesanOkPending::OPSI_TOAST);
             return;
         }
 
@@ -261,8 +262,8 @@ new class extends Component {
         // rj_status jadi 'I', sedangkan Trf Biaya-RJ mensyaratkan 'A' — kalau lolos,
         // biaya operasinya tidak akan pernah bisa masuk tagihan mana pun.
         if ($this->checkOkPendingRJ($this->rjNo)) {
-            $nomorOk = implode(', ', $this->daftarOkPendingRJ($this->rjNo));
-            $this->dispatch('toast', type: 'error', message: "Transaksi Tindakan Operasi No. {$nomorOk} belum ditransfer ke biaya RJ, transfer tidak bisa dilakukan.");
+            $pesan = PesanOkPending::rangkai($this->daftarOkPendingRJ($this->rjNo), 'RJ', $this->rjNo, 'Transfer RJ ke UGD tidak bisa dilakukan.');
+            $this->dispatch('toast', type: 'error', message: $pesan, opts: PesanOkPending::OPSI_TOAST);
             return;
         }
 

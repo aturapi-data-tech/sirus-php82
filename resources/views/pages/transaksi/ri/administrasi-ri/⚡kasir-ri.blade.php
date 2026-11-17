@@ -5,6 +5,7 @@ use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
+use App\Support\PesanOkPending;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 
 new class extends Component {
@@ -603,8 +604,8 @@ new class extends Component {
         // ri_status='I', jadi kalau pasien terlanjur pulang biayanya tidak akan
         // pernah bisa masuk tagihan.
         if ($this->checkOkPendingRI($this->riHdrNo)) {
-            $noOk = implode(', ', $this->daftarOkPendingRI($this->riHdrNo));
-            $this->dispatch('toast', type: 'error', message: "Transaksi Tindakan Operasi No. {$noOk} belum ditransfer ke biaya rawat inap, proses pulang tidak bisa dilakukan.");
+            $pesan = PesanOkPending::rangkai($this->daftarOkPendingRI($this->riHdrNo), 'RI', $this->riHdrNo, 'Proses pulang tidak bisa dilakukan.');
+            $this->dispatch('toast', type: 'error', message: $pesan, opts: PesanOkPending::OPSI_TOAST);
             return;
         }
 

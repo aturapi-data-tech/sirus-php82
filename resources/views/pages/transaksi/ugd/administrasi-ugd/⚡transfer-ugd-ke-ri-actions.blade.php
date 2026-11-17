@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
+use App\Support\PesanOkPending;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 
 new class extends Component {
@@ -413,8 +414,8 @@ new class extends Component {
         // rj_status jadi 'I', sedangkan Trf Biaya-UGD mensyaratkan 'A' — kalau lolos,
         // biaya operasinya tidak akan pernah bisa masuk tagihan mana pun.
         if ($this->checkOkPendingUGD($this->rjNo)) {
-            $nomorOk = implode(', ', $this->daftarOkPendingUGD($this->rjNo));
-            $this->dispatch('toast', type: 'error', message: "Transaksi Tindakan Operasi No. {$nomorOk} belum ditransfer ke biaya UGD, transfer tidak bisa dilakukan.");
+            $pesan = PesanOkPending::rangkai($this->daftarOkPendingUGD($this->rjNo), 'UGD', $this->rjNo, 'Transfer UGD ke Rawat Inap tidak bisa dilakukan.');
+            $this->dispatch('toast', type: 'error', message: $pesan, opts: PesanOkPending::OPSI_TOAST);
             return;
         }
 
