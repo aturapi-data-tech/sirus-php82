@@ -123,10 +123,24 @@
                         {{ $cancelText }}
                     </x-secondary-button>
 
-                    <x-danger-button type="button" x-ref="confirmButton" x-on:click="confirm()">
-                        <x-ikon nama="setujui" />
-                        {{ $confirmText }}
-                    </x-danger-button>
+                    {{-- Tombol "Ya" mengikuti jenis dialog (keputusan user 2026-11-17): hapus/batalkan merah,
+                         koreksi (buka kunci, ulangi) kuning, simpan/proses/kirim hijau. --}}
+                    @if (in_array($variant, ['primary', 'secondary', 'outline'], true))
+                        <x-primary-button type="button" x-ref="confirmButton" x-on:click="confirm()">
+                            <x-ikon nama="setujui" />
+                            {{ $confirmText }}
+                        </x-primary-button>
+                    @elseif ($variant === 'warning-soft')
+                        <x-warning-button type="button" x-ref="confirmButton" x-on:click="confirm()">
+                            <x-ikon nama="setujui" />
+                            {{ $confirmText }}
+                        </x-warning-button>
+                    @else
+                        <x-danger-button type="button" x-ref="confirmButton" x-on:click="confirm()">
+                            <x-ikon nama="setujui" />
+                            {{ $confirmText }}
+                        </x-danger-button>
+                    @endif
                 </div>
             </div>
         </div>
