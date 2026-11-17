@@ -864,10 +864,10 @@ new class extends Component {
 
                 {{-- TOMBOL AKSI --}}
                 <div class="flex flex-wrap items-center gap-3 mb-4">
-                    <x-secondary-button type="button" wire:click="cariRujukan" class="gap-2" :disabled="$isFormLocked">
+                    <x-outline-button type="button" wire:click="cariRujukan" class="gap-2" :disabled="$isFormLocked">
                         <x-ikon nama="cari" />
                         {{ ($kunjunganId == '3' && $postInap) ? 'Cari Riwayat Rawat Inap' : 'Cari Rujukan BPJS' }}
-                    </x-secondary-button>
+                    </x-outline-button>
 
                     @if (!empty($selectedRujukan))
                         <x-badge variant="info" class="gap-1">

@@ -990,11 +990,11 @@ new class extends Component {
         <div class="flex flex-wrap items-center justify-end gap-2 mt-3">
             <x-secondary-button type="button" wire:click="kembaliKeDaftar"><x-ikon nama="kembali" /> Kembali ke Daftar</x-secondary-button>
             @if ($viewOnlyA)
-                <x-primary-button wire:click.prevent="cancelEditA" wire:target="cancelEditA" wire:loading.attr="disabled"
+                <x-secondary-button wire:click.prevent="cancelEditA" wire:target="cancelEditA" wire:loading.attr="disabled"
                     class="gap-1.5">
                     <x-ikon nama="kembali" ukuran="w-5 h-5" />
                     Selesai Melihat
-                </x-primary-button>
+                </x-secondary-button>
             @elseif (!$isFormLocked)
                 <x-primary-button wire:click.prevent="saveDraftA" wire:loading.attr="disabled" wire:target="saveDraftA"
                     class="gap-2 min-w-[160px] justify-center">
@@ -1097,8 +1097,8 @@ new class extends Component {
                                                     Form B — Pelaksanaan / Monitoring ({{ $relatedFormB->count() }})
                                                 </span>
                                                 @if (!$isFormLocked)
-                                                    <x-info-button type="button" wire:click="tambahFormB('{{ $rowKey }}')"
-                                                        title="Tambah Form B untuk Form A ini"><x-ikon nama="tambah" /> Form B</x-info-button>
+                                                    <x-secondary-button type="button" wire:click="tambahFormB('{{ $rowKey }}')"
+                                                        title="Tambah Form B untuk Form A ini"><x-ikon nama="tambah" /> Form B</x-secondary-button>
                                                 @endif
                                             </div>
 
@@ -1234,17 +1234,17 @@ new class extends Component {
         {{-- Footer aksi Editor Form B --}}
         <div class="flex flex-wrap items-center justify-end gap-2 mt-3">
             @if ($viewOnlyB)
-                <x-primary-button wire:click.prevent="tutupFormB" wire:target="tutupFormB" wire:loading.attr="disabled"
+                <x-secondary-button wire:click.prevent="tutupFormB" wire:target="tutupFormB" wire:loading.attr="disabled"
                     class="gap-1.5">
                     <x-ikon nama="kembali" ukuran="w-5 h-5" />
                     Selesai Melihat
-                </x-primary-button>
+                </x-secondary-button>
             @elseif (!$isFormLocked)
-                <x-outline-button wire:click.prevent="kembaliKeDaftar" wire:target="kembaliKeDaftar" wire:loading.attr="disabled"
+                <x-secondary-button wire:click.prevent="kembaliKeDaftar" wire:target="kembaliKeDaftar" wire:loading.attr="disabled"
                     class="gap-1.5" title="Tutup formulir Form B, kembali ke daftar entri">
                     <x-ikon nama="kembali" ukuran="w-5 h-5" />
                     Kembali ke Daftar
-                </x-outline-button>
+                </x-secondary-button>
                 <x-primary-button wire:click.prevent="saveDraftB" wire:loading.attr="disabled" wire:target="saveDraftB"
                     class="gap-2 min-w-[160px] justify-center">
                     <span wire:loading.remove wire:target="saveDraftB" class="flex items-center gap-1.5">

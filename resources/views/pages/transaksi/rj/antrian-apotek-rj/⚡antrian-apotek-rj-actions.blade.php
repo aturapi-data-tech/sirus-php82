@@ -811,13 +811,13 @@ new class extends Component {
                         @endcan
                     @endif
                     @if (!$ttdResep || !$ttdObat)
-                        <x-outline-button wire:click="saveTelaah" wire:loading.attr="disabled">
+                        <x-secondary-button wire:click="saveTelaah" wire:loading.attr="disabled">
                             <span wire:loading.remove wire:target="saveTelaah" class="flex items-center gap-1.5">
                                 <x-ikon nama="simpan" />
                                 Simpan Telaah
                             </span>
                             <span wire:loading wire:target="saveTelaah" class="flex items-center gap-1.5"><x-loading /> Menyimpan...</span>
-                        </x-outline-button>
+                        </x-secondary-button>
                         @if (auth()->user()->hasRole('Apoteker'))
                             @if (!$ttdResep)
                                 <x-success-button wire:click="ttdTelaahResep" wire:loading.attr="disabled">
@@ -829,13 +829,13 @@ new class extends Component {
                                 </x-success-button>
                             @endif
                             @if (!$ttdObat)
-                                <x-info-button wire:click="ttdTelaahObat" wire:loading.attr="disabled">
+                                <x-primary-button wire:click="ttdTelaahObat" wire:loading.attr="disabled">
                                     <span wire:loading.remove wire:target="ttdTelaahObat" class="flex items-center gap-1.5">
                                         <x-ikon nama="ttd" />
                                         TTD-E Telaah Obat &amp; Selesai
                                     </span>
                                     <span wire:loading wire:target="ttdTelaahObat" class="flex items-center gap-1.5"><x-loading /> Proses TTD...</span>
-                                </x-info-button>
+                                </x-primary-button>
                             @endif
                         @else
                             <div class="px-3 py-2 text-xs text-amber-700 bg-amber-50 rounded-lg border border-amber-200 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-700">

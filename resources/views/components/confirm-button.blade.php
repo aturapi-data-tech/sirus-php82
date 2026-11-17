@@ -119,10 +119,12 @@
                 {{-- Footer --}}
                 <div class="flex items-center justify-end gap-2 px-5 py-4 bg-gray-50/70 dark:bg-gray-900/20">
                     <x-secondary-button type="button" x-on:click="close()">
+                        <x-ikon nama="batal" />
                         {{ $cancelText }}
                     </x-secondary-button>
 
                     <x-danger-button type="button" x-ref="confirmButton" x-on:click="confirm()">
+                        <x-ikon nama="setujui" />
                         {{ $confirmText }}
                     </x-danger-button>
                 </div>

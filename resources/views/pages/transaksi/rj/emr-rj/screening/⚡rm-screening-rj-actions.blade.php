@@ -698,7 +698,7 @@ new class extends Component {
                     {{-- Terkunci oleh TTD (bukan EMR-level) → Admin/Manager boleh Buka Kunci --}}
                     @if ($isFormLocked && !$isEmrLocked)
                         @can('dokumen.bukaKunci')
-                            <x-confirm-button action="bukaKunci()" title="Buka Kunci Screening"
+                            <x-confirm-button variant="warning-soft" action="bukaKunci()" title="Buka Kunci Screening"
                                 message="TTD petugas akan dicabut & screening kembali bisa diedit. Lanjutkan?"
                                 confirmText="Ya, Buka Kunci" class="gap-1.5">
                                 <x-ikon nama="buka-kunci" class="inline mr-1 -ml-1" />

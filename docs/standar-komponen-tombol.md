@@ -385,7 +385,8 @@ class="gap-1 !bg-{c}-600 hover:!bg-{c}-700 !text-white focus:!ring-{c}-300
 | Kirim / konfirmasi positif | emerald | `!bg-emerald-600` | i-Care, TTD & Kirim ke Apotek |
 | Ubah / transfer (reversible) | amber | `!bg-amber-500` | Pindah Kamar, Edit Resep (batal TTD) |
 | Duplikat / Dokumen | indigo | `!bg-indigo-600` | Dokumen, Salin ke Resep Baru |
-| Administrasi / kirim antar-modul | teal | `!bg-teal-600` | Administrasi, Kirim ke Plan CPPT |
+| Administrasi (buka administrasi/kasir) | ungu | `!bg-purple-600` | Administrasi (toolbar EMR RJ/UGD/RI/Gizi, Antrian Apotek, Antrian Kasir RI) — keputusan user 2026-11-17 |
+| Kirim antar-modul | teal | `!bg-teal-600` | Kirim ke Plan CPPT, Telaah Resep & Obat |
 | Dokumen final / Resume | rose | `!bg-rose-600` | Resume Medis |
 | Destruktif / Hapus | merah-tint | `x-outline-button` merah (lihat bawah) | Hapus Draft |
 | Netral / Tutup / Batal | abu | `x-secondary-button` | Tutup |
@@ -403,7 +404,7 @@ pakai `x-outline-button` merah-tint:
 ```
 
 **Referensi implementasi:** footer `transaksi/ri/emr-ri/⚡emr-ri.blade.php`
-(i-Care=emerald, Pindah Kamar=amber, Dokumen=indigo, Administrasi=teal,
+(i-Care=emerald, Pindah Kamar=amber, Dokumen=indigo, Administrasi=ungu,
 E-Resep=brand, Resume=rose) & panel aksi `transaksi/ri/eresep-ri/⚡eresep-ri.blade.php`
 (TTD & Kirim=emerald, Edit=amber, Salin=indigo, Plan CPPT=teal, Cetak e-Resep=brand,
 Hapus Draft=merah-tint).
@@ -589,7 +590,7 @@ dan `/panduan-dev#ikon-tombol` menampilkannya. Ditetapkan dari pemindaian 1.236 
 | `kirim`, `setujui` | utama → `x-primary-button` (BPJS → `x-info-button`, SATUSEHAT → teal); pendamping → `x-secondary-button` |
 | `proses` | utama → `x-primary-button` (grouping/klaim BPJS → `x-info-button`); pembantu isian (Generate kode) → `x-outline-button` |
 | `unggah`, `ttd` | `x-primary-button` (pendamping → `x-secondary-button`) |
-| `dokumen`, `pembayaran` | toolbar EMR → palet semantik (indigo / teal); lainnya → `x-outline-button` |
+| `dokumen`, `pembayaran` | toolbar EMR → palet semantik (dokumen indigo / Administrasi **ungu** `!bg-purple-600`); lainnya → `x-outline-button` |
 | `waktu` | isian tanggal → `x-now-button` |
 | `pindah` | toolbar EMR → palet amber (`!bg-amber-500`); lainnya → `x-secondary-button` |
 | `cetak` | `x-cetak-button`; cetak khusus yang tak bisa memakainya (print agent etiket) → `x-secondary-button` + `<x-ikon nama="cetak">` |
@@ -617,27 +618,15 @@ memakai katalog (164 tombol; 2 tombol pilihan Kamar sengaja tanpa ikon).
   Pemeriksaan (satu-satunya aksi di baris worklist Lab) tetap primary; pemicu menu titik-3 dilewati.
 - 2026-11-17 **RJ — ikon saja** (198 tombol): 101 ikon dipasang, 62 SVG manual diganti; 166 tombol
   kini `<x-ikon>`, 28 memakai `x-satu-sehat.ikon-tombol`. Dilewati (SVG khas dipertahankan): Master
-  Pasien (tautan), Scan Wajah, toggle Auto-Print, teks loading "Mengupload…". **Komponen RJ BELUM
-  disamakan** — 15 usulan (Simpan Telaah, TTD-E Telaah Obat, SKDP/PRB ke BPJS → info, Buka Kunci →
-  warning-soft, dst.) + 2 perbaikan ikon (Batal Task 99 → `batalkan`, buang ikon di "Lanjut ke … →")
-  + keputusan warna "Administrasi" (teal sesuai palet vs ungu di Apotek RJ/Kasir RI) menunggu user.
+  Pasien (tautan), Scan Wajah, toggle Auto-Print, teks loading "Mengupload…". Komponen RJ disamakan 2026-11-17 (lihat butir "Komponen RJ/UGD/RI + viewer" di bawah).
 - 2026-11-17 **UGD — ikon saja** (203 tombol): 98 ikon dipasang, 71 SVG manual diganti; 170 tombol
   kini `<x-ikon>`, 29 memakai `x-satu-sehat.ikon-tombol`. Tanpa ikon (disengaja): pilihan level dokter
   "Utama"/"RG" di Form Transfer UGD→RI, tautan Master Pasien, teks loading "Mengupload…".
-  **Komponen UGD BELUM disamakan** — usulan sejenis RJ (Simpan Telaah, TTD-E Telaah Obat, Rujukan ke
-  BPJS → info, Buka Kunci ×2 → warning-soft, Reset/Bersihkan/Tambah Implementasi → secondary) plus
-  khusus UGD: Cari Faskes & Cek BPJS → outline, Tambah Pelayanan/Alat Bantu (discharge planning)
-  ghost → secondary, Review DPJP / Batal Review (SBAR) tanpa warna buatan sendiri. Menunggu user.
 - 2026-11-17 **RI + Resep RI + Kasir — ikon saja** (259 tombol): 123 ikon dipasang, 97 SVG manual
   diganti; RI 198 `<x-ikon>` (+32 `x-satu-sehat.ikon-tombol`), Resep RI 15, Kasir 9. Ikon katalog baru
   `pindah` (Pindah Kamar). Tanpa ikon (disengaja): pilihan level dokter Utama/Rawat Gabung, "Buka tab
   Kamar" (navigasi antartab di Kasir RI), tautan Master Pasien, teks "Mengupload…". Buka Kunci,
   Buat SEP, SPRI, Update Pasien Pulang BPJS → ikon `kirim`/`buka-kunci` sesuai makna.
-  **Komponen RI BELUM disamakan** — 44 penyimpangan (selain palet toolbar EMR/eresep, iDRG,
-  SATUSEHAT, TaskId): sejenis RJ/UGD + khusus RI: Ulangi (Kasir RI) danger → warning-soft,
-  Lihat / Cetak (Antrian Kasir RI) success → outline, Form B (Case Manager) info → secondary,
-  Selesai Melihat primary → secondary, Kirim Semua ke SIRS override green → primary, SPRI insert/update
-  override ungu → info (BPJS), Hapus Log ghost → confirm danger-soft. Menunggu user.
 - 2026-11-17 **Halaman sistem & manajemen** (Monitor Database, Manajemen RS, Jadwal Operasi,
   Pemantauan Ruang Server, Downtime; 89 tombol): 70 ikon dipasang, 19 SVG manual diganti — semua
   kini `<x-ikon>`. Komponen disamakan (13): Export CSV / Unduh Excel info → outline, CSV & Detail →
@@ -647,9 +636,25 @@ memakai katalog (164 tombol; 2 tombol pilihan Kamar sengaja tanpa ikon).
 - 2026-11-17 **Viewer Rekam Medis + LOV — ikon saja** (komponen bersama, 85 tombol): Rekam Medis 48
   (Resume Medis/v1/Fisio → `dokumen`, Hasil Lab/Bacaan/Foto/Surat Kematian → `lihat`, Copy Resep/Asesmen
   → `muat-ulang`, Simpan & Update BPJS → `kirim`, Akses Darurat → `buka-kunci`), LOV 37 (semua "Ubah"/
-  "Ganti" → `ubah`). **Komponen viewer belum disamakan**: Resume Medis, Hasil Laboratorium, Foto
-  Radiologi memakai info-button (biru) padahal bukan aksi BPJS → usulan outline; menunggu user karena
-  viewer dipakai RJ/UGD/RI.
+  "Ganti" → `ubah`)..
+- 2026-11-17 **Komponen RJ/UGD/RI + viewer disamakan** (keputusan user "terapkan usulan, warna ungu";
+  56 tombol + 3 manual): Simpan Telaah outline → secondary; TTD-E Telaah Obat & Selesai info → primary;
+  menulis ke BPJS (Simpan & Kirim SKDP, Update/Simpan PRB, Rujukan antar RS, Update Pasien Pulang BPJS)
+  success → info, SPRI insert/update ungu → info; Daftar Surat Kontrol BPJS, Cari Obat/Faskes, Cek BPJS
+  → outline; Buka Kunci (GC, Screening) confirm default → warning-soft; Buka Kunci PRMRJ outline +
+  wire:confirm → confirm warning-soft; Reset/Bersihkan/Tambah Implementasi/SOAP/Pelayanan/Alat Bantu →
+  secondary; Review DPJP & Lihat PRMRJ tanpa warna buatan sendiri, Batal Review → secondary; Ulangi
+  (Kasir RI) danger → warning-soft; Lihat / Cetak success → outline; Form B info → secondary; Selesai
+  Melihat & Kembali ke Daftar → secondary; Kirim Semua ke SIRS tanpa override hijau; viewer Rekam
+  Medis Resume Medis / Hasil Lab / Foto Radiologi info → outline. **Administrasi = ungu** di semua
+  toolbar EMR (RJ, UGD, RI, Gizi RI). Ikon: Batal Task 99 → `batalkan`, panah ganda di "Lanjut ke … →"
+  / "← Kembali" dibuang. Hapus Log (Update TT RI) dibiarkan — hanya mengosongkan tampilan log.
+- 2026-11-17 **Dialog bersama**: `x-confirm-button` (Batal = ✕, "Ya, …" = centang `setujui`),
+  `dirty-modal-content` & `tabbed-dirty-modal-content` (Simpan = disket, Lanjut = pensil, Batal = ✕,
+  Simpan & Pindah = disket; "Keluar tanpa simpan" tetap ikon pintu keluar). **Temuan, belum diubah:**
+  tombol "Ya" di dialog `x-confirm-button` SELALU `x-danger-button` (merah) apa pun `variant`-nya —
+  dialog konfirmasi Simpan/Proses/Kirim pun tombol "Ya"-nya merah. Usulan: warna tombol "Ya" mengikuti
+  `variant` (primary → hijau, warning-soft → kuning, danger → merah).
 
 Area lain menyusul per modul: pasang ikon + samakan komponen + ganti SVG manual sekaligus.
 

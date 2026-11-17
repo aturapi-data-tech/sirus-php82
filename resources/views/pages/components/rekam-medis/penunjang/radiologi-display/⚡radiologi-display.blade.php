@@ -315,11 +315,11 @@ new class extends Component {
 
                                                             {{-- Tombol Foto Radiologi — info-button (solid blue) untuk bedakan tipe --}}
                                                             @if ($hasFoto)
-                                                                <x-info-button type="button"
+                                                                <x-outline-button type="button"
                                                                     wire:click="openViewPDF({{ json_encode($row->rad_upload_pdf_foto) }}, 'Foto Radiologi')">
                                                                     <x-ikon nama="lihat" />
                                                                     Foto Radiologi
-                                                                </x-info-button>
+                                                                </x-outline-button>
                                                             @endif
 
                                                         </div>

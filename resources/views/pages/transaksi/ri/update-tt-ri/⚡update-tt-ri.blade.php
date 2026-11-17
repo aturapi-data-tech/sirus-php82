@@ -529,7 +529,7 @@ new class extends Component {
                         </x-primary-button>
                         <x-primary-button wire:click="kirimSirsSemua" wire:loading.attr="disabled"
                             wire:target="kirimSirsSemua" wire:confirm="Kirim semua kamar ke SIRS Kemenkes?"
-                            class="gap-2 !bg-green-600 hover:!bg-green-700 dark:!bg-green-700 dark:hover:!bg-green-600">
+                            class="gap-2">
                             <x-loading size="xs" wire:loading wire:target="kirimSirsSemua" />
                             <x-ikon nama="kirim" ukuran="w-3.5 h-3.5" wire:loading.remove wire:target="kirimSirsSemua" />
                             Kirim Semua ke SIRS

@@ -471,11 +471,11 @@ new class extends Component {
                     <div class="flex items-center gap-2 ml-auto">
                         {{-- Cek Peserta BPJS (VClaim) — verifikasi keaktifan kartu saat pelayanan --}}
                         @hasanyrole(['Perawat', 'Dokter', 'Admin', 'Casemix', 'Mr'])
-                            <x-secondary-button type="button" wire:click="openCekPesertaBpjs"
+                            <x-outline-button type="button" wire:click="openCekPesertaBpjs"
                                 class="whitespace-nowrap text-emerald-700 hover:bg-brand-green/10 dark:text-emerald-300 dark:hover:bg-emerald-900/30">
                                 <x-ikon nama="cari" class="mr-1" />
                                 Cek BPJS
-                            </x-secondary-button>
+                            </x-outline-button>
                         @endhasanyrole
 
                         {{-- Tombol standar Refresh + Reset (komponen; tanpa label kolom) --}}

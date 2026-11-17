@@ -937,7 +937,7 @@ new class extends Component {
                 @if ($tglPulangSudahDiproses)
                     <x-badge variant="success" class="text-xs">Selesai</x-badge>
                     <div class="ml-auto">
-                        <x-confirm-button variant="danger" :action="'batalTglPulang()'" title="Ulangi Proses Tgl Pulang"
+                        <x-confirm-button variant="warning-soft" :action="'batalTglPulang()'" title="Ulangi Proses Tgl Pulang"
                             message="Buka lagi kamar terakhir? Tanggal keluar & hari kamar dikosongkan (hari kembali berjalan), lalu Proses Tgl Pulang bisa diulang — mis. ada tambahan/pindah kamar atau tanggal pulang salah."
                             confirmText="Ya, buka lagi" cancelText="Batal">
                             <x-ikon nama="kembalikan" />

@@ -507,11 +507,11 @@ new class extends Component {
                                         <x-text-input wire:model="searchFaskes" class="flex-1"
                                             placeholder="Ketik nama RS tujuan (min 3 huruf)..."
                                             x-on:keyup.enter="$wire.cariFaskes()" />
-                                        <x-secondary-button type="button" wire:click="cariFaskes"
+                                        <x-outline-button type="button" wire:click="cariFaskes"
                                             wire:loading.attr="disabled" class="shrink-0">
                                             <span wire:loading.remove wire:target="cariFaskes" class="inline-flex items-center gap-2"><x-ikon nama="cari" /> Cari Faskes</span>
                                             <span wire:loading wire:target="cariFaskes"><x-loading /></span>
-                                        </x-secondary-button>
+                                        </x-outline-button>
                                     </div>
 
                                     {{-- List Faskes --}}
@@ -630,7 +630,7 @@ new class extends Component {
                                 <x-hapus-button wire:click="hapusRujukan" confirm="Yakin hapus rujukan {{ $rujukanAntarRS['noRujukan'] }} dari BPJS?" label="Hapus Rujukan BPJS" />
                             @endif
 
-                            <x-success-button type="button" wire:click="kirimBPJS" wire:loading.attr="disabled">
+                            <x-info-button type="button" wire:click="kirimBPJS" wire:loading.attr="disabled">
                                 <span wire:loading.remove wire:target="kirimBPJS"
                                     class="inline-flex items-center gap-2">
                                     <x-ikon nama="kirim" />
@@ -640,7 +640,7 @@ new class extends Component {
                                     <x-loading />
                                     {{ !empty($rujukanAntarRS['noRujukan']) ? 'Mengupdate...' : 'Mengirim...' }}
                                 </span>
-                            </x-success-button>
+                            </x-info-button>
                         </div>
                     @endif
                 @endif

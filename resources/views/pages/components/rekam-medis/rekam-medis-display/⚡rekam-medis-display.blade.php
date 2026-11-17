@@ -801,7 +801,7 @@ new class extends Component {
                                                                             @endhasanyrole
                                                                         @endif
 
-                                                                        <x-info-button type="button"
+                                                                        <x-outline-button type="button"
                                                                             wire:click="OpenRekamMedisRj('{{ $myQData->txn_no }}')"
                                                                             wire:loading.attr="disabled"
                                                                             wire:target="OpenRekamMedisRj('{{ $myQData->txn_no }}')">
@@ -817,7 +817,7 @@ new class extends Component {
                                                                                 <x-loading />
                                                                                 Memuat...
                                                                             </span>
-                                                                        </x-info-button>
+                                                                        </x-outline-button>
 
                                                                         @hasanyrole('Perawat|Admin|Casemix|Mr|Manager Medis|Manager Umum')
                                                                             <x-outline-button type="button"
@@ -872,7 +872,7 @@ new class extends Component {
                                                                         $skFinal = !empty($skSurat['isFinal']);
                                                                     @endphp
                                                                     <div class="flex flex-wrap gap-2">
-                                                                        <x-info-button type="button"
+                                                                        <x-outline-button type="button"
                                                                             wire:click="OpenRekamMedisUgd('{{ $myQData->txn_no }}')"
                                                                             wire:loading.attr="disabled"
                                                                             wire:target="OpenRekamMedisUgd('{{ $myQData->txn_no }}')">
@@ -888,7 +888,7 @@ new class extends Component {
                                                                                 <x-loading />
                                                                                 Memuat...
                                                                             </span>
-                                                                        </x-info-button>
+                                                                        </x-outline-button>
 
                                                                         {{-- Pintasan Surat Kematian (pasien P0) --}}
                                                                         @if ($skTampil)
@@ -964,11 +964,11 @@ new class extends Component {
                                                                          Tombol tetap muncul walau resume belum dibuat — modal
                                                                          akan tampilkan "Belum dibuat" + sembunyikan tombol PDF. --}}
                                                                     <div class="flex flex-wrap gap-2">
-                                                                        <x-info-button type="button"
+                                                                        <x-outline-button type="button"
                                                                             wire:click="OpenRekamMedisRi('{{ $myQData->txn_no }}')">
                                                                             <x-ikon nama="dokumen" class="mr-1" />
                                                                             Resume Medis
-                                                                        </x-info-button>
+                                                                        </x-outline-button>
 
                                                                         {{-- Pintasan Surat Kematian RI. Gate RI ≠ UGD: tak ada
                                                                              triase P0 di rawat inap, penandanya status pulang

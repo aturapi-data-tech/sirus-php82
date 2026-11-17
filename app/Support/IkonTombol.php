@@ -145,7 +145,7 @@ final class IkonTombol
             'paths' => ['M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01'],
         ],
         'pembayaran' => [
-            'tombol' => 'toolbar EMR → x-primary-button !bg-teal-600 (palet semantik)',
+            'tombol' => 'toolbar EMR & antrian → ungu (x-primary-button !bg-purple-600; di antrian x-secondary-button !bg-purple-600) — keputusan user 2026-11-17',
             'label' => 'Administrasi, Bayar, Kasir',
             'paths' => ['M2 8h20v12a1 1 0 01-1 1H3a1 1 0 01-1-1V8zm0 0V6a1 1 0 011-1h18a1 1 0 011 1v2M12 14a2 2 0 100-4 2 2 0 000 4z'],
         ],

@@ -945,7 +945,7 @@ new class extends Component {
                                                     <x-outline-button type="button"
                                                         wire:click="lihatRekamMedis({{ (int) $baris['nomorKunjungan'] }})"
                                                         wire:loading.attr="disabled"
-                                                        class="!text-blue-600 !bg-blue-50 !border-blue-200 hover:!bg-blue-100 hover:!text-blue-700 hover:!border-blue-300 dark:!text-blue-400 dark:!bg-blue-900/20 dark:!border-blue-800/30 dark:hover:!bg-blue-900/30 dark:hover:!text-blue-300"
+                                                       
                                                         title="Lihat rekam medis kunjungan ini">
                                                         <span class="inline-flex items-center gap-1">
                                                             <x-ikon nama="lihat" ukuran="w-5 h-5" />
@@ -959,17 +959,14 @@ new class extends Component {
 
                                                 @if ($baris['terkunci'])
                                                     @can('dokumen.bukaKunci')
-                                                        <x-outline-button type="button"
-                                                            wire:click="bukaKunciPrmrj({{ (int) $baris['prmrjNo'] }})"
-                                                            wire:confirm="Buka kunci baris PRMRJ ini? TTD DPJP akan dicabut & baris kembali menjadi draft."
-                                                            wire:loading.attr="disabled"
-                                                            class="!text-muted !bg-surface-soft !border-hairline hover:!bg-surface-soft hover:!text-body hover:!border-gray-300 dark:!text-muted-soft dark:!bg-gray-800/40 dark:!border-gray-700 dark:hover:!bg-gray-800/60"
-                                                            title="Buka kunci baris ini">
-                                                            <span class="inline-flex items-center gap-1">
-                                                                <x-ikon nama="buka-kunci" ukuran="w-5 h-5" />
-                                                                <span class="text-sm font-semibold">Buka Kunci</span>
-                                                            </span>
-                                                        </x-outline-button>
+                                                        <x-confirm-button variant="warning-soft"
+                                                            :action="'bukaKunciPrmrj(' . (int) $baris['prmrjNo'] . ')'"
+                                                            title="Buka Kunci PRMRJ"
+                                                            message="Buka kunci baris PRMRJ ini? TTD DPJP akan dicabut & baris kembali menjadi draft."
+                                                            confirmText="Ya, buka kunci" cancelText="Batal">
+                                                            <x-ikon nama="buka-kunci" />
+                                                            Buka Kunci
+                                                        </x-confirm-button>
                                                     @endcan
                                                 @else
                                                     @can('dokumen.hapus')

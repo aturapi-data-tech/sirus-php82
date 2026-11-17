@@ -246,17 +246,13 @@
                     <div class="flex items-center gap-2">
                         <x-secondary-button type="button" x-on:click="showUnsavedWarning = false"
                             x-bind:disabled="savingAndClosing" title="Lanjut edit form">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                            </svg>
+                            <x-ikon nama="ubah" />
                             Lanjut
                         </x-secondary-button>
                         <x-primary-button type="button" x-on:click="saveAndClose()"
                             x-bind:disabled="savingAndClosing" title="Simpan semua lalu tutup">
                             <span x-show="!savingAndClosing" class="flex items-center gap-1.5">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-                                </svg>
+                                <x-ikon nama="simpan" />
                                 Simpan
                             </span>
                             <span x-show="savingAndClosing" x-cloak class="flex items-center gap-1">
@@ -308,11 +304,12 @@
                     <div class="flex items-center gap-2">
                         <x-secondary-button type="button" x-on:click="cancelSwitch()"
                             x-bind:disabled="savingAndSwitching">
+                            <x-ikon nama="batal" />
                             Batal
                         </x-secondary-button>
                         <x-primary-button type="button" x-on:click="saveAndSwitch()"
                             x-bind:disabled="savingAndSwitching">
-                            <span x-show="!savingAndSwitching">Simpan &amp; Pindah</span>
+                            <span x-show="!savingAndSwitching" class="flex items-center gap-1.5"><x-ikon nama="simpan" /> Simpan &amp; Pindah</span>
                             <span x-show="savingAndSwitching" x-cloak class="flex items-center gap-1">
                                 <x-loading /> Menyimpan...
                             </span>

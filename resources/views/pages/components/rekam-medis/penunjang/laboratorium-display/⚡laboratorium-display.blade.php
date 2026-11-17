@@ -602,7 +602,7 @@ new class extends Component {
                                                         @if ($isSelesai)
                                                             <div class="flex items-center gap-2 mt-3">
                                                                 {{-- Tombol Hasil Laboratorium --}}
-                                                                <x-info-button type="button"
+                                                                <x-outline-button type="button"
                                                                     wire:click="openDetail('{{ $row->checkup_no }}', '{{ $row->checkup_rjri }}')"
                                                                     wire:loading.attr="disabled"
                                                                     wire:target="openDetail('{{ $row->checkup_no }}', '{{ $row->checkup_rjri }}')">
@@ -617,7 +617,7 @@ new class extends Component {
                                                                         class="flex items-center gap-1">
                                                                         <x-loading /> Memuat...
                                                                     </span>
-                                                                </x-info-button>
+                                                                </x-outline-button>
 
                                                                 {{-- Tombol Cetak --}}
                                                                     <x-cetak-button wire:click="cetakLaborat('{{ $row->checkup_no }}')" />
