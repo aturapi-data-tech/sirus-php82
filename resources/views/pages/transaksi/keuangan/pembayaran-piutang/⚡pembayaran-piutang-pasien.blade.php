@@ -178,19 +178,21 @@ new class extends Component {
     <div class="w-full h-[calc(100vh-5rem)] flex flex-col bg-surface-soft dark:bg-gray-800">
         <div class="flex flex-col flex-1 min-h-0 px-6 pt-2 pb-6">
 
-            {{-- TOOLBAR --}}
+            {{-- TOOLBAR — baris 1: filter (pasien, jalur, klaim) + muat ulang/reset;
+                 baris 2: ringkasan piutang, centang semua, nota terpilih + Proses Pembayaran. --}}
             <div class="sticky z-30 px-4 py-3 mt-2 bg-surface-soft border-b border-hairline top-20 dark:bg-gray-900 dark:border-gray-700">
                 <div class="flex flex-wrap items-end gap-3">
 
-                    <div class="w-full sm:w-80 sm:shrink-0">
+                    <div class="w-full sm:w-96 sm:shrink-0">
                         @if ($regNo)
                             <x-input-label value="Pasien" />
                             <div class="flex items-center gap-2 mt-1">
-                                <div class="flex-1 min-w-0 px-3 py-2 text-sm border rounded-lg border-hairline bg-canvas dark:bg-gray-900 dark:border-gray-700">
-                                    <div class="font-semibold leading-tight truncate text-ink dark:text-gray-100">{{ $regName }}</div>
-                                    <div class="font-mono text-xs leading-tight text-muted">No. RM {{ $regNo }}</div>
+                                {{-- Tinggi disamakan dengan select (h-11) supaya label & dasar kolom sejajar --}}
+                                <div class="flex flex-col justify-center flex-1 min-w-0 px-3 border rounded-lg h-11 border-hairline bg-canvas dark:bg-gray-900 dark:border-gray-700">
+                                    <div class="text-sm font-semibold leading-tight truncate text-ink dark:text-gray-100">{{ $regName }}</div>
+                                    <div class="font-mono text-xs leading-tight text-muted dark:text-gray-400">No. RM {{ $regNo }}</div>
                                 </div>
-                                <x-secondary-button type="button" wire:click="gantiPasien"><x-ikon nama="ubah" /> Ganti</x-secondary-button>
+                                <x-secondary-button type="button" wire:click="gantiPasien" class="h-11"><x-ikon nama="ubah" /> Ganti</x-secondary-button>
                             </div>
                         @else
                             <livewire:lov.pasien.lov-pasien target="pasien-piutang" label="Cari Pasien"
@@ -201,7 +203,7 @@ new class extends Component {
 
                     <div class="w-full sm:w-auto">
                         <x-input-label value="Jalur" />
-                        <x-select-input wire:model.live="filterJalur" class="w-full mt-1 sm:w-32">
+                        <x-select-input wire:model.live="filterJalur" class="w-full mt-1 h-11 sm:w-40">
                             <option value="">Semua</option>
                             <option value="RJ">Rawat Jalan</option>
                             <option value="UGD">UGD</option>
@@ -211,7 +213,7 @@ new class extends Component {
 
                     <div class="w-full sm:w-auto">
                         <x-input-label value="Klaim" />
-                        <x-select-input wire:model.live="filterKlaim" class="w-full mt-1 sm:w-32">
+                        <x-select-input wire:model.live="filterKlaim" class="w-full mt-1 h-11 sm:w-36">
                             <option value="">Semua</option>
                             <option value="BPJS">BPJS</option>
                             <option value="UMUM">UMUM</option>
@@ -220,43 +222,47 @@ new class extends Component {
                         </x-select-input>
                     </div>
 
-                    {{-- Ringkasan pilihan + saklar centang semua --}}
-                    <div class="flex items-center gap-2 px-3 py-2 border rounded-xl whitespace-nowrap bg-brand-green/5 border-brand-green/25 dark:bg-brand-lime/10 dark:border-brand-lime/25">
-                        <span class="text-[11px] font-semibold tracking-wide uppercase text-muted dark:text-gray-400">
-                            Terpilih {{ count($terpilih) }} Nota
-                        </span>
-                        <svg class="w-5 h-5 shrink-0 text-brand-green dark:text-brand-lime" fill="none"
-                            stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round"
-                                d="M3 10h18M7 15h2m4 0h4M5 6h14a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2z" />
-                        </svg>
-                        <span class="text-xl font-bold leading-none text-brand-green dark:text-brand-lime">
-                            Rp {{ number_format($this->totalTerpilih) }}
-                        </span>
-                    </div>
-
-                    <div class="pb-1.5">
-                        <x-toggle :current="$this->semuaTercentang ? '1' : '0'" trueValue="1" falseValue="0"
-                            wireClick="toggleSemua" label="Centang semua nota"
-                            title="Nyala = centang semua nota pasien, mati = kosongkan pilihan" />
-                    </div>
-
                     <div class="flex items-center gap-2 ml-auto">
                         <x-toolbar-refresh-reset :label="null" />
-                        <x-primary-button type="button" wire:click="prosesTerpilih"
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-x-5 gap-y-3 pt-3 mt-3 border-t border-hairline dark:border-gray-700">
+                    @if ($regNo)
+                        <div class="text-sm text-muted dark:text-gray-400">
+                            Total piutang pasien ini:
+                            <span class="font-semibold text-ink dark:text-gray-100">Rp {{ number_format($this->totalSisaPasien, 0, ',', '.') }}</span>
+                            · {{ $this->rows->count() }} nota
+                        </div>
+                    @endif
+
+                    <x-toggle :current="$this->semuaTercentang ? '1' : '0'" trueValue="1" falseValue="0"
+                        wireClick="toggleSemua" label="Centang semua nota"
+                        title="Nyala = centang semua nota pasien, mati = kosongkan pilihan" />
+
+                    <div class="flex flex-wrap items-center gap-3 ml-auto">
+                        {{-- Ringkasan pilihan --}}
+                        <div class="flex items-center gap-2 px-3 border h-11 rounded-xl whitespace-nowrap bg-brand-green/5 border-brand-green/25 dark:bg-brand-lime/10 dark:border-brand-lime/25">
+                            <span class="text-xs font-semibold tracking-wide uppercase text-muted dark:text-gray-400">
+                                Terpilih {{ count($terpilih) }} Nota
+                            </span>
+                            <svg class="w-5 h-5 shrink-0 text-brand-green dark:text-brand-lime" fill="none"
+                                stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M3 10h18M7 15h2m4 0h4M5 6h14a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2z" />
+                            </svg>
+                            <span class="text-xl font-bold leading-none text-brand-green dark:text-brand-lime">
+                                Rp {{ number_format($this->totalTerpilih) }}
+                            </span>
+                        </div>
+
+                        <x-primary-button type="button" wire:click="prosesTerpilih" class="h-11"
                             wire:loading.attr="disabled" wire:target="prosesTerpilih">
                             <x-ikon nama="proses" />
                             Proses Pembayaran
                         </x-primary-button>
                     </div>
                 </div>
-
-                @if ($regNo)
-                    <div class="mt-2 text-sm text-muted dark:text-gray-400">
-                        Total piutang pasien ini: Rp {{ number_format($this->totalSisaPasien, 0, ',', '.') }}
-                        · {{ $this->rows->count() }} nota
-                    </div>
-                @endif
             </div>
 
             {{-- TABEL --}}
