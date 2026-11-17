@@ -656,10 +656,9 @@ memakai katalog (164 tombol; 2 tombol pilihan Kamar sengaja tanpa ikon).
   / "← Kembali" dibuang. Hapus Log (Update TT RI) dibiarkan — hanya mengosongkan tampilan log.
 - 2026-11-17 **Dialog bersama**: `x-confirm-button` (Batal = ✕, "Ya, …" = centang `setujui`),
   `dirty-modal-content` & `tabbed-dirty-modal-content` (Simpan = disket, Lanjut = pensil, Batal = ✕,
-  Simpan & Pindah = disket; "Keluar tanpa simpan" tetap ikon pintu keluar). **Temuan, belum diubah:**
-  tombol "Ya" di dialog `x-confirm-button` SELALU `x-danger-button` (merah) apa pun `variant`-nya —
-  dialog konfirmasi Simpan/Proses/Kirim pun tombol "Ya"-nya merah. Usulan: warna tombol "Ya" mengikuti
-  `variant` (primary → hijau, warning-soft → kuning, danger → merah).
+  Simpan & Pindah = disket; "Keluar tanpa simpan" tetap ikon pintu keluar). Tombol **"Ya" di dialog mengikuti `variant`** (keputusan user 2026-11-17; sebelumnya
+  selalu merah): `danger` / `danger-soft` / default → `x-danger-button` merah; `warning-soft` →
+  `x-warning-button` kuning; `primary` / `secondary` / `outline` → `x-primary-button` hijau.
 
 Area lain menyusul per modul: pasang ikon + samakan komponen + ganti SVG manual sekaligus.
 
