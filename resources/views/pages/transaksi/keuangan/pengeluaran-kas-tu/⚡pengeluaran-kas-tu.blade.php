@@ -199,7 +199,8 @@ new class extends Component {
                             <tr class="text-sm font-semibold tracking-wide text-left uppercase text-muted dark:text-gray-300">
                                 <th class="px-4 py-3">Transaksi</th>
                                 <th class="px-4 py-3">Keterangan / Akun</th>
-                                <th class="px-4 py-3">Nominal / Kas</th>
+                                <th class="px-4 py-3 text-right">Nominal</th>
+                                <th class="px-4 py-3">Kas / Petugas</th>
                                 <th class="px-4 py-3 text-center">Aksi</th>
                             </tr>
                         </thead>
@@ -229,11 +230,15 @@ new class extends Component {
                                         </div>
                                     </td>
 
-                                    {{-- NOMINAL / KAS / PETUGAS --}}
-                                    <td class="px-4 py-4 space-y-1 align-top">
+                                    {{-- NOMINAL — kolom sendiri, rata kanan --}}
+                                    <td class="px-4 py-4 text-right align-top">
                                         <div class="font-mono text-base font-bold whitespace-nowrap text-red-600 dark:text-red-400">
                                             Rp {{ number_format($row->tucashk_nominal ?? 0) }}
                                         </div>
+                                    </td>
+
+                                    {{-- KAS / PETUGAS --}}
+                                    <td class="px-4 py-4 space-y-1 align-top">
                                         <div class="text-xs text-muted dark:text-gray-400">
                                             Kas: <span class="font-medium text-body dark:text-gray-300">{{ $row->acc_name_kas ?? '-' }}</span>
                                             <span class="font-mono text-muted-soft">({{ $row->acc_id_kas }})</span>
@@ -266,7 +271,7 @@ new class extends Component {
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="4" class="px-6 py-16 text-center text-muted dark:text-gray-400">
+                                    <td colspan="5" class="px-6 py-16 text-center text-muted dark:text-gray-400">
                                         Tidak ada data pengeluaran kas.
                                     </td>
                                 </tr>
