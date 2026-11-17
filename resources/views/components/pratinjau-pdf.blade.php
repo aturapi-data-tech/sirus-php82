@@ -44,7 +44,6 @@
         <span class="w-px h-6 mx-1 bg-hairline dark:bg-gray-700"></span>
 
         <x-secondary-button type="button" class="!px-3 !py-1.5" x-on:click="pasLebar()">
-            <x-ikon nama="lihat" />
             Pas Lebar
         </x-secondary-button>
 
