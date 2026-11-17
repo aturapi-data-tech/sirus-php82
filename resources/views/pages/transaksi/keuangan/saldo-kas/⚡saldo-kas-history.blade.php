@@ -618,7 +618,9 @@ new class extends Component {
 
 <div>
     <x-modal name="saldo-kas-history" size="full" height="full" focusable>
-        <div class="flex flex-col min-h-full"
+        {{-- h-full (bukan min-h-full): tinggi dikunci ke panel supaya kotak tabel yang scroll —
+             thead, baris Shift, dan baris total bisa sticky. --}}
+        <div class="flex flex-col h-full"
              wire:key="{{ $this->renderKey('modal', [$accId, $mode, $periode, $tanggalHarian]) }}">
 
             <x-modul-dokumen.header :judul="'Riwayat Transaksi — ' . $accDesc" ikon="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
@@ -705,7 +707,7 @@ new class extends Component {
                 </div>
             </div>
 
-            <div class="flex-1 px-4 py-3 overflow-hidden bg-surface-soft/70 dark:bg-gray-950/20">
+            <div class="flex-1 min-h-0 px-4 py-3 overflow-hidden bg-surface-soft/70 dark:bg-gray-950/20">
                 <div class="h-full overflow-y-auto bg-canvas border border-hairline rounded-xl dark:border-gray-700 dark:bg-gray-900">
                     <table class="min-w-full text-sm">
                         <thead class="sticky top-0 z-10 text-muted bg-surface-soft dark:bg-gray-800 dark:text-gray-200">
@@ -733,8 +735,9 @@ new class extends Component {
                             @if ($mode === 'shift')
                                 {{-- Mode Per Shift: hanya shift terpilih; total & saldo akhirnya di kaki tabel --}}
                                 @forelse ($this->shiftGroups as $group)
-                                    <tr class="bg-brand-green/10 dark:bg-emerald-900/30">
-                                        <td colspan="6" class="px-3 py-1.5 text-xs font-bold tracking-wide uppercase text-emerald-800 dark:text-emerald-200">
+                                    {{-- Sticky tepat di bawah thead (tinggi thead = top-9) supaya shift tetap terbaca saat scroll. --}}
+                                    <tr>
+                                        <td colspan="6" class="sticky z-10 top-9 px-3 py-1.5 text-xs font-bold tracking-wide uppercase border-b shadow-sm bg-emerald-50 border-emerald-200 text-emerald-800 dark:bg-emerald-900 dark:border-emerald-700 dark:text-emerald-200">
                                             Shift {{ $group->shift }}@if ($group->range)<span class="ml-1 font-normal normal-case text-muted">({{ $group->range }})</span>@endif
                                         </td>
                                     </tr>
