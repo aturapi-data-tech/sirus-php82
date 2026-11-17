@@ -472,12 +472,14 @@ new class extends Component {
 
                     <div class="flex justify-end gap-2">
                         <x-secondary-button type="button" wire:click="closeModal">
+                            <x-ikon nama="batal" />
                             {{ $editingNo ? 'Batal' : 'Tutup' }}
                         </x-secondary-button>
 
                         <x-primary-button type="button" wire:click="simpan" wire:loading.attr="disabled"
                             wire:target="simpan" x-ref="btnSimpan">
-                            <span wire:loading.remove wire:target="simpan">
+                            <span wire:loading.remove wire:target="simpan" class="inline-flex items-center gap-2">
+                                <x-ikon nama="simpan" />
                                 {{ $editingNo ? 'Simpan Koreksi' : 'Simpan & Posting' }}
                             </span>
                             <span wire:loading wire:target="simpan"><x-loading /> Menyimpan...</span>
