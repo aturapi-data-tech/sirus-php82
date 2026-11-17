@@ -23,6 +23,14 @@ new class extends Component {
     public function updatedItemsPerPage(): void { $this->resetPage(); }
     public function updatedFilterBulan(): void { $this->resetPage(); }
 
+    /** Tombol Reset toolbar (x-toolbar-refresh-reset) — kembali ke bulan berjalan, pencarian kosong. */
+    public function resetFilters(): void
+    {
+        $this->reset(['searchKeyword']);
+        $this->filterBulan = Carbon::now()->format('m/Y');
+        $this->resetPage();
+    }
+
     /* ── Pemicu ke modal entri (child actions) ── */
     public function openCreate(): void
     {
@@ -110,100 +118,146 @@ new class extends Component {
     <div class="w-full h-[calc(100vh-5rem)] flex flex-col bg-surface-soft dark:bg-gray-800">
         <div class="flex flex-col flex-1 min-h-0 px-6 pt-2 pb-6">
 
-            {{-- TOOLBAR --}}
+            {{-- TOOLBAR — pola Antrian Kasir RJ: label di atas isian, ikon, Refresh/Reset baku --}}
             <div class="sticky z-30 px-4 py-3 border-b bg-surface-soft border-hairline top-20 dark:bg-gray-900 dark:border-gray-700">
-                <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-                    <div class="flex items-center gap-3">
-                        <div class="w-40">
-                            <x-input-label value="Bulan" class="sr-only" />
-                            <x-text-input type="text" wire:model.live.debounce.300ms="filterBulan"
-                                placeholder="mm/yyyy" class="block w-full" />
-                        </div>
-                        <div class="w-full lg:max-w-md">
-                            <x-input-label value="Cari" class="sr-only" />
+                <div class="flex flex-wrap items-end gap-3">
+
+                    {{-- SEARCH --}}
+                    <div class="w-full sm:flex-1">
+                        <x-input-label value="Pencarian" class="sr-only" />
+                        <div class="relative mt-1">
+                            <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                                <svg class="w-4 h-4 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                </svg>
+                            </div>
                             <x-text-input type="text" wire:model.live.debounce.300ms="searchKeyword"
-                                placeholder="Cari keterangan / akun..." class="block w-full" />
+                                placeholder="Cari No / Keterangan / Akun..." class="block w-full pl-10" />
                         </div>
                     </div>
 
-                    <div class="flex items-center justify-end gap-3">
-                        {{-- Total periode — angka besar warna brand --}}
-                        <div class="flex items-center gap-2 px-4 py-2 border rounded-xl whitespace-nowrap bg-brand-green/5 border-brand-green/25 dark:bg-brand-lime/10 dark:border-brand-lime/25">
-                            <span class="text-[11px] font-semibold tracking-wide uppercase text-muted dark:text-gray-400">
-                                Total Periode {{ $filterBulan ?: 'semua' }}
-                            </span>
-                            <svg class="w-6 h-6 shrink-0 text-brand-green dark:text-brand-lime" fill="none"
-                                stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round"
-                                    d="M3 10h18M7 15h2m4 0h4M5 6h14a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2z" />
-                            </svg>
-                            <span class="text-2xl font-bold leading-none text-brand-green dark:text-brand-lime">
-                                Rp {{ number_format($this->totalBulan) }}
-                            </span>
+                    {{-- BULAN --}}
+                    <div class="w-full sm:w-auto">
+                        <x-input-label value="Bulan" />
+                        <div class="relative mt-1">
+                            <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                                <svg class="w-4 h-4 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                            </div>
+                            <x-text-input type="text" wire:model.live.debounce.300ms="filterBulan"
+                                placeholder="mm/yyyy" class="block w-full pl-10 sm:w-36" />
                         </div>
-
-                        <div class="w-28">
-                            <x-input-label value="Per halaman" class="sr-only" />
-                            <x-select-input wire:model.live="itemsPerPage">
-                                <option value="10">10</option>
-                                <option value="20">20</option>
-                                <option value="50">50</option>
-                                <option value="100">100</option>
-                            </x-select-input>
-                        </div>
-
-                        <x-primary-button type="button" wire:click="openCreate">
-                            + Tambah Penerimaan Kas
-                        </x-primary-button>
                     </div>
+
+                    {{-- PER HALAMAN --}}
+                    <div class="w-full sm:w-auto">
+                        <x-input-label value="Per Hal." />
+                        <x-select-input wire:model.live="itemsPerPage" class="w-full mt-1 sm:w-28">
+                            <option value="10">10</option>
+                            <option value="20">20</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </x-select-input>
+                    </div>
+
+                    <x-toolbar-refresh-reset />
+
+                    {{-- Total periode — angka besar warna brand --}}
+                    <div class="flex items-center gap-2 px-4 py-2 ml-auto border rounded-xl whitespace-nowrap bg-brand-green/5 border-brand-green/25 dark:bg-brand-lime/10 dark:border-brand-lime/25">
+                        <span class="text-[11px] font-semibold tracking-wide uppercase text-muted dark:text-gray-400">
+                            Total Periode {{ $filterBulan ?: 'semua' }}
+                        </span>
+                        <svg class="w-6 h-6 shrink-0 text-brand-green dark:text-brand-lime" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M3 10h18M7 15h2m4 0h4M5 6h14a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2z" />
+                        </svg>
+                        <span class="text-2xl font-bold leading-none text-brand-green dark:text-brand-lime">
+                            Rp {{ number_format($this->totalBulan) }}
+                        </span>
+                    </div>
+
+                    <x-primary-button type="button" wire:click="openCreate">
+                        + Tambah Penerimaan Kas
+                    </x-primary-button>
+                </div>
+
+                {{-- Timestamp refresh --}}
+                <div class="mt-1 text-xs text-muted">
+                    Data Terakhir: {{ now()->format('d/m/Y H:i:s') }}
                 </div>
             </div>
 
             {{-- TABEL --}}
             <div class="flex flex-col flex-1 min-h-0 mt-4 border shadow-sm bg-canvas border-hairline rounded-2xl dark:border-gray-700 dark:bg-gray-900">
                 <div class="flex-1 min-h-0 overflow-x-auto overflow-y-auto rounded-t-2xl">
-                    <table class="min-w-full text-sm">
-                        <thead class="sticky top-0 z-10 text-muted bg-surface-soft dark:bg-gray-800 dark:text-gray-200">
-                            <tr class="text-left">
-                                <th class="px-4 py-3 font-semibold">NO</th>
-                                <th class="px-4 py-3 font-semibold">TANGGAL</th>
-                                <th class="px-4 py-3 font-semibold">KETERANGAN</th>
-                                <th class="px-4 py-3 font-semibold">NOMINAL / KAS</th>
-                                <th class="px-4 py-3 font-semibold text-center">AKSI</th>
+                    <table class="min-w-full -mt-2 text-base border-separate border-spacing-y-2">
+                        <thead class="sticky top-0 z-10 [&_th]:bg-surface-card dark:[&_th]:bg-gray-800">
+                            <tr class="text-sm font-semibold tracking-wide text-left uppercase text-muted dark:text-gray-300">
+                                <th class="px-4 py-3">Transaksi</th>
+                                <th class="px-4 py-3">Keterangan / Akun</th>
+                                <th class="px-4 py-3">Nominal / Kas</th>
+                                <th class="px-4 py-3 text-center">Aksi</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y text-body divide-hairline dark:divide-gray-700 dark:text-gray-200">
+                        <tbody>
                             @forelse($this->rows as $row)
                                 <tr wire:key="ci-row-{{ $row->tucashk_no }}"
-                                    class="transition hover:bg-surface-soft dark:hover:bg-gray-800/60">
-                                    <td class="px-4 py-3 font-mono text-sm whitespace-nowrap">{{ $row->tucashk_no }}</td>
-                                    <td class="px-4 py-3 text-sm whitespace-nowrap">
-                                        <div>{{ $row->tucashk_date_display ?? '-' }}</div>
-                                        <div class="text-muted-soft">Shift {{ $row->shift ?? '-' }}</div>
+                                    class="transition shadow-sm bg-canvas dark:bg-gray-900 hover:shadow-md hover:bg-surface-soft dark:hover:bg-gray-800 rounded-2xl ring-1 ring-hairline dark:ring-gray-700">
+
+                                    {{-- TRANSAKSI: nomor + tanggal | shift --}}
+                                    <td class="px-6 py-4 space-y-1 align-top whitespace-nowrap">
+                                        <div class="font-mono text-sm font-bold text-blue-600 dark:text-blue-400">
+                                            CI #{{ $row->tucashk_no }}
+                                        </div>
+                                        <div class="text-xs text-muted dark:text-gray-400">
+                                            {{ $row->tucashk_date_display ?? '-' }} | Shift {{ $row->shift ?? '-' }}
+                                        </div>
                                     </td>
-                                    <td class="px-4 py-3 text-sm">
-                                        <div>{{ $row->tucashk_desc ?? '-' }}</div>
-                                        <div class="text-muted-soft">{{ $row->acc_id }} - {{ $row->acc_name ?? '-' }}</div>
+
+                                    {{-- KETERANGAN / AKUN PENERIMAAN --}}
+                                    <td class="px-4 py-4 space-y-1 align-top">
+                                        <div class="text-sm font-semibold text-ink dark:text-gray-100">
+                                            {{ $row->tucashk_desc ?? '-' }}
+                                        </div>
+                                        <div class="text-sm text-body dark:text-gray-300">
+                                            {{ $row->acc_name ?? '-' }}
+                                            <span class="font-mono text-xs text-muted-soft">{{ $row->acc_id }}</span>
+                                        </div>
                                     </td>
-                                    {{-- Nominal, akun kas & petugas digabung satu kolom --}}
-                                    <td class="px-4 py-3 text-sm">
-                                        <div class="font-mono font-semibold whitespace-nowrap text-ink dark:text-gray-100">
+
+                                    {{-- NOMINAL / KAS / PETUGAS --}}
+                                    <td class="px-4 py-4 space-y-1 align-top">
+                                        <div class="font-mono text-base font-bold whitespace-nowrap text-success dark:text-success">
                                             Rp {{ number_format($row->tucashk_nominal ?? 0) }}
                                         </div>
-                                        <div>{{ $row->acc_name_kas ?? '-' }} <span class="text-muted-soft">({{ $row->acc_id_kas }})</span></div>
-                                        <div class="flex flex-wrap items-center gap-1 mt-1 text-muted-soft">
-                                            <span>{{ $row->emp_name ?? $row->emp_id ?? '-' }}</span>
+                                        <div class="text-xs text-muted dark:text-gray-400">
+                                            Kas: <span class="font-medium text-body dark:text-gray-300">{{ $row->acc_name_kas ?? '-' }}</span>
+                                            <span class="font-mono text-muted-soft">({{ $row->acc_id_kas }})</span>
+                                        </div>
+                                        <div class="flex flex-wrap items-center gap-1.5 text-xs text-muted dark:text-gray-400">
+                                            Petugas:
+                                            <span class="font-medium text-success dark:text-success">{{ $row->emp_name ?? $row->emp_id ?? '-' }}</span>
                                             <x-badge variant="success">Posted</x-badge>
                                         </div>
                                     </td>
-                                    <td class="px-4 py-3">
-                                        <div class="flex items-center justify-center gap-1">
+
+                                    {{-- AKSI --}}
+                                    <td class="px-4 py-4 align-top">
+                                        {{-- Edit kiri, Hapus kanan, dipisah garis — jarak lebar supaya tidak salah klik --}}
+                                        <div class="flex items-center justify-between gap-4 mx-auto w-44">
                                             @can('kasTu.koreksi')
                                                 <x-secondary-button type="button"
                                                     wire:click="openEdit('{{ $row->tucashk_no }}')">
                                                     Edit
                                                 </x-secondary-button>
                                             @endcan
+                                            @if (auth()->user()?->can('kasTu.koreksi') && auth()->user()?->can('kasTu.hapus'))
+                                                <span class="w-px h-8 bg-hairline dark:bg-gray-700" aria-hidden="true"></span>
+                                            @endif
                                             @can('kasTu.hapus')
                                                 <x-hapus-button :action="'requestDelete(\'' . $row->tucashk_no . '\')'" title="Hapus Transaksi" message="Yakin ingin menghapus transaksi #{{ $row->tucashk_no }}?" />
                                             @endcan
@@ -212,7 +266,7 @@ new class extends Component {
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="5" class="px-4 py-10 text-center text-muted dark:text-gray-400">
+                                    <td colspan="4" class="px-6 py-16 text-center text-muted dark:text-gray-400">
                                         Tidak ada data penerimaan kas.
                                     </td>
                                 </tr>
