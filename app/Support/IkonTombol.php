@@ -73,7 +73,7 @@ final class IkonTombol
         ],
         'muat-ulang' => [
             'tombol' => 'x-secondary-button; aksi utama satu-satunya di panel → x-primary-button',
-            'label' => 'Muat Ulang, Tarik Data, Sinkron, Replace, Cek Ulang',
+            'label' => 'Muat Ulang, Tarik Data, Sinkron, Replace, Cek Ulang (BUKAN salin — pakai `salin`)',
             'paths' => ['M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15'],
         ],
         'lihat' => [
@@ -178,6 +178,11 @@ final class IkonTombol
             'tombol' => 'x-secondary-button',
             'label' => 'Bantuan, Pelajari lebih lanjut, Panduan',
             'paths' => ['M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'],
+        ],
+        'salin' => [
+            'tombol' => 'x-primary-button bila aksi utama (Copy Resep); pendamping → x-secondary-button',
+            'label' => 'Copy Resep, Copy Asesmen, Salin ke Resep Baru, Salin Data Kunjungan, Salin ke Berkas',
+            'paths' => ['M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z'],
         ],
         'waktu' => [
             'tombol' => 'x-now-button (isian tanggal); lainnya → x-secondary-button',

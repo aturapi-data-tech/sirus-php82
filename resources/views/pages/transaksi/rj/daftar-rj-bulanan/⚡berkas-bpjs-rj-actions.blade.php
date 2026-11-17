@@ -853,7 +853,7 @@ new class extends Component {
                                                 wire:loading.attr="disabled"
                                                 wire:target="generateRadiologi({{ $info['meta']['rad_dtl'] }}, {{ $slot }})"
                                                 class="text-xs">
-                                                <span wire:loading.remove wire:target="generateRadiologi({{ $info['meta']['rad_dtl'] }}, {{ $slot }})" class="inline-flex items-center gap-2"><x-ikon nama="muat-ulang" ukuran="w-3.5 h-3.5" /> {{ $radCopied ? 'Salin ulang' : 'Salin ke Berkas' }}</span>
+                                                <span wire:loading.remove wire:target="generateRadiologi({{ $info['meta']['rad_dtl'] }}, {{ $slot }})" class="inline-flex items-center gap-2"><x-ikon nama="salin" ukuran="w-3.5 h-3.5" /> {{ $radCopied ? 'Salin ulang' : 'Salin ke Berkas' }}</span>
                                                 <span wire:loading wire:target="generateRadiologi({{ $info['meta']['rad_dtl'] }}, {{ $slot }})">...</span>
                                             </x-info-button>
                                         @endif
