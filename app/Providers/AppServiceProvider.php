@@ -74,6 +74,9 @@ class AppServiceProvider extends ServiceProvider
 
         Gate::define('ri.caseManager', fn ($user) => $user->hasAnyRole(AksiRole::RI_CASE_MANAGER));
 
+        Gate::define('kasTu.koreksi', fn ($user) => $user->hasAnyRole(AksiRole::KAS_TU_KOREKSI));
+        Gate::define('kasTu.hapus', fn ($user) => $user->hasAnyRole(AksiRole::KAS_TU_HAPUS));
+
         Gate::define('gudang.opnameMedis', fn ($user) => $user->hasAnyRole(AksiRole::GUDANG_OPNAME_MEDIS));
         Gate::define('gudang.opnameNonMedis', fn ($user) => $user->hasAnyRole(AksiRole::GUDANG_OPNAME_NONMEDIS));
         Gate::define('gudang.transferBatalMedis', fn ($user) => $user->hasAnyRole(AksiRole::GUDANG_TRANSFER_BATAL_MEDIS));
