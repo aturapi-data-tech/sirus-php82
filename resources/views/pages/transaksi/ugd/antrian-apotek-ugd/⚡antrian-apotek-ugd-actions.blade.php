@@ -735,7 +735,7 @@ new class extends Component {
             @endphp
             <div
                 class="sticky bottom-0 z-10 flex flex-wrap items-center justify-between gap-3 px-6 py-4 border-t border-hairline bg-surface-soft rounded-b-xl dark:border-gray-700 dark:bg-gray-900">
-                <x-secondary-button wire:click="closeTelaah">Tutup</x-secondary-button>
+                <x-secondary-button wire:click="closeTelaah"><x-ikon nama="batal" /> Tutup</x-secondary-button>
                 <div class="flex flex-wrap items-center justify-end gap-2">
                     @if ($ttdResep)
                         <span class="flex items-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-300">
@@ -747,7 +747,7 @@ new class extends Component {
                                 title="Buka Kunci Telaah Resep"
                                 message="TTD-E Telaah Resep akan dicabut dan bagian ini bisa diedit lagi. Isian butir tetap. Tindakan dicatat di audit log."
                                 confirmText="Ya, Buka Kunci" cancelText="Batal" class="text-xs gap-1">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 11V7a4 4 0 118 0m-4 8v2m-6-6h12a2 2 0 012 2v6a2 2 0 01-2 2H6a2 2 0 01-2-2v-6a2 2 0 012-2z" /></svg>
+                                <x-ikon nama="buka-kunci" />
                                 Buka Kunci
                             </x-confirm-button>
                         @endcan
@@ -762,7 +762,7 @@ new class extends Component {
                                 title="Buka Kunci Telaah Obat"
                                 message="TTD-E Telaah Obat akan dicabut dan bagian ini bisa diedit lagi. Isian butir tetap. Tindakan dicatat di audit log."
                                 confirmText="Ya, Buka Kunci" cancelText="Batal" class="text-xs gap-1">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 11V7a4 4 0 118 0m-4 8v2m-6-6h12a2 2 0 012 2v6a2 2 0 01-2 2H6a2 2 0 01-2-2v-6a2 2 0 012-2z" /></svg>
+                                <x-ikon nama="buka-kunci" />
                                 Buka Kunci
                             </x-confirm-button>
                         @endcan
@@ -770,7 +770,7 @@ new class extends Component {
                     @if (!$ttdResep || !$ttdObat)
                         <x-outline-button wire:click="saveTelaah" wire:loading.attr="disabled">
                             <span wire:loading.remove wire:target="saveTelaah" class="flex items-center gap-1.5">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
+                                <x-ikon nama="simpan" />
                                 Simpan Telaah
                             </span>
                             <span wire:loading wire:target="saveTelaah" class="flex items-center gap-1.5"><x-loading /> Menyimpan...</span>
@@ -779,7 +779,7 @@ new class extends Component {
                             @if (!$ttdResep)
                                 <x-success-button wire:click="ttdTelaahResep" wire:loading.attr="disabled">
                                     <span wire:loading.remove wire:target="ttdTelaahResep" class="flex items-center gap-1.5">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6.536-6.536a2.5 2.5 0 113.536 3.536L12.536 16.536a4 4 0 01-1.414.95L7 19l1.514-4.122A4 4 0 019 13z" /></svg>
+                                        <x-ikon nama="ttd" />
                                         TTD-E Telaah Resep
                                     </span>
                                     <span wire:loading wire:target="ttdTelaahResep" class="flex items-center gap-1.5"><x-loading /> Proses TTD...</span>
@@ -788,7 +788,7 @@ new class extends Component {
                             @if (!$ttdObat)
                                 <x-info-button wire:click="ttdTelaahObat" wire:loading.attr="disabled">
                                     <span wire:loading.remove wire:target="ttdTelaahObat" class="flex items-center gap-1.5">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6.536-6.536a2.5 2.5 0 113.536 3.536L12.536 16.536a4 4 0 01-1.414.95L7 19l1.514-4.122A4 4 0 019 13z" /></svg>
+                                        <x-ikon nama="ttd" />
                                         TTD-E Telaah Obat &amp; Selesai
                                     </span>
                                     <span wire:loading wire:target="ttdTelaahObat" class="flex items-center gap-1.5"><x-loading /> Proses TTD...</span>

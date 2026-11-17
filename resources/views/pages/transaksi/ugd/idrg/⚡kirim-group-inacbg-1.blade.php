@@ -109,7 +109,7 @@ new class extends Component {
         <x-primary-button type="button" wire:click="group" wire:loading.attr="disabled"
             :disabled="!$idrgFinal || $inacbgFinal"
             class="!bg-brand hover:!bg-brand/90 min-w-[240px] {{ !empty($inacbgStage1) ? '!bg-emerald-600' : '' }}">
-            <span wire:loading.remove wire:target="group">{{ !empty($inacbgStage1) ? 'Grouping Ulang INACBG Stage 1' : 'Grouping INACBG Stage 1' }}</span>
+            <span wire:loading.remove wire:target="group" class="inline-flex items-center gap-2"><x-ikon nama="muat-ulang" /> {{ !empty($inacbgStage1) ? 'Grouping Ulang INACBG Stage 1' : 'Grouping INACBG Stage 1' }}</span>
             <span wire:loading wire:target="group"><x-loading />...</span>
         </x-primary-button>
     </div>

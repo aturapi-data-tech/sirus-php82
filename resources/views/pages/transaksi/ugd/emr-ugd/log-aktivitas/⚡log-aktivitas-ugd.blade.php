@@ -162,7 +162,7 @@ new class extends Component {
             {{-- FOOTER --}}
             <div class="sticky bottom-0 z-10 px-6 py-4 bg-canvas border-t border-hairline dark:bg-gray-900 dark:border-gray-700">
                 <div class="flex justify-end gap-3">
-                    <x-secondary-button wire:click="closeModal">Tutup</x-secondary-button>
+                    <x-secondary-button wire:click="closeModal"><x-ikon nama="batal" /> Tutup</x-secondary-button>
                 </div>
             </div>
 

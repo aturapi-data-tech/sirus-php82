@@ -978,7 +978,7 @@ new class extends Component {
                                     <x-primary-button type="button" wire:click="addLevelingDokter"
                                         wire:loading.attr="disabled" wire:target="addLevelingDokter"
                                         :disabled="empty($levelingDokter['drId'])" class="w-full justify-center gap-1">
-                                        <span wire:loading.remove wire:target="addLevelingDokter">Tambah</span>
+                                        <span wire:loading.remove wire:target="addLevelingDokter" class="inline-flex items-center gap-2"><x-ikon nama="tambah" /> Tambah</span>
                                         <span wire:loading wire:target="addLevelingDokter"><x-loading
                                                 class="w-4 h-4" /></span>
                                     </x-primary-button>
@@ -1207,7 +1207,7 @@ new class extends Component {
                         </div>
                         <x-primary-button wire:click.prevent="addAlatTerpasang" wire:loading.attr="disabled"
                             wire:target="addAlatTerpasang" class="mb-3 gap-2">
-                            <span wire:loading.remove wire:target="addAlatTerpasang">Tambah Alat</span>
+                            <span wire:loading.remove wire:target="addAlatTerpasang" class="inline-flex items-center gap-2"><x-ikon nama="tambah" /> Tambah Alat</span>
                             <span wire:loading wire:target="addAlatTerpasang"><x-loading class="w-4 h-4" /></span>
                         </x-primary-button>
                     @endif
@@ -1284,16 +1284,13 @@ new class extends Component {
             @if ($dokumenTermuat)
                 <div class="sticky bottom-0 z-10 px-6 py-3 bg-canvas border-t border-hairline dark:bg-gray-900 dark:border-gray-700">
                     <div class="flex flex-col gap-3 sm:flex-row sm:justify-end">
-                        <x-secondary-button type="button" wire:click="closeModal" class="min-w-[120px] justify-center">Tutup</x-secondary-button>
+                        <x-secondary-button type="button" wire:click="closeModal" class="min-w-[120px] justify-center"><x-ikon nama="batal" /> Tutup</x-secondary-button>
                         <x-cetak-button wire:click="cetakTrfPasienUgd" class="min-w-[160px]" label="Cetak Form Transfer" />
                         @if (!$isFormLocked)
                             <x-primary-button wire:click.prevent="save" wire:loading.attr="disabled" wire:target="save"
                                 class="gap-2 min-w-[160px] justify-center">
                                 <span wire:loading.remove wire:target="save" class="flex items-center gap-2">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                                        stroke-width="2">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-                                    </svg>
+                                    <x-ikon nama="simpan" />
                                     Simpan Form Transfer
                                 </span>
                                 <span wire:loading wire:target="save"><x-loading class="w-4 h-4" /> Menyimpan...</span>

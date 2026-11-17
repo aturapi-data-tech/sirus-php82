@@ -1133,10 +1133,7 @@ new class extends Component {
                                 <x-primary-button type="button" wire:click="addBarisObat" wire:loading.attr="disabled"
                                     wire:target="addBarisObat" class="justify-center gap-1.5 w-full">
                                     <span wire:loading.remove wire:target="addBarisObat" class="flex items-center gap-1.5">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2"
-                                            viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
-                                        </svg>
+                                        <x-ikon nama="tambah" />
                                         Tambah Obat
                                     </span>
                                     <span wire:loading wire:target="addBarisObat" class="flex items-center gap-1.5">

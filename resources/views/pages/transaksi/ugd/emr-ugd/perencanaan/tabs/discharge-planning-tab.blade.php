@@ -53,7 +53,7 @@
                         </div>
                     </div>
                     <x-ghost-button type="button" wire:click="tambahPelayanan" wire:loading.attr="disabled"
-                        :disabled="$isFormLocked" class="text-xs">+ Tambah Pelayanan</x-ghost-button>
+                        :disabled="$isFormLocked" class="text-xs"><x-ikon nama="tambah" ukuran="w-3.5 h-3.5" /> Tambah Pelayanan</x-ghost-button>
                 </div>
 
                 @php
@@ -147,7 +147,7 @@
                         </div>
                     </div>
                     <x-ghost-button type="button" wire:click="tambahAlat" wire:loading.attr="disabled"
-                        :disabled="$isFormLocked" class="text-xs">+ Tambah Alat Bantu</x-ghost-button>
+                        :disabled="$isFormLocked" class="text-xs"><x-ikon nama="tambah" ukuran="w-3.5 h-3.5" /> Tambah Alat Bantu</x-ghost-button>
                 </div>
 
                 @php

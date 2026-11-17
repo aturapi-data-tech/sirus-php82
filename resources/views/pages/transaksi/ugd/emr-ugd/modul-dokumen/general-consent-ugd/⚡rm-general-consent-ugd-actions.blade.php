@@ -584,7 +584,8 @@ new class extends Component {
                             <div class="flex justify-end">
                                 <x-primary-button type="button" wire:click="addPihakInfo"
                                     class="text-sm py-1 px-2">
-                                    + Tambah
+                                    <x-ikon nama="tambah" />
+                                    Tambah
                                 </x-primary-button>
                             </div>
                         @endif
@@ -732,6 +733,7 @@ new class extends Component {
                 class="sticky bottom-0 z-10 px-6 py-4 bg-canvas border-t border-hairline dark:bg-gray-900 dark:border-gray-700">
                 <div class="flex flex-wrap items-center justify-end gap-3">
                     <x-secondary-button wire:click="closeModal">
+                        <x-ikon nama="batal" />
                         Tutup
                     </x-secondary-button>
 
@@ -746,7 +748,7 @@ new class extends Component {
                                     message="TTD petugas akan dicabut & form dapat diedit kembali. Lanjutkan?"
                                     confirmText="Ya, Buka Kunci"
                                     class="gap-1.5">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-8 4h10a2 2 0 012 2v5a2 2 0 01-2 2H8a2 2 0 01-2-2v-5a2 2 0 012-2z" /></svg>
+                                    <x-ikon nama="buka-kunci" ukuran="w-5 h-5" />
                                     Buka Kunci
                                 </x-confirm-button>
                             @endcan
@@ -755,7 +757,7 @@ new class extends Component {
                         @if (!$isFormLocked)
                             <x-primary-button wire:click.prevent="save" wire:loading.attr="disabled"
                                 wire:target="save" class="gap-2 min-w-[160px] justify-center">
-                                <span wire:loading.remove wire:target="save">Simpan General Consent</span>
+                                <span wire:loading.remove wire:target="save" class="inline-flex items-center gap-2"><x-ikon nama="simpan" /> Simpan General Consent</span>
                                 <span wire:loading wire:target="save"><x-loading class="w-4 h-4" />
                                     Menyimpan...</span>
                             </x-primary-button>

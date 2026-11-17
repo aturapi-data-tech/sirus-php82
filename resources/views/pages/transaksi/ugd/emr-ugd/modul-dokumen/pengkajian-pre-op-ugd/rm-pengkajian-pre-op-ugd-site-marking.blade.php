@@ -68,8 +68,8 @@
                                         <h3 class="text-base font-semibold text-ink dark:text-gray-200">Diagram Penandaan Lokasi</h3>
                                         @if (!$formReadOnly)
                                             <div class="flex gap-2">
-                                                <x-secondary-button type="button" wire:click="undoMark" class="text-sm py-1 px-2">Hapus tanda terakhir</x-secondary-button>
-                                                <x-outline-button type="button" wire:click="clearMarks" wire:confirm="Bersihkan semua tanda?" class="!px-2 !py-1 text-sm">Bersihkan</x-outline-button>
+                                                <x-secondary-button type="button" wire:click="undoMark" class="text-sm py-1 px-2"><x-ikon nama="kembalikan" /> Hapus tanda terakhir</x-secondary-button>
+                                                <x-outline-button type="button" wire:click="clearMarks" wire:confirm="Bersihkan semua tanda?" class="!px-2 !py-1 text-sm"><x-ikon nama="kembalikan" /> Bersihkan</x-outline-button>
                                             </div>
                                         @endif
                                     </div>

@@ -455,11 +455,11 @@ new class extends Component {
                         <p class="flex items-center gap-1.5 mr-auto text-sm text-muted dark:text-gray-400">
                             Pilih jenis, isi keterangan, pilih berkas, lalu <strong>Upload Berkas</strong>.
                         </p>
-                        <x-secondary-button type="button" wire:click="kembaliKeDaftar">Kembali ke Daftar</x-secondary-button>
+                        <x-secondary-button type="button" wire:click="kembaliKeDaftar"><x-ikon nama="kembali" /> Kembali ke Daftar</x-secondary-button>
                         @unless ($isFormLocked)
                             <x-primary-button type="button" wire:click="uploadBerkas" wire:loading.attr="disabled"
                                 wire:target="uploadBerkas,fileBerkas" class="gap-2 min-w-[160px] justify-center">
-                                <span wire:loading.remove wire:target="uploadBerkas,fileBerkas">Upload Berkas</span>
+                                <span wire:loading.remove wire:target="uploadBerkas,fileBerkas" class="inline-flex items-center gap-2"><x-ikon nama="unggah" /> Upload Berkas</span>
                                 <span wire:loading wire:target="uploadBerkas,fileBerkas"><x-loading class="w-4 h-4" /> Mengupload...</span>
                             </x-primary-button>
                         @endunless
@@ -469,13 +469,11 @@ new class extends Component {
                         <p class="flex items-center gap-1.5 mr-auto text-sm text-muted dark:text-gray-400">
                             Satu baris = satu berkas. <strong>Upload Berkas Baru</strong> untuk menambah.
                         </p>
-                        <x-secondary-button type="button" wire:click="closeModal">Tutup</x-secondary-button>
+                        <x-secondary-button type="button" wire:click="closeModal"><x-ikon nama="batal" /> Tutup</x-secondary-button>
                         @unless ($isFormLocked)
                             <x-primary-button type="button" wire:click="tambahEntri" wire:target="tambahEntri"
                                 wire:loading.attr="disabled" class="gap-1.5 min-w-[150px] justify-center">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                                </svg>
+                                <x-ikon nama="unggah" ukuran="w-5 h-5" />
                                 Upload Berkas Baru
                             </x-primary-button>
                         @endunless
@@ -501,7 +499,7 @@ new class extends Component {
             </div>
             <div class="px-6 py-4 border-t shrink-0 bg-canvas border-hairline dark:bg-gray-900 dark:border-gray-700">
                 <div class="flex justify-end">
-                    <x-secondary-button type="button" wire:click="tutupLihatBerkas">Tutup</x-secondary-button>
+                    <x-secondary-button type="button" wire:click="tutupLihatBerkas"><x-ikon nama="batal" /> Tutup</x-secondary-button>
                 </div>
             </div>
         </div>

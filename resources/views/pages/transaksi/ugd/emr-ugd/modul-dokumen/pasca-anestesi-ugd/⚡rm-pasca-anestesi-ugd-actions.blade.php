@@ -953,7 +953,7 @@ new class extends Component {
                                     <div class="flex flex-col col-span-2 xl:col-span-4">
                                         <x-primary-button type="button" wire:click.prevent="addObservasi" wire:loading.attr="disabled" wire:target="addObservasi"
                                             class="justify-center w-full gap-1.5">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                                            <x-ikon nama="tambah" />
                                             Tambah observasi
                                         </x-primary-button>
                                     </div>

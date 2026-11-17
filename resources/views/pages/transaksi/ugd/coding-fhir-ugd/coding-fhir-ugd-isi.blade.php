@@ -93,6 +93,6 @@
 
                 {{-- FOOTER --}}
                 <div class="sticky bottom-0 z-10 flex justify-end gap-2 px-6 py-2 border-t bg-canvas border-hairline dark:bg-gray-900 dark:border-gray-700">
-                    <x-secondary-button type="button" x-on:click="$dispatch('coding-fhir-ugd-tutup')">Tutup</x-secondary-button>
-                    <x-primary-button type="button" wire:click="simpan">Simpan Coding</x-primary-button>
+                    <x-secondary-button type="button" x-on:click="$dispatch('coding-fhir-ugd-tutup')"><x-ikon nama="batal" /> Tutup</x-secondary-button>
+                    <x-primary-button type="button" wire:click="simpan"><x-ikon nama="simpan" /> Simpan Coding</x-primary-button>
                 </div>

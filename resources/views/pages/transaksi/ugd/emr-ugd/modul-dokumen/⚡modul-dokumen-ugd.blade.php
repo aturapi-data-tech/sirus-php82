@@ -570,16 +570,12 @@ new class extends Component {
             <div
                 class="sticky bottom-0 z-10 px-6 py-4 border-t bg-canvas border-hairline dark:bg-gray-900 dark:border-gray-700">
                 <div class="flex justify-end gap-3">
-                    <x-secondary-button wire:click="closeModal">Tutup</x-secondary-button>
+                    <x-secondary-button wire:click="closeModal"><x-ikon nama="batal" /> Tutup</x-secondary-button>
                     {{-- @if (!$isFormLocked)
                         <x-primary-button wire:click.prevent="save()" class="min-w-[120px]"
                             wire:loading.attr="disabled">
                             <span wire:loading.remove>
-                                <svg class="inline w-4 h-4 mr-1 -ml-1" fill="none" stroke="currentColor"
-                                    viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1-4l-4 4-4-4m4 4V4" />
-                                </svg>
+                                <x-ikon nama="simpan" class="inline mr-1 -ml-1" />
                                 Simpan
                             </span>
                             <span wire:loading><x-loading /> Menyimpan...</span>

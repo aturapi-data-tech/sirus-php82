@@ -870,12 +870,14 @@ new class extends Component {
                 </div>
                 <div class="flex items-center gap-3">
                     <x-secondary-button type="button" wire:click="closeModal">
+                        <x-ikon nama="batal" />
                         Batal
                     </x-secondary-button>
                     @if ($transferRoomId && $transferBedNo)
                         <x-confirm-button variant="warning" :action="'transferKeRI()'" title="Transfer ke RI"
                             message="Yakin ingin mentransfer biaya UGD (Rp {{ number_format($totalBiayaUGD) }}) ke Rawat Inap? Pasien akan masuk ruangan {{ $transferRoomName }} bed {{ $transferBedNo }}."
                             confirmText="Ya, transfer" cancelText="Batal">
+                            <x-ikon nama="setujui" />
                             Konfirmasi Transfer ke RI
                         </x-confirm-button>
                     @endif

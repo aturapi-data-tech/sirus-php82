@@ -124,10 +124,7 @@ new class extends Component {
         <x-primary-button type="button" wire:click="openModal" wire:loading.attr="disabled" wire:target="openModal"
             :disabled="$disabled">
             <span wire:loading.remove wire:target="openModal" class="flex items-center gap-1.5">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M12 4v16m8-8H4" />
-                </svg>
+                <x-ikon nama="tambah" />
                 Order Laboratorium Luar
             </span>
             <span wire:loading wire:target="openModal" class="flex items-center gap-1.5">
@@ -167,10 +164,10 @@ new class extends Component {
             </div>
 
             <div class="flex items-center justify-end gap-2 px-6 py-3 border-t border-hairline dark:border-gray-700 bg-surface-soft dark:bg-gray-900/40">
-                <x-secondary-button type="button" wire:click="closeModal">Batal</x-secondary-button>
+                <x-secondary-button type="button" wire:click="closeModal"><x-ikon nama="batal" /> Batal</x-secondary-button>
                 <x-primary-button type="button" wire:click="kirimOrderLabLuar" wire:loading.attr="disabled"
                     wire:target="kirimOrderLabLuar">
-                    <span wire:loading.remove wire:target="kirimOrderLabLuar">Kirim Order</span>
+                    <span wire:loading.remove wire:target="kirimOrderLabLuar" class="inline-flex items-center gap-2"><x-ikon nama="kirim" /> Kirim Order</span>
                     <span wire:loading wire:target="kirimOrderLabLuar" class="flex items-center gap-1.5">
                         <x-loading /> Mengirim...
                     </span>

@@ -261,9 +261,7 @@ new class extends Component {
     <x-primary-button type="button" wire:click="openModal" :disabled="$disabled" wire:loading.attr="disabled"
         wire:target="openModal">
         <span wire:loading.remove wire:target="openModal" class="flex items-center gap-1.5">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-            </svg>
+            <x-ikon nama="kirim" />
             Kirim ke Kamar Operasi
         </span>
         <span wire:loading wire:target="openModal" class="flex items-center gap-1.5">
@@ -376,10 +374,10 @@ new class extends Component {
 
             {{-- FOOTER --}}
             <div class="flex items-center justify-end gap-2 px-6 py-4 border-t shrink-0 border-hairline dark:border-gray-700">
-                <x-secondary-button type="button" wire:click="closeModal">Batal</x-secondary-button>
+                <x-secondary-button type="button" wire:click="closeModal"><x-ikon nama="batal" /> Batal</x-secondary-button>
                 <x-primary-button type="button" wire:click="kirimKamarOperasi" wire:loading.attr="disabled"
                     wire:target="kirimKamarOperasi">
-                    <span wire:loading.remove wire:target="kirimKamarOperasi">Kirim ke Kamar Operasi</span>
+                    <span wire:loading.remove wire:target="kirimKamarOperasi" class="inline-flex items-center gap-2"><x-ikon nama="kirim" /> Kirim ke Kamar Operasi</span>
                     <span wire:loading wire:target="kirimKamarOperasi" class="flex items-center gap-1.5">
                         <x-loading /> Mengirim...
                     </span>
