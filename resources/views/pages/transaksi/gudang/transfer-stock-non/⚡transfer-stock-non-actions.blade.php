@@ -624,10 +624,11 @@ new class extends Component {
                                             x-on:keydown.enter.prevent="$wire.addDetail()" />
                                     </div>
                                     <div class="flex items-end sm:col-span-2">
-                                        <x-primary-button type="button" wire:click="addDetail"
+                                        <x-secondary-button type="button" wire:click="addDetail"
                                             class="w-full whitespace-nowrap">
-                                            + Masukkan
-                                        </x-primary-button>
+                                            <x-ikon nama="tambah" />
+                                            Masukkan
+                                        </x-secondary-button>
                                     </div>
                                 </div>
 
@@ -694,6 +695,7 @@ new class extends Component {
                                     title="Batalkan Transaksi"
                                     message="Yakin batalkan transaksi ini? Mutasi stok di Kartu Stock akan dikembalikan (saldo asal & tujuan kembali seperti sebelum diproses)."
                                     confirmText="Ya, batalkan" cancelText="Batal">
+                                    <x-ikon nama="batalkan" />
                                     Batal Transaksi
                                 </x-confirm-button>
                             @endcan
@@ -708,24 +710,26 @@ new class extends Component {
                                     title="Hapus Transfer"
                                     message="Yakin hapus transfer ini? Header & semua barang di daftar akan dihapus permanen — hanya transfer yang belum diproses."
                                     confirmText="Ya, hapus" cancelText="Batal">
+                                    <x-ikon nama="hapus" />
                                     Hapus Transfer
                                 </x-confirm-button>
                             @endcan
                         @endif
 
                         @unless ($this->isReadonly)
-                            <x-outline-button type="button" wire:click="saveDraft" wire:loading.attr="disabled">
-                                <span wire:loading.remove wire:target="saveDraft">Simpan Sementara</span>
+                            <x-secondary-button type="button" wire:click="saveDraft" wire:loading.attr="disabled">
+                                <span wire:loading.remove wire:target="saveDraft" class="inline-flex items-center gap-2"><x-ikon nama="simpan" /> Simpan Sementara</span>
                                 <span wire:loading wire:target="saveDraft">Menyimpan...</span>
-                            </x-outline-button>
+                            </x-secondary-button>
                             <x-confirm-button variant="primary" action="postTransfer()" title="Proses Transfer Stok"
                                 message="Yakin proses transfer ini? Stok di lokasi asal & tujuan akan langsung tercatat di Kartu Stock."
                                 confirmText="Ya, proses" cancelText="Batal">
+                                <x-ikon nama="proses" />
                                 Proses Stok
                             </x-confirm-button>
                         @endunless
 
-                        <x-secondary-button type="button" wire:click="closeModal">Tutup</x-secondary-button>
+                        <x-secondary-button type="button" wire:click="closeModal"><x-ikon nama="batal" /> Tutup</x-secondary-button>
                     </div>
                 </div>
             </div>

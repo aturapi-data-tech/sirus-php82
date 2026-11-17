@@ -1036,10 +1036,12 @@ new class extends Component {
                                 <div class="flex gap-2 shrink-0">
                                     <x-primary-button type="button" wire:click="confirmUpdateHarga"
                                         class="!py-1 !px-3 text-sm">
+                                        <x-ikon nama="simpan" />
                                         Ya, Update
                                     </x-primary-button>
                                     <x-secondary-button type="button" wire:click="skipUpdateHarga"
                                         class="!py-1 !px-3 text-sm">
+                                        <x-ikon nama="batal" />
                                         Tidak
                                     </x-secondary-button>
                                 </div>
@@ -1212,6 +1214,7 @@ new class extends Component {
                                 <x-confirm-button variant="danger" action="batalCurrentRcv()"
                                     title="Batalkan Transaksi" :message="$batalMsg"
                                     confirmText="Ya, batalkan" cancelText="Tidak">
+                                    <x-ikon nama="batalkan" />
                                     Batalkan Transaksi
                                 </x-confirm-button>
                             @endif
@@ -1225,14 +1228,10 @@ new class extends Component {
 
                     {{-- KANAN: Tutup + Bayar --}}
                     <div class="flex flex-wrap justify-end gap-2">
-                        <x-secondary-button type="button" wire:click="closeModal">Tutup</x-secondary-button>
+                        <x-secondary-button type="button" wire:click="closeModal"><x-ikon nama="batal" /> Tutup</x-secondary-button>
                         <x-primary-button type="button" wire:click="openBayar"
                             :disabled="count($details) === 0 || ($formMode === 'edit' && $rcvStatus !== 'A')">
-                            <svg class="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                                stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round"
-                                    d="M3 10h18M5 10V6a2 2 0 012-2h10a2 2 0 012 2v4M5 10v10a2 2 0 002 2h10a2 2 0 002-2V10" />
-                            </svg>
+                            <x-ikon nama="proses" class="mr-1" />
                             Proses Pembayaran
                         </x-primary-button>
                     </div>
@@ -1291,12 +1290,7 @@ new class extends Component {
                     </div>
                     <x-secondary-button type="button" wire:click="closeBayar" class="!p-2">
                         <span class="sr-only">Close</span>
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20"
-                            fill="currentColor">
-                            <path fill-rule="evenodd"
-                                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                                clip-rule="evenodd" />
-                        </svg>
+                        <x-ikon nama="batal" />
                     </x-secondary-button>
                 </div>
             </div>
@@ -1451,11 +1445,12 @@ new class extends Component {
             {{-- Footer modal bayar --}}
             <div class="sticky bottom-0 z-10 flex justify-end gap-2 px-6 py-4 mt-auto bg-surface-soft border-t border-hairline dark:bg-gray-800/50 dark:border-gray-700">
                 <x-secondary-button type="button" wire:click="closeBayar">
+                    <x-ikon nama="batal" />
                     Batal
                 </x-secondary-button>
                 <x-primary-button type="button" wire:click="simpan" wire:loading.attr="disabled"
                     x-ref="btnSaveRcv">
-                    <span wire:loading.remove>Simpan &amp; Posting</span>
+                    <span wire:loading.remove class="inline-flex items-center gap-2"><x-ikon nama="simpan" /> Simpan &amp; Posting</span>
                     <span wire:loading><x-loading /> Menyimpan...</span>
                 </x-primary-button>
             </div>

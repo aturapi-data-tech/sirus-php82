@@ -650,6 +650,7 @@ new class extends Component {
                                         cancelText="Batal"
                                         :disabled="!$isCurrentYear || $editSaldo !== '1' || $stockFisik === null"
                                         class="w-full justify-center">
+                                        <x-ikon nama="simpan" />
                                         Simpan Opname
                                     </x-confirm-button>
                                 </div>

@@ -609,6 +609,9 @@ memakai katalog (164 tombol; 2 tombol pilihan Kamar sengaja tanpa ikon).
   info → outline, Evaluasi (analisa perputaran obat) secondary → outline. "Transaksi Baru" di
   pembayaran hutang/topup = mengosongkan supplier → ikon `kembalikan`. Tombol ◀ ▶ pindah bulan
   (Buku Besar, Laba Rugi) sudah berupa simbol, dibiarkan.
+- 2026-11-17 **Gudang** (45 tombol, sebelumnya 0 berikon): 37 ikon dipasang, 8 SVG manual diganti.
+  Komponen: baris tabel Edit/Ubah Data → secondary, Lihat/Lihat Data → outline, Hapus → danger-soft;
+  "+ Masukkan" (tambah baris barang) → secondary; Simpan Sementara (pendamping Proses Stok) → secondary.
 
 Area lain menyusul per modul: pasang ikon + samakan komponen + ganti SVG manual sekaligus.
 

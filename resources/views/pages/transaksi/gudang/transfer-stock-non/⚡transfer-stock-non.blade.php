@@ -154,10 +154,7 @@ new class extends Component {
                         </div>
                         <x-primary-button type="button" wire:click="openCreate" class="whitespace-nowrap"
                             title="Buat transfer non-medis baru">
-                            <svg class="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                                stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
-                            </svg>
+                            <x-ikon nama="tambah" class="mr-1" />
                             Buat Transfer Baru
                         </x-primary-button>
                     </div>
@@ -220,22 +217,25 @@ new class extends Component {
                                     <td class="px-4 py-3">
                                         <div class="flex flex-wrap gap-2">
                                             @if ($editable)
-                                                <x-outline-button type="button"
+                                                <x-secondary-button type="button"
                                                     wire:click="openEdit({{ $row->trf_no }})">
+                                                    <x-ikon nama="ubah" />
                                                     Edit / Proses
-                                                </x-outline-button>
-                                                <x-confirm-button variant="danger"
+                                                </x-secondary-button>
+                                                <x-confirm-button variant="danger-soft"
                                                     :action="'requestBatal(' . $row->trf_no . ')'"
                                                     title="Hapus Transfer"
                                                     message="Yakin hapus transfer #{{ $row->trf_no }}? Header & detail akan dihapus permanen — hanya draft yang bisa dihapus."
                                                     confirmText="Ya, hapus" cancelText="Tidak">
+                                                    <x-ikon nama="hapus" />
                                                     Hapus
                                                 </x-confirm-button>
                                             @else
-                                                <x-secondary-button type="button"
+                                                <x-outline-button type="button"
                                                     wire:click="openEdit({{ $row->trf_no }})">
+                                                    <x-ikon nama="lihat" />
                                                     Lihat
-                                                </x-secondary-button>
+                                                </x-outline-button>
                                             @endif
                                         </div>
                                     </td>
