@@ -200,13 +200,15 @@ new class extends Component {
                                     </td>
                                     <td class="px-4 py-3">
                                         <div class="flex items-center justify-center gap-1">
-                                            <x-secondary-button type="button"
-                                                wire:click="openEdit('{{ $row->tucashk_no }}')">
-                                                Edit
-                                            </x-secondary-button>
-                                            @hasanyrole('Admin|Tu')
+                                            @can('kasTu.koreksi')
+                                                <x-secondary-button type="button"
+                                                    wire:click="openEdit('{{ $row->tucashk_no }}')">
+                                                    Edit
+                                                </x-secondary-button>
+                                            @endcan
+                                            @can('kasTu.hapus')
                                                 <x-hapus-button :action="'requestDelete(\'' . $row->tucashk_no . '\')'" title="Hapus Transaksi" message="Yakin ingin menghapus transaksi #{{ $row->tucashk_no }}?" />
-                                            @endhasanyrole
+                                            @endcan
                                         </div>
                                     </td>
                                 </tr>

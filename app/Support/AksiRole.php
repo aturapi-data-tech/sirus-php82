@@ -194,6 +194,15 @@ class AksiRole
      */
     public const RI_CASE_MANAGER = ['Perawat', 'Admin'];
 
+    /**
+     * Koreksi (Edit) transaksi Penerimaan & Pengeluaran Kas TU (rstxn_tucashds / rstxn_tucashks).
+     * Manager ke atas saja (keputusan user 2026-11-17) — entri baru tetap boleh petugas kas.
+     */
+    public const KAS_TU_KOREKSI = ['Admin', 'Manager Umum', 'Manager Medis'];
+
+    /** Hapus transaksi Penerimaan & Pengeluaran Kas TU — manager ke atas (keputusan user 2026-11-17). */
+    public const KAS_TU_HAPUS = ['Admin', 'Manager Umum', 'Manager Medis'];
+
     /* ─────────────────────────────── GUDANG ─────────────────────────────── */
 
     /**

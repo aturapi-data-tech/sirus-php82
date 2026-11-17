@@ -22,6 +22,7 @@ new class extends Component {
         'accIdKas' => '',
         'accNameKas' => '',
         'tucashkDate' => '',
+        'shift' => '',
         'tucashkDesc' => '',
         'tucashkNominal' => '',
     ];
@@ -29,7 +30,7 @@ new class extends Component {
     public function mount(): void
     {
         $this->registerAreas($this->renderAreas);
-        $this->formEntry['tucashkDate'] = Carbon::now()->format('d/m/Y H:i:s');
+        $this->isiTanggalDanShiftSekarang();
     }
 
     /* ===============================
@@ -60,6 +61,7 @@ new class extends Component {
             'formEntry.accId' => 'bail|required|string',
             'formEntry.accIdKas' => 'bail|required|string',
             'formEntry.tucashkDate' => 'bail|required|date_format:d/m/Y H:i:s',
+            'formEntry.shift' => 'bail|required|in:1,2,3',
             'formEntry.tucashkDesc' => 'bail|required|string|min:3|max:100',
             'formEntry.tucashkNominal' => 'bail|required|integer|min:1',
         ];
@@ -72,6 +74,8 @@ new class extends Component {
             'formEntry.accIdKas.required' => 'Akun kas wajib dipilih.',
             'formEntry.tucashkDate.required' => 'Tanggal wajib diisi.',
             'formEntry.tucashkDate.date_format' => 'Format tanggal harus dd/mm/yyyy hh:mm:ss.',
+            'formEntry.shift.required' => 'Shift wajib dipilih.',
+            'formEntry.shift.in' => 'Shift harus 1, 2, atau 3.',
             'formEntry.tucashkDesc.required' => 'Keterangan wajib diisi.',
             'formEntry.tucashkDesc.min' => 'Keterangan minimal 3 karakter.',
             'formEntry.tucashkDesc.max' => 'Keterangan maksimal 100 karakter.',
@@ -106,6 +110,13 @@ new class extends Component {
         return (string) ($shift?->shift ?? 1);
     }
 
+    /** Default entri baru: tanggal & shift dari jam sekarang — shift tetap bisa dipilih manual. */
+    protected function isiTanggalDanShiftSekarang(): void
+    {
+        $this->formEntry['tucashkDate'] = Carbon::now()->format('d/m/Y H:i:s');
+        $this->formEntry['shift'] = $this->shiftSekarang();
+    }
+
     /** Kembalikan emp_id petugas, atau null bila profil user belum lengkap. */
     protected function petugasSiap(): ?string
     {
@@ -123,9 +134,10 @@ new class extends Component {
         return (string) $empId;
     }
 
-    protected function bolehKoreksi(?string $status): bool
+    /** Koreksi transaksi kas TU: manager ke atas saja (Gate kasTu.koreksi), apa pun statusnya. */
+    protected function bolehKoreksi(): bool
     {
-        return $status !== 'L' || auth()->user()->hasAnyRole(['Admin', 'Tu']);
+        return (bool) auth()->user()?->can('kasTu.koreksi');
     }
 
     /* ===============================
@@ -136,7 +148,7 @@ new class extends Component {
     {
         $this->editingNo = null;
         $this->reset(['formEntry']);
-        $this->formEntry['tucashkDate'] = Carbon::now()->format('d/m/Y H:i:s');
+        $this->isiTanggalDanShiftSekarang();
         $this->resetValidation();
         $this->incrementVersion('modal');
 
@@ -148,7 +160,7 @@ new class extends Component {
     {
         $this->editingNo = null;
         $this->reset(['formEntry']);
-        $this->formEntry['tucashkDate'] = Carbon::now()->format('d/m/Y H:i:s');
+        $this->isiTanggalDanShiftSekarang();
         $this->resetValidation();
         $this->resetVersion();
 
@@ -172,7 +184,8 @@ new class extends Component {
             return;
         }
 
-        $shift = $this->shiftSekarang();
+        // Shift dari isian form (default jam sekarang saat entri baru, nilai tersimpan saat koreksi).
+        $shift = $this->formEntry['shift'];
         $tanggal = $this->formEntry['tucashkDate'];
 
         try {
@@ -210,13 +223,14 @@ new class extends Component {
             return;
         }
 
-        if (!$this->bolehKoreksi($row->tucashk_status)) {
-            $this->dispatch('toast', type: 'warning', message: 'Transaksi sudah diposting — hanya Admin/TU yang dapat mengoreksi.');
+        if (!$this->bolehKoreksi()) {
+            $this->dispatch('toast', type: 'warning', message: 'Hanya Manager ke atas yang dapat mengoreksi transaksi kas.');
             $this->closeModal();
             return;
         }
 
-        $shift = $this->shiftSekarang();
+        // Shift dari isian form (default jam sekarang saat entri baru, nilai tersimpan saat koreksi).
+        $shift = $this->formEntry['shift'];
         $tanggal = $this->formEntry['tucashkDate'];
 
         try {
@@ -256,8 +270,8 @@ new class extends Component {
             return;
         }
 
-        if (!$this->bolehKoreksi($row->tucashk_status)) {
-            $this->dispatch('toast', type: 'warning', message: 'Transaksi sudah diposting — hanya Admin/TU yang dapat mengoreksi.');
+        if (!$this->bolehKoreksi()) {
+            $this->dispatch('toast', type: 'warning', message: 'Hanya Manager ke atas yang dapat mengoreksi transaksi kas.');
             return;
         }
 
@@ -268,6 +282,7 @@ new class extends Component {
             'accIdKas' => (string) ($row->acc_id_kas ?? ''),
             'accNameKas' => '',
             'tucashkDate' => $row->tucashk_date ? Carbon::parse($row->tucashk_date)->format('d/m/Y H:i:s') : '',
+            'shift' => (string) ($row->shift ?? ''),
             'tucashkDesc' => (string) ($row->tucashk_desc ?? ''),
             'tucashkNominal' => (int) ($row->tucashk_nominal ?? 0),
         ];
@@ -294,7 +309,7 @@ new class extends Component {
     {
         $this->editingNo = null;
         $this->reset(['formEntry']);
-        $this->formEntry['tucashkDate'] = Carbon::now()->format('d/m/Y H:i:s');
+        $this->isiTanggalDanShiftSekarang();
         $this->resetValidation();
         $this->incrementVersion('modal');
         $this->dispatch('focus-input-tanggal-co');
@@ -302,7 +317,7 @@ new class extends Component {
 
     public function setTanggalSekarang(): void
     {
-        $this->formEntry['tucashkDate'] = Carbon::now()->format('d/m/Y H:i:s');
+        $this->isiTanggalDanShiftSekarang();
     }
 
     /* ===============================
@@ -311,8 +326,8 @@ new class extends Component {
     #[On('pengeluaran-kas.requestDelete')]
     public function hapusDariDaftar(string $tucashkNo): void
     {
-        if (!auth()->user()->hasAnyRole(['Admin', 'Tu'])) {
-            $this->dispatch('toast', type: 'error', message: 'Hanya Admin dan TU yang dapat membatalkan transaksi.');
+        if (!auth()->user()?->can('kasTu.hapus')) {
+            $this->dispatch('toast', type: 'error', message: 'Hanya Manager ke atas yang dapat menghapus transaksi kas.');
             return;
         }
 
@@ -363,19 +378,32 @@ new class extends Component {
                     <div class="space-y-4">
                         {{-- 1 & 2. Tanggal + Akun Pengeluaran — sejajar --}}
                         <div class="grid grid-cols-1 gap-4 sm:grid-cols-12 items-start">
-                            <div class="sm:col-span-5">
+                            <div class="sm:col-span-4">
                                 <x-input-label value="Tanggal" :required="true" />
                                 <div class="flex items-center gap-2 mt-1">
                                     <x-text-input type="text" wire:model="formEntry.tucashkDate"
                                         placeholder="dd/mm/yyyy hh:mm:ss" class="w-full text-sm" x-ref="inputTanggal"
                                         :error="$errors->has('formEntry.tucashkDate')"
-                                        x-on:keydown.enter.prevent="($refs.lovCoWrapper?.querySelector('input:not([disabled])') || $refs.inputKet)?.focus()" />
+                                        x-on:keydown.enter.prevent="$refs.selectShift?.focus()" />
                                     <x-now-button wire:click.prevent="setTanggalSekarang" />
                                 </div>
                                 <x-input-error :messages="$errors->get('formEntry.tucashkDate')" class="mt-1" />
                             </div>
 
-                            <div class="sm:col-span-7" x-ref="lovCoWrapper">
+                            <div class="sm:col-span-2">
+                                <x-input-label value="Shift" :required="true" />
+                                <x-select-input wire:model="formEntry.shift" class="w-full mt-1" x-ref="selectShift"
+                                    :error="$errors->has('formEntry.shift')"
+                                    x-on:keydown.enter.prevent="($refs.lovCoWrapper?.querySelector('input:not([disabled])') || $refs.inputKet)?.focus()">
+                                    <option value="">--</option>
+                                    <option value="1">Shift 1</option>
+                                    <option value="2">Shift 2</option>
+                                    <option value="3">Shift 3</option>
+                                </x-select-input>
+                                <x-input-error :messages="$errors->get('formEntry.shift')" class="mt-1" />
+                            </div>
+
+                            <div class="sm:col-span-6" x-ref="lovCoWrapper">
                                 <livewire:lov.akun-co.lov-akun-co target="akun-co-tu" label="Akun Pengeluaran (CO)"
                                     :initialAccId="$formEntry['accId'] ?: null" :error="$errors->has('formEntry.accId')"
                                     wire:key="lov-co-entry-{{ $editingNo ?? 'new' }}-{{ $renderVersions['modal'] ?? 0 }}" />
@@ -417,7 +445,7 @@ new class extends Component {
                     <div class="flex flex-wrap items-center justify-between gap-3 mt-5">
                         <p class="text-xs text-muted dark:text-gray-400">
                             Urutan <span class="px-1.5 py-0.5 font-semibold rounded border border-hairline bg-canvas text-body dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200">Enter</span>:
-                            Tanggal → Akun Pengeluaran → Keterangan → Nominal → Akun Kas → tombol Simpan.
+                            Tanggal → Shift → Akun Pengeluaran → Keterangan → Nominal → Akun Kas → tombol Simpan.
                             Setelah tersimpan, modal tetap terbuka dan kedua akun dipertahankan supaya entri
                             berikutnya bisa langsung diketik.
                         </p>
@@ -439,6 +467,7 @@ new class extends Component {
                 <div class="flex items-center justify-between gap-3">
                     <div class="text-xs text-muted dark:text-gray-400">
                         Status transaksi otomatis <strong>Posted (L)</strong> saat disimpan.
+                        Shift terisi otomatis dari jam sekarang — ganti bila pengeluaran untuk shift lain.
                     </div>
 
                     <div class="flex justify-end gap-2">
