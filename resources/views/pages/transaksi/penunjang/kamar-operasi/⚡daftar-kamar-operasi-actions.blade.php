@@ -610,7 +610,7 @@ new class extends Component {
                     {{-- KIRI: Batal (Admin / Supervisor Penunjang) --}}
                     <div class="flex items-center gap-2">
                         @if ($statusOk === 'A')
-                            @hasanyrole(['Admin', 'Supervisor Penunjang'])
+                            @if ($this->isAllowedBatalOk())
                                 <span title="{{ $pesanTerkunciBatal }}">
                                     <x-confirm-button variant="danger" action="batalkanPendaftaran()"
                                         :disabled="$indukTerkunci" title="Batalkan Pendaftaran"
@@ -620,9 +620,9 @@ new class extends Component {
                                         Batalkan Pendaftaran
                                     </x-confirm-button>
                                 </span>
-                            @endhasanyrole
+                            @endif
                         @elseif ($statusOk === 'L')
-                            @hasanyrole(['Admin', 'Supervisor Penunjang'])
+                            @if ($this->isAllowedBatalOk())
                                 <span title="{{ $pesanTerkunciBatal }}">
                                     <x-confirm-button variant="danger" action="batalkanTransaksi()"
                                         :disabled="$indukTerkunci" title="Batalkan Transaksi"
@@ -632,7 +632,7 @@ new class extends Component {
                                         Batal Transaksi
                                     </x-confirm-button>
                                 </span>
-                            @endhasanyrole
+                            @endif
                         @endif
 
                         @if ($indukTerkunci && $statusOk !== 'F')

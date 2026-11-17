@@ -269,8 +269,8 @@ class AksiRole
      * CATATAN — Batal di LABORAT & KAMAR OPERASI sengaja TIDAK diklaster di sini.
      * Keduanya sudah punya guard sendiri yang lebih ketat dan disengaja:
      *   laborat        isAllowedBatal()   -> ['Admin','Supervisor Penunjang']
-     *   kamar operasi  isAllowedBatalOk() -> ['Admin','Supervisor Penunjang']
-     *                  (KamarOperasiTrait)
+     *   kamar operasi  isAllowedBatalOk() -> ['Admin','Supervisor Penunjang','Supervisor Tu']
+     *                  (KamarOperasiTrait; Supervisor Tu = atasan Tu yang ikut entri OK)
      * Aturannya "batal = eskalasi ke atasan": operator Lab/OK tidak boleh
      * membatalkan pekerjaannya sendiri. Jangan disamakan dengan daftar akses
      * modulnya (yang memuat Laboratorium/Perawat) — itu justru melonggarkan.

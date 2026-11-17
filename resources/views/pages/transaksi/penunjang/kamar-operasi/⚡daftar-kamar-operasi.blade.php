@@ -310,6 +310,11 @@ new class extends Component {
 ?>
 
 <div>
+    @php
+        // Dihitung sekali: transaksi OK (Tu/Perawat/...) vs hanya dokumen bedah (Dokter/Casemix/Mr/Gizi).
+        $bolehTransaksiOk = $this->isAllowedRoleOk();
+        $pesanTanpaAksesOk = 'Hanya Perawat, Tu, Supervisor Penunjang, Manager Umum & Admin yang dapat mengentri transaksi operasi.';
+    @endphp
     <x-page-title
         title="Transaksi Tindakan Operasi"
         subtitle="Tindakan operasi, tarif, dan transfer biaya ke rawat inap" />
@@ -410,7 +415,8 @@ new class extends Component {
                     <div class="flex items-center gap-2 ml-auto">
                         {{-- Layanan yang sedang difilter dibawa ke modal Tambah supaya
                              petugas tidak perlu memilihnya dua kali (pola daftar-laborat). --}}
-                        <x-primary-button type="button"
+                        <x-primary-button type="button" :disabled="!$bolehTransaksiOk"
+                            :title="$bolehTransaksiOk ? null : $pesanTanpaAksesOk"
                             wire:click="$dispatch('kamar-operasi-tambah.open', { sumber: '{{ $filterLayanan ?: 'RI' }}' })">
                             <span class="flex items-center gap-1.5">
                                 <x-ikon nama="tambah" />
@@ -626,7 +632,7 @@ new class extends Component {
                                                  termasuk di baris RJ/UGD — menyembunyikannya bikin petugas
                                                  mengira fiturnya rusak. Untuk RJ/UGD isinya dinonaktifkan
                                                  berikut alasannya. --}}
-                                            @hasanyrole('Admin|Perawat|Dokter|Casemix|Mr|Gizi')
+                                            @hasanyrole($this::ROLE_MENU_OK)
                                                 <x-dropdown align="right" width="w-72" :melayang="true">
                                                 <x-slot name="trigger">
                                                     <x-secondary-button type="button" class="p-2.5">
@@ -640,7 +646,9 @@ new class extends Component {
                                                 <x-slot name="content">
                                                     <div class="p-2 space-y-1">
 
-                                                        {{-- Aksi utama: modal kerja transaksi OK --}}
+                                                        {{-- Aksi utama: modal kerja transaksi OK.
+                                                             Role dokumen-saja (Dokter dll.) melihatnya nonaktif + alasan. --}}
+                                                        @if ($bolehTransaksiOk)
                                                         <x-dropdown-link href="#"
                                                             wire:click.prevent="openDetail('{{ $row->ok_reg }}')"
                                                             class="px-3 py-2 text-sm rounded-lg bg-green-50 hover:bg-green-100 dark:bg-green-900/20 dark:hover:bg-green-900/40">
@@ -654,6 +662,20 @@ new class extends Component {
                                                                 </span>
                                                             </div>
                                                         </x-dropdown-link>
+                                                        @else
+                                                        <div title="{{ $pesanTanpaAksesOk }}"
+                                                            class="px-3 py-2 text-sm rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed dark:bg-gray-800 dark:text-gray-400">
+                                                            <div class="flex items-start gap-2">
+                                                                <svg class="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                                                </svg>
+                                                                <span>Transaksi Operasi<br>
+                                                                    <span class="text-xs">Tidak tersedia untuk role Anda — hanya Dokumen Pelayanan Bedah</span>
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                        @endif
 
                                                         <x-dropdown-link href="#"
                                                                 wire:click.prevent="openDokumenBedah('{{ $sumberRow }}', '{{ $row->induk_no }}')"
@@ -670,7 +692,7 @@ new class extends Component {
                                                             </x-dropdown-link>
 
                                                         @if ($statusCode === 'A')
-                                                            @hasanyrole(['Admin', 'Supervisor Penunjang'])
+                                                            @if ($this->isAllowedBatalOk())
                                                                 <x-confirm-button variant="danger-soft"
                                                                     action="batalkanPendaftaran('{{ $row->ok_reg }}')"
                                                                     title="Batalkan Pendaftaran"
@@ -681,7 +703,7 @@ new class extends Component {
                                                                     <x-ikon nama="batalkan" ukuran="w-5 h-5" class="mt-0.5 shrink-0" />
                                                                     <span>Batalkan Pendaftaran</span>
                                                                 </x-confirm-button>
-                                                            @endhasanyrole
+                                                            @endif
                                                         @endif
                                                     </div>
                                                 </x-slot>

@@ -221,6 +221,8 @@ new class extends Component {
         $grandTotal = max(0, $subtotal - $subsidi - $resepLunasFooter);
 
         $sudahBayar = (int) DB::table('rstxn_ripaymentpdtls')->where('rihdr_no', $riHdrNo)->sum('ripay_bayar');
+        // Angsuran awal (titipan) selama dirawat — ditampilkan di footer bila ada.
+        $angsuranAwal = (int) DB::table('rstxn_ripaymentdtls')->where('rihdr_no', $riHdrNo)->sum('ripay_bayar');
         $sisa       = max(0, $grandTotal - $sudahBayar);
 
         $kasirName = !empty($hdr->emp_id)
@@ -285,6 +287,7 @@ new class extends Component {
             'resepLunasFooter' => $resepLunasFooter,
             'grandTotal' => $grandTotal,
             'sudahBayar' => $sudahBayar,
+            'angsuranAwal' => $angsuranAwal,
             'sisa'       => $sisa,
 
             'kasirName' => $kasirName,

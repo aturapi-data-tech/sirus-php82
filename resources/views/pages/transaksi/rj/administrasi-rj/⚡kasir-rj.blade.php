@@ -5,6 +5,7 @@ use Livewire\Attributes\On;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Rj\EmrRJTrait;
+use App\Support\PesanOkPending;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 
 new class extends Component {
@@ -235,8 +236,8 @@ new class extends Component {
         // kunjungan bisa ditutup lebih dulu, dan biaya operasinya tidak akan pernah
         // bisa masuk tagihan karena transfer mensyaratkan rj_status = 'A'.
         if ($this->checkOkPendingRJ($this->rjNo)) {
-            $nomorOk = implode(', ', $this->daftarOkPendingRJ($this->rjNo));
-            $this->dispatch('toast', type: 'error', message: "Transaksi Tindakan Operasi No. {$nomorOk} belum ditransfer ke biaya rawat jalan, pembayaran tidak bisa diproses.");
+            $pesan = PesanOkPending::rangkai($this->daftarOkPendingRJ($this->rjNo), 'RJ', $this->rjNo, 'Pembayaran rawat jalan tidak bisa diproses.');
+            $this->dispatch('toast', type: 'error', message: $pesan, opts: PesanOkPending::OPSI_TOAST);
             return;
         }
 

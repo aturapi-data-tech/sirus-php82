@@ -5,6 +5,7 @@ use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
+use App\Support\PesanOkPending;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 
 new class extends Component {
@@ -256,8 +257,8 @@ new class extends Component {
         // kunjungan bisa ditutup lebih dulu, dan biaya operasinya tidak akan pernah
         // bisa masuk tagihan karena transfer mensyaratkan rj_status = 'A'.
         if ($this->checkOkPendingUGD($this->rjNo)) {
-            $nomorOk = implode(', ', $this->daftarOkPendingUGD($this->rjNo));
-            $this->dispatch('toast', type: 'error', message: "Transaksi Tindakan Operasi No. {$nomorOk} belum ditransfer ke biaya UGD, pembayaran tidak bisa diproses.");
+            $pesan = PesanOkPending::rangkai($this->daftarOkPendingUGD($this->rjNo), 'UGD', $this->rjNo, 'Pembayaran UGD tidak bisa diproses.');
+            $this->dispatch('toast', type: 'error', message: $pesan, opts: PesanOkPending::OPSI_TOAST);
             return;
         }
 
