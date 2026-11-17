@@ -186,6 +186,7 @@ new class extends Component {
                     :value="$selected['acc_id'] . ' — ' . $selected['acc_name']" disabled />
                 @if (!$disabled)
                     <x-secondary-button type="button" wire:click="clearSelected" class="px-4 whitespace-nowrap">
+                        <x-ikon nama="ubah" />
                         Ubah
                     </x-secondary-button>
                 @endif

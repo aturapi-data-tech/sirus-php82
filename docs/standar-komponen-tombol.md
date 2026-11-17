@@ -644,6 +644,12 @@ memakai katalog (164 tombol; 2 tombol pilihan Kamar sengaja tanpa ikon).
   outline, Cek Status (mount control) ghost → outline, Edit User outline → secondary. Simbol ↻ di
   teks "Refresh" dibuang. Tombol operasional Monitor Database (Kill Session/Blocker/Waiter,
   Disconnect, Mount/Unmount) hanya diberi ikon, komponennya dibiarkan.
+- 2026-11-17 **Viewer Rekam Medis + LOV — ikon saja** (komponen bersama, 85 tombol): Rekam Medis 48
+  (Resume Medis/v1/Fisio → `dokumen`, Hasil Lab/Bacaan/Foto/Surat Kematian → `lihat`, Copy Resep/Asesmen
+  → `muat-ulang`, Simpan & Update BPJS → `kirim`, Akses Darurat → `buka-kunci`), LOV 37 (semua "Ubah"/
+  "Ganti" → `ubah`). **Komponen viewer belum disamakan**: Resume Medis, Hasil Laboratorium, Foto
+  Radiologi memakai info-button (biru) padahal bukan aksi BPJS → usulan outline; menunggu user karena
+  viewer dipakai RJ/UGD/RI.
 
 Area lain menyusul per modul: pasang ikon + samakan komponen + ganti SVG manual sekaligus.
 

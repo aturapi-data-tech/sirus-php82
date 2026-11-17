@@ -1078,7 +1078,7 @@ new class extends Component {
                 <div class="flex items-center justify-between gap-3">
                     <x-rm.record-nav :pos="$navPos" :total="$navTotal" />
                     <div class="flex gap-2">
-                        <x-secondary-button type="button" wire:click="closeModal">Tutup</x-secondary-button>
+                        <x-secondary-button type="button" wire:click="closeModal"><x-ikon nama="batal" /> Tutup</x-secondary-button>
                         <x-cetak-button wire:click="cetakPdf" label="Cetak PDF" />
                     </div>
                 </div>

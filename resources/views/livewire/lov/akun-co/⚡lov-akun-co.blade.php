@@ -190,7 +190,7 @@ new class extends Component {
                     @endif
                 </div>
                 @if (!$readonly)
-                    <x-secondary-button type="button" wire:click="clearSelected" class="px-4 whitespace-nowrap">Ubah</x-secondary-button>
+                    <x-secondary-button type="button" wire:click="clearSelected" class="px-4 whitespace-nowrap"><x-ikon nama="ubah" /> Ubah</x-secondary-button>
                 @endif
             </div>
         @endif

@@ -927,6 +927,7 @@ new class extends Component {
                                     message="Resume akan ditandatangani ATAS NAMA DPJP Utama dan langsung terkunci. Nama Anda tercatat sebagai perwakilan di stempel & log. Bila keliru: Buka Kunci lalu TTD ulang."
                                     confirmText="Ya, TTD Perwakilan" class="justify-center w-full"
                                     wire:key="ttd-perwakilan-{{ $riHdrNo }}">
+                                    <x-ikon nama="ttd" />
                                     TTD atas nama DPJP &amp; Kunci
                                 </x-confirm-button>
                                 <p class="mt-1 text-xs text-muted dark:text-gray-400">
@@ -938,10 +939,7 @@ new class extends Component {
                             <div class="pt-2">
                                 <x-primary-button type="button" disabled class="justify-center w-full gap-1.5 opacity-60 cursor-not-allowed"
                                     title="{{ $this->alasanTidakBolehTtd() }}">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                                    </svg>
+                                    <x-ikon nama="ttd" />
                                     TTD DPJP &amp; Kunci
                                 </x-primary-button>
                                 <p class="mt-1 text-xs text-amber-700 dark:text-amber-400">{{ $this->alasanTidakBolehTtd() }}</p>
@@ -958,10 +956,7 @@ new class extends Component {
                         <x-confirm-button variant="warning-soft" action="bukaKunci()" title="Buka Kunci Resume Medis"
                             message="TTD DPJP akan dicabut dan resume kembali bisa diedit. Lanjutkan?"
                             confirmText="Ya, Buka Kunci" wire:key="buka-kunci-resume-{{ $riHdrNo }}">
-                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
-                            </svg>
+                            <x-ikon nama="buka-kunci" class="mr-1" />
                             Buka Kunci
                         </x-confirm-button>
                     @else
@@ -973,7 +968,7 @@ new class extends Component {
                         wire:confirm="Reset isi Resume Medis ke template default dari data EMR terbaru? Perubahan yang belum disimpan akan hilang."
                         wire:loading.attr="disabled" wire:target="resetToDefault"
                         class="text-xs">
-                        <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                        <x-ikon nama="kembalikan" ukuran="w-3.5 h-3.5" class="mr-1" />
                         <span wire:loading.remove wire:target="resetToDefault">Reset ke Default</span>
                         <span wire:loading wire:target="resetToDefault"><x-loading /> Reset...</span>
                     </x-secondary-button>
@@ -981,13 +976,13 @@ new class extends Component {
 
                 {{-- Aksi kanan: Batal · Cetak · Simpan Draft (Simpan Draft hilang saat terkunci) --}}
                 <div class="flex items-center gap-2">
-                    <x-secondary-button type="button" wire:click="closeEditor">Batal</x-secondary-button>
+                    <x-secondary-button type="button" wire:click="closeEditor"><x-ikon nama="batal" /> Batal</x-secondary-button>
 
                     {{-- Cetak PDF (in-memory: tidak save dulu, langsung render). --}}
                     <x-secondary-button type="button"
                         x-on:click="window.dispatchEvent(new Event('resume-medis-ri.flush')); $nextTick(() => $wire.cetakPdf())"
                         wire:loading.attr="disabled" wire:target="cetakPdf,save">
-                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0110.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0l.229 2.523a1.125 1.125 0 01-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0021 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 00-1.913-.247M6.34 18H5.25A2.25 2.25 0 013 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 011.913-.247m10.5 0a48.536 48.536 0 00-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5z"/></svg>
+                        <x-ikon nama="cetak" class="mr-1" />
                         <span wire:loading.remove wire:target="cetakPdf">Cetak PDF</span>
                         <span wire:loading wire:target="cetakPdf"><x-loading /> Cetak...</span>
                     </x-secondary-button>
@@ -1000,9 +995,7 @@ new class extends Component {
                             wire:loading.attr="disabled" wire:target="save,cetakPdf"
                             class="gap-2 min-w-[160px] justify-center">
                             <span wire:loading.remove wire:target="save" class="flex items-center gap-1.5">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 21v-8H7v8M7 3v5h8M5 3h11l4 4v12a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z" />
-                                </svg>
+                                <x-ikon nama="simpan" ukuran="w-5 h-5" />
                                 Simpan Draft
                             </span>
                             <span wire:loading wire:target="save"><x-loading /> Menyimpan...</span>

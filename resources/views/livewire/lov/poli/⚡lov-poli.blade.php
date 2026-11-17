@@ -263,6 +263,7 @@ new class extends Component {
                 @if (!$disabled)
                     <x-secondary-button type="button" wire:click="clearSelected"
                         class="px-4 whitespace-nowrap shrink-0">
+                        <x-ikon nama="ubah" />
                         Ubah
                     </x-secondary-button>
                 @endif
