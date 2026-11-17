@@ -539,6 +539,7 @@ new class extends Component {
             <div class="sticky bottom-0 z-10 flex justify-end px-6 py-2 border-t bg-canvas border-hairline dark:bg-gray-900 dark:border-gray-700">
                 <x-secondary-button type="button"
                     x-on:click="$dispatch('close-modal', { name: 'info-kunjungan-rj' })">
+                    <x-ikon nama="batal" />
                     Tutup
                 </x-secondary-button>
             </div>

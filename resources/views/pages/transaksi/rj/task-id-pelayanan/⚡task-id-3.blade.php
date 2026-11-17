@@ -138,7 +138,8 @@ new class extends Component {
 <div class="inline-block">
     <x-outline-button wire:click="prosesTaskId3" wire:loading.attr="disabled" wire:target="prosesTaskId3"
         class="!px-2 !py-1 text-xs {{ $isDone ? '!opacity-60' : '' }}" title="{{ $isDone ? 'Sudah dijalankan, klik untuk update' : 'Klik untuk mencatat TaskId3 (Masuk Antrian)' }}">
-        <span wire:loading.remove wire:target="prosesTaskId3">
+        <span wire:loading.remove wire:target="prosesTaskId3" class="inline-flex items-center gap-2">
+            <x-ikon nama="kirim" ukuran="w-3.5 h-3.5" />
             TaskId3
         </span>
         <span wire:loading wire:target="prosesTaskId3">

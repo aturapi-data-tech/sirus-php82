@@ -41,8 +41,8 @@ new class extends Component {
             </div>
 
             <div class="sticky bottom-0 z-10 flex items-center justify-end gap-2 px-6 py-3 border-t border-hairline bg-canvas dark:bg-gray-900 dark:border-gray-700">
-                <x-secondary-button type="button" x-on:click="$dispatch('close-modal', { name: 'diagnosa-rj-daftar' })">Tutup</x-secondary-button>
-                <x-primary-button type="button" x-on:click="$dispatch('save-rm-diagnosa-rj')">Simpan Diagnosa</x-primary-button>
+                <x-secondary-button type="button" x-on:click="$dispatch('close-modal', { name: 'diagnosa-rj-daftar' })"><x-ikon nama="batal" /> Tutup</x-secondary-button>
+                <x-primary-button type="button" x-on:click="$dispatch('save-rm-diagnosa-rj')"><x-ikon nama="simpan" /> Simpan Diagnosa</x-primary-button>
             </div>
         </div>
     </x-modal>

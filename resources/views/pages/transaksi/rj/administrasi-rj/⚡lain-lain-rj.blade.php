@@ -435,11 +435,12 @@ new class extends Component {
                                                 <x-primary-button type="button" wire:click="saveEdit"
                                                     wire:loading.attr="disabled" wire:target="saveEdit"
                                                     class="!px-3 !py-1 !text-xs">
-                                                    <span wire:loading.remove wire:target="saveEdit">Simpan</span>
+                                                    <span wire:loading.remove wire:target="saveEdit" class="inline-flex items-center gap-2"><x-ikon nama="simpan" ukuran="w-3.5 h-3.5" /> Simpan</span>
                                                     <span wire:loading wire:target="saveEdit"><x-loading class="w-3 h-3" /></span>
                                                 </x-primary-button>
                                                 <x-secondary-button type="button" wire:click="cancelEdit"
                                                     class="px-3 py-1 text-xs">
+                                                    <x-ikon nama="batal" ukuran="w-3.5 h-3.5" />
                                                     Batal
                                                 </x-secondary-button>
                                             </div>
@@ -448,6 +449,7 @@ new class extends Component {
                                                 <x-secondary-button type="button"
                                                     wire:click="startEdit({{ $item['rjotherDtl'] }})"
                                                     class="px-3 py-1 text-xs">
+                                                    <x-ikon nama="ubah" ukuran="w-3.5 h-3.5" />
                                                     Edit
                                                 </x-secondary-button>
                                                 <x-hapus-button wire:click.prevent="removeLainLain({{ $item['rjotherDtl'] }})" confirm="Hapus lain-lain ini?" />

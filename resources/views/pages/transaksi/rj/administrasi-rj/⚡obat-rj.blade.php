@@ -943,7 +943,7 @@ new class extends Component {
                                                 <div class="flex items-center gap-2 pb-0.5 shrink-0">
                                                     <x-primary-button type="button" wire:click="saveEdit"
                                                         wire:loading.attr="disabled" wire:target="saveEdit">
-                                                        <span wire:loading.remove wire:target="saveEdit">Simpan</span>
+                                                        <span wire:loading.remove wire:target="saveEdit" class="inline-flex items-center gap-2"><x-ikon nama="simpan" /> Simpan</span>
                                                         <span wire:loading wire:target="saveEdit"><x-loading /></span>
                                                     </x-primary-button>
                                                     <x-icon-button color="gray" type="button" wire:click="cancelEdit"

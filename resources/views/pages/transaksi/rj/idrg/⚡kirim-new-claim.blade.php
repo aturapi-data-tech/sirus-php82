@@ -173,7 +173,7 @@ new class extends Component {
             <x-primary-button type="button" wire:click="newClaimAction" wire:loading.attr="disabled" :disabled="$hasClaim || (!$hasSepRaw && !$hasClaimNumber)"
                 class="!bg-brand hover:!bg-brand/90 min-w-[160px] {{ $hasClaim ? '!bg-emerald-600' : '' }}">
                 <span wire:loading.remove
-                    wire:target="newClaimAction">{{ $hasClaim ? 'Selesai' : 'Buat Klaim Baru' }}</span>
+                    wire:target="newClaimAction" class="inline-flex items-center gap-2"><x-ikon nama="setujui" /> {{ $hasClaim ? 'Selesai' : 'Buat Klaim Baru' }}</span>
                 <span wire:loading wire:target="newClaimAction"><x-loading />...</span>
             </x-primary-button>
         </div>

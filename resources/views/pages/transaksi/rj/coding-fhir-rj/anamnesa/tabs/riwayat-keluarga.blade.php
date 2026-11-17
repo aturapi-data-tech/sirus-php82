@@ -26,7 +26,7 @@
         <x-text-input wire:model="formKeluarga.keterangan" placeholder="Keterangan (opsional), mis. ibu menderita DM sejak 10 tahun lalu"
             maxlength="200" :error="$errors->has('formKeluarga.keterangan')" class="w-full" />
         <x-primary-button type="button" wire:click="tambahKeluarga" wire:loading.attr="disabled" wire:target="tambahKeluarga"
-            class="justify-center w-full">Tambah</x-primary-button>
+            class="justify-center w-full"><x-ikon nama="tambah" /> Tambah</x-primary-button>
 
         <x-modul-dokumen.tabel-daftar :kolom="['Hubungan' => 'w-32', 'Kode SNOMED', 'Petugas' => 'w-44', 'Aksi' => 'text-center w-14']">
             @forelse ($koding['keluarga']['snomedList'] ?? [] as $index => $baris)

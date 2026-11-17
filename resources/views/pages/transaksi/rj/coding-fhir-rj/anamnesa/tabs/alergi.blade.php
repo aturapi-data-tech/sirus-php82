@@ -42,7 +42,7 @@
                 </div>
             </div>
             <x-primary-button type="button" wire:click="tambahAlergi" wire:loading.attr="disabled" wire:target="tambahAlergi"
-                class="justify-center w-full">Tambah</x-primary-button>
+                class="justify-center w-full"><x-ikon nama="tambah" /> Tambah</x-primary-button>
 
             <x-modul-dokumen.tabel-daftar :kolom="['Jenis' => 'w-28', 'Alergen', 'Keparahan' => 'w-40', 'Petugas' => 'w-44', 'Aksi' => 'text-center w-14']">
                 @forelse ($koding['alergi']['alergenList'] ?? [] as $index => $baris)

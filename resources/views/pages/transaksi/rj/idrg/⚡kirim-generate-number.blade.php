@@ -99,7 +99,7 @@ new class extends Component {
     <x-primary-button type="button" wire:click="generate" wire:loading.attr="disabled"
         :disabled="$hasClaim || $hasSepRaw || $idrgFinal"
         class="!bg-brand hover:!bg-brand/90 min-w-[160px] {{ !empty($claimNumber) ? '!bg-emerald-600' : '' }}">
-        <span wire:loading.remove wire:target="generate">{{ !empty($claimNumber) ? 'Selesai' : 'Jalankan' }}</span>
+        <span wire:loading.remove wire:target="generate" class="inline-flex items-center gap-2"><x-ikon nama="setujui" /> {{ !empty($claimNumber) ? 'Selesai' : 'Jalankan' }}</span>
         <span wire:loading wire:target="generate"><x-loading />...</span>
     </x-primary-button>
 </div>

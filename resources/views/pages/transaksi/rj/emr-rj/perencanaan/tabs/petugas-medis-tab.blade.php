@@ -53,6 +53,7 @@
                         message="EMR akan ditandatangani ATAS NAMA dokter pemeriksa dan terkunci. Nama Anda tercatat sebagai perwakilan di stempel & log. Bila keliru: Buka Kunci TTD-E lalu TTD ulang."
                         confirmText="Ya, TTD Perwakilan" class="justify-center w-full"
                         wire:key="ttd-perwakilan-rj-{{ $rjNo }}">
+                        <x-ikon nama="ttd" />
                         TTD atas nama Dokter
                     </x-confirm-button>
                     <p class="mt-1 text-xs text-muted dark:text-gray-400">
@@ -74,11 +75,7 @@
                             title="Buka Kunci TTD-E"
                             message="Stempel TTD Dokter Pemeriksa akan dicabut supaya bisa ditandatangani ulang. Waktu pemeriksaan tetap. Tindakan ini tercatat di log aktivitas."
                             confirmText="Buka Kunci" class="px-2.5 py-1.5 text-sm">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                                stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round"
-                                    d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
-                            </svg>
+                            <x-ikon nama="buka-kunci" />
                             Buka Kunci TTD-E
                         </x-confirm-button>
                     </div>

@@ -33,7 +33,7 @@
                 </div>
             </div>
             <x-primary-button type="button" wire:click="tambahRiwayat('{{ $jenis }}')" wire:loading.attr="disabled"
-                wire:target="tambahRiwayat" class="justify-center w-full">Tambah</x-primary-button>
+                wire:target="tambahRiwayat" class="justify-center w-full"><x-ikon nama="tambah" /> Tambah</x-primary-button>
 
             <x-modul-dokumen.tabel-daftar :kolom="['Kode SNOMED', 'Keterangan' => 'w-36', 'Petugas' => 'w-44', 'Aksi' => 'text-center w-14']">
                 @forelse ($koding[$jenis]['snomedList'] ?? [] as $index => $baris)

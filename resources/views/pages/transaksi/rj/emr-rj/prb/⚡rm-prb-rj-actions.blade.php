@@ -621,6 +621,7 @@ new class extends Component {
                             @if (!$isFormLocked)
                                 <div class="flex justify-end pt-3">
                                     <x-primary-button type="button" wire:click="nextStep">
+                                        <x-ikon nama="ubah" />
                                         Lanjut ke Obat &rarr;
                                     </x-primary-button>
                                 </div>
@@ -681,7 +682,7 @@ new class extends Component {
                                     <div class="flex gap-2">
                                         <x-text-input wire:model="searchObat" class="flex-1" placeholder="Cari obat generik PRB (min 3 huruf)..." x-on:keyup.enter="$wire.cariObatPRB()" />
                                         <x-secondary-button type="button" wire:click="cariObatPRB" wire:loading.attr="disabled" class="text-sm shrink-0">
-                                            <span wire:loading.remove wire:target="cariObatPRB">Cari Obat</span>
+                                            <span wire:loading.remove wire:target="cariObatPRB" class="inline-flex items-center gap-2"><x-ikon nama="cari" /> Cari Obat</span>
                                             <span wire:loading wire:target="cariObatPRB"><x-loading /></span>
                                         </x-secondary-button>
                                     </div>
@@ -732,15 +733,15 @@ new class extends Component {
                                             <x-input-label value="Jumlah" class="mb-1" />
                                             <x-text-input wire:model="formObat.jmlObat" class="w-16 text-center" />
                                         </div>
-                                        <x-secondary-button type="button" wire:click="tambahObat" class="text-sm">+ Tambah</x-secondary-button>
+                                        <x-secondary-button type="button" wire:click="tambahObat" class="text-sm"><x-ikon nama="tambah" /> Tambah</x-secondary-button>
                                     </div>
                                 </div>
                             @endif
 
                             {{-- Prev / Next --}}
                             <div class="flex justify-between pt-3">
-                                <x-secondary-button type="button" wire:click="prevStep">&larr; Kembali</x-secondary-button>
-                                <x-primary-button type="button" wire:click="nextStep">Lanjut ke Kirim &rarr;</x-primary-button>
+                                <x-secondary-button type="button" wire:click="prevStep"><x-ikon nama="kembali" /> &larr; Kembali</x-secondary-button>
+                                <x-primary-button type="button" wire:click="nextStep"><x-ikon nama="ubah" /> Lanjut ke Kirim &rarr;</x-primary-button>
                             </div>
                         </div>
                     @endif
@@ -797,7 +798,7 @@ new class extends Component {
 
                             {{-- Prev / Kirim / Hapus --}}
                             <div class="flex items-center justify-between pt-3">
-                                <x-secondary-button type="button" wire:click="prevStep">&larr; Kembali</x-secondary-button>
+                                <x-secondary-button type="button" wire:click="prevStep"><x-ikon nama="kembali" /> &larr; Kembali</x-secondary-button>
 
                                 @if (!$isFormLocked)
                                     <div class="flex gap-2">
@@ -807,9 +808,7 @@ new class extends Component {
 
                                         <x-success-button type="button" wire:click="save" wire:loading.attr="disabled">
                                             <span wire:loading.remove wire:target="save" class="inline-flex items-center gap-2">
-                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
-                                                </svg>
+                                                <x-ikon nama="simpan" />
                                                 {{ !empty($formPRB['noSrb']) ? 'Update PRB ke BPJS' : 'Kirim PRB ke BPJS' }}
                                             </span>
                                             <span wire:loading wire:target="save" class="inline-flex items-center gap-2"><x-loading /> Mengirim...</span>

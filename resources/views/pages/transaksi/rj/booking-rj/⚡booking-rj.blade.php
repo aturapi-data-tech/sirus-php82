@@ -937,6 +937,7 @@ new class extends Component {
 
             <div class="flex justify-end gap-2">
                 <x-secondary-button wire:click="$dispatch('close-modal', { name: 'batal-booking' })">
+                    <x-ikon nama="batal" />
                     Batal
                 </x-secondary-button>
                 <button type="button" wire:click="konfirmasiBatal" wire:loading.attr="disabled"
@@ -1004,6 +1005,7 @@ new class extends Component {
 
             <div class="flex justify-end mt-4">
                 <x-secondary-button wire:click="$dispatch('close-modal', { name: 'bpjs-status' })">
+                    <x-ikon nama="batal" />
                     Tutup
                 </x-secondary-button>
             </div>

@@ -114,7 +114,7 @@
                 <div class="flex justify-end pt-2">
                     <x-primary-button wire:click="addAssessmentGizi" wire:loading.attr="disabled"
                         wire:target="addAssessmentGizi">
-                        <span wire:loading.remove wire:target="addAssessmentGizi">Simpan Penilaian Gizi</span>
+                        <span wire:loading.remove wire:target="addAssessmentGizi" class="inline-flex items-center gap-2"><x-ikon nama="simpan" /> Simpan Penilaian Gizi</span>
                         <span wire:loading wire:target="addAssessmentGizi">Menyimpan...</span>
                     </x-primary-button>
                 </div>

@@ -613,6 +613,12 @@ memakai katalog (164 tombol; 2 tombol pilihan Kamar sengaja tanpa ikon).
   dipasang, 26 SVG manual diganti. Ikon baru `cetak` untuk Print Etiket (print agent). Import Hasil
   Mindray: warna biru buatan sendiri dibuang → secondary, ikon `muat-ulang`. Pengecualian: Detail
   Pemeriksaan (satu-satunya aksi di baris worklist Lab) tetap primary; pemicu menu titik-3 dilewati.
+- 2026-11-17 **RJ — ikon saja** (198 tombol): 101 ikon dipasang, 62 SVG manual diganti; 166 tombol
+  kini `<x-ikon>`, 28 memakai `x-satu-sehat.ikon-tombol`. Dilewati (SVG khas dipertahankan): Master
+  Pasien (tautan), Scan Wajah, toggle Auto-Print, teks loading "Mengupload…". **Komponen RJ BELUM
+  disamakan** — 15 usulan (Simpan Telaah, TTD-E Telaah Obat, SKDP/PRB ke BPJS → info, Buka Kunci →
+  warning-soft, dst.) + 2 perbaikan ikon (Batal Task 99 → `batalkan`, buang ikon di "Lanjut ke … →")
+  + keputusan warna "Administrasi" (teal sesuai palet vs ungu di Apotek RJ/Kasir RI) menunggu user.
 
 Area lain menyusul per modul: pasang ikon + samakan komponen + ganti SVG manual sekaligus.
 

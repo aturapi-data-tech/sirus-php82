@@ -155,7 +155,7 @@ new class extends Component {
         <x-primary-button type="button" wire:click="final" wire:loading.attr="disabled"
             :disabled="!$inacbgFinal || $klaimFinal"
             class="!bg-brand hover:!bg-brand/90 min-w-[160px] {{ $klaimFinal ? '!bg-emerald-600' : '' }}">
-            <span wire:loading.remove wire:target="final">{{ $klaimFinal ? 'Selesai' : 'Final Klaim' }}</span>
+            <span wire:loading.remove wire:target="final" class="inline-flex items-center gap-2"><x-ikon nama="setujui" /> {{ $klaimFinal ? 'Selesai' : 'Final Klaim' }}</span>
             <span wire:loading wire:target="final"><x-loading />...</span>
         </x-primary-button>
     </div>
