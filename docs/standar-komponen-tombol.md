@@ -559,6 +559,54 @@ tampil di `/panduan-dev` (Komponen → Ikon Tombol).
 6. **Nama salah ketik** tidak merender ikon dan tercatat di `storage/logs` (`InvalidArgumentException`).
    Kalau ikon tidak muncul, cek log.
 
+### Komponen & warna per aksi (2026-11-17)
+
+Ikon dan komponen tombol satu paket: kolom `tombol` di `IkonTombol::PETA` adalah standarnya,
+dan `/panduan-dev#ikon-tombol` menampilkannya. Ditetapkan dari pemindaian 1.236 tombol berteks
+(komponen terbanyak per aksi) + aturan yang sudah ada di dokumen ini.
+
+**Prinsip:**
+1. Komponen ditentukan **makna aksi**, bukan selera per layar.
+2. Aksi positif (simpan, tambah, kirim, setujui, proses, unggah, ttd): yang **utama** di satu panel
+   memakai komponen solid; yang **pendamping** di panel yang sama memakai `x-secondary-button`.
+   Satu panel/form = satu tombol solid utama.
+3. **Menulis ke BPJS** (Kirim, Daftarkan ke Aplicares, Update SEP) = `x-info-button` (biru).
+   **Menulis ke SATUSEHAT** (Kirim, Daftarkan UUID Location) = `x-primary-button` teal
+   (`class="!bg-teal-600 hover:!bg-teal-700"`). Membaca/menarik data dari keduanya = `muat-ulang`.
+4. Hapus/batalkan selalu lewat `x-confirm-button`, jangan pakai `wire:confirm` (lihat Aturan no. 6).
+
+| Aksi | Komponen standar |
+|---|---|
+| `simpan` | `x-primary-button`; perlu konfirmasi → `x-confirm-button variant="primary"` |
+| `batal`, `kembali` | `x-secondary-button` |
+| `tambah` | toolbar daftar (buka form baru) → `x-primary-button`; tambah baris/sub-item di dalam form → `x-secondary-button` |
+| `ubah` | `x-secondary-button`; baris tabel → `x-action-edit` |
+| `hapus` | `x-confirm-button variant="danger"`; tombol kecil di dalam tabel/form → `variant="danger-soft"`; baris tabel → `x-hapus-button` |
+| `batalkan` | `x-confirm-button variant="danger"` |
+| `kembalikan` | `x-secondary-button`; bila mengubah data tersimpan (Reset Status Kunci, Kembalikan ke Antrian) → `x-confirm-button variant="warning-soft"` |
+| `buka-kunci` | `x-confirm-button variant="warning-soft"` |
+| `kunci` | `x-confirm-button variant="primary"` |
+| `hentikan` | `x-danger-button` |
+| `muat-ulang` | `x-secondary-button`; aksi utama satu-satunya di panel → `x-primary-button` |
+| `cari`, `lihat`, `unduh`, `riwayat` | `x-outline-button` (lihat di baris tabel → `x-lihat-button`) |
+| `kirim`, `setujui` | utama → `x-primary-button` (BPJS → `x-info-button`, SATUSEHAT → teal); pendamping → `x-secondary-button` |
+| `proses` | utama → `x-primary-button` (grouping/klaim BPJS → `x-info-button`); pembantu isian (Generate kode) → `x-outline-button` |
+| `unggah`, `ttd` | `x-primary-button` (pendamping → `x-secondary-button`) |
+| `dokumen`, `pembayaran` | toolbar EMR → palet semantik (indigo / teal); lainnya → `x-outline-button` |
+| `waktu` | isian tanggal → `x-now-button` |
+
+**Pengecualian yang disengaja:** tombol navigasi ke modul lain (`<a wire:navigate>` + Pendaftaran
+RJ/UGD/RI) tetap `x-outline-button`; tombol pilihan dari daftar (isi kode + nama) tanpa ikon;
+tombol kecil bergaris putus "Tambah Bed" di kartu kamar.
+
+**Penerapan:** Master selesai 2026-11-17 (13 tombol diganti komponennya: Hapus Semua Jadwal →
+danger; Hentikan ×2 → danger-button; Muat Ulang footer, Tarik Data Aplicares/SIRS → secondary;
+Daftarkan ke Aplicares ×2 → info; Daftarkan UUID kamar → teal; Tambah SLKI/SIKI → secondary;
+Reset Status Kunci → confirm warning-soft; di tabel Aplicares: Hapus per baris → danger-soft,
+Samakan → secondary). 25 ikon SVG manual di Master juga diganti `<x-ikon>`, jadi Master kini 100%
+memakai katalog (164 tombol; 2 tombol pilihan Kamar sengaja tanpa ikon). Area lain menyusul per
+modul: pasang ikon + samakan komponen + ganti SVG manual sekaligus.
+
 ### Status penerapan (pemindaian 2026-11-17)
 
 Dari 1.648 tombol di `resources/views`, **700 tombol berteks di 375 file belum berikon**
@@ -569,5 +617,7 @@ hapus 6 · waktu 5 · buka-kunci 3 · dokumen 2 · riwayat 1 · **belum terpetak
 navigasi ◀ ▶, "Ambil IHS", "Pakai Pengganti", "Rawat Gabung", dll. Putuskan per kasus).
 Per area: RI 115, RJ 101, UGD 99, komponen 70, Gudang 37, Penunjang 27, Keuangan 26, Master ±150.
 
-Penerapan dilakukan **per modul** (bukan sapuan sekaligus), dimulai Kasir RJ/UGD/RI + Kas TU
-(2026-11-17, sudah). Saat menyentuh sebuah halaman, pasang ikon pada tombol-tombolnya sesuai tabel.
+Penerapan dilakukan **per modul** (bukan sapuan sekaligus):
+- 2026-11-17 Kasir RJ/UGD/RI + Kas TU (13 tombol), sudah.
+- 2026-11-17 **Master** (139 tombol, 66 file, 27 modul), sudah. Sengaja tanpa ikon: 2 tombol pilihan
+  kelas/TT di daftar Master Kamar (isinya kode + nama, bukan aksi). Saat menyentuh sebuah halaman, pasang ikon pada tombol-tombolnya sesuai tabel.

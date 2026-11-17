@@ -140,7 +140,7 @@ new class extends Component {
                             @endforeach
                         </div>
                         <div class="mt-4">
-                            <x-primary-button type="button" wire:click="hitung" wire:loading.attr="disabled">Hitung</x-primary-button>
+                            <x-primary-button type="button" wire:click="hitung" wire:loading.attr="disabled"><x-ikon nama="proses" /> Hitung</x-primary-button>
                         </div>
                     @endif
                 </x-border-form>
@@ -198,7 +198,7 @@ new class extends Component {
             {{-- FOOTER --}}
             <div class="sticky bottom-0 z-10 px-6 py-4 mt-auto bg-surface-soft border-t border-hairline dark:bg-gray-900 dark:border-gray-700">
                 <div class="flex justify-end gap-2">
-                    <x-secondary-button type="button" wire:click="closeModal">Tutup</x-secondary-button>
+                    <x-secondary-button type="button" wire:click="closeModal"><x-ikon nama="batal" /> Tutup</x-secondary-button>
                 </div>
             </div>
         </div>

@@ -798,9 +798,7 @@ new class extends Component {
                                 <x-secondary-button wire:click="muatReferensiKamarAplicares" wire:loading.attr="disabled"
                                     wire:target="muatReferensiKamarAplicares" class="!py-1 !px-2.5 !text-xs shrink-0">
                                     <x-loading size="xs" wire:loading wire:target="muatReferensiKamarAplicares" class="mr-1" />
-                                    <svg wire:loading.remove wire:target="muatReferensiKamarAplicares" class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582M20 20v-5h-.581M4.582 9A7.001 7.001 0 0112 5c2.276 0 4.293.965 5.71 2.5M19.418 15A7.001 7.001 0 0112 19c-2.276 0-4.293-.965-5.71-2.5"/>
-                                    </svg>
+                                    <x-ikon nama="muat-ulang" ukuran="w-3 h-3" class="mr-1" wire:loading.remove wire:target="muatReferensiKamarAplicares" />
                                     <span wire:loading.remove wire:target="muatReferensiKamarAplicares">Tarik Data Aplicares</span>
                                     <span wire:loading wire:target="muatReferensiKamarAplicares">Menarik&hellip;</span>
                                 </x-secondary-button>
@@ -866,14 +864,12 @@ new class extends Component {
                             @else
                                 <span class="text-xs text-muted-soft dark:text-gray-500 italic">Belum diproses</span>
                             @endif
-                            <x-primary-button wire:click="sinkronBulkKamarKeAplicares" wire:loading.attr="disabled" wire:target="sinkronBulkKamarKeAplicares" class="shrink-0 gap-2">
+                            <x-info-button wire:click="sinkronBulkKamarKeAplicares" wire:loading.attr="disabled" wire:target="sinkronBulkKamarKeAplicares" class="shrink-0 gap-2">
                                 <x-loading size="xs" wire:loading wire:target="sinkronBulkKamarKeAplicares" />
-                                <svg wire:loading.remove wire:target="sinkronBulkKamarKeAplicares" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                                </svg>
+                                <x-ikon nama="setujui" wire:loading.remove wire:target="sinkronBulkKamarKeAplicares" />
                                 <span wire:loading.remove wire:target="sinkronBulkKamarKeAplicares">Daftarkan ke Aplicares</span>
                                 <span wire:loading wire:target="sinkronBulkKamarKeAplicares">Memproses&hellip;</span>
-                            </x-primary-button>
+                            </x-info-button>
                         </div>
 
                         {{-- Loading proses bulk --}}
@@ -914,19 +910,13 @@ new class extends Component {
                                     :message="'Yakin hapus SEMUA ' . count($aplicaresData) . ' ruangan dari Aplicares BPJS? Aksi ini TIDAK BISA DIBATALKAN — semua data ketersediaan kamar di sisi BPJS akan dihapus dan perlu didaftarkan ulang.'"
                                     confirmText="Ya, hapus semua" cancelText="Batal"
                                     class="text-xs">
-                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                                    </svg>
+                                    <x-ikon nama="hapus" ukuran="w-3 h-3" class="mr-1" />
                                     Hapus Semua ({{ count($aplicaresData) }})
                                 </x-confirm-button>
                             @endif
                             <x-secondary-button wire:click="muatDaftarKamarTerdaftarAplicares" wire:loading.attr="disabled" wire:target="muatDaftarKamarTerdaftarAplicares,hapusSemuaDariAplicares">
                                 <x-loading size="xs" wire:loading wire:target="muatDaftarKamarTerdaftarAplicares,hapusSemuaDariAplicares" class="mr-1" />
-                                <svg wire:loading.remove wire:target="muatDaftarKamarTerdaftarAplicares,hapusSemuaDariAplicares" class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M4 4v5h.582M20 20v-5h-.581M4.582 9A7.001 7.001 0 0112 5c2.276 0 4.293.965 5.71 2.5M19.418 15A7.001 7.001 0 0112 19c-2.276 0-4.293-.965-5.71-2.5" />
-                                </svg>
+                                <x-ikon nama="muat-ulang" ukuran="w-3 h-3" class="mr-1" wire:loading.remove wire:target="muatDaftarKamarTerdaftarAplicares,hapusSemuaDariAplicares" />
                                 <span wire:loading.remove wire:target="muatDaftarKamarTerdaftarAplicares,hapusSemuaDariAplicares">
                                     {{ empty($aplicaresData) ? 'Ambil Data Aplicares' : 'Perbarui Data' }}
                                 </span>
@@ -1067,25 +1057,22 @@ new class extends Component {
                                             <td class="px-5 py-3 text-center">
                                                 <div class="flex items-center justify-center gap-1.5">
                                                     @if ($isMismatch)
-                                                        <x-confirm-button variant="outline"
+                                                        <x-confirm-button variant="secondary"
                                                             :action="'samakanKapasitasAplicares(\'' . $kodekelas . '\', \'' . $koderuang . '\')'"
                                                             title="Samakan Kapasitas"
                                                             :message="'Samakan kapasitas ruangan ' . $koderuang . ' di Aplicares dari ' . $kapasitasOnline . ' menjadi ' . $kapasitasLokal . ' (sesuai rsmst_beds)?'"
                                                             confirmText="Ya, samakan" cancelText="Batal">
-                                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582M20 20v-5h-.581M4.582 9A7.001 7.001 0 0112 5c2.276 0 4.293.965 5.71 2.5M19.418 15A7.001 7.001 0 0112 19c-2.276 0-4.293-.965-5.71-2.5"/></svg>
+                                                            <x-ikon nama="muat-ulang" ukuran="w-3 h-3" />
                                                             Samakan
                                                         </x-confirm-button>
                                                     @endif
-                                                    <x-confirm-button variant="danger"
+                                                    <x-confirm-button variant="danger-soft"
                                                         :action="'hapusKamarDariAplicares(\'' . $kodekelas . '\', \'' . $koderuang . '\')'"
                                                         title="Hapus Aplicares"
                                                         :message="'Hapus ruangan ' . $koderuang . ' (' . $kodekelas . ') dari Aplicares BPJS?'"
                                                         confirmText="Ya, hapus" cancelText="Batal"
                                                         class="text-xs">
-                                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                        </svg>
+                                                        <x-ikon nama="hapus" ukuran="w-3 h-3" />
                                                         Hapus
                                                     </x-confirm-button>
                                                 </div>
@@ -1226,9 +1213,7 @@ new class extends Component {
                                 <x-secondary-button wire:click="muatReferensiTempatTidurSirs" wire:loading.attr="disabled"
                                     wire:target="muatReferensiTempatTidurSirs" class="!py-1 !px-2.5 !text-xs shrink-0">
                                     <x-loading size="xs" wire:loading wire:target="muatReferensiTempatTidurSirs" class="mr-1" />
-                                    <svg wire:loading.remove wire:target="muatReferensiTempatTidurSirs" class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582M20 20v-5h-.581M4.582 9A7.001 7.001 0 0112 5c2.276 0 4.293.965 5.71 2.5M19.418 15A7.001 7.001 0 0112 19c-2.276 0-4.293-.965-5.71-2.5"/>
-                                    </svg>
+                                    <x-ikon nama="muat-ulang" ukuran="w-3 h-3" class="mr-1" wire:loading.remove wire:target="muatReferensiTempatTidurSirs" />
                                     <span wire:loading.remove wire:target="muatReferensiTempatTidurSirs">Tarik Data SIRS</span>
                                     <span wire:loading wire:target="muatReferensiTempatTidurSirs">Menarik&hellip;</span>
                                 </x-secondary-button>
@@ -1295,9 +1280,7 @@ new class extends Component {
                             @endif
                             <x-primary-button wire:click="sinkronBulkKamarKeSirs" wire:loading.attr="disabled" wire:target="sinkronBulkKamarKeSirs" class="shrink-0 gap-2">
                                 <x-loading size="xs" wire:loading wire:target="sinkronBulkKamarKeSirs" />
-                                <svg wire:loading.remove wire:target="sinkronBulkKamarKeSirs" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                                </svg>
+                                <x-ikon nama="setujui" wire:loading.remove wire:target="sinkronBulkKamarKeSirs" />
                                 <span wire:loading.remove wire:target="sinkronBulkKamarKeSirs">Daftarkan ke SIRS</span>
                                 <span wire:loading wire:target="sinkronBulkKamarKeSirs">Memproses&hellip;</span>
                             </x-primary-button>
@@ -1341,19 +1324,13 @@ new class extends Component {
                                     :message="'Yakin hapus SEMUA ' . count($sirsData) . ' tempat tidur dari SIRS Kemenkes? Aksi ini TIDAK BISA DIBATALKAN — semua id_t_tt akan dihapus dari sisi Kemenkes dan di-null-kan di rsmst_rooms lokal; perlu didaftarkan ulang untuk pelaporan.'"
                                     confirmText="Ya, hapus semua" cancelText="Batal"
                                     class="text-xs">
-                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                                    </svg>
+                                    <x-ikon nama="hapus" ukuran="w-3 h-3" class="mr-1" />
                                     Hapus Semua ({{ count($sirsData) }})
                                 </x-confirm-button>
                             @endif
                             <x-secondary-button wire:click="muatDaftarTempatTidurTerdaftarSirs" wire:loading.attr="disabled" wire:target="muatDaftarTempatTidurTerdaftarSirs,hapusTempatTidurDariSirs,hapusSemuaDariSirs">
                                 <x-loading size="xs" wire:loading wire:target="muatDaftarTempatTidurTerdaftarSirs,hapusTempatTidurDariSirs,hapusSemuaDariSirs" class="mr-1" />
-                                <svg wire:loading.remove wire:target="muatDaftarTempatTidurTerdaftarSirs,hapusTempatTidurDariSirs,hapusSemuaDariSirs" class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M4 4v5h.582M20 20v-5h-.581M4.582 9A7.001 7.001 0 0112 5c2.276 0 4.293.965 5.71 2.5M19.418 15A7.001 7.001 0 0112 19c-2.276 0-4.293-.965-5.71-2.5" />
-                                </svg>
+                                <x-ikon nama="muat-ulang" ukuran="w-3 h-3" class="mr-1" wire:loading.remove wire:target="muatDaftarTempatTidurTerdaftarSirs,hapusTempatTidurDariSirs,hapusSemuaDariSirs" />
                                 <span wire:loading.remove wire:target="muatDaftarTempatTidurTerdaftarSirs,hapusTempatTidurDariSirs,hapusSemuaDariSirs">
                                     {{ empty($sirsData) ? 'Ambil Data SIRS' : 'Perbarui Data' }}
                                 </span>

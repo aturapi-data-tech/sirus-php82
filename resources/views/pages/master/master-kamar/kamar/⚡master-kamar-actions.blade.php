@@ -688,13 +688,13 @@ new class extends Component {
                                             <x-text-input wire:model="formKamar.room_uuid"
                                                 class="w-full font-mono text-xs bg-surface-soft dark:bg-gray-800/60"
                                                 placeholder="Belum terdaftar…" readonly />
-                                            <x-outline-button type="button" wire:click="daftarkanUuidKamar"
-                                                wire:loading.attr="disabled" wire:target="daftarkanUuidKamar" class="shrink-0"
+                                            <x-primary-button type="button" wire:click="daftarkanUuidKamar"
+                                                wire:loading.attr="disabled" wire:target="daftarkanUuidKamar" class="!px-3 shrink-0 !bg-teal-600 hover:!bg-teal-700"
                                                 title="Daftarkan kamar sebagai Location SATUSEHAT">
                                                 <x-loading size="xs" wire:loading wire:target="daftarkanUuidKamar" />
-                                                <span wire:loading.remove wire:target="daftarkanUuidKamar">Daftarkan</span>
+                                                <span wire:loading.remove wire:target="daftarkanUuidKamar" class="inline-flex items-center gap-2"><x-ikon nama="setujui" /> Daftarkan</span>
                                                 <span wire:loading wire:target="daftarkanUuidKamar">Memproses…</span>
-                                            </x-outline-button>
+                                            </x-primary-button>
                                         </div>
                                         <x-input-error :messages="$errors->get('formKamar.room_uuid')" class="mt-1" />
                                     </div>
@@ -716,14 +716,11 @@ new class extends Component {
                                             <x-text-input wire:model.live="kodekelas" maxlength="10"
                                                 class="w-full uppercase bg-surface-soft dark:bg-gray-800/60"
                                                 placeholder="Pilih dari daftar di bawah…" readonly />
-                                            <x-outline-button wire:click="fetchAplic" wire:loading.attr="disabled" wire:target="fetchAplic" class="shrink-0">
+                                            <x-secondary-button wire:click="fetchAplic" wire:loading.attr="disabled" wire:target="fetchAplic" class="shrink-0">
                                                 <x-loading size="xs" wire:loading wire:target="fetchAplic" />
-                                                <svg wire:loading.remove wire:target="fetchAplic" class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                                </svg>
+                                                <x-ikon nama="muat-ulang" ukuran="w-3.5 h-3.5" class="mr-1" wire:loading.remove wire:target="fetchAplic" />
                                                 Tarik Data Aplicares
-                                            </x-outline-button>
+                                            </x-secondary-button>
                                         </div>
                                         @if ($aplicError)
                                             <p class="mt-1 text-xs text-red-500">{{ $aplicError }}</p>
@@ -772,14 +769,11 @@ new class extends Component {
                                                         <x-text-input wire:model.live="aplicDaftar.tersediapriawanita" type="number" min="0" class="w-full mt-1" />
                                                     </div>
                                                 </div>
-                                                <x-primary-button wire:click="daftarkanAplic" wire:loading.attr="disabled" wire:target="daftarkanAplic">
+                                                <x-info-button wire:click="daftarkanAplic" wire:loading.attr="disabled" wire:target="daftarkanAplic">
                                                     <x-loading size="xs" wire:loading wire:target="daftarkanAplic" />
-                                                    <svg wire:loading.remove wire:target="daftarkanAplic" class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                                                    </svg>
+                                                    <x-ikon nama="setujui" ukuran="w-3.5 h-3.5" class="mr-1" wire:loading.remove wire:target="daftarkanAplic" />
                                                     Daftarkan / Update ke Aplicares
-                                                </x-primary-button>
+                                                </x-info-button>
                                                 <p class="text-[11px] text-blue-500/70 dark:text-blue-400/60">
                                                     Kode ruang: <span class="font-mono font-semibold">{{ $formKamar['room_id'] }}</span>
                                                     · Kelas: <span class="font-mono font-semibold">{{ $kodekelas }}</span>
@@ -803,14 +797,11 @@ new class extends Component {
                                                     <x-text-input wire:model.live="idTt" maxlength="5"
                                                         class="w-full bg-surface-soft dark:bg-gray-800/60"
                                                         placeholder="Pilih dari daftar di bawah…" readonly />
-                                                    <x-outline-button wire:click="fetchSirs" wire:loading.attr="disabled" wire:target="fetchSirs" class="shrink-0">
+                                                    <x-secondary-button wire:click="fetchSirs" wire:loading.attr="disabled" wire:target="fetchSirs" class="shrink-0">
                                                         <x-loading size="xs" wire:loading wire:target="fetchSirs" />
-                                                        <svg wire:loading.remove wire:target="fetchSirs" class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                                        </svg>
+                                                        <x-ikon nama="muat-ulang" ukuran="w-3.5 h-3.5" class="mr-1" wire:loading.remove wire:target="fetchSirs" />
                                                         Tarik Data SIRS
-                                                    </x-outline-button>
+                                                    </x-secondary-button>
                                                 </div>
                                                 @if ($idTt && $this->sirsTtLabelOf($idTt))
                                                     <p class="mt-1 text-xs font-medium text-green-700 dark:text-green-400">
@@ -874,10 +865,7 @@ new class extends Component {
                                                 <x-toggle wire:model.live="sirsDaftar.covid" trueValue="1" falseValue="0" label="Ruang COVID" />
                                                 <x-primary-button wire:click="daftarkanSirs" wire:loading.attr="disabled" wire:target="daftarkanSirs">
                                                     <x-loading size="xs" wire:loading wire:target="daftarkanSirs" />
-                                                    <svg wire:loading.remove wire:target="daftarkanSirs" class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                                                    </svg>
+                                                    <x-ikon nama="kirim" ukuran="w-3.5 h-3.5" class="mr-1" wire:loading.remove wire:target="daftarkanSirs" />
                                                     {{ $idTTt ? 'Perbarui Data di SIRS' : 'Kirim Data ke SIRS Kemenkes' }}
                                                 </x-primary-button>
                                                 @if ($idTTt)
@@ -969,9 +957,9 @@ new class extends Component {
                         <span class="hidden sm:inline"> di field terakhir untuk simpan</span>
                     </div>
                     <div class="flex justify-end gap-2">
-                        <x-secondary-button type="button" x-on:click="tryClose()">Batal</x-secondary-button>
+                        <x-secondary-button type="button" x-on:click="tryClose()"><x-ikon nama="batal" /> Batal</x-secondary-button>
                         <x-primary-button type="button" wire:click="save" wire:loading.attr="disabled">
-                            <span wire:loading.remove>Simpan</span>
+                            <span wire:loading.remove class="inline-flex items-center gap-2"><x-ikon nama="simpan" /> Simpan</span>
                             <span wire:loading>Saving...</span>
                         </x-primary-button>
                     </div>

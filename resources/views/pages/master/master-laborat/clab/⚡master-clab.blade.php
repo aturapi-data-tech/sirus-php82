@@ -203,7 +203,8 @@ new class extends Component {
                                     </x-select-input>
                                 </div>
                                 <x-primary-button type="button" wire:click="openCreateClab" class="whitespace-nowrap">
-                                    + Tambah Kategori
+                                    <x-ikon nama="tambah" />
+                                    Tambah Kategori
                                 </x-primary-button>
                                 <x-toolbar-refresh-reset :label="null" />
                             </div>

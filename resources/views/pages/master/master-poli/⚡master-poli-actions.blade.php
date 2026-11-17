@@ -340,7 +340,7 @@ new class extends Component {
                                             wire:loading.attr="disabled" wire:target="daftarkanUuidPoli"
                                             title="Daftarkan poli sebagai Location SATUSEHAT (khususnya poli UGD/IGD)"
                                             class="!px-3 shrink-0 !bg-teal-600 hover:!bg-teal-700">
-                                            <span wire:loading.remove wire:target="daftarkanUuidPoli">Daftarkan UUID</span>
+                                            <span wire:loading.remove wire:target="daftarkanUuidPoli" class="inline-flex items-center gap-2"><x-ikon nama="setujui" /> Daftarkan UUID</span>
                                             <span wire:loading wire:target="daftarkanUuidPoli"><x-loading /></span>
                                         </x-primary-button>
                                     </div>
@@ -373,11 +373,12 @@ new class extends Component {
 
                     <div class="flex justify-end gap-2">
                         <x-secondary-button type="button" x-on:click="tryClose()">
+                            <x-ikon nama="batal" />
                             Batal
                         </x-secondary-button>
 
                         <x-primary-button type="button" wire:click="save" wire:loading.attr="disabled">
-                            <span wire:loading.remove>Simpan</span>
+                            <span wire:loading.remove class="inline-flex items-center gap-2"><x-ikon nama="simpan" /> Simpan</span>
                             <span wire:loading>Saving...</span>
                         </x-primary-button>
                     </div>

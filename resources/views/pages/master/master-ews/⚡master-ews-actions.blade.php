@@ -498,7 +498,7 @@ new class extends Component {
                         </table>
                     </div>
                     <div class="mt-3">
-                        <x-secondary-button type="button" wire:click.prevent="addRentang">+ Tambah baris</x-secondary-button>
+                        <x-secondary-button type="button" wire:click.prevent="addRentang"><x-ikon nama="tambah" /> Tambah baris</x-secondary-button>
                     </div>
                     <x-input-error :messages="$errors->get('form.rentang')" class="mt-2" />
                 </x-border-form>
@@ -511,9 +511,9 @@ new class extends Component {
                         Setelah simpan, cache master dibersihkan — Observasi Lanjutan langsung memakai ambang baru.
                     </div>
                     <div class="flex justify-end gap-2">
-                        <x-secondary-button type="button" x-on:click="tryClose()">Batal</x-secondary-button>
+                        <x-secondary-button type="button" x-on:click="tryClose()"><x-ikon nama="batal" /> Batal</x-secondary-button>
                         <x-primary-button type="button" wire:click="save" wire:loading.attr="disabled">
-                            <span wire:loading.remove>Simpan</span>
+                            <span wire:loading.remove class="inline-flex items-center gap-2"><x-ikon nama="simpan" /> Simpan</span>
                             <span wire:loading>Saving...</span>
                         </x-primary-button>
                     </div>

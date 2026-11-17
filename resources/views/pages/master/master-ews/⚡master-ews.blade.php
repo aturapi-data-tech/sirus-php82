@@ -167,11 +167,11 @@ new class extends Component {
                                     <option value="100">100</option>
                                 </x-select-input>
                             </div>
-                            <x-secondary-button type="button" wire:click="openSimulasi">Simulasi Skor</x-secondary-button>
+                            <x-secondary-button type="button" wire:click="openSimulasi"><x-ikon nama="proses" /> Simulasi Skor</x-secondary-button>
                             @if ($tampilan === 'respon')
-                                <x-primary-button type="button" wire:click="openCreateRespon">+ Tambah Respon</x-primary-button>
+                                <x-primary-button type="button" wire:click="openCreateRespon"><x-ikon nama="tambah" /> Tambah Respon</x-primary-button>
                             @else
-                                <x-primary-button type="button" wire:click="openCreate">+ Tambah Parameter</x-primary-button>
+                                <x-primary-button type="button" wire:click="openCreate"><x-ikon nama="tambah" /> Tambah Parameter</x-primary-button>
                             @endif
                             <x-toolbar-refresh-reset :label="null" />
                         </div>
