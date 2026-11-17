@@ -531,9 +531,7 @@ new class extends Component {
                                 <div class="ds-caption-up">Tempat Tidur ({{ count($beds) }})</div>
                                 <x-ghost-button wire:click="openCreateBed('{{ $sr->room_id }}')"
                                     class="!text-brand-green dark:!text-brand-lime !px-3 !py-1.5 !text-xs border border-dashed border-brand-green/40 dark:border-brand-lime/40">
-                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                                    </svg>
+                                    <x-ikon nama="tambah" ukuran="w-3.5 h-3.5" />
                                     Tambah Bed
                                 </x-ghost-button>
                             </div>

@@ -769,10 +769,10 @@ new class extends Component {
             {{-- Footer modal --}}
             <div class="flex items-center justify-between gap-3 px-6 py-4 border-t border-hairline dark:border-gray-700 shrink-0">
                 <div class="flex items-center gap-2">
-                    <x-primary-button wire:click="loadJadwalBpjs" wire:loading.attr="disabled" wire:target="loadJadwalBpjs">
+                    <x-secondary-button wire:click="loadJadwalBpjs" wire:loading.attr="disabled" wire:target="loadJadwalBpjs">
                         <div wire:loading wire:target="loadJadwalBpjs" class="mr-1"><x-loading /></div>
                         <span wire:loading.remove wire:target="loadJadwalBpjs" class="inline-flex items-center gap-2"><x-ikon nama="muat-ulang" /> Muat Ulang</span>
-                    </x-primary-button>
+                    </x-secondary-button>
 
                     @if(count($jadwalBpjs))
                     <x-primary-button wire:click="syncSemua" wire:loading.attr="disabled" wire:target="syncSemua"
@@ -806,10 +806,7 @@ new class extends Component {
 
                     {{-- Tombol buka modal cari jadwal per poli --}}
                     <x-secondary-button type="button" x-on:click="$dispatch('open-modal', { name: 'modal-jadwal-poli' })">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/>
-                        </svg>
+                        <x-ikon nama="cari" />
                         Cari Jadwal per Poli
                     </x-secondary-button>
 
@@ -819,27 +816,21 @@ new class extends Component {
                     </span>
 
                     @unless($syncingAll)
-                    <x-confirm-button variant="danger-soft"
+                    <x-confirm-button variant="danger"
                         action="hapusSemuaJadwal()"
                         title="Hapus Seluruh Jadwal RS"
                         message="Seluruh jadwal praktek dokter (7 hari, semua poli) akan dihapus dari data RS. Bisa diambil ulang lewat Terapkan Semua Poli. Lanjutkan?"
                         confirmText="Ya, hapus semua">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round"
-                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
+                        <x-ikon nama="hapus" />
                         Hapus Semua Jadwal
                     </x-confirm-button>
                     @endunless
 
                     @if($syncingAll)
-                    <x-secondary-button type="button" wire:click="batalSyncAll">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M21 12a9 9 0 11-18 0 9 9 0 0118 0zM9 9h6v6H9z" />
-                        </svg>
+                    <x-danger-button type="button" wire:click="batalSyncAll">
+                        <x-ikon nama="hentikan" />
                         Hentikan ({{ $syncAllDone }}/{{ $syncAllTotal }})
-                    </x-secondary-button>
+                    </x-danger-button>
                     @else
                     <x-primary-button
                         wire:click="syncAllPoli"
@@ -847,10 +838,7 @@ new class extends Component {
                         wire:target="syncAllPoli"
                         wire:confirm="Terapkan jadwal SEMUA poli yang sudah di-mapping ke BPJS untuk 7 hari ({{ $this->rentangMinggu }})? Seluruh jadwal dokter di database RS akan diperbarui.">
                         <div wire:loading wire:target="syncAllPoli" class="mr-1"><x-loading /></div>
-                        <svg wire:loading.remove wire:target="syncAllPoli" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                        </svg>
+                        <x-ikon nama="setujui" wire:loading.remove wire:target="syncAllPoli" />
                         <span wire:loading.remove wire:target="syncAllPoli">Terapkan Semua Poli (7 Hari)</span>
                         <span wire:loading wire:target="syncAllPoli">Menyiapkan...</span>
                     </x-primary-button>
@@ -934,10 +922,7 @@ new class extends Component {
                                                 title="Hapus Jadwal {{ $hari['day_desc'] }}"
                                                 :message="'Hapus semua ' . count($hari['jadwal']) . ' jadwal di hari ' . $hari['day_desc'] . '?'"
                                                 confirmText="Ya, hapus">
-                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                </svg>
+                                                <x-ikon nama="hapus" ukuran="w-3.5 h-3.5" />
                                                 <span class="sr-only">Hapus jadwal {{ $hari['day_desc'] }}</span>
                                             </x-confirm-button>
                                             @endif

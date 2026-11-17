@@ -571,7 +571,7 @@ new class extends Component {
                     <div class="p-5 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
                         <div class="flex items-center justify-between mb-4">
                             <h3 class="text-sm font-semibold text-body dark:text-gray-300 border-b border-hairline-soft dark:border-gray-800 pb-2">SLKI (Standar Luaran Keperawatan Indonesia)</h3>
-                            <x-outline-button type="button" wire:click="addSlki"><x-ikon nama="tambah" /> Tambah SLKI</x-outline-button>
+                            <x-secondary-button type="button" wire:click="addSlki"><x-ikon nama="tambah" /> Tambah SLKI</x-secondary-button>
                         </div>
 
                         @forelse($slkiItems as $idx => $slki)
@@ -608,7 +608,7 @@ new class extends Component {
                     <div class="p-5 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
                         <div class="flex items-center justify-between mb-4">
                             <h3 class="text-sm font-semibold text-body dark:text-gray-300 border-b border-hairline-soft dark:border-gray-800 pb-2">SIKI (Standar Intervensi Keperawatan Indonesia)</h3>
-                            <x-outline-button type="button" wire:click="addSiki"><x-ikon nama="tambah" /> Tambah SIKI</x-outline-button>
+                            <x-secondary-button type="button" wire:click="addSiki"><x-ikon nama="tambah" /> Tambah SIKI</x-secondary-button>
                         </div>
 
                         @forelse($sikiItems as $idx => $siki)

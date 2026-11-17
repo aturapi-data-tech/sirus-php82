@@ -310,7 +310,7 @@ new class extends Component {
                             @endif
                         </div>
                         @if ($ihsBerjalan)
-                            <x-secondary-button type="button" wire:click="hentikanAmbilIhs"><x-ikon nama="hentikan" /> Hentikan</x-secondary-button>
+                            <x-danger-button type="button" wire:click="hentikanAmbilIhs"><x-ikon nama="hentikan" /> Hentikan</x-danger-button>
                         @else
                             <x-primary-button type="button" wire:click="mulaiAmbilIhs" wire:loading.attr="disabled"
                                 wire:target="mulaiAmbilIhs"

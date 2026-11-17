@@ -38,18 +38,17 @@
 
         {{-- Tombol reset --}}
         <div class="flex items-center gap-3">
-            <x-danger-button
-                type="button"
-                wire:click="resetLockStatus"
-                wire:confirm="Yakin reset status kunci pasien ini menjadi bebas (null)?"
-                wire:loading.attr="disabled"
+            <x-confirm-button variant="warning-soft" action="resetLockStatus()"
+                title="Reset Status Kunci"
+                message="Yakin reset status kunci pasien ini menjadi bebas (null)?"
+                confirmText="Ya, reset" cancelText="Batal"
                 :disabled="!$isLocked">
                 <span wire:loading.remove wire:target="resetLockStatus" class="inline-flex items-center gap-2"><x-ikon nama="kembalikan" /> Reset Status Kunci</span>
                 <span wire:loading wire:target="resetLockStatus">
                     <x-loading />
                     Memproses...
                 </span>
-            </x-danger-button>
+            </x-confirm-button>
 
             @unless ($isLocked)
                 <span class="text-xs text-muted dark:text-gray-500">Pasien sudah bebas — tidak perlu di-reset.</span>

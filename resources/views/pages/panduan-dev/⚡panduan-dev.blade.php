@@ -339,9 +339,11 @@ new class extends Component {
 
                 {{-- ===== IKON TOMBOL — dirender dari App\Support\IkonTombol::PETA (sumber tunggal) ===== --}}
                 <div class="ds-card-outline mb-6" id="ikon-tombol">
-                    <div class="ds-caption-up mb-2" style="color:var(--muted)">Ikon Tombol — &lt;x-ikon nama="…"&gt;</div>
+                    <div class="ds-caption-up mb-2" style="color:var(--muted)">Ikon &amp; Komponen per Aksi — &lt;x-ikon nama="…"&gt;</div>
                     <p class="ds-body-sm mb-5" style="color:var(--muted);max-width:70ch">
-                        Satu aksi = satu ikon di seluruh project, di kiri teks tombol. Jangan tulis <code class="ds-code">&lt;svg&gt;</code>
+                        Satu aksi = satu ikon + satu komponen tombol di seluruh project; ikon di kiri teks. Aksi positif:
+                        yang UTAMA di panel solid, PENDAMPING abu (<code class="ds-code">x-secondary-button</code>).
+                        Menulis ke BPJS biru (<code class="ds-code">x-info-button</code>), ke SATUSEHAT teal. Jangan tulis <code class="ds-code">&lt;svg&gt;</code>
                         inline: aksi baru → tambah entri di <code class="ds-code">App\Support\IkonTombol::PETA</code>.
                         <code class="ds-code">batal</code> (tutup tanpa simpan) ≠ <code class="ds-code">batalkan</code> (batalkan transaksi) ≠
                         <code class="ds-code">hapus</code>. Rincian: <code class="ds-code">docs/standar-komponen-tombol.md</code> § Ikon Tombol.
@@ -362,6 +364,7 @@ new class extends Component {
                                 <div class="min-w-0">
                                     <code class="ds-code">{{ $namaIkon }}</code>
                                     <div class="mt-1 text-xs text-muted dark:text-gray-400">{{ $ikon['label'] }}</div>
+                                    <div class="mt-1 text-xs font-medium text-body dark:text-gray-300">Tombol: {{ $ikon['tombol'] }}</div>
                                 </div>
                             </div>
                         @endforeach
