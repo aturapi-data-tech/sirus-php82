@@ -101,72 +101,114 @@ final class SaldoDpSupplier
     }
 
     /**
-     * Rekap semua supplier yang pernah punya DP (saldo awal / setor / opname), satu query.
-     * $semua = false → hanya saldo ≠ 0.
+     * Rekap saldo DP per supplier untuk SATU TAHUN (pola saldo kas): saldo awal 1 Jan → disetor,
+     * terpakai, opname tahun itu → saldo akhir 31 Des (tahun berjalan: s.d. hari ini). Urut transaksi
+     * terakhir (≤ akhir tahun) paling atas. $jenisSupplier: 'all' | 'medis' | 'nonmedis' (tanda master supplier).
      *
-     * @return array<int, array{suppId: string, nama: string, tahunAwal: ?string, awal: int, setor: int, pakai: int, opname: int, saldo: int, terakhir: string}>
+     *   saldo awal T = SAH_VALUE_TOP tahun terakhir ≤ T (tahun B) + setor − pakai dari 1 Jan B s.d. 31 Des T−1
+     *                  + Σ opname sebelum 1 Jan T          (SAH tak memuat opname — lihat rincian())
+     *   saldo akhir T = saldo awal T + setor T − pakai T + opname T
+     * Tahun berjalan: saldo akhir = saldo() — sama dengan detail supplier & pilihan Saldo DP di Hutang.
+     *
+     * @return array<int, array{suppId: string, nama: string, awal: int, setor: int, pakai: int, opname: int,
+     *   akhir: int, terakhir: ?string, terakhirUrut: string}>
      */
-    public static function rekap(string $jenis, string $cari = '', bool $semua = false): array
+    public static function rekapTahun(string $jenis, int $tahun, string $cari = '', bool $semua = false, string $jenisSupplier = 'all'): array
     {
-        $tahun = (string) now()->year;
         $t = self::TABEL[$jenis] ?? self::TABEL[self::JENIS_PBF];
+        $batasAkhir = ($tahun + 1) . '-01-01';
 
-        // Saldo awal tahun terakhir ≤ tahun ini per supplier; batas transaksi = 1 Jan tahun itu.
-        $sql = "
-            SELECT x.supp_id, s.supp_name, x.tahun_awal, x.awal, x.setor, x.pakai, x.opname,
-                   x.awal + x.setor - x.pakai + x.opname AS saldo, x.terakhir
-            FROM (
-                SELECT k.supp_id, sa.sah_year AS tahun_awal, NVL(sa.sah_value_top,0) AS awal,
-                       NVL((SELECT SUM(t.cashout_value) FROM {$t['setor']} t
-                            WHERE t.supp_id = k.supp_id
-                              AND t.cashout_date >= TO_DATE(NVL(sa.sah_year,'1900') || '0101','YYYYMMDD')),0) AS setor,
-                       NVL((SELECT SUM(c.cashout_value_topup) FROM {$t['pakai']} c
-                            WHERE c.supp_id = k.supp_id
-                              AND c.cashout_date >= TO_DATE(NVL(sa.sah_year,'1900') || '0101','YYYYMMDD')),0) AS pakai,
-                       NVL((SELECT SUM(NVL(o.so_d,0) - NVL(o.so_k,0)) FROM {$t['opname']} o
-                            WHERE o.supp_id = k.supp_id),0) AS opname,
-                       (SELECT TO_CHAR(MAX(t2.cashout_date),'dd/mm/yyyy') FROM {$t['setor']} t2
-                            WHERE t2.supp_id = k.supp_id) AS terakhir
-                FROM (
-                    -- tahun saldo awal terakhir ≤ tahun ini dihitung dulu (Oracle 10g menolak
-                    -- subquery di syarat outer join — ORA-01799)
-                    SELECT u.supp_id,
-                           (SELECT MAX(b.sah_year) FROM {$t['saldoAwal']} b
-                             WHERE b.supp_id = u.supp_id AND b.sah_year <= ?) AS tahun_awal
-                    FROM (
-                        SELECT supp_id FROM {$t['setor']}
-                        UNION SELECT supp_id FROM {$t['opname']}
-                        UNION SELECT supp_id FROM {$t['saldoAwal']} WHERE NVL(sah_value_top,0) <> 0
-                    ) u
-                ) k
-                LEFT JOIN {$t['saldoAwal']} sa
-                       ON sa.supp_id = k.supp_id AND sa.sah_year = k.tahun_awal
-            ) x
-            JOIN immst_suppliers s ON s.supp_id = x.supp_id
-            WHERE 1 = 1";
-        $binding = [$tahun];
-
-        if (!$semua) {
-            $sql .= ' AND x.awal + x.setor - x.pakai + x.opname <> 0';
+        // Saldo awal tahun B terakhir ≤ T per supplier.
+        $dasar = [];
+        foreach (DB::table($t['saldoAwal'])->where('sah_year', '<=', (string) $tahun)
+            ->get(['supp_id', 'sah_year', DB::raw('NVL(sah_value_top,0) as nilai')]) as $row) {
+            $id = (string) $row->supp_id;
+            if (!isset($dasar[$id]) || $row->sah_year > $dasar[$id]['tahun']) {
+                $dasar[$id] = ['tahun' => (string) $row->sah_year, 'nilai' => (float) $row->nilai];
+            }
         }
-        $cari = trim($cari);
+
+        // Mutasi per supplier per tahun (≤ T): [supp][tahun] => [nilai, max tanggal]
+        $mutasi = function (string $tabel, string $kolomNilai, string $kolomTanggal, string $syarat = '') use ($batasAkhir) {
+            $hasil = [];
+            $sql = "SELECT supp_id, TO_CHAR({$kolomTanggal},'YYYY') th, SUM({$kolomNilai}) n,
+                           TO_CHAR(MAX({$kolomTanggal}),'YYYYMMDDHH24MISS') urut, TO_CHAR(MAX({$kolomTanggal}),'dd/mm/yyyy') tgl
+                      FROM {$tabel}
+                     WHERE {$kolomTanggal} < TO_DATE(?,'YYYY-MM-DD') {$syarat}
+                     GROUP BY supp_id, TO_CHAR({$kolomTanggal},'YYYY')";
+            foreach (DB::select($sql, [$batasAkhir]) as $row) {
+                $hasil[(string) $row->supp_id][(string) $row->th] = [(float) $row->n, (string) $row->urut, (string) $row->tgl];
+            }
+
+            return $hasil;
+        };
+        $setor = $mutasi($t['setor'], 'NVL(cashout_value,0)', 'cashout_date');
+        $pakai = $mutasi($t['pakai'], 'NVL(cashout_value_topup,0)', 'cashout_date', 'AND NVL(cashout_value_topup,0) > 0');
+        $opname = $mutasi($t['opname'], 'NVL(so_d,0) - NVL(so_k,0)', 'so_date');
+
+        $ids = array_unique(array_merge(array_keys($dasar), array_keys($setor), array_keys($pakai), array_keys($opname)));
+        $master = DB::table('immst_suppliers')->whereIn('supp_id', $ids ?: ['-'])
+            ->get(['supp_id', 'supp_name', 'medis', 'nonmedis'])->keyBy(fn ($r) => (string) $r->supp_id);
+        $nama = $master->map(fn ($r) => $r->supp_name);
+        // Filter jenis supplier (pilihan Semua/Medis/Non-Medis di LOV) — tanda di master supplier.
+        if ($jenisSupplier === 'medis' || $jenisSupplier === 'nonmedis') {
+            $ids = array_values(array_filter($ids, fn ($id) => (string) ($master[$id]->{$jenisSupplier} ?? '0') === '1'));
+        }
+
+        $th = (string) $tahun;
+        $baris = [];
+        foreach ($ids as $id) {
+            $tahunDasar = $dasar[$id]['tahun'] ?? '0000';
+            $awal = $dasar[$id]['nilai'] ?? 0.0;
+            $terakhirUrut = '';
+            $terakhir = null;
+            $setorT = $pakaiT = $opnameT = 0.0;
+
+            foreach (['setor' => $setor, 'pakai' => $pakai, 'opname' => $opname] as $jenisMutasi => $peta) {
+                foreach ($peta[$id] ?? [] as $tahunMutasi => [$nilai, $urut, $tgl]) {
+                    $tahunMutasi = (string) $tahunMutasi; // kunci array numerik jadi int di PHP
+                    if ($urut > $terakhirUrut) {
+                        $terakhirUrut = $urut;
+                        $terakhir = $tgl;
+                    }
+                    $tanda = $jenisMutasi === 'pakai' ? -1 : 1;
+                    if ($tahunMutasi === $th) {
+                        match ($jenisMutasi) {
+                            'setor' => $setorT += $nilai,
+                            'pakai' => $pakaiT += $nilai,
+                            'opname' => $opnameT += $nilai,
+                        };
+                    } elseif ($jenisMutasi === 'opname' || $tahunMutasi >= $tahunDasar) {
+                        // setor/pakai sejak tahun saldo awal; opname semua tahun sebelum T
+                        $awal += $tanda * $nilai;
+                    }
+                }
+            }
+
+            $akhir = $awal + $setorT - $pakaiT + $opnameT;
+            if (!$semua && abs($awal) < 0.5 && abs($akhir) < 0.5 && abs($setorT) < 0.5 && abs($pakaiT) < 0.5 && abs($opnameT) < 0.5) {
+                continue;
+            }
+
+            $baris[] = [
+                'suppId' => $id,
+                'nama' => (string) ($nama[$id] ?? $id),
+                'awal' => (int) round($awal),
+                'setor' => (int) round($setorT),
+                'pakai' => (int) round($pakaiT),
+                'opname' => (int) round($opnameT),
+                'akhir' => (int) round($akhir),
+                'terakhir' => $terakhir,
+                'terakhirUrut' => $terakhirUrut,
+            ];
+        }
+
+        $cari = mb_strtoupper(trim($cari));
         if ($cari !== '') {
-            $sql .= ' AND (UPPER(s.supp_name) LIKE ? OR UPPER(x.supp_id) LIKE ?)';
-            $binding[] = '%' . mb_strtoupper($cari) . '%';
-            $binding[] = '%' . mb_strtoupper($cari) . '%';
+            $baris = array_values(array_filter($baris, fn ($r) => str_contains(mb_strtoupper($r['nama']), $cari) || str_contains(mb_strtoupper($r['suppId']), $cari)));
         }
-        $sql .= ' ORDER BY x.awal + x.setor - x.pakai + x.opname DESC, s.supp_name';
+        usort($baris, fn ($a, $b) => [$b['terakhirUrut'], $b['akhir']] <=> [$a['terakhirUrut'], $a['akhir']]);
 
-        return collect(DB::select($sql, $binding))->map(fn ($row) => [
-            'suppId' => (string) $row->supp_id,
-            'nama' => (string) ($row->supp_name ?? ''),
-            'tahunAwal' => $row->tahun_awal !== null ? (string) $row->tahun_awal : null,
-            'awal' => (int) round((float) $row->awal),
-            'setor' => (int) round((float) $row->setor),
-            'pakai' => (int) round((float) $row->pakai),
-            'opname' => (int) round((float) $row->opname),
-            'saldo' => (int) round((float) $row->saldo),
-            'terakhir' => (string) ($row->terakhir ?? ''),
-        ])->all();
+        return $baris;
     }
 }

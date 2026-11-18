@@ -60,6 +60,16 @@ new class extends Component {
         }
     }
 
+    /**
+     * Pilihan Semua/Medis/Non-Medis diganti → kabari induk lewat event `lov.jenis.{target}`
+     * (mis. rekap saldo DP ikut terfilter). Tambahan saja: induk yang tidak mendengarkan tak terpengaruh.
+     */
+    public function updatedJenisSupplier(): void
+    {
+        $this->jenisSupplier = in_array($this->jenisSupplier, ['all', 'medis', 'nonmedis'], true) ? $this->jenisSupplier : 'all';
+        $this->dispatch('lov.jenis.' . $this->target, target: $this->target, jenis: $this->jenisSupplier);
+    }
+
     public function updatedSearch(): void
     {
         // kalau sudah selected, jangan cari lagi

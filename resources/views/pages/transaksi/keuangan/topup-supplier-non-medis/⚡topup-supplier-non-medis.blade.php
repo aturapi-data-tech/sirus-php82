@@ -52,6 +52,10 @@ new class extends Component {
     public string  $cariRekap        = '';
     /** false = hanya supplier yang saldonya masih ada; true = semua yang pernah setor. */
     public bool    $rekapSemua       = false;
+    /** Tahun rekap (pola saldo kas): saldo awal 1 Jan → mutasi tahun itu → saldo akhir. */
+    public int     $tahunRekap       = 0;
+    /** Filter rekap = pilihan Semua/Medis/Non-Medis di LOV supplier ('all' | 'medis' | 'nonmedis'). */
+    public string  $jenisRekap       = 'nonmedis';
 
     /* ── Opname saldo DP ── */
     /** Saldo DP sebenarnya menurut kartu / rekening koran supplier. */
@@ -66,6 +70,7 @@ new class extends Component {
     {
         $this->registerAreas(['form']);
         $this->setTanggalSekarang();
+        $this->tahunRekap = (int) now()->year;
     }
 
     /* ── LOV Listeners ── */
@@ -76,6 +81,13 @@ new class extends Component {
         $this->supplier = $payload;
         $this->resetErrorBag('suppId');
         unset($this->riwayat, $this->ringkasan, $this->rekapSaldo);
+    }
+
+    #[On('lov.jenis.topup-non-medis-supplier')]
+    public function onJenisSupplier(string $target, string $jenis): void
+    {
+        $this->jenisRekap = in_array($jenis, ['all', 'medis', 'nonmedis'], true) ? $jenis : 'all';
+        unset($this->rekapSaldo);
     }
 
     #[On('lov.selected.topup-non-medis-kas')]
@@ -128,7 +140,7 @@ new class extends Component {
 
     /* ── Data ── */
 
-    /** Saldo DP semua supplier — rumus SaldoDpSupplier, urut saldo terbesar. */
+    /** Saldo DP semua supplier per tahun — SaldoDpSupplier::rekapTahun, transaksi terakhir di atas. */
     #[Computed]
     public function rekapSaldo(): array
     {
@@ -136,7 +148,9 @@ new class extends Component {
             return [];
         }
 
-        return SaldoDpSupplier::rekap(self::JENIS, $this->cariRekap, $this->rekapSemua);
+        $this->tahunRekap = max(2020, min((int) $this->tahunRekap, (int) now()->year));
+
+        return SaldoDpSupplier::rekapTahun(self::JENIS, $this->tahunRekap, $this->cariRekap, $this->rekapSemua, $this->jenisRekap);
     }
 
     #[Computed]
@@ -576,7 +590,7 @@ new class extends Component {
                             <ul class="ml-4 space-y-1 list-disc">
                                 <li>Setor DP = uang keluar dari kas sebagai uang muka ke supplier; <strong>Saldo DP</strong> bertambah.</li>
                                 <li>Saldo DP dipakai melunasi nota hutang di menu <strong>Pembayaran Hutang Non-Medis</strong> → Sumber Dana: Saldo DP.</li>
-                                <li>Sebelum memilih supplier, kanan menampilkan <strong>Rekap Saldo DP</strong> semua supplier (saldo terbesar di atas) — klik baris untuk membuka supplier itu.</li>
+                                <li>Sebelum memilih supplier, kanan menampilkan <strong>Rekap Saldo DP per tahun</strong> (seperti saldo kas): saldo awal 1 Jan → disetor, terpakai, opname → saldo akhir; transaksi terakhir paling atas. Saldo akhir sebuah tahun = saldo awal tahun berikutnya. Klik baris untuk membuka supplier.</li>
                                 <li>Saldo DP = saldo awal tahun (tutup buku) + disetor − terpakai ± opname. Riwayat di kanan menampilkan setor (+) dan pemakaian (−).</li>
                                 <li>Shift terisi otomatis dari jam Tanggal; periksa dialog konfirmasi sebelum menyimpan.</li>
                                 <li><strong>Opname Saldo DP</strong> (Admin / Supervisor Tu): isi saldo DP sebenarnya menurut kartu / rekening koran supplier + alasan; selisihnya dicatat sebagai baris <em>Opname</em> bertanggal hari ini (seperti opname stok). Saldo awal &amp; transaksi lama tidak diubah, kas &amp; jurnal keuangan tidak terpengaruh.</li>
@@ -601,7 +615,7 @@ new class extends Component {
                                 target="topup-non-medis-supplier"
                                 label="Cari Supplier"
                                 placeholder="Ketik kode / nama / telp supplier..."
-                                jenisSupplier="nonmedis"
+                                :jenisSupplier="$jenisRekap"
                                 wire:key="lov-supplier-topup-non-medis" />
                         @endif
                     </div>
@@ -709,14 +723,19 @@ new class extends Component {
                     <div class="flex flex-col flex-1 min-w-0 min-h-0 border shadow-sm bg-canvas border-hairline rounded-2xl dark:border-gray-700 dark:bg-gray-900">
                         <div class="flex flex-wrap items-center justify-between gap-3 px-5 py-3 border-b border-hairline dark:border-gray-700">
                             <div class="text-sm font-semibold tracking-wide uppercase text-muted dark:text-gray-300">
-                                Rekap Saldo DP Supplier
-                                <span class="font-normal normal-case">({{ count($rekap) }} supplier)</span>
+                                Rekap Saldo DP Supplier {{ $tahunRekap }}{{ ['medis' => ' · Medis', 'nonmedis' => ' · Non-Medis'][$jenisRekap] ?? '' }}
+                                <span class="font-normal normal-case">({{ count($rekap) }} supplier{{ $tahunRekap === (int) now()->year ? ', s.d. hari ini' : '' }})</span>
                             </div>
                             <div class="flex items-center gap-3">
+                                <x-select-input wire:model.live="tahunRekap" class="w-28 text-sm" title="Tahun rekap">
+                                    @for ($th = (int) now()->year; $th >= 2020; $th--)
+                                        <option value="{{ $th }}">{{ $th }}</option>
+                                    @endfor
+                                </x-select-input>
                                 <x-text-input type="text" wire:model.live.debounce.400ms="cariRekap"
                                     placeholder="Cari nama / kode supplier..." class="w-56 text-sm" />
                                 <x-toggle wire:model.live="rekapSemua" :trueValue="true" :falseValue="false" label="Tampilkan saldo 0"
-                                    title="Nyala = semua supplier yang pernah setor DP, mati = hanya yang saldonya masih ada" />
+                                    title="Nyala = semua supplier yang pernah punya DP, mati = hanya yang bersaldo / bertransaksi tahun ini" />
                             </div>
                         </div>
 
@@ -725,12 +744,12 @@ new class extends Component {
                                 <thead class="sticky top-0 z-10 text-left text-muted bg-surface-soft dark:bg-gray-800 dark:text-gray-300">
                                     <tr class="text-xs font-semibold tracking-wide uppercase">
                                         <th class="px-4 py-3">Supplier</th>
-                                        <th class="px-4 py-3">Setor Terakhir</th>
-                                        <th class="px-4 py-3 text-right">Saldo Awal</th>
+                                        <th class="px-4 py-3">Transaksi Terakhir</th>
+                                        <th class="px-4 py-3 text-right">Saldo Awal {{ $tahunRekap }}</th>
                                         <th class="px-4 py-3 text-right">Disetor</th>
                                         <th class="px-4 py-3 text-right">Terpakai</th>
                                         <th class="px-4 py-3 text-right">Opname</th>
-                                        <th class="px-4 py-3 text-right">Saldo DP</th>
+                                        <th class="px-4 py-3 text-right">Saldo Akhir</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y text-body divide-hairline dark:divide-gray-700 dark:text-gray-200">
@@ -744,21 +763,18 @@ new class extends Component {
                                                 <div class="font-mono text-xs text-muted dark:text-gray-400">{{ $row['suppId'] }}</div>
                                             </td>
                                             <td class="px-4 py-2.5 whitespace-nowrap text-muted dark:text-gray-400">{{ $row['terakhir'] ?: '-' }}</td>
-                                            <td class="px-4 py-2.5 font-mono text-right whitespace-nowrap" title="{{ $row['tahunAwal'] ? 'Saldo awal tahun ' . $row['tahunAwal'] : 'Belum ada saldo awal — dihitung dari semua transaksi' }}">
-                                                {{ number_format($row['awal'], 0, ',', '.') }}
-                                                @if ($row['tahunAwal'])<span class="text-xs text-muted dark:text-gray-400">/{{ $row['tahunAwal'] }}</span>@endif
-                                            </td>
+                                            <td class="px-4 py-2.5 font-mono text-right whitespace-nowrap">{{ number_format($row['awal'], 0, ',', '.') }}</td>
                                             <td class="px-4 py-2.5 font-mono text-right whitespace-nowrap">{{ number_format($row['setor'], 0, ',', '.') }}</td>
                                             <td class="px-4 py-2.5 font-mono text-right whitespace-nowrap">{{ number_format($row['pakai'], 0, ',', '.') }}</td>
                                             <td class="px-4 py-2.5 font-mono text-right whitespace-nowrap {{ $row['opname'] !== 0 ? 'text-violet-700 dark:text-violet-300' : 'text-muted-soft' }}">{{ $row['opname'] === 0 ? '-' : ($row['opname'] > 0 ? '+' : '−') . number_format(abs($row['opname']), 0, ',', '.') }}</td>
-                                            <td class="px-4 py-2.5 font-mono font-bold text-right whitespace-nowrap {{ $row['saldo'] < 0 ? 'text-rose-700 dark:text-rose-300' : 'text-brand-green dark:text-brand-lime' }}">
-                                                {{ number_format($row['saldo'], 0, ',', '.') }}
+                                            <td class="px-4 py-2.5 font-mono font-bold text-right whitespace-nowrap {{ $row['akhir'] < 0 ? 'text-rose-700 dark:text-rose-300' : 'text-brand-green dark:text-brand-lime' }}">
+                                                {{ number_format($row['akhir'], 0, ',', '.') }}
                                             </td>
                                         </tr>
                                     @empty
                                         <tr>
                                             <td colspan="7" class="px-6 py-16 text-center text-muted dark:text-gray-400">
-                                                {{ trim($cariRekap) !== '' ? 'Tidak ada supplier yang cocok.' : 'Belum ada supplier dengan saldo DP.' }}
+                                                {{ trim($cariRekap) !== '' ? 'Tidak ada supplier yang cocok.' : 'Tidak ada saldo / transaksi DP di tahun ' . $tahunRekap . '.' }}
                                             </td>
                                         </tr>
                                     @endforelse
@@ -771,7 +787,7 @@ new class extends Component {
                                             <td class="px-4 py-3 font-mono text-right whitespace-nowrap">{{ number_format($totalRekap->sum('setor'), 0, ',', '.') }}</td>
                                             <td class="px-4 py-3 font-mono text-right whitespace-nowrap">{{ number_format($totalRekap->sum('pakai'), 0, ',', '.') }}</td>
                                             <td class="px-4 py-3 font-mono text-right whitespace-nowrap">{{ number_format($totalRekap->sum('opname'), 0, ',', '.') }}</td>
-                                            <td class="px-4 py-3 font-mono text-right whitespace-nowrap text-brand-green dark:text-brand-lime">{{ number_format($totalRekap->sum('saldo'), 0, ',', '.') }}</td>
+                                            <td class="px-4 py-3 font-mono text-right whitespace-nowrap text-brand-green dark:text-brand-lime">{{ number_format($totalRekap->sum('akhir'), 0, ',', '.') }}</td>
                                         </tr>
                                     </tfoot>
                                 @endif
