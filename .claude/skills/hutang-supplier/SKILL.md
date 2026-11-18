@@ -38,7 +38,13 @@ saldo awal tahun terakhir ≤ tahun ini (`TKTXN_SALDOAWALHUTANGS[NON].SAH_VALUE_
 saldo awal lalu + setor − pakai) + setor − `cashout_value_topup` sejak 1 Jan tahun itu + **Σ SEMUA opname**
 (`TKTXN_SODPSUPPS[NON]`, so_d − so_k). Opname dijumlah semua tahun karena tutup buku Forms tak mengenalnya —
 kalau kelak tutup buku DP pindah ke web dan memasukkan opname ke SAH, ubah rumus jadi opname sejak tahun saldo awal.
-Oracle 10g: subquery di syarat outer join ditolak (ORA-01799) → tahun saldo awal dihitung di subquery dulu.
+Rekap di halaman DP = `rekapTahun(jenis, tahun)` (pola saldo kas): saldo awal 1 Jan T (= SAH tahun terakhir ≤ T +
+setor − pakai sejak tahun itu s.d. T−1 + opname sebelum T) → disetor/terpakai/opname T → saldo akhir; urut transaksi
+terakhir di atas. Terbukti: awal T = SAH(T), akhir T = SAH(T+1) untuk 2023–2025; akhir tahun berjalan = saldo().
+Jebakan PHP: kunci array tahun ('2025') berubah jadi int — cast (string) sebelum dibandingkan `===`.
+Filter rekap = pilihan Semua/Medis/Non-Medis di LOV supplier: LOV mengirim `lov.jenis.{target}` (jenis) saat radio
+diganti; halaman DP mendengarkan & meneruskan `$jenisRekap` balik ke LOV (`:jenisSupplier`) supaya tetap sinkron
+saat LOV dipasang ulang. Tanda dari master `immst_suppliers.medis/nonmedis = '1'`.
 
 **Tutup buku tahunan** (`App\Support\Keuangan\TutupBukuSupplier`, halaman `/keuangan/tutup-buku-supplier`, khusus Admin):
 menulis `TKTXN_SALDOAWALHUTANGS[NON]` tahun T+1 dengan rumus PERSIS Forms (terbukti di data 2023–2026):
