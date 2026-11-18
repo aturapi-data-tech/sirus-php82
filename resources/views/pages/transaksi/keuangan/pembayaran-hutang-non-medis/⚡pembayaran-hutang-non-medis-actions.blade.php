@@ -22,7 +22,7 @@
  * hutang tak cocok). Angsuran awal dibatalkan lewat menu penerimaan, bukan di sini.
  *
  * Sumber dana (pola Forms, 908 baris data lama): KAS → cashout_value; SALDO DP → cashout_value
- * NULL + cashout_value_topup (jurnal "BAYAR PBF TOPUP": uang muka RCV6 → hutang, kas tak
+ * NULL + cashout_value_topup (jurnal "BAYAR NON MEDIS TOPUP": uang muka RCV6 → hutang, kas tak
  * berubah). Tidak dicampur dalam satu kas keluar. acc_id NOT NULL → untuk DP diisi akun
  * setoran DP terakhir supplier (jurnal kas mengabaikannya karena cashout_value kosong).
  */

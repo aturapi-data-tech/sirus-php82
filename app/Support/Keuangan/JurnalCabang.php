@@ -12,7 +12,7 @@ namespace App\Support\Keuangan;
  *
  * Menambah/mengubah cabang: edit di sini (dan di view bila 6i masih memerlukannya), lalu uji
  * per docs/jurnal-keuangan.md. Tiap cabang = satu SELECT ber-7 kolom, urutan sama dengan view:
- *   sumber        : ACCOUNTS | LABARUGI (asal cabang, informatif)
+ *   sumber        : ACCOUNTS | LABARUGI | WEB (asal cabang, informatif; WEB = hanya di web, tak ada di view 6i)
  *   label         : ekspresi TXN_NAME (label baris; prefiks sebelum '(' dipakai rekap per jenis)
  *   akun          : TXN_ACC   — akun pemilik baris (debit/kredit = D/K akun ini)
  *   akunLawan     : TXN_ACC_K — akun lawan
@@ -1691,6 +1691,88 @@ final class JurnalCabang
                 'debit'      => 'cashout_value',
                 'kredit'     => '0',
                 'from'       => 'IMTXN_CASHOUTHDRTOPUPS a',
+                'where'      => '',
+            ],
+
+            // ── NON-MEDIS (sumber WEB — tidak ada di view TKVIEW_ACCOUNTS / form 6i) ──
+            // Ditambahkan 2026-11-18 atas keputusan user: bayar hutang & setor DP supplier non-medis
+            // lewat menu web/Kasir harus masuk arus kas. Pola = cabang PBF di atas.
+            //   BAYAR NON MEDIS        : kas K ↔ hutang supplier (RCVNON1) D
+            //   BAYAR NON MEDIS TOPUP  : uang muka (RCV6, dipakai bersama PBF) K ↔ hutang D
+            //   BAYAR DIMUKA NON MEDIS : kas K ↔ uang muka (RCV6) D
+            // Penerimaan barang non-medis (RCV NON: persediaan RCVNON2 / hutang) BELUM dijurnal —
+            // lihat docs/jurnal-keuangan.md (hutang supplier di Neraca berkurang oleh bayar non-medis
+            // tanpa pasangan kreditnya sampai cabang RCV NON ditambahkan).
+            [
+                'sumber'     => 'WEB',
+                'label'      => '\'BAYAR NON MEDIS / \'||(select supp_name from immst_suppliers x where x.supp_id=a.supp_id)',
+                'akun'       => 'a.acc_id',
+                'akunLawan'  => 'conf:RCVNON1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'cashout_date',
+                'debit'      => '0',
+                'kredit'     => 'cashout_value',
+                'from'       => 'IMTXN_CASHOUTHDRSNON a',
+                'where'      => 'nvl(cashout_value,0)>0',
+            ],
+            [
+                'sumber'     => 'WEB',
+                'label'      => '\'BAYAR NON MEDIS / \'||(select supp_name from immst_suppliers x where x.supp_id=a.supp_id)',
+                'akun'       => 'conf:RCVNON1',
+                'akunLawan'  => 'a.acc_id',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'cashout_date',
+                'debit'      => 'cashout_value',
+                'kredit'     => '0',
+                'from'       => 'IMTXN_CASHOUTHDRSNON a',
+                'where'      => 'nvl(cashout_value,0)>0',
+            ],
+            [
+                'sumber'     => 'WEB',
+                'label'      => '\'BAYAR NON MEDIS TOPUP / \'||(select supp_name from immst_suppliers x where x.supp_id=a.supp_id)',
+                'akun'       => 'conf:RCV6',
+                'akunLawan'  => 'conf:RCVNON1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'cashout_date',
+                'debit'      => '0',
+                'kredit'     => 'cashout_value_topup',
+                'from'       => 'IMTXN_CASHOUTHDRSNON a',
+                'where'      => 'nvl(cashout_value_topup,0)>0',
+            ],
+            [
+                'sumber'     => 'WEB',
+                'label'      => '\'BAYAR NON MEDIS TOPUP / \'||(select supp_name from immst_suppliers x where x.supp_id=a.supp_id)',
+                'akun'       => 'conf:RCVNON1',
+                'akunLawan'  => 'conf:RCV6',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'cashout_date',
+                'debit'      => 'cashout_value_topup',
+                'kredit'     => '0',
+                'from'       => 'IMTXN_CASHOUTHDRSNON a',
+                'where'      => 'nvl(cashout_value_topup,0)>0',
+            ],
+            [
+                'sumber'     => 'WEB',
+                'label'      => '\'BAYAR DIMUKA NON MEDIS / \'||(select supp_name from immst_suppliers x where x.supp_id=a.supp_id)',
+                'akun'       => 'a.acc_id',
+                'akunLawan'  => 'conf:RCV6',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'cashout_date',
+                'debit'      => '0',
+                'kredit'     => 'cashout_value',
+                'from'       => 'IMTXN_CASHOUTHDRTOPUPSNON a',
+                'where'      => '',
+            ],
+            [
+                'sumber'     => 'WEB',
+                'label'      => '\'BAYAR DIMUKA NON MEDIS / \'||(select supp_name from immst_suppliers x where x.supp_id=a.supp_id)',
+                'akun'       => 'conf:RCV6',
+                'akunLawan'  => 'a.acc_id',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'cashout_date',
+                'debit'      => 'cashout_value',
+                'kredit'     => '0',
+                'from'       => 'IMTXN_CASHOUTHDRTOPUPSNON a',
                 'where'      => '',
             ],
 

@@ -5,7 +5,7 @@
  *
  * Equivalent dgn Oracle Forms procedure post_transaksi_topup:
  *   - INSERT 1x IMTXN_CASHOUTHDRTOPUPS (saldo titipan, tidak link ke nota)
- *   - Belum ada cabang jurnal non-medis (JurnalCabang) — tidak terlihat di Saldo Kas
+ *   - Jurnal "BAYAR DIMUKA NON MEDIS" (cabang WEB): kas berkurang, uang muka (RCV6) bertambah
  *
  * Saldo DP = Σ setor (cashouthdrtopups.cashout_value)
  *          − Σ terpakai (cashouthdrs.cashout_value_topup — pelunasan hutang sumber "Saldo DP")
