@@ -33,7 +33,17 @@ kembar (cek dengan `diff` setelah menormalkan nama).
 | `imtxn_cashouthdrtopups` | setoran DP (uang muka), tidak terikat nota |
 
 **Sisa hutang nota** = total nota − Σ `receivepayments.rcvp_value`.
-**Saldo DP supplier** = Σ `cashouthdrtopups.cashout_value` − Σ `cashouthdrs.cashout_value_topup`.
+**Saldo DP supplier** — SATU rumus di `App\Support\Keuangan\SaldoDpSupplier` (rincian/saldo/rekap), jangan ditulis ulang:
+saldo awal tahun terakhir ≤ tahun ini (`TKTXN_SALDOAWALHUTANGS[NON].SAH_VALUE_TOP`, dibuat tutup buku Forms =
+saldo awal lalu + setor − pakai) + setor − `cashout_value_topup` sejak 1 Jan tahun itu + **Σ SEMUA opname**
+(`TKTXN_SODPSUPPS[NON]`, so_d − so_k). Opname dijumlah semua tahun karena tutup buku Forms tak mengenalnya —
+kalau kelak tutup buku DP pindah ke web dan memasukkan opname ke SAH, ubah rumus jadi opname sejak tahun saldo awal.
+Oracle 10g: subquery di syarat outer join ditolak (ORA-01799) → tahun saldo awal dihitung di subquery dulu.
+
+**Opname saldo DP** (DDL `docs/ddl-opname-dp-supplier.sql`, seq `sodpsupp_seq`/`sodpsuppnon_seq`): pola opname stok —
+saldo sebenarnya + alasan → selisih jadi baris bertanggal SYSDATE; saldo awal & transaksi lama tak diubah;
+**TIDAK dijurnal** (keputusan user: fungsi beda, sama dengan opname stok) → saldo DP supplier ≠ akun 1.1A13 sebesar
+total opname, disengaja. Admin/Supervisor Tu, selisih 0 ditolak, tak ada hapus opname (jejak koreksi).
 
 ## Jurnal: apa yang dibaca
 

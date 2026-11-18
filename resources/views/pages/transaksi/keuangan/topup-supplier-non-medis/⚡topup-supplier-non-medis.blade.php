@@ -7,10 +7,14 @@
  *   - INSERT 1x IMTXN_CASHOUTHDRTOPUPS (saldo titipan, tidak link ke nota)
  *   - Jurnal "BAYAR DIMUKA NON MEDIS" (cabang WEB): kas berkurang, uang muka (RCV6) bertambah
  *
- * Saldo DP = Σ setor (cashouthdrtopups.cashout_value)
- *          − Σ terpakai (cashouthdrs.cashout_value_topup — pelunasan hutang sumber "Saldo DP")
+ * Saldo DP = App\Support\Keuangan\SaldoDpSupplier (satu rumus untuk semua layar):
+ *   saldo awal tahun (tutup buku Forms) + setor − terpakai sejak tahun itu + Σ opname.
  * Pemakaian DP ada di menu Pembayaran Hutang Non-Medis (pola Forms: DP dipakai sendirian, tak
  * dicampur tunai). Hapus salah setor ditolak bila saldo DP jadi minus (DP sudah terpakai).
+ *
+ * OPNAME SALDO DP (pola opname stok TKTXN_SOWHS): petugas mengisi saldo DP sebenarnya
+ * (kartu / rekening koran supplier) + alasan; selisihnya dicatat di TKTXN_SODPSUPPSNON bertanggal
+ * hari ini. Saldo awal & transaksi lama tak diubah. TIDAK dijurnal ke keuangan.
  */
 
 use Livewire\Component;
@@ -21,12 +25,16 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Database\QueryException;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
+use App\Support\Keuangan\SaldoDpSupplier;
 
 new class extends Component {
     use WithRenderVersioningTrait;
 
     /** Hapus salah setor — sama dengan hapus salah bayar hutang/piutang. */
     private const ROLE_HAPUS_SETOR = ['Admin', 'Supervisor Tu'];
+    /** Opname saldo DP — sama dengan hapus salah setor. */
+    private const ROLE_OPNAME = ['Admin', 'Supervisor Tu'];
+    private const JENIS = SaldoDpSupplier::JENIS_NON_MEDIS;
 
     public ?string $suppId   = null;
     public ?array  $supplier = null;
@@ -44,6 +52,13 @@ new class extends Component {
     public string  $cariRekap        = '';
     /** false = hanya supplier yang saldonya masih ada; true = semua yang pernah setor. */
     public bool    $rekapSemua       = false;
+
+    /* ── Opname saldo DP ── */
+    /** Saldo DP sebenarnya menurut kartu / rekening koran supplier. */
+    public ?int    $opnameSaldo      = null;
+    public ?string $opnameAlasan     = null;
+    /** Ringkasan dialog konfirmasi opname — kosong = tertutup. Hanya tampilan. */
+    public array   $pratinjauOpname  = [];
 
     public array $renderVersions = [];
 
@@ -72,7 +87,7 @@ new class extends Component {
 
     public function clearSupplier(): void
     {
-        $this->reset(['suppId', 'supplier', 'accId', 'nominal', 'keterangan', 'pratinjau']);
+        $this->reset(['suppId', 'supplier', 'accId', 'nominal', 'keterangan', 'pratinjau', 'opnameSaldo', 'opnameAlasan', 'pratinjauOpname']);
         $this->setTanggalSekarang();
         $this->resetValidation();
         $this->incrementVersion('form');
@@ -113,10 +128,7 @@ new class extends Component {
 
     /* ── Data ── */
 
-    /**
-     * Saldo DP per supplier (satu query, dua agregat): setor dari cashouthdrtopups, pakai dari
-     * cashouthdrs.cashout_value_topup. Rumus sama dengan hitungSaldoDp(). Urut saldo terbesar.
-     */
+    /** Saldo DP semua supplier — rumus SaldoDpSupplier, urut saldo terbesar. */
     #[Computed]
     public function rekapSaldo(): array
     {
@@ -124,52 +136,23 @@ new class extends Component {
             return [];
         }
 
-        $query = DB::table(DB::raw('(SELECT supp_id, SUM(NVL(cashout_value,0)) setor, MAX(cashout_date) terakhir
-                    FROM imtxn_cashouthdrtopupsnon GROUP BY supp_id) t'))
-            ->join('immst_suppliers as s', 's.supp_id', '=', 't.supp_id')
-            ->leftJoin(DB::raw('(SELECT supp_id, SUM(cashout_value_topup) pakai
-                    FROM imtxn_cashouthdrsnon WHERE NVL(cashout_value_topup,0) > 0 GROUP BY supp_id) c'), 'c.supp_id', '=', 't.supp_id')
-            ->select([
-                't.supp_id', 's.supp_name',
-                DB::raw('t.setor'),
-                DB::raw('NVL(c.pakai,0) as pakai'),
-                DB::raw('t.setor - NVL(c.pakai,0) as saldo'),
-                DB::raw("to_char(t.terakhir,'dd/mm/yyyy') as terakhir"),
-            ]);
-
-        if (!$this->rekapSemua) {
-            $query->whereRaw('t.setor - NVL(c.pakai,0) <> 0');
-        }
-        $cari = trim($this->cariRekap);
-        if ($cari !== '') {
-            $query->where(function ($q) use ($cari) {
-                $q->whereRaw('UPPER(s.supp_name) LIKE ?', ['%' . mb_strtoupper($cari) . '%'])
-                    ->orWhereRaw('UPPER(t.supp_id) LIKE ?', ['%' . mb_strtoupper($cari) . '%']);
-            });
-        }
-
-        return $query->orderByRaw('t.setor - NVL(c.pakai,0) DESC')->orderBy('s.supp_name')->get()
-            ->map(fn ($row) => [
-                'suppId' => (string) $row->supp_id,
-                'nama' => (string) ($row->supp_name ?? ''),
-                'setor' => (int) round((float) $row->setor),
-                'pakai' => (int) round((float) $row->pakai),
-                'saldo' => (int) round((float) $row->saldo),
-                'terakhir' => (string) ($row->terakhir ?? ''),
-            ])->all();
+        return SaldoDpSupplier::rekap(self::JENIS, $this->cariRekap, $this->rekapSemua);
     }
 
     #[Computed]
     public function ringkasan(): array
     {
         if (!$this->suppId) {
-            return ['setor' => 0, 'pakai' => 0, 'saldo' => 0];
+            return ['tahunAwal' => null, 'awal' => 0, 'setor' => 0, 'pakai' => 0, 'opname' => 0, 'saldo' => 0, 'dari' => '1900-01-01'];
         }
 
         return $this->hitungSaldoDp($this->suppId);
     }
 
-    /** Setor & pemakaian DP supplier ini, terbaru di atas (40 baris terakhir). */
+    /**
+     * Setor, pemakaian, & opname DP supplier ini sejak tahun saldo awal (+ semua opname),
+     * terbaru di atas, ditutup baris "Saldo awal" tahun itu.
+     */
     #[Computed]
     public function riwayat(): array
     {
@@ -177,11 +160,15 @@ new class extends Component {
             return [];
         }
 
+        $ringkas = $this->ringkasan;
+        $dari = $ringkas['dari'];
+
         $setor = DB::table('imtxn_cashouthdrtopupsnon as t')
             ->leftJoin('acmst_accounts as a', 'a.acc_id', '=', 't.acc_id')
             ->where('t.supp_id', $this->suppId)
+            ->whereRaw("t.cashout_date >= TO_DATE(?,'YYYY-MM-DD')", [$dari])
             ->orderByDesc('t.cashout_date')
-            ->limit(40)
+            ->limit(60)
             ->get([
                 't.cashout_no', 't.cashout_desc', 't.acc_id', 'a.acc_name', 't.shift',
                 DB::raw('NVL(t.cashout_value,0) as nilai'),
@@ -203,8 +190,9 @@ new class extends Component {
         $pakai = DB::table('imtxn_cashouthdrsnon as c')
             ->where('c.supp_id', $this->suppId)
             ->whereRaw('NVL(c.cashout_value_topup,0) > 0')
+            ->whereRaw("c.cashout_date >= TO_DATE(?,'YYYY-MM-DD')", [$dari])
             ->orderByDesc('c.cashout_date')
-            ->limit(40)
+            ->limit(60)
             ->get([
                 'c.cashout_no', 'c.cashout_desc', 'c.shift',
                 DB::raw('NVL(c.cashout_value_topup,0) as nilai'),
@@ -230,7 +218,48 @@ new class extends Component {
             'bolehHapus' => false, // dihapus dari menu Pembayaran Hutang Non-Medis
         ]);
 
-        return $setor->concat($pakai)->sortByDesc('urut')->take(40)->values()->all();
+        // Opname dijumlah semua tahun (tutup buku Forms tak mengenalnya) → tampil semua.
+        $opname = DB::table('tktxn_sodpsuppsnon as o')
+            ->leftJoin('immst_employers as e', 'e.emp_id', '=', 'o.emp_id')
+            ->where('o.supp_id', $this->suppId)
+            ->orderByDesc('o.so_date')
+            ->get([
+                'o.so_no', 'o.so_desc', 'o.shift', 'o.saldo_sistem', 'o.saldo_fisik', 'e.emp_name',
+                DB::raw('NVL(o.so_d,0) - NVL(o.so_k,0) as nilai'),
+                DB::raw("to_char(o.so_date,'dd/mm/yyyy hh24:mi:ss') as tgl"),
+                DB::raw("to_char(o.so_date,'yyyymmddhh24miss') as urut"),
+            ])
+            ->map(fn ($row) => [
+                'jenis' => 'opname',
+                'no' => (int) $row->so_no,
+                'tgl' => (string) $row->tgl,
+                'urut' => (string) $row->urut,
+                'ket' => 'Sistem Rp ' . number_format((float) $row->saldo_sistem, 0, ',', '.')
+                    . ' → sebenarnya Rp ' . number_format((float) $row->saldo_fisik, 0, ',', '.')
+                    . ' · ' . $row->so_desc,
+                'akun' => 'Opname' . (filled($row->emp_name) ? ' · ' . $row->emp_name : ''),
+                'shift' => (string) ($row->shift ?? ''),
+                'nilai' => (int) round((float) $row->nilai),
+                'bolehHapus' => false, // jejak koreksi — tidak dihapus (pola opname stok)
+            ]);
+
+        $baris = $setor->concat($pakai)->concat($opname)->sortByDesc('urut')->take(60)->values();
+
+        if ($ringkas['tahunAwal'] !== null) {
+            $baris->push([
+                'jenis' => 'awal',
+                'no' => (int) $ringkas['tahunAwal'],
+                'tgl' => '01/01/' . $ringkas['tahunAwal'],
+                'urut' => $ringkas['tahunAwal'] . '0100000000',
+                'ket' => 'Saldo awal tahun ' . $ringkas['tahunAwal'] . ' (tutup buku)',
+                'akun' => '-',
+                'shift' => '',
+                'nilai' => $ringkas['awal'],
+                'bolehHapus' => false,
+            ]);
+        }
+
+        return $baris->all();
     }
 
     /* ── Simpan: langkah 1 konfirmasi, langkah 2 tulis ── */
@@ -393,12 +422,107 @@ new class extends Component {
     /* ── Helper ── */
 
     /** Saldo DP supplier = Σ setor − Σ pemakaian (cashout_value_topup). */
+    /** Rincian saldo DP — satu rumus (SaldoDpSupplier). */
     protected function hitungSaldoDp(string $suppId): array
     {
-        $setor = (int) round((float) DB::table('imtxn_cashouthdrtopupsnon')->where('supp_id', $suppId)->sum('cashout_value'));
-        $pakai = (int) round((float) DB::table('imtxn_cashouthdrsnon')->where('supp_id', $suppId)->sum('cashout_value_topup'));
+        return SaldoDpSupplier::rincian(self::JENIS, $suppId);
+    }
 
-        return ['setor' => $setor, 'pakai' => $pakai, 'saldo' => $setor - $pakai];
+    /* ── Opname saldo DP ── */
+
+    public function bolehOpname(): bool
+    {
+        return (bool) auth()->user()?->hasAnyRole(self::ROLE_OPNAME);
+    }
+
+    /** Langkah 1: hitung selisih terhadap saldo sistem, tampilkan konfirmasi (belum menulis). */
+    public function siapkanOpname(): void
+    {
+        if (!$this->bolehOpname()) {
+            $this->dispatch('toast', type: 'error', message: 'Hanya Admin / Supervisor Tu yang dapat melakukan opname saldo DP.');
+            return;
+        }
+        $this->validate([
+            'suppId' => 'required|string',
+            'opnameSaldo' => 'required|integer',
+            'opnameAlasan' => 'required|string|min:5|max:200',
+        ], [
+            'opnameSaldo.required' => 'Saldo DP sebenarnya wajib diisi (boleh 0).',
+            'opnameSaldo.integer' => 'Saldo DP sebenarnya harus angka.',
+            'opnameAlasan.required' => 'Alasan opname wajib diisi.',
+            'opnameAlasan.min' => 'Alasan minimal 5 karakter.',
+            'opnameAlasan.max' => 'Alasan maksimal 200 karakter.',
+        ]);
+
+        $sistem = $this->hitungSaldoDp($this->suppId)['saldo'];
+        $selisih = (int) $this->opnameSaldo - $sistem;
+        if ($selisih === 0) {
+            $this->dispatch('toast', type: 'info', message: 'Saldo sebenarnya sama dengan saldo sistem — tidak ada selisih untuk dicatat.');
+            return;
+        }
+
+        $this->pratinjauOpname = ['sistem' => $sistem, 'fisik' => (int) $this->opnameSaldo, 'selisih' => $selisih];
+    }
+
+    public function batalOpname(): void
+    {
+        $this->pratinjauOpname = [];
+    }
+
+    /** Langkah 2: tulis baris opname. Saldo sistem dihitung ulang setelah supplier dikunci. */
+    public function simpanOpname(): void
+    {
+        $this->pratinjauOpname = [];
+        if (!$this->bolehOpname() || !$this->suppId || $this->opnameSaldo === null || blank($this->opnameAlasan)) {
+            $this->dispatch('toast', type: 'error', message: 'Data opname belum lengkap / Anda tidak berwenang.');
+            return;
+        }
+
+        $user = auth()->user();
+        $shift = $this->shiftPadaJam(Carbon::now()->format('d/m/Y H:i:s'));
+
+        try {
+            $hasil = DB::transaction(function () use ($user, $shift) {
+                DB::table('immst_suppliers')->where('supp_id', $this->suppId)->lockForUpdate()->first(['supp_id']);
+
+                $sistem = $this->hitungSaldoDp($this->suppId)['saldo'];
+                $fisik = (int) $this->opnameSaldo;
+                $selisih = $fisik - $sistem;
+                if ($selisih === 0) {
+                    throw new \RuntimeException('Saldo sebenarnya sama dengan saldo sistem — tidak ada selisih untuk dicatat.');
+                }
+
+                $soNo = (int) DB::selectOne('SELECT sodpsuppnon_seq.nextval AS val FROM dual')->val;
+                DB::table('tktxn_sodpsuppsnon')->insert([
+                    'so_no' => $soNo,
+                    'supp_id' => $this->suppId,
+                    'so_date' => DB::raw('SYSDATE'),
+                    'saldo_sistem' => $sistem,
+                    'saldo_fisik' => $fisik,
+                    'so_d' => max($selisih, 0),
+                    'so_k' => max(-$selisih, 0),
+                    'so_desc' => mb_substr(trim((string) $this->opnameAlasan), 0, 200),
+                    'emp_id' => $user->emp_id ?? null,
+                    'shift' => $shift,
+                    'user_code' => $user->myuser_code ?? null,
+                ]);
+
+                return ['no' => $soNo, 'sistem' => $sistem, 'fisik' => $fisik, 'selisih' => $selisih];
+            });
+        } catch (\RuntimeException $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
+            return;
+        } catch (QueryException $e) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal menyimpan opname: ' . $e->getMessage());
+            return;
+        }
+
+        Log::info('Opname saldo DP supplier Non-Medis', $hasil + ['supp_id' => $this->suppId, 'user' => $user->myuser_code ?? null]);
+
+        $this->reset(['opnameSaldo', 'opnameAlasan']);
+        unset($this->riwayat, $this->ringkasan, $this->rekapSaldo);
+        $this->dispatch('toast', type: 'success', message: 'Opname tercatat: saldo DP Rp ' . number_format($hasil['sistem'])
+            . ' → Rp ' . number_format($hasil['fisik']) . ' (selisih ' . ($hasil['selisih'] > 0 ? '+' : '−') . 'Rp ' . number_format(abs($hasil['selisih'])) . ').');
     }
 
     protected function shiftPadaJam(string $tanggal): ?string
@@ -453,8 +577,9 @@ new class extends Component {
                                 <li>Setor DP = uang keluar dari kas sebagai uang muka ke supplier; <strong>Saldo DP</strong> bertambah.</li>
                                 <li>Saldo DP dipakai melunasi nota hutang di menu <strong>Pembayaran Hutang Non-Medis</strong> → Sumber Dana: Saldo DP.</li>
                                 <li>Sebelum memilih supplier, kanan menampilkan <strong>Rekap Saldo DP</strong> semua supplier (saldo terbesar di atas) — klik baris untuk membuka supplier itu.</li>
-                                <li>Saldo DP = total disetor − yang sudah terpakai. Riwayat di kanan menampilkan setor (+) dan pemakaian (−).</li>
+                                <li>Saldo DP = saldo awal tahun (tutup buku) + disetor − terpakai ± opname. Riwayat di kanan menampilkan setor (+) dan pemakaian (−).</li>
                                 <li>Shift terisi otomatis dari jam Tanggal; periksa dialog konfirmasi sebelum menyimpan.</li>
+                                <li><strong>Opname Saldo DP</strong> (Admin / Supervisor Tu): isi saldo DP sebenarnya menurut kartu / rekening koran supplier + alasan; selisihnya dicatat sebagai baris <em>Opname</em> bertanggal hari ini (seperti opname stok). Saldo awal &amp; transaksi lama tidak diubah, kas &amp; jurnal keuangan tidak terpengaruh.</li>
                                 <li><strong>Hapus salah setor</strong> (Admin / Supervisor Tu, tahun berjalan) ditolak bila DP-nya sudah terpakai — hapus dulu pelunasannya di menu Pembayaran Hutang Non-Medis.</li>
                             </ul>
                         </div>
@@ -539,6 +664,39 @@ new class extends Component {
                                 <span wire:loading wire:target="siapkanKonfirmasi"><x-loading /> Memeriksa...</span>
                             </x-primary-button>
                         </div>
+
+                        @if ($this->bolehOpname())
+                            {{-- OPNAME SALDO DP — pola opname stok, tidak dijurnal --}}
+                            <div class="pt-4 space-y-3 border-t border-hairline dark:border-gray-700">
+                                <div>
+                                    <div class="text-sm font-semibold tracking-wide uppercase text-muted dark:text-gray-300">Opname Saldo DP</div>
+                                    <p class="mt-0.5 text-xs text-muted dark:text-gray-400">
+                                        Isi saldo DP sebenarnya (kartu / rekening koran supplier). Selisihnya dicatat sebagai baris opname —
+                                        saldo awal &amp; transaksi lama tidak diubah, kas tidak terpengaruh.
+                                    </p>
+                                </div>
+                                <div>
+                                    <x-input-label value="Saldo DP Sebenarnya (Rp)" :required="true" />
+                                    <div class="mt-1">
+                                        <x-text-input-number wire:model="opnameSaldo" :error="$errors->has('opnameSaldo')" />
+                                    </div>
+                                    <x-input-error :messages="$errors->get('opnameSaldo')" class="mt-1" />
+                                    <p class="mt-1 text-xs text-muted dark:text-gray-400">Saldo sistem saat ini Rp {{ number_format($this->ringkasan['saldo'], 0, ',', '.') }}.</p>
+                                </div>
+                                <div>
+                                    <x-input-label value="Alasan" :required="true" />
+                                    <x-text-input type="text" wire:model="opnameAlasan" maxlength="200"
+                                        placeholder="Mis. cocokkan kartu DP supplier per 30/11/2026" class="w-full mt-1"
+                                        :error="$errors->has('opnameAlasan')" />
+                                    <x-input-error :messages="$errors->get('opnameAlasan')" class="mt-1" />
+                                </div>
+                                <x-secondary-button type="button" wire:click="siapkanOpname" class="justify-center w-full h-11"
+                                    wire:loading.attr="disabled" wire:target="siapkanOpname">
+                                    <span wire:loading.remove wire:target="siapkanOpname" class="inline-flex items-center gap-2"><x-ikon nama="proses" /> Hitung Selisih &amp; Opname</span>
+                                    <span wire:loading wire:target="siapkanOpname"><x-loading /> Memeriksa...</span>
+                                </x-secondary-button>
+                            </div>
+                        @endif
                     @endif
                 </div>
 
@@ -568,8 +726,10 @@ new class extends Component {
                                     <tr class="text-xs font-semibold tracking-wide uppercase">
                                         <th class="px-4 py-3">Supplier</th>
                                         <th class="px-4 py-3">Setor Terakhir</th>
+                                        <th class="px-4 py-3 text-right">Saldo Awal</th>
                                         <th class="px-4 py-3 text-right">Disetor</th>
                                         <th class="px-4 py-3 text-right">Terpakai</th>
+                                        <th class="px-4 py-3 text-right">Opname</th>
                                         <th class="px-4 py-3 text-right">Saldo DP</th>
                                     </tr>
                                 </thead>
@@ -584,15 +744,20 @@ new class extends Component {
                                                 <div class="font-mono text-xs text-muted dark:text-gray-400">{{ $row['suppId'] }}</div>
                                             </td>
                                             <td class="px-4 py-2.5 whitespace-nowrap text-muted dark:text-gray-400">{{ $row['terakhir'] ?: '-' }}</td>
+                                            <td class="px-4 py-2.5 font-mono text-right whitespace-nowrap" title="{{ $row['tahunAwal'] ? 'Saldo awal tahun ' . $row['tahunAwal'] : 'Belum ada saldo awal — dihitung dari semua transaksi' }}">
+                                                {{ number_format($row['awal'], 0, ',', '.') }}
+                                                @if ($row['tahunAwal'])<span class="text-xs text-muted dark:text-gray-400">/{{ $row['tahunAwal'] }}</span>@endif
+                                            </td>
                                             <td class="px-4 py-2.5 font-mono text-right whitespace-nowrap">{{ number_format($row['setor'], 0, ',', '.') }}</td>
                                             <td class="px-4 py-2.5 font-mono text-right whitespace-nowrap">{{ number_format($row['pakai'], 0, ',', '.') }}</td>
+                                            <td class="px-4 py-2.5 font-mono text-right whitespace-nowrap {{ $row['opname'] !== 0 ? 'text-violet-700 dark:text-violet-300' : 'text-muted-soft' }}">{{ $row['opname'] === 0 ? '-' : ($row['opname'] > 0 ? '+' : '−') . number_format(abs($row['opname']), 0, ',', '.') }}</td>
                                             <td class="px-4 py-2.5 font-mono font-bold text-right whitespace-nowrap {{ $row['saldo'] < 0 ? 'text-rose-700 dark:text-rose-300' : 'text-brand-green dark:text-brand-lime' }}">
                                                 {{ number_format($row['saldo'], 0, ',', '.') }}
                                             </td>
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="5" class="px-6 py-16 text-center text-muted dark:text-gray-400">
+                                            <td colspan="7" class="px-6 py-16 text-center text-muted dark:text-gray-400">
                                                 {{ trim($cariRekap) !== '' ? 'Tidak ada supplier yang cocok.' : 'Belum ada supplier dengan saldo DP.' }}
                                             </td>
                                         </tr>
@@ -602,8 +767,10 @@ new class extends Component {
                                     <tfoot class="sticky bottom-0 z-10 font-semibold border-t text-body bg-surface-soft border-hairline dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700">
                                         <tr>
                                             <td colspan="2" class="px-4 py-3 text-right">TOTAL</td>
+                                            <td class="px-4 py-3 font-mono text-right whitespace-nowrap">{{ number_format($totalRekap->sum('awal'), 0, ',', '.') }}</td>
                                             <td class="px-4 py-3 font-mono text-right whitespace-nowrap">{{ number_format($totalRekap->sum('setor'), 0, ',', '.') }}</td>
                                             <td class="px-4 py-3 font-mono text-right whitespace-nowrap">{{ number_format($totalRekap->sum('pakai'), 0, ',', '.') }}</td>
+                                            <td class="px-4 py-3 font-mono text-right whitespace-nowrap">{{ number_format($totalRekap->sum('opname'), 0, ',', '.') }}</td>
                                             <td class="px-4 py-3 font-mono text-right whitespace-nowrap text-brand-green dark:text-brand-lime">{{ number_format($totalRekap->sum('saldo'), 0, ',', '.') }}</td>
                                         </tr>
                                     </tfoot>
@@ -615,15 +782,22 @@ new class extends Component {
                 <div class="flex flex-col flex-1 min-w-0 min-h-0 border shadow-sm bg-canvas border-hairline rounded-2xl dark:border-gray-700 dark:bg-gray-900">
                     {{-- Ringkasan saldo DP — satu baris ringkas di atas riwayat --}}
                     <div class="flex flex-wrap items-baseline gap-x-6 gap-y-1 px-5 py-2.5 text-sm border-b border-hairline bg-surface-soft dark:bg-gray-800/60 dark:border-gray-700">
-                        <span class="text-muted dark:text-gray-400">Total disetor
-                            <span class="ml-1 font-mono font-medium text-body dark:text-gray-200">Rp {{ number_format($this->ringkasan['setor'], 0, ',', '.') }}</span></span>
-                        <span class="text-muted dark:text-gray-400">Terpakai melunasi hutang
-                            <span class="ml-1 font-mono font-medium text-body dark:text-gray-200">Rp {{ number_format($this->ringkasan['pakai'], 0, ',', '.') }}</span></span>
+                        @php $rk = $this->ringkasan; @endphp
+                        <span class="text-muted dark:text-gray-400">Saldo awal {{ $rk['tahunAwal'] ?? '' }}
+                            <span class="ml-1 font-mono font-medium text-body dark:text-gray-200">Rp {{ number_format($rk['awal'], 0, ',', '.') }}</span></span>
+                        <span class="text-muted dark:text-gray-400">Disetor
+                            <span class="ml-1 font-mono font-medium text-body dark:text-gray-200">Rp {{ number_format($rk['setor'], 0, ',', '.') }}</span></span>
+                        <span class="text-muted dark:text-gray-400">Terpakai
+                            <span class="ml-1 font-mono font-medium text-body dark:text-gray-200">Rp {{ number_format($rk['pakai'], 0, ',', '.') }}</span></span>
+                        @if ($rk['opname'] !== 0)
+                            <span class="text-muted dark:text-gray-400">Opname
+                                <span class="ml-1 font-mono font-medium text-violet-700 dark:text-violet-300">{{ $rk['opname'] > 0 ? '+' : '−' }}Rp {{ number_format(abs($rk['opname']), 0, ',', '.') }}</span></span>
+                        @endif
                         <span class="text-muted dark:text-gray-400">Saldo DP
                             <span class="ml-1 font-mono text-base font-bold {{ $this->ringkasan['saldo'] < 0 ? 'text-rose-700 dark:text-rose-300' : 'text-brand-green dark:text-brand-lime' }}">Rp {{ number_format($this->ringkasan['saldo'], 0, ',', '.') }}</span></span>
                     </div>
                     <div class="px-5 py-3 border-b border-hairline dark:border-gray-700">
-                        <div class="text-sm font-semibold tracking-wide uppercase text-muted dark:text-gray-300">Riwayat Setor &amp; Pemakaian DP</div>
+                        <div class="text-sm font-semibold tracking-wide uppercase text-muted dark:text-gray-300">Riwayat Setor, Pemakaian &amp; Opname DP</div>
                     </div>
 
                     <div class="flex-1 min-h-0 overflow-x-auto overflow-y-auto">
@@ -643,19 +817,33 @@ new class extends Component {
                                     <tr wire:key="riwayat-dp-{{ $row['jenis'] }}-{{ $row['no'] }}" class="hover:bg-surface-soft dark:hover:bg-gray-800/60">
                                         <td class="px-4 py-2.5 whitespace-nowrap">
                                             <div>{{ $row['tgl'] }}</div>
-                                            <div class="text-xs text-muted dark:text-gray-400">Shift {{ $row['shift'] ?: '-' }} · No {{ $row['no'] }}</div>
+                                            @if ($row['jenis'] !== 'awal')
+                                                <div class="text-xs text-muted dark:text-gray-400">Shift {{ $row['shift'] ?: '-' }} · No {{ $row['no'] }}</div>
+                                            @endif
                                         </td>
                                         <td class="px-4 py-2.5">
                                             @if ($row['jenis'] === 'setor')
                                                 <x-badge variant="success">Setor</x-badge>
+                                            @elseif ($row['jenis'] === 'opname')
+                                                <x-badge variant="purple">Opname</x-badge>
+                                            @elseif ($row['jenis'] === 'awal')
+                                                <x-badge variant="gray">Saldo Awal</x-badge>
                                             @else
                                                 <x-badge variant="warning">Dipakai</x-badge>
                                             @endif
                                         </td>
                                         <td class="px-4 py-2.5">{{ $row['ket'] ?: '-' }}</td>
                                         <td class="px-4 py-2.5 text-muted dark:text-gray-400">{{ $row['akun'] }}</td>
-                                        <td class="px-4 py-2.5 font-mono text-right whitespace-nowrap {{ $row['jenis'] === 'setor' ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-400' }}">
-                                            {{ $row['jenis'] === 'setor' ? '+' : '−' }} {{ number_format($row['nilai'], 0, ',', '.') }}
+                                        @php
+                                            [$warnaNilai, $tanda, $angka] = match ($row['jenis']) {
+                                                'setor' => ['text-emerald-700 dark:text-emerald-400', '+', $row['nilai']],
+                                                'pakai' => ['text-amber-700 dark:text-amber-400', '−', $row['nilai']],
+                                                'opname' => ['text-violet-700 dark:text-violet-300', $row['nilai'] >= 0 ? '+' : '−', abs($row['nilai'])],
+                                                default => ['text-body dark:text-gray-200 font-semibold', '', $row['nilai']],
+                                            };
+                                        @endphp
+                                        <td class="px-4 py-2.5 font-mono text-right whitespace-nowrap {{ $warnaNilai }}">
+                                            {{ $tanda }} {{ number_format($angka, 0, ',', '.') }}
                                         </td>
                                         <td class="px-4 py-2.5 text-center">
                                             @if ($row['bolehHapus'])
@@ -669,7 +857,7 @@ new class extends Component {
                                 @empty
                                     <tr>
                                         <td colspan="6" class="px-6 py-16 text-center text-muted dark:text-gray-400">
-                                            Belum ada setoran / pemakaian DP untuk supplier ini.
+                                            Belum ada saldo awal, setoran, pemakaian, atau opname DP untuk supplier ini.
                                         </td>
                                     </tr>
                                 @endforelse
@@ -719,6 +907,51 @@ new class extends Component {
                         wire:loading.attr="disabled" wire:target="simpan">
                         <span wire:loading.remove wire:target="simpan" class="inline-flex items-center gap-2"><x-ikon nama="simpan" /> Ya, simpan</span>
                         <span wire:loading wire:target="simpan"><x-loading /> Menyimpan...</span>
+                    </x-primary-button>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    {{-- KONFIRMASI OPNAME SALDO DP --}}
+    @if (!empty($pratinjauOpname))
+        <div class="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-gray-900/50"
+            x-data x-init="$nextTick(() => $refs.btnYaOpname?.focus())">
+            <div class="w-full max-w-md overflow-hidden border shadow-xl bg-canvas rounded-2xl border-hairline dark:bg-gray-900 dark:border-gray-700">
+                <div class="px-5 py-4 border-b border-hairline dark:border-gray-700">
+                    <h3 class="text-base font-semibold text-ink dark:text-gray-100">Konfirmasi Opname Saldo DP</h3>
+                    <p class="mt-0.5 text-sm text-muted dark:text-gray-400">Selisih dicatat sebagai baris opname hari ini. Kas &amp; jurnal keuangan tidak berubah.</p>
+                </div>
+                <dl class="px-5 py-4 space-y-2 text-sm">
+                    <div class="flex justify-between gap-3">
+                        <dt class="text-muted dark:text-gray-400">Supplier</dt>
+                        <dd class="font-medium text-right text-ink dark:text-gray-100">{{ $supplier['supp_name'] ?? '-' }}</dd>
+                    </div>
+                    <div class="flex justify-between gap-3">
+                        <dt class="text-muted dark:text-gray-400">Saldo sistem</dt>
+                        <dd class="font-mono text-ink dark:text-gray-100">Rp {{ number_format($pratinjauOpname['sistem']) }}</dd>
+                    </div>
+                    <div class="flex justify-between gap-3">
+                        <dt class="text-muted dark:text-gray-400">Saldo sebenarnya</dt>
+                        <dd class="font-mono text-ink dark:text-gray-100">Rp {{ number_format($pratinjauOpname['fisik']) }}</dd>
+                    </div>
+                    <div class="flex justify-between gap-3 pt-2 border-t border-hairline dark:border-gray-700">
+                        <dt class="text-muted dark:text-gray-400">Selisih dicatat</dt>
+                        <dd class="font-mono font-semibold {{ $pratinjauOpname['selisih'] > 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-300' }}">
+                            {{ $pratinjauOpname['selisih'] > 0 ? '+' : '−' }}Rp {{ number_format(abs($pratinjauOpname['selisih'])) }}
+                        </dd>
+                    </div>
+                    <div class="flex justify-between gap-3">
+                        <dt class="text-muted dark:text-gray-400">Alasan</dt>
+                        <dd class="text-right text-ink dark:text-gray-100">{{ $opnameAlasan }}</dd>
+                    </div>
+                </dl>
+                <div class="flex justify-end gap-2 px-5 py-4 border-t border-hairline bg-surface-soft dark:bg-gray-800/50 dark:border-gray-700">
+                    <x-secondary-button type="button" wire:click="batalOpname"><x-ikon nama="batal" /> Batal</x-secondary-button>
+                    <x-primary-button type="button" wire:click="simpanOpname" x-ref="btnYaOpname"
+                        wire:loading.attr="disabled" wire:target="simpanOpname">
+                        <span wire:loading.remove wire:target="simpanOpname" class="inline-flex items-center gap-2"><x-ikon nama="simpan" /> Ya, catat opname</span>
+                        <span wire:loading wire:target="simpanOpname"><x-loading /> Menyimpan...</span>
                     </x-primary-button>
                 </div>
             </div>
