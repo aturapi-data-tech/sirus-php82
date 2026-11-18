@@ -213,7 +213,7 @@ new class extends Component {
                     <x-text-input type="text" wire:model.live.debounce.400ms="cari" placeholder="Nama / kode..." class="w-56 mt-1 text-sm" />
                 </div>
                 <div class="pb-1.5">
-                    <x-toggle wire:model.live="semua" :trueValue="true" :falseValue="false" label="Tampilkan saldo 0" />
+                    <x-toggle wire:model.live="semua" :trueValue="true" :falseValue="false" label="Tampilkan saldo 0" class="whitespace-nowrap" />
                 </div>
             </div>
 
