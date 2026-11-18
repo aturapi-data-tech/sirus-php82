@@ -540,7 +540,9 @@ new class extends Component {
                                 </div>
                             </div>
 
-                            <div>
+                            {{-- Akun Kas & Nominal sebaris --}}
+                            <div class="grid items-start grid-cols-1 gap-4 sm:grid-cols-12">
+                            <div class="sm:col-span-7">
                                 <livewire:lov.kas.lov-kas
                                     target="topup-non-medis-kas"
                                     tipe=""
@@ -552,12 +554,13 @@ new class extends Component {
                                 <x-input-error :messages="$errors->get('accId')" class="mt-1" />
                             </div>
 
-                            <div>
+                            <div class="sm:col-span-5">
                                 <x-input-label value="Nominal Setor (Rp)" :required="true" />
                                 <div class="mt-1">
                                     <x-text-input-number wire:model="nominal" :error="$errors->has('nominal')" />
                                 </div>
                                 <x-input-error :messages="$errors->get('nominal')" class="mt-1" />
+                            </div>
                             </div>
 
                             <div>
