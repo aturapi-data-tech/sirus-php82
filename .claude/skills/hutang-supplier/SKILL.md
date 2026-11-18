@@ -56,7 +56,7 @@ dimasukkan supaya tutup buku Forms & web identik. Boleh diulang; angka lama di `
 **Opname saldo DP** (DDL `docs/ddl-opname-dp-supplier.sql`, seq `sodpsupp_seq`/`sodpsuppnon_seq`): pola opname stok —
 saldo sebenarnya + alasan → selisih jadi baris bertanggal SYSDATE; saldo awal & transaksi lama tak diubah;
 **TIDAK dijurnal** (keputusan user: fungsi beda, sama dengan opname stok) → saldo DP supplier ≠ akun 1.1A13 sebesar
-total opname, disengaja. **Menu tersendiri `/keuangan/opname-dp-supplier` (Keuangan → Opname Saldo DP Supplier), KHUSUS ADMIN** (11-18 user: jangan di halaman DP); halaman DP hanya menampilkan baris opname di riwayat & rekap. Selisih 0 ditolak, tak ada hapus opname (jejak koreksi).
+total opname, disengaja. **Menu Keuangan → Kartu DP Supplier `/keuangan/kartu-dp-supplier` (pola Kartu Stock Apotek: tahun + daftar supplier awal/akhir → mutasi bersaldo berjalan + form opname tahun berjalan; `SaldoDpSupplier::kartu()`), KHUSUS ADMIN** (11-18 user: jangan di halaman DP); halaman DP hanya menampilkan baris opname di riwayat & rekap. Selisih 0 ditolak, tak ada hapus opname (jejak koreksi).
 
 ## Jurnal: apa yang dibaca
 

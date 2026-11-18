@@ -211,4 +211,69 @@ final class SaldoDpSupplier
 
         return $baris;
     }
+
+    /**
+     * Kartu DP satu supplier satu tahun (pola kartu stok): saldo awal 1 Jan + mutasi bertanggal
+     * (setor = masuk, dipakai bayar nota = keluar, opname = masuk/keluar) dengan saldo berjalan.
+     * Saldo awal & akhir = rekapTahun() (satu rumus).
+     *
+     * @return array{awal: int, masuk: int, keluar: int, akhir: int, mutasi: array<int, array{tgl: string, jenis: string,
+     *   no: int, ket: string, info: string, masuk: int, keluar: int, saldo: int}>}
+     */
+    public static function kartu(string $jenis, string $suppId, int $tahun): array
+    {
+        $t = self::TABEL[$jenis] ?? self::TABEL[self::JENIS_PBF];
+        $baris = collect(self::rekapTahun($jenis, $tahun, '', true))->firstWhere('suppId', $suppId);
+        $awal = (int) ($baris['awal'] ?? 0);
+        $dari = "{$tahun}-01-01";
+        $sampai = ($tahun + 1) . '-01-01';
+        $rentang = fn (string $kolom) => ["{$kolom} >= TO_DATE(?,'YYYY-MM-DD') AND {$kolom} < TO_DATE(?,'YYYY-MM-DD')", [$dari, $sampai]];
+
+        [$w, $b] = $rentang('t.cashout_date');
+        $setor = DB::table("{$t['setor']} as t")->leftJoin('acmst_accounts as a', 'a.acc_id', '=', 't.acc_id')
+            ->where('t.supp_id', $suppId)->whereRaw($w, $b)
+            ->get(['t.cashout_no', 't.cashout_desc', 't.acc_id', 'a.acc_name', 't.shift', DB::raw('NVL(t.cashout_value,0) as n'),
+                DB::raw("to_char(t.cashout_date,'dd/mm/yyyy hh24:mi:ss') as tgl"), DB::raw("to_char(t.cashout_date,'yyyymmddhh24miss') as urut")])
+            ->map(fn ($r) => ['urut' => $r->urut, 'tgl' => $r->tgl, 'jenis' => 'setor', 'no' => (int) $r->cashout_no,
+                'ket' => (string) ($r->cashout_desc ?? 'Setor DP'),
+                'info' => trim(($r->acc_name ?? '') . ' (' . $r->acc_id . ') · shift ' . ($r->shift ?? '-')),
+                'masuk' => (int) round((float) $r->n), 'keluar' => 0]);
+
+        [$w, $b] = $rentang('c.cashout_date');
+        $pakaiRows = DB::table("{$t['pakai']} as c")->where('c.supp_id', $suppId)->whereRaw('NVL(c.cashout_value_topup,0) > 0')->whereRaw($w, $b)
+            ->get(['c.cashout_no', 'c.shift', DB::raw('NVL(c.cashout_value_topup,0) as n'),
+                DB::raw("to_char(c.cashout_date,'dd/mm/yyyy hh24:mi:ss') as tgl"), DB::raw("to_char(c.cashout_date,'yyyymmddhh24miss') as urut")]);
+        $tabelDtl = $t['pakai'] === 'imtxn_cashouthdrsnon' ? 'imtxn_cashoutdtlsnon' : 'imtxn_cashoutdtls';
+        $notaPerKas = DB::table($tabelDtl)->whereIn('cashout_no', $pakaiRows->pluck('cashout_no')->all() ?: [-1])
+            ->get(['cashout_no', 'rcv_no'])->groupBy('cashout_no')->map(fn ($x) => $x->pluck('rcv_no')->implode(', '));
+        $pakai = $pakaiRows->map(fn ($r) => ['urut' => $r->urut, 'tgl' => $r->tgl, 'jenis' => 'pakai', 'no' => (int) $r->cashout_no,
+            'ket' => 'Bayar nota ' . ($notaPerKas[$r->cashout_no] ?? '-'), 'info' => 'shift ' . ($r->shift ?? '-'),
+            'masuk' => 0, 'keluar' => (int) round((float) $r->n)]);
+
+        [$w, $b] = $rentang('o.so_date');
+        $opname = DB::table("{$t['opname']} as o")->leftJoin('immst_employers as e', 'e.emp_id', '=', 'o.emp_id')
+            ->where('o.supp_id', $suppId)->whereRaw($w, $b)
+            ->get(['o.so_no', 'o.so_desc', 'o.saldo_sistem', 'o.saldo_fisik', 'e.emp_name', 'o.user_code', DB::raw('NVL(o.so_d,0) as d'), DB::raw('NVL(o.so_k,0) as k'),
+                DB::raw("to_char(o.so_date,'dd/mm/yyyy hh24:mi:ss') as tgl"), DB::raw("to_char(o.so_date,'yyyymmddhh24miss') as urut")])
+            ->map(fn ($r) => ['urut' => $r->urut, 'tgl' => $r->tgl, 'jenis' => 'opname', 'no' => (int) $r->so_no,
+                'ket' => (string) ($r->so_desc ?? 'Opname'),
+                'info' => 'Sistem Rp ' . number_format((float) $r->saldo_sistem, 0, ',', '.') . ' → sebenarnya Rp ' . number_format((float) $r->saldo_fisik, 0, ',', '.')
+                    . ' · ' . ($r->emp_name ?: $r->user_code ?: '-'),
+                'masuk' => (int) round((float) $r->d), 'keluar' => (int) round((float) $r->k)]);
+
+        $saldo = $awal;
+        $mutasi = $setor->concat($pakai)->concat($opname)->sortBy([['urut', 'asc'], ['no', 'asc']])->values()
+            ->map(function ($r) use (&$saldo) {
+                $saldo += $r['masuk'] - $r['keluar'];
+                unset($r['urut']);
+
+                return $r + ['saldo' => $saldo];
+            })->all();
+
+        $masuk = (int) array_sum(array_column($mutasi, 'masuk'));
+        $keluar = (int) array_sum(array_column($mutasi, 'keluar'));
+
+        return ['awal' => $awal, 'masuk' => $masuk, 'keluar' => $keluar, 'akhir' => $awal + $masuk - $keluar, 'mutasi' => $mutasi];
+    }
+
 }
