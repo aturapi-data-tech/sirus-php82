@@ -270,17 +270,7 @@ new class extends Component {
                                             :nama="$row->reg_name"
                                             :sex="$row->sex"
                                             :tglLahir="$row->birth_date"
-                                            :alamat="$row->address">
-                                            <div class="text-sm text-muted dark:text-gray-400">
-                                                Masuk: {{ $row->entry_date_display }}
-                                            </div>
-                                            @if (!empty($row->exit_date_display))
-                                                <div class="text-sm text-muted dark:text-gray-400">
-                                                    Pulang: {{ $row->exit_date_display }}
-                                                    <span class="text-xs" title="Hari kalender masuk s.d. pulang">· {{ (int) $row->lama_rawat }} hari</span>
-                                                </div>
-                                            @endif
-                                        </x-list.identitas-pasien>
+                                            :alamat="$row->address" />
                                     </td>
 
                                     {{-- KAMAR / DOKTER --}}
@@ -324,8 +314,17 @@ new class extends Component {
                                         <x-list.sep-spri :sep="$row->no_sep" :spri="$row->no_spri" />
                                     </td>
 
-                                    {{-- ADMINISTRASI BADGE --}}
-                                    <td class="px-6 py-4 align-top">
+                                    {{-- ADMINISTRASI: tanggal masuk / pulang + lama rawat + penanda administrasi --}}
+                                    <td class="px-6 py-4 space-y-1 align-top">
+                                        <div class="text-sm whitespace-nowrap text-muted dark:text-gray-400">
+                                            Masuk: <span class="text-body dark:text-gray-200">{{ $row->entry_date_display }}</span>
+                                        </div>
+                                        @if (!empty($row->exit_date_display))
+                                            <div class="text-sm whitespace-nowrap text-muted dark:text-gray-400">
+                                                Pulang: <span class="text-body dark:text-gray-200">{{ $row->exit_date_display }}</span>
+                                                <span class="text-xs" title="Hari kalender masuk s.d. pulang">· {{ (int) $row->lama_rawat }} hari</span>
+                                            </div>
+                                        @endif
                                         <div class="text-xs text-muted dark:text-gray-500">
                                             <span class="font-medium {{ $row->admin_user !== '-' ? 'text-success dark:text-success' : 'text-muted-soft' }}">
                                                 {{ $row->admin_user }}
