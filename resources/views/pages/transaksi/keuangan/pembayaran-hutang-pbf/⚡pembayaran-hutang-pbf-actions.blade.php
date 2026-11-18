@@ -583,8 +583,8 @@ new class extends Component {
     /**
      * Hapus satu kas keluar (salah bayar) beserta pasangan receivepayments di SETIAP nota yang
      * ditutupnya. receivepayments tak menyimpan cashout_no, jadi pasangan = rcv_no + tanggal-jam
-     * yang sama dengan cashout_date; wajib tepat satu per nota dan jumlahnya = cashout_value —
-     * kalau tidak (data lama Forms), ditolak daripada menghapus baris yang salah.
+     * yang sama dengan cashout_date, satu per nota, Σ = tunai + DP (lihat pilihPasanganBayar) —
+     * kalau tak bisa dipastikan (data lama Forms), ditolak daripada menghapus baris yang salah.
      */
     public function hapusPembayaran(int $cashoutNo): void
     {
@@ -615,15 +615,12 @@ new class extends Component {
                     ->whereRaw("to_char(rcvp_date,'dd/mm/yyyy hh24:mi:ss') = ?", [$kas->tgl])
                     ->get(['rcvp_no', 'rcv_no', 'rcvp_value']);
 
-                $perNota = $pasangan->groupBy(fn ($row) => (string) $row->rcv_no);
-                $tepat = count($notaList) === $perNota->count()
-                    && $perNota->every(fn ($baris) => $baris->count() === 1)
-                    && (int) round((float) $pasangan->sum('rcvp_value')) === (int) round((float) $kas->nilai);
-                if (!$tepat) {
+                $dipilih = $this->pilihPasanganBayar($pasangan, $notaList, (int) round((float) $kas->nilai));
+                if ($dipilih === null) {
                     throw new \RuntimeException('Pasangan pembayaran per nota tidak bisa dipastikan (data lama) — tidak dihapus. Hubungi admin.');
                 }
 
-                DB::table('imtxn_receivepayments')->whereIn('rcvp_no', $pasangan->pluck('rcvp_no')->all())->delete();
+                DB::table('imtxn_receivepayments')->whereIn('rcvp_no', $dipilih)->delete();
                 DB::table('imtxn_cashoutdtls')->where('cashout_no', $cashoutNo)->delete();
                 DB::table('imtxn_cashouthdrs')->where('cashout_no', $cashoutNo)->delete();
                 // Uang dicabut → nota yang tadinya lunas kembali menjadi hutang.
@@ -663,6 +660,55 @@ new class extends Component {
             . ($hasil['dp'] > 0 ? 'Saldo DP supplier kembali Rp ' . number_format($hasil['dp']) . '.' : 'Saldo kas pada tanggal bayar tersebut ikut berubah.'));
     }
 
+
+    /**
+     * Pilih satu baris receivepayments per nota (sama tanggal-jam dengan kas keluar) yang jumlahnya
+     * = nilai kas keluar. Bila satu nota punya >1 kandidat (dua pembayaran di detik yang sama),
+     * dicoba semua kombinasi; diterima hanya bila setiap kombinasi yang cocok memilih NOMINAL yang sama
+     * per nota (baris bernominal sama setara — menghapus yang mana pun hasilnya identik).
+     * Mengembalikan daftar rcvp_no, atau null bila tak bisa dipastikan.
+     */
+    protected function pilihPasanganBayar($pasangan, array $notaList, int $nilai): ?array
+    {
+        $kandidat = [];
+        foreach ($notaList as $rcvNo) {
+            $baris = $pasangan->where('rcv_no', $rcvNo)->values();
+            if ($baris->isEmpty()) {
+                return null;
+            }
+            $kandidat[] = $baris->all();
+        }
+
+        $kombinasi = [[]];
+        foreach ($kandidat as $pilihan) {
+            $baru = [];
+            foreach ($kombinasi as $awal) {
+                foreach ($pilihan as $row) {
+                    $baru[] = array_merge($awal, [$row]);
+                }
+            }
+            if (count($baru) > 512) {
+                return null;
+            }
+            $kombinasi = $baru;
+        }
+
+        $cocok = array_values(array_filter($kombinasi,
+            fn ($set) => (int) round(array_sum(array_map(fn ($row) => (float) $row->rcvp_value, $set))) === $nilai));
+        if (empty($cocok)) {
+            return null;
+        }
+
+        $polaNominal = fn ($set) => implode('|', array_map(fn ($row) => $row->rcv_no . '=' . (int) round((float) $row->rcvp_value), $set));
+        $acuan = $polaNominal($cocok[0]);
+        foreach ($cocok as $set) {
+            if ($polaNominal($set) !== $acuan) {
+                return null;
+            }
+        }
+
+        return array_map(fn ($row) => $row->rcvp_no, $cocok[0]);
+    }
 
     /** Saldo DP supplier = Σ setor (cashouthdrtopups) − Σ terpakai (cashouthdrs.cashout_value_topup). */
     protected function hitungSaldoDp(): int

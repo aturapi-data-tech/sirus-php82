@@ -52,8 +52,12 @@ kembar (cek dengan `diff` setelah menormalkan nama).
    penerimaan menghapus header bersama: kas & hutang nota lain hilang dari jurnal sementara
    `receivepayments`-nya tetap. Selalu cek `cashoutdtls` dengan `rcv_no <> nota ini`.
 2. **Pasangan `receivepayments` ↔ kas keluar** = `rcv_no` + `to_char(rcvp_date) = to_char(cashout_date)`
-   (detik sama). Saat menghapus: wajib tepat satu baris per nota dan Σ = `cashout_value + cashout_value_topup`.
-   Kalau tidak cocok (data lama Forms), **tolak**; jangan menghapus baris yang salah.
+   (detik sama). Saat menghapus: satu baris per nota dengan Σ = `cashout_value + cashout_value_topup`.
+   Dua pembayaran satu nota di detik yang sama (tanggal diketik sama) → `pilihPasanganBayar()` mencoba
+   semua kombinasi dan menerima hanya bila semua kombinasi yang cocok memilih nominal yang sama per nota.
+   Kalau tak bisa dipastikan (data lama Forms), **tolak**; jangan menghapus baris yang salah.
+   Data lama yang tak berpasangan: receivepayments 2012–2015 (sebelum ada kas keluar), dan 225 kas keluar
+   2020–2023 yang ≠ Σ pembayaran nota (Rp ±297 jt, data Forms). Bukan dari web, tapi jangan diasumsikan rapi.
 3. **DP tidak dicampur tunai** (pola Forms: 908 baris data, semuanya `cashout_value` NULL +
    `cashout_value_topup`). Sumber dana = Kas ATAU Saldo DP. Untuk DP, `acc_id` diisi akun setoran DP
    terakhir supplier (NOT NULL; jurnal kas mengabaikannya karena `cashout_value` kosong).
@@ -64,8 +68,9 @@ kembar (cek dengan `diff` setelah menormalkan nama).
 6. **Shift** kas keluar = jam dari tanggal transaksi (`rstxn_shiftctls`), tampil dan bisa diubah.
    Jangan dari jam tombol ditekan; Saldo Kas per shift membaca kolom ini.
 7. **Batal posting penerimaan (H/L→A)** ditolak bila: nota tahun lalu (saldo awal stok tahun ini sudah
-   memuatnya); lebih dari satu pembayaran; kas keluar dipakai nota lain; stok gudang saat ini < qty
-   nota (barang sudah terpakai, batal akan membuat stok minus). Yang boleh ikut terhapus hanya SATU
+   memuatnya); lebih dari satu pembayaran; kas keluar dipakai nota lain; stok tanpa nota ini minus
+   DAN ada `qty_k` di ledger sejak `rcv_date` (barang sudah keluar). Ledger yang sudah minus sejak dulu
+   (mis. ALOFAR) tidak menghalangi, karena batal hanya mengembalikan ke keadaan sebelum posting. Yang boleh ikut terhapus hanya SATU
    kas keluar eksklusif milik nota itu.
 8. **Hapus nota** hanya status A/F. Event `requestDelete` masih hidup walau tombolnya dikomentari.
 9. **Hapus salah bayar** = satu kas keluar UTUH beserta seluruh notanya; nota L → H. Angsuran awal
@@ -84,7 +89,10 @@ Perbarui panel itu kalau aturannya berubah.
 ## Menguji
 
 Oracle lokal (`DB_HOST=localhost`) boleh ditulis. Uji alur penuh dengan `Livewire::test(...)` di dalam
-`DB::beginTransaction()` … `DB::rollBack()` (sequence tetap maju, data kembali). Kasus yang wajib dicoba:
+`DB::beginTransaction()` … `DB::rollBack()` (sequence tetap maju, data kembali). Ukur dampak jurnal dengan
+`Jurnal::arusPerAkun([kas, conf RCV1, RCV6, RCV2], hari, hari)` sebelum/sesudah tiap langkah. Harapan:
+setor DP → kas −, RCV6 +; bayar DP → RCV6 −, hutang −, kas tetap; bayar kas → kas −, hutang −; posting →
+persediaan + bruto, hutang + (grand total − bayar awal); setiap hapus/batal membalik tepat. Kasus yang wajib dicoba:
 bayar DP lalu hapus (saldo kembali), hapus setor yang terpakai (ditolak), batal posting nota dengan stok
 terpakai (ditolak) / kas bersama (ditolak) / tahun lalu (ditolak) / tanpa bayar (berhasil).
 
