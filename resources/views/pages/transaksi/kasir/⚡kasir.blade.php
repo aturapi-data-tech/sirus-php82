@@ -2,6 +2,7 @@
 // resources/views/pages/transaksi/kasir/kasir.blade.php
 // Wrapper 1 halaman untuk Antrian Kasir RJ & UGD dalam tab
 // + Cash In / Cash Out / Piutang Pasien = komponen Keuangan apa adanya
+// + Hutang PBF / Hutang Non-Medis / DP PBF / DP Non-Medis = komponen Keuangan apa adanya
 
 use Livewire\Component;
 
@@ -13,7 +14,7 @@ new class extends Component {
 
     public function setTab(string $tab): void
     {
-        if (!in_array($tab, ['rj', 'ugd', 'ri', 'daftar-ri', 'cash-in', 'cash-out', 'piutang-pasien', 'list-piutang'])) {
+        if (!in_array($tab, ['rj', 'ugd', 'ri', 'daftar-ri', 'cash-in', 'cash-out', 'piutang-pasien', 'list-piutang', 'hutang-pbf', 'hutang-non-medis', 'dp-pbf', 'dp-non-medis'])) {
             return;
         }
         $this->activeTab = $tab;
@@ -50,6 +51,10 @@ new class extends Component {
                 <x-tab :active="$activeTab === 'cash-out'" color="violet" wire:click="setTab('cash-out')">Cash Out</x-tab>
                 <x-tab :active="$activeTab === 'piutang-pasien'" color="blue" wire:click="setTab('piutang-pasien')">Pembayaran Piutang Pasien</x-tab>
                 <x-tab :active="$activeTab === 'list-piutang'" color="purple" wire:click="setTab('list-piutang')">List Piutang Pasien</x-tab>
+                <x-tab :active="$activeTab === 'hutang-pbf'" color="rose" wire:click="setTab('hutang-pbf')">Hutang PBF</x-tab>
+                <x-tab :active="$activeTab === 'hutang-non-medis'" color="rose" wire:click="setTab('hutang-non-medis')">Hutang Non-Medis</x-tab>
+                <x-tab :active="$activeTab === 'dp-pbf'" color="emerald" wire:click="setTab('dp-pbf')">DP PBF</x-tab>
+                <x-tab :active="$activeTab === 'dp-non-medis'" color="emerald" wire:click="setTab('dp-non-medis')">DP Non-Medis</x-tab>
             </x-tabs>
 
             <x-outline-button type="button" wire:click="openCekSaldo"
@@ -85,6 +90,18 @@ new class extends Component {
             @elseif ($activeTab === 'list-piutang')
                 <livewire:pages::manajemen.rs.tu.piutang-pasien.piutang-pasien
                     wire:key="list-piutang-pasien-wrapper" />
+            @elseif ($activeTab === 'hutang-pbf')
+                <livewire:pages::transaksi.keuangan.pembayaran-hutang-pbf.pembayaran-hutang-pbf
+                    wire:key="hutang-pbf-wrapper" />
+            @elseif ($activeTab === 'hutang-non-medis')
+                <livewire:pages::transaksi.keuangan.pembayaran-hutang-non-medis.pembayaran-hutang-non-medis
+                    wire:key="hutang-non-medis-wrapper" />
+            @elseif ($activeTab === 'dp-pbf')
+                <livewire:pages::transaksi.keuangan.topup-supplier-pbf.topup-supplier-pbf
+                    wire:key="dp-pbf-wrapper" />
+            @elseif ($activeTab === 'dp-non-medis')
+                <livewire:pages::transaksi.keuangan.topup-supplier-non-medis.topup-supplier-non-medis
+                    wire:key="dp-non-medis-wrapper" />
             @endif
         </div>
 
