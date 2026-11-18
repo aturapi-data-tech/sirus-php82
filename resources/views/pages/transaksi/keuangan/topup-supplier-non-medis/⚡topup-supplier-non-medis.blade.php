@@ -12,9 +12,8 @@
  * Pemakaian DP ada di menu Pembayaran Hutang Non-Medis (pola Forms: DP dipakai sendirian, tak
  * dicampur tunai). Hapus salah setor ditolak bila saldo DP jadi minus (DP sudah terpakai).
  *
- * OPNAME SALDO DP (pola opname stok TKTXN_SOWHS): petugas mengisi saldo DP sebenarnya
- * (kartu / rekening koran supplier) + alasan; selisihnya dicatat di TKTXN_SODPSUPPSNON bertanggal
- * hari ini. Saldo awal & transaksi lama tak diubah. TIDAK dijurnal ke keuangan.
+ * Opname saldo DP ada di menu tersendiri (keuangan/opname-dp-supplier, khusus Admin);
+ * di sini barisnya hanya tampil di riwayat & rekap.
  */
 
 use Livewire\Component;
@@ -32,8 +31,6 @@ new class extends Component {
 
     /** Hapus salah setor — sama dengan hapus salah bayar hutang/piutang. */
     private const ROLE_HAPUS_SETOR = ['Admin', 'Supervisor Tu'];
-    /** Opname saldo DP — sama dengan hapus salah setor. */
-    private const ROLE_OPNAME = ['Admin', 'Supervisor Tu'];
     private const JENIS = SaldoDpSupplier::JENIS_NON_MEDIS;
 
     public ?string $suppId   = null;
@@ -56,13 +53,6 @@ new class extends Component {
     public int     $tahunRekap       = 0;
     /** Filter rekap = pilihan Semua/Medis/Non-Medis di LOV supplier ('all' | 'medis' | 'nonmedis'). */
     public string  $jenisRekap       = 'nonmedis';
-
-    /* ── Opname saldo DP ── */
-    /** Saldo DP sebenarnya menurut kartu / rekening koran supplier. */
-    public ?int    $opnameSaldo      = null;
-    public ?string $opnameAlasan     = null;
-    /** Ringkasan dialog konfirmasi opname — kosong = tertutup. Hanya tampilan. */
-    public array   $pratinjauOpname  = [];
 
     public array $renderVersions = [];
 
@@ -99,7 +89,7 @@ new class extends Component {
 
     public function clearSupplier(): void
     {
-        $this->reset(['suppId', 'supplier', 'accId', 'nominal', 'keterangan', 'pratinjau', 'opnameSaldo', 'opnameAlasan', 'pratinjauOpname']);
+        $this->reset(['suppId', 'supplier', 'accId', 'nominal', 'keterangan', 'pratinjau']);
         $this->setTanggalSekarang();
         $this->resetValidation();
         $this->incrementVersion('form');
@@ -442,102 +432,6 @@ new class extends Component {
         return SaldoDpSupplier::rincian(self::JENIS, $suppId);
     }
 
-    /* ── Opname saldo DP ── */
-
-    public function bolehOpname(): bool
-    {
-        return (bool) auth()->user()?->hasAnyRole(self::ROLE_OPNAME);
-    }
-
-    /** Langkah 1: hitung selisih terhadap saldo sistem, tampilkan konfirmasi (belum menulis). */
-    public function siapkanOpname(): void
-    {
-        if (!$this->bolehOpname()) {
-            $this->dispatch('toast', type: 'error', message: 'Hanya Admin / Supervisor Tu yang dapat melakukan opname saldo DP.');
-            return;
-        }
-        $this->validate([
-            'suppId' => 'required|string',
-            'opnameSaldo' => 'required|integer',
-            'opnameAlasan' => 'required|string|min:5|max:200',
-        ], [
-            'opnameSaldo.required' => 'Saldo DP sebenarnya wajib diisi (boleh 0).',
-            'opnameSaldo.integer' => 'Saldo DP sebenarnya harus angka.',
-            'opnameAlasan.required' => 'Alasan opname wajib diisi.',
-            'opnameAlasan.min' => 'Alasan minimal 5 karakter.',
-            'opnameAlasan.max' => 'Alasan maksimal 200 karakter.',
-        ]);
-
-        $sistem = $this->hitungSaldoDp($this->suppId)['saldo'];
-        $selisih = (int) $this->opnameSaldo - $sistem;
-        if ($selisih === 0) {
-            $this->dispatch('toast', type: 'info', message: 'Saldo sebenarnya sama dengan saldo sistem — tidak ada selisih untuk dicatat.');
-            return;
-        }
-
-        $this->pratinjauOpname = ['sistem' => $sistem, 'fisik' => (int) $this->opnameSaldo, 'selisih' => $selisih];
-    }
-
-    public function batalOpname(): void
-    {
-        $this->pratinjauOpname = [];
-    }
-
-    /** Langkah 2: tulis baris opname. Saldo sistem dihitung ulang setelah supplier dikunci. */
-    public function simpanOpname(): void
-    {
-        $this->pratinjauOpname = [];
-        if (!$this->bolehOpname() || !$this->suppId || $this->opnameSaldo === null || blank($this->opnameAlasan)) {
-            $this->dispatch('toast', type: 'error', message: 'Data opname belum lengkap / Anda tidak berwenang.');
-            return;
-        }
-
-        $user = auth()->user();
-        $shift = $this->shiftPadaJam(Carbon::now()->format('d/m/Y H:i:s'));
-
-        try {
-            $hasil = DB::transaction(function () use ($user, $shift) {
-                DB::table('immst_suppliers')->where('supp_id', $this->suppId)->lockForUpdate()->first(['supp_id']);
-
-                $sistem = $this->hitungSaldoDp($this->suppId)['saldo'];
-                $fisik = (int) $this->opnameSaldo;
-                $selisih = $fisik - $sistem;
-                if ($selisih === 0) {
-                    throw new \RuntimeException('Saldo sebenarnya sama dengan saldo sistem — tidak ada selisih untuk dicatat.');
-                }
-
-                $soNo = (int) DB::selectOne('SELECT sodpsuppnon_seq.nextval AS val FROM dual')->val;
-                DB::table('tktxn_sodpsuppsnon')->insert([
-                    'so_no' => $soNo,
-                    'supp_id' => $this->suppId,
-                    'so_date' => DB::raw('SYSDATE'),
-                    'saldo_sistem' => $sistem,
-                    'saldo_fisik' => $fisik,
-                    'so_d' => max($selisih, 0),
-                    'so_k' => max(-$selisih, 0),
-                    'so_desc' => mb_substr(trim((string) $this->opnameAlasan), 0, 200),
-                    'emp_id' => $user->emp_id ?? null,
-                    'shift' => $shift,
-                    'user_code' => $user->myuser_code ?? null,
-                ]);
-
-                return ['no' => $soNo, 'sistem' => $sistem, 'fisik' => $fisik, 'selisih' => $selisih];
-            });
-        } catch (\RuntimeException $e) {
-            $this->dispatch('toast', type: 'error', message: $e->getMessage());
-            return;
-        } catch (QueryException $e) {
-            $this->dispatch('toast', type: 'error', message: 'Gagal menyimpan opname: ' . $e->getMessage());
-            return;
-        }
-
-        Log::info('Opname saldo DP supplier Non-Medis', $hasil + ['supp_id' => $this->suppId, 'user' => $user->myuser_code ?? null]);
-
-        $this->reset(['opnameSaldo', 'opnameAlasan']);
-        unset($this->riwayat, $this->ringkasan, $this->rekapSaldo);
-        $this->dispatch('toast', type: 'success', message: 'Opname tercatat: saldo DP Rp ' . number_format($hasil['sistem'])
-            . ' → Rp ' . number_format($hasil['fisik']) . ' (selisih ' . ($hasil['selisih'] > 0 ? '+' : '−') . 'Rp ' . number_format(abs($hasil['selisih'])) . ').');
-    }
 
     protected function shiftPadaJam(string $tanggal): ?string
     {
@@ -593,7 +487,7 @@ new class extends Component {
                                 <li>Sebelum memilih supplier, kanan menampilkan <strong>Rekap Saldo DP per tahun</strong> (seperti saldo kas): saldo awal 1 Jan → disetor, terpakai, opname → saldo akhir; transaksi terakhir paling atas. Saldo akhir sebuah tahun = saldo awal tahun berikutnya. Klik baris untuk membuka supplier.</li>
                                 <li>Saldo DP = saldo awal tahun (tutup buku) + disetor − terpakai ± opname. Riwayat di kanan menampilkan setor (+) dan pemakaian (−).</li>
                                 <li>Shift terisi otomatis dari jam Tanggal; periksa dialog konfirmasi sebelum menyimpan.</li>
-                                <li><strong>Opname Saldo DP</strong> (Admin / Supervisor Tu): isi saldo DP sebenarnya menurut kartu / rekening koran supplier + alasan; selisihnya dicatat sebagai baris <em>Opname</em> bertanggal hari ini (seperti opname stok). Saldo awal &amp; transaksi lama tidak diubah, kas &amp; jurnal keuangan tidak terpengaruh.</li>
+                                <li>Selisih saldo DP dengan kartu supplier dibetulkan lewat menu <strong>Opname Saldo DP Supplier</strong> (khusus Admin); barisnya tampil di riwayat sebagai <em>Opname</em>.</li>
                                 <li><strong>Hapus salah setor</strong> (Admin / Supervisor Tu, tahun berjalan) ditolak bila DP-nya sudah terpakai — hapus dulu pelunasannya di menu Pembayaran Hutang Non-Medis.</li>
                             </ul>
                         </div>
@@ -679,38 +573,6 @@ new class extends Component {
                             </x-primary-button>
                         </div>
 
-                        @if ($this->bolehOpname())
-                            {{-- OPNAME SALDO DP — pola opname stok, tidak dijurnal --}}
-                            <div class="pt-4 space-y-3 border-t border-hairline dark:border-gray-700">
-                                <div>
-                                    <div class="text-sm font-semibold tracking-wide uppercase text-muted dark:text-gray-300">Opname Saldo DP</div>
-                                    <p class="mt-0.5 text-xs text-muted dark:text-gray-400">
-                                        Isi saldo DP sebenarnya (kartu / rekening koran supplier). Selisihnya dicatat sebagai baris opname —
-                                        saldo awal &amp; transaksi lama tidak diubah, kas tidak terpengaruh.
-                                    </p>
-                                </div>
-                                <div>
-                                    <x-input-label value="Saldo DP Sebenarnya (Rp)" :required="true" />
-                                    <div class="mt-1">
-                                        <x-text-input-number wire:model="opnameSaldo" :error="$errors->has('opnameSaldo')" />
-                                    </div>
-                                    <x-input-error :messages="$errors->get('opnameSaldo')" class="mt-1" />
-                                    <p class="mt-1 text-xs text-muted dark:text-gray-400">Saldo sistem saat ini Rp {{ number_format($this->ringkasan['saldo'], 0, ',', '.') }}.</p>
-                                </div>
-                                <div>
-                                    <x-input-label value="Alasan" :required="true" />
-                                    <x-text-input type="text" wire:model="opnameAlasan" maxlength="200"
-                                        placeholder="Mis. cocokkan kartu DP supplier per 30/11/2026" class="w-full mt-1"
-                                        :error="$errors->has('opnameAlasan')" />
-                                    <x-input-error :messages="$errors->get('opnameAlasan')" class="mt-1" />
-                                </div>
-                                <x-secondary-button type="button" wire:click="siapkanOpname" class="justify-center w-full h-11"
-                                    wire:loading.attr="disabled" wire:target="siapkanOpname">
-                                    <span wire:loading.remove wire:target="siapkanOpname" class="inline-flex items-center gap-2"><x-ikon nama="proses" /> Hitung Selisih &amp; Opname</span>
-                                    <span wire:loading wire:target="siapkanOpname"><x-loading /> Memeriksa...</span>
-                                </x-secondary-button>
-                            </div>
-                        @endif
                     @endif
                 </div>
 
@@ -929,48 +791,4 @@ new class extends Component {
         </div>
     @endif
 
-    {{-- KONFIRMASI OPNAME SALDO DP --}}
-    @if (!empty($pratinjauOpname))
-        <div class="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-gray-900/50"
-            x-data x-init="$nextTick(() => $refs.btnYaOpname?.focus())">
-            <div class="w-full max-w-md overflow-hidden border shadow-xl bg-canvas rounded-2xl border-hairline dark:bg-gray-900 dark:border-gray-700">
-                <div class="px-5 py-4 border-b border-hairline dark:border-gray-700">
-                    <h3 class="text-base font-semibold text-ink dark:text-gray-100">Konfirmasi Opname Saldo DP</h3>
-                    <p class="mt-0.5 text-sm text-muted dark:text-gray-400">Selisih dicatat sebagai baris opname hari ini. Kas &amp; jurnal keuangan tidak berubah.</p>
-                </div>
-                <dl class="px-5 py-4 space-y-2 text-sm">
-                    <div class="flex justify-between gap-3">
-                        <dt class="text-muted dark:text-gray-400">Supplier</dt>
-                        <dd class="font-medium text-right text-ink dark:text-gray-100">{{ $supplier['supp_name'] ?? '-' }}</dd>
-                    </div>
-                    <div class="flex justify-between gap-3">
-                        <dt class="text-muted dark:text-gray-400">Saldo sistem</dt>
-                        <dd class="font-mono text-ink dark:text-gray-100">Rp {{ number_format($pratinjauOpname['sistem']) }}</dd>
-                    </div>
-                    <div class="flex justify-between gap-3">
-                        <dt class="text-muted dark:text-gray-400">Saldo sebenarnya</dt>
-                        <dd class="font-mono text-ink dark:text-gray-100">Rp {{ number_format($pratinjauOpname['fisik']) }}</dd>
-                    </div>
-                    <div class="flex justify-between gap-3 pt-2 border-t border-hairline dark:border-gray-700">
-                        <dt class="text-muted dark:text-gray-400">Selisih dicatat</dt>
-                        <dd class="font-mono font-semibold {{ $pratinjauOpname['selisih'] > 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-300' }}">
-                            {{ $pratinjauOpname['selisih'] > 0 ? '+' : '−' }}Rp {{ number_format(abs($pratinjauOpname['selisih'])) }}
-                        </dd>
-                    </div>
-                    <div class="flex justify-between gap-3">
-                        <dt class="text-muted dark:text-gray-400">Alasan</dt>
-                        <dd class="text-right text-ink dark:text-gray-100">{{ $opnameAlasan }}</dd>
-                    </div>
-                </dl>
-                <div class="flex justify-end gap-2 px-5 py-4 border-t border-hairline bg-surface-soft dark:bg-gray-800/50 dark:border-gray-700">
-                    <x-secondary-button type="button" wire:click="batalOpname"><x-ikon nama="batal" /> Batal</x-secondary-button>
-                    <x-primary-button type="button" wire:click="simpanOpname" x-ref="btnYaOpname"
-                        wire:loading.attr="disabled" wire:target="simpanOpname">
-                        <span wire:loading.remove wire:target="simpanOpname" class="inline-flex items-center gap-2"><x-ikon nama="simpan" /> Ya, catat opname</span>
-                        <span wire:loading wire:target="simpanOpname"><x-loading /> Menyimpan...</span>
-                    </x-primary-button>
-                </div>
-            </div>
-        </div>
-    @endif
 </div>

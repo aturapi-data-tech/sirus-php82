@@ -460,6 +460,12 @@ Route::middleware(['auth'])->group(function () {
         ->name('keuangan.topup-supplier-non-medis');
 
     // ===========================================
+    // KEUANGAN - OPNAME SALDO DP SUPPLIER (khusus Admin)
+    // ===========================================
+    Route::livewire('/keuangan/opname-dp-supplier', 'pages::transaksi.keuangan.opname-dp-supplier.opname-dp-supplier')
+        ->name('keuangan.opname-dp-supplier');
+
+    // ===========================================
     // KEUANGAN - TUTUP BUKU TAHUNAN (akun, stok, supplier — khusus Admin)
     // ===========================================
     Route::livewire('/keuangan/tutup-buku', 'pages::transaksi.keuangan.tutup-buku.tutup-buku')
