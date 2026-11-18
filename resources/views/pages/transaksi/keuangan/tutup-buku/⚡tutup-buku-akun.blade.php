@@ -112,9 +112,9 @@ new class extends Component {
 <div class="space-y-4">
     {{-- Toolbar --}}
     <div class="flex flex-wrap items-end gap-4 p-4 border shadow-sm bg-canvas border-hairline rounded-2xl dark:bg-gray-900 dark:border-gray-700">
-        <div>
+        <div class="w-36 shrink-0">
             <x-input-label value="Tahun yang ditutup" />
-            <x-select-input wire:model.live="tahun" class="mt-1 w-36">
+            <x-select-input wire:model.live="tahun" class="mt-1">
                 @for ($th = (int) now()->year; $th >= 2020; $th--)
                     <option value="{{ $th }}">{{ $th }}</option>
                 @endfor

@@ -129,18 +129,18 @@ new class extends Component {
                 <x-tab :active="$jenis === 'non-medis'" wire:click="$set('jenis', 'non-medis')">Non-Medis</x-tab>
             </x-tabs>
         </div>
-        <div>
+        <div class="w-36 shrink-0">
             <x-input-label value="Tahun yang ditutup" />
-            <x-select-input wire:model.live="tahun" class="mt-1 w-36">
+            <x-select-input wire:model.live="tahun" class="mt-1">
                 @for ($th = (int) now()->year; $th >= 2020; $th--)
                     <option value="{{ $th }}">{{ $th }}</option>
                 @endfor
             </x-select-input>
         </div>
         <div class="pb-2 text-sm text-muted dark:text-gray-400">→ saldo awal stok <strong class="text-ink dark:text-gray-100">{{ $tahun + 1 }}</strong></div>
-        <div>
+        <div class="w-56 shrink-0">
             <x-input-label value="Cari produk" />
-            <x-text-input type="text" wire:model.live.debounce.400ms="cari" placeholder="Nama / kode..." class="w-56 mt-1 text-sm" />
+            <x-text-input type="text" wire:model.live.debounce.400ms="cari" placeholder="Nama / kode..." class="mt-1 text-sm" />
         </div>
         <div class="pb-1.5"><x-toggle wire:model.live="hanyaBerubah" :trueValue="true" :falseValue="false" label="Hanya yang berubah / baru" /></div>
         <div class="pb-1.5">

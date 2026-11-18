@@ -144,9 +144,9 @@ new class extends Component {
                         <x-tab :active="$jenis === 'non-medis'" wire:click="$set('jenis', 'non-medis')">Non-Medis</x-tab>
                     </x-tabs>
                 </div>
-                <div>
+                <div class="w-36 shrink-0">
                     <x-input-label value="Tahun yang ditutup" />
-                    <x-select-input wire:model.live="tahun" class="mt-1 w-36">
+                    <x-select-input wire:model.live="tahun" class="mt-1">
                         @for ($th = (int) now()->year; $th >= 2020; $th--)
                             <option value="{{ $th }}">{{ $th }}</option>
                         @endfor
