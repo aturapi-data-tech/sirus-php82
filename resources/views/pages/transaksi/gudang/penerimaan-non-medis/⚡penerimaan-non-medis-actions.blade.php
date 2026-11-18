@@ -1459,6 +1459,32 @@ new class extends Component {
             {{-- Body — pola Kasir RJ: satu daftar vertikal, input menyatu di barisnya.
                  Urutan kerja: Diskon → PPN → Materai → Bayar → Akun Kas → Simpan. --}}
             <div class="flex-1 px-6 py-5 overflow-y-auto bg-surface-soft/70 dark:bg-gray-950/20">
+                {{-- PANDUAN (biru-info, collapsible, default tertutup) --}}
+                <div x-data="{ open: false }"
+                    class="w-full mx-auto mb-4 max-w-6xl overflow-hidden border rounded-2xl bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-700">
+                    <button type="button" @click="open = !open"
+                        class="flex items-center justify-between w-full px-3 py-2 text-sm font-semibold text-blue-900 transition-colors hover:bg-blue-100 dark:text-blue-200 dark:hover:bg-blue-900/30">
+                        <span class="flex items-center gap-2">
+                            <svg class="w-4 h-4 text-blue-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Cara Pakai — Posting &amp; Batal Penerimaan
+                        </span>
+                        <svg class="w-4 h-4 text-blue-600 transition-transform" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </button>
+                    <div x-show="open" x-collapse class="px-3 pb-3 text-xs text-blue-900 dark:text-blue-200">
+                        <ul class="ml-4 space-y-1 list-disc">
+                            <li>Urutan: Diskon → PPN → Materai → Bayar → Akun Kas → Shift → <strong>Simpan &amp; Posting</strong> → periksa dialog konfirmasi.</li>
+                            <li>Bayar sekarang (angsuran awal) <strong>tidak boleh melebihi grand total</strong> — bayar ke supplier tidak ada kembalian. Bayar 0 / sebagian = HUTANG, dilunasi di menu Pembayaran Hutang Non-Medis (bisa memakai Saldo DP).</li>
+                            <li>Shift kas keluar mengikuti jam Tanggal Penerimaan, bukan jam tombol ditekan.</li>
+                            <li>Setelah diposting, stok masuk gudang dan nota tidak bisa diubah. Untuk revisi: <strong>Batalkan Transaksi</strong> (Admin/TU) → nota kembali ke Daftar Tunggu.</li>
+                            <li>Batal posting <strong>ditolak</strong> bila: nota tahun lalu; stok barang sudah terpakai/ditransfer; sudah ada pelunasan dari menu Pembayaran Hutang Non-Medis; atau pembayarannya satu transaksi dengan nota lain. Hapus dulu pelunasan itu di menu Pembayaran Hutang Non-Medis.</li>
+                        </ul>
+                    </div>
+                </div>
+
                 <div class="grid w-full grid-cols-1 gap-6 mx-auto max-w-6xl lg:grid-cols-2 items-start">
 
                     {{-- ══ KIRI: perhitungan tagihan ══ --}}
