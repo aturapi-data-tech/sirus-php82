@@ -42,9 +42,13 @@ kembar (cek dengan `diff` setelah menormalkan nama).
 - Kas hanya dari **header** `imtxn_cashouthdrs`: "BAYAR PBF" (`cashout_value > 0`, kas berkurang) dan
   "BAYAR PBF TOPUP" (`cashout_value_topup > 0`, uang muka RCV6 berkurang, kas TIDAK berubah).
   Setoran DP = "BAYAR DIMUKA PBF". `receivepayments` dan `cashoutdtls` TIDAK dibaca jurnal.
-- **Non-medis tidak punya cabang jurnal sama sekali**, jadi kas keluar non-medis tidak terlihat di
-  Saldo Kas. Ini sudah diketahui dan keputusannya ditunda user: menambah cabang membuat Saldo Kas web
-  berbeda dari 6i. Jangan tambahkan tanpa izin.
+- **Non-medis (sejak 2026-11-18, keputusan user):** 6 cabang sumber `WEB` di JurnalCabang —
+  "BAYAR NON MEDIS" (kas ↔ hutang RCVNON1), "BAYAR NON MEDIS TOPUP" (uang muka RCV6 ↔ hutang),
+  "BAYAR DIMUKA NON MEDIS" (kas ↔ RCV6). Uang muka non-medis memakai akun RCV6 yang sama dengan PBF.
+  Cabang ini TIDAK ada di view 6i → Saldo Kas web ≠ ARUS KAS 6i sebesar transaksi non-medis.
+  **Penerimaan non-medis (persediaan RCVNON2 / hutang) BELUM dijurnal**: hutang supplier di Neraca
+  berkurang oleh bayar non-medis tanpa pasangan kreditnya. Dibereskan bersama pekerjaan Neraca.
+  Data lama: menu bayar non-medis praktis tak dipakai (1 bayar 2023); non-medis dulu dibayar lewat Cash Out.
 
 ## Aturan yang tidak boleh dilanggar
 
