@@ -335,7 +335,7 @@ new class extends Component {
                     </div>
 
                     {{-- Ringkasan + Proses: langsung di bawah supplier supaya tak terpotong layar --}}
-                    <div class="pt-4 space-y-3 border-t border-hairline dark:border-gray-700">
+                    <div class="pt-4 space-y-3 border-t shrink-0 border-hairline dark:border-gray-700">
                         @if ($suppId)
                             <div class="space-y-1.5 text-sm">
                                 <div class="flex justify-between gap-3">
@@ -378,7 +378,7 @@ new class extends Component {
 
                         {{-- PANDUAN (biru-info, collapsible, default tertutup) --}}
                         <div x-data="{ open: false }"
-                            class="overflow-hidden border rounded-2xl bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-700">
+                            class="overflow-hidden border shrink-0 rounded-2xl bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-700">
                             <button type="button" @click="open = !open"
                                 class="flex items-center justify-between w-full px-3 py-2 text-sm font-semibold text-blue-900 transition-colors hover:bg-blue-100 dark:text-blue-200 dark:hover:bg-blue-900/30">
                                 <span class="flex items-center gap-2">
