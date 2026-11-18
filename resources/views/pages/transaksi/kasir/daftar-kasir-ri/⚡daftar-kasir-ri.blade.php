@@ -87,6 +87,9 @@ new class extends Component {
                 'rv.rihdr_no',
                 DB::raw("to_char(rv.entry_date,'dd/mm/yyyy hh24:mi') as entry_date_display"),
                 DB::raw("to_char(rv.entry_date,'yyyymmddhh24miss') as entry_date_sort"),
+                DB::raw("to_char(rv.exit_date,'dd/mm/yyyy hh24:mi') as exit_date_display"),
+                // Lama rawat hari kalender (bukan hitungan hari kamar di Administrasi).
+                DB::raw("CASE WHEN rv.exit_date IS NOT NULL THEN TRUNC(rv.exit_date) - TRUNC(rv.entry_date) END as lama_rawat"),
                 'rv.reg_no',
                 'rv.reg_name',
                 'rv.sex',
@@ -104,8 +107,14 @@ new class extends Component {
                 'rv.room_id',
                 'rv.room_name',
                 'rv.datadaftarri_json',
-            ])
-            ->orderBy('entry_date_sort', 'desc');
+            ]);
+
+        // Urutan: Pulang → tanggal pulang terbaru di atas; Dirawat / Semua → tanggal masuk terbaru.
+        // NULLS LAST: Oracle menaruh NULL di depan pada DESC — tanggal kosong jangan di atas.
+        if ($this->filterStatus === 'P') {
+            $query->orderByRaw('rv.exit_date DESC NULLS LAST');
+        }
+        $query->orderByRaw('rv.entry_date DESC NULLS LAST');
 
         if ($this->filterStatus !== '') {
             $query->where(DB::raw("NVL(rv.ri_status,'I')"), $this->filterStatus);
@@ -265,6 +274,12 @@ new class extends Component {
                                             <div class="text-sm text-muted dark:text-gray-400">
                                                 Masuk: {{ $row->entry_date_display }}
                                             </div>
+                                            @if (!empty($row->exit_date_display))
+                                                <div class="text-sm text-muted dark:text-gray-400">
+                                                    Pulang: {{ $row->exit_date_display }}
+                                                    <span class="text-xs" title="Hari kalender masuk s.d. pulang">· {{ (int) $row->lama_rawat }} hari</span>
+                                                </div>
+                                            @endif
                                         </x-list.identitas-pasien>
                                     </td>
 
