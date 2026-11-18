@@ -193,9 +193,9 @@ new class extends Component {
 
             {{-- TOOLBAR --}}
             <div class="flex flex-wrap items-end gap-4 p-4 border shadow-sm bg-canvas border-hairline rounded-2xl dark:bg-gray-900 dark:border-gray-700">
-                <div>
+                <div class="w-28 shrink-0">
                     <x-input-label value="Tahun" />
-                    <x-select-input wire:model.live="tahun" class="mt-1 w-28">
+                    <x-select-input wire:model.live="tahun" class="mt-1">
                         @for ($th = (int) now()->year; $th >= 2020; $th--)
                             <option value="{{ $th }}">{{ $th }}</option>
                         @endfor
@@ -208,9 +208,9 @@ new class extends Component {
                         <x-tab :active="$jenis === 'non-medis'" wire:click="$set('jenis', 'non-medis')">Non-Medis</x-tab>
                     </x-tabs>
                 </div>
-                <div>
+                <div class="w-56 shrink-0">
                     <x-input-label value="Cari supplier" />
-                    <x-text-input type="text" wire:model.live.debounce.400ms="cari" placeholder="Nama / kode..." class="w-56 mt-1 text-sm" />
+                    <x-text-input type="text" wire:model.live.debounce.400ms="cari" placeholder="Nama / kode..." class="mt-1 text-sm" />
                 </div>
                 <div class="pb-1.5">
                     <x-toggle wire:model.live="semua" :trueValue="true" :falseValue="false" label="Tampilkan saldo 0" class="whitespace-nowrap" />

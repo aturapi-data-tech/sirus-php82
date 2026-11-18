@@ -592,13 +592,18 @@ new class extends Component {
                                 <span class="font-normal normal-case">({{ count($rekap) }} supplier{{ $tahunRekap === (int) now()->year ? ', s.d. hari ini' : '' }})</span>
                             </div>
                             <div class="flex items-center gap-3 flex-nowrap">
-                                <x-select-input wire:model.live="tahunRekap" class="w-24 text-sm shrink-0" title="Tahun rekap">
-                                    @for ($th = (int) now()->year; $th >= 2020; $th--)
-                                        <option value="{{ $th }}">{{ $th }}</option>
-                                    @endfor
-                                </x-select-input>
-                                <x-text-input type="text" wire:model.live.debounce.400ms="cariRekap"
-                                    placeholder="Cari supplier..." class="w-44 text-sm" />
+                                {{-- x-select-input / x-text-input ber-w-full bawaan → lebar diatur lewat pembungkus --}}
+                                <div class="w-24 shrink-0">
+                                    <x-select-input wire:model.live="tahunRekap" class="text-sm" title="Tahun rekap">
+                                        @for ($th = (int) now()->year; $th >= 2020; $th--)
+                                            <option value="{{ $th }}">{{ $th }}</option>
+                                        @endfor
+                                    </x-select-input>
+                                </div>
+                                <div class="w-44 shrink-0">
+                                    <x-text-input type="text" wire:model.live.debounce.400ms="cariRekap"
+                                        placeholder="Cari supplier..." class="text-sm" />
+                                </div>
                                 <x-toggle wire:model.live="rekapSemua" :trueValue="true" :falseValue="false" label="Tampilkan saldo 0" class="shrink-0 whitespace-nowrap"
                                     title="Nyala = semua supplier yang pernah punya DP, mati = hanya yang bersaldo / bertransaksi tahun ini" />
                             </div>
