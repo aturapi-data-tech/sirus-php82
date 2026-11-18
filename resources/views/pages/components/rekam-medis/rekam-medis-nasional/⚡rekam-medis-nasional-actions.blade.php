@@ -15,7 +15,10 @@
  *      di halaman yang sama, tanpa persetujuan pasien.
  *   3. Setelah persetujuan tercatat, langkah 1 diulang.
  *
- * Persetujuan melekat ke pasien + DOKTER; dokter yang dipakai = DPJP kunjungan.
+ * Persetujuan melekat ke pasien + DOKTER; dokter yang dipakai = USER LOGIN ber-role
+ * Dokter (users.myuser_code = rsmst_doctors.dr_id), karena dialah yang membuka
+ * SHLink. User non-dokter ditolak. IHS dokter selalu dibaca ulang di server dari
+ * auth — properti publik $dokterIhs hanya untuk tampilan (bisa diubah klien).
  * Ini hanya MELIHAT riwayat faskes lain — rekam medis RS sendiri tetap di siRUS.
  * Tautan tidak disimpan di DB (URL sensitif menurut juknis).
  */
@@ -62,24 +65,50 @@ new class extends Component {
         }
         [$tabel, $kolomNomor] = $sumberKunjungan[$jalur];
 
-        $kunjungan = DB::table($tabel)->select('reg_no', 'dr_id')->where($kolomNomor, $nomor)->first();
+        $dokter = $this->dokterLogin();
+        if ($dokter === null) {
+            $this->dispatch('toast', type: 'error', message: 'Akses Rekam Medis Nasional hanya untuk user ber-role Dokter.');
+            return;
+        }
+
+        $kunjungan = DB::table($tabel)->select('reg_no')->where($kolomNomor, $nomor)->first();
         if (!$kunjungan) {
             $this->dispatch('toast', type: 'error', message: 'Data kunjungan tidak ditemukan.');
             return;
         }
 
         $pasien = DB::table('rsmst_pasiens')->select('reg_name', 'patient_uuid')->where('reg_no', $kunjungan->reg_no)->first();
-        $dokter = DB::table('rsmst_doctors')->select('dr_name', 'dr_uuid')->where('dr_id', $kunjungan->dr_id)->first();
 
         $this->jalur = $jalur;
         $this->nomorKunjungan = (string) $nomor;
         $this->regNo = (string) $kunjungan->reg_no;
         $this->namaPasien = (string) ($pasien->reg_name ?? '');
         $this->pasienIhs = trim((string) ($pasien->patient_uuid ?? ''));
-        $this->namaDokter = (string) ($dokter->dr_name ?? '');
-        $this->dokterIhs = trim((string) ($dokter->dr_uuid ?? ''));
+        $this->namaDokter = $dokter['nama'];
+        $this->dokterIhs = $dokter['ihs'];
 
         $this->dispatch('open-modal', name: 'rekam-medis-nasional');
+    }
+
+    /**
+     * Dokter = user login ber-role Dokter; null bila bukan dokter.
+     * Baris rsmst_doctors bisa tak ada (myuser_code belum dipetakan) → IHS kosong,
+     * ditangkap prasyaratKurang().
+     */
+    private function dokterLogin(): ?array
+    {
+        $user = auth()->user();
+        if (!$user || !$user->hasRole('Dokter')) {
+            return null;
+        }
+
+        $kode = trim((string) ($user->myuser_code ?? ''));
+        $baris = $kode !== '' ? DB::table('rsmst_doctors')->select('dr_name', 'dr_uuid')->where('dr_id', $kode)->first() : null;
+
+        return [
+            'nama' => (string) ($baris->dr_name ?? $user->myuser_name ?? ''),
+            'ihs' => trim((string) ($baris->dr_uuid ?? '')),
+        ];
     }
 
     public function prasyaratKurang(): array
@@ -89,7 +118,7 @@ new class extends Component {
             $kurang[] = 'IHS pasien belum ada (kirim/cari Patient SATUSEHAT dulu di Master Pasien)';
         }
         if ($this->dokterIhs === '') {
-            $kurang[] = 'IHS dokter DPJP belum ada (isi dr_uuid di Master Dokter)';
+            $kurang[] = 'IHS dokter (user login) belum ada (isi dr_uuid di Master Dokter untuk kode user ini)';
         }
 
         return $kurang;
@@ -97,17 +126,23 @@ new class extends Component {
 
     private function identitas(): array
     {
+        $dokter = $this->dokterLogin() ?? ['nama' => '', 'ihs' => ''];
+
         return [
             'patient_id' => $this->pasienIhs,
             'patient_name' => $this->namaPasien,
-            'practitioner_id' => $this->dokterIhs,
-            'practitioner_name' => $this->namaDokter,
+            'practitioner_id' => $dokter['ihs'],
+            'practitioner_name' => $dokter['nama'],
         ];
     }
 
     public function bukaRekamMedis(): void
     {
         $this->tautanRekamMedis = '';
+        if ($this->dokterLogin() === null) {
+            $this->dispatch('toast', type: 'error', message: 'Akses Rekam Medis Nasional hanya untuk user ber-role Dokter.');
+            return;
+        }
         if (!empty($this->prasyaratKurang())) {
             $this->dispatch('toast', type: 'error', message: 'Data belum siap: ' . implode('; ', $this->prasyaratKurang()) . '.');
             return;
@@ -139,6 +174,10 @@ new class extends Component {
     public function mintaPersetujuan(bool $darurat = false): void
     {
         $this->tautanPersetujuan = '';
+        if ($this->dokterLogin() === null) {
+            $this->dispatch('toast', type: 'error', message: 'Akses Rekam Medis Nasional hanya untuk user ber-role Dokter.');
+            return;
+        }
         if (!empty($this->prasyaratKurang())) {
             $this->dispatch('toast', type: 'error', message: 'Data belum siap: ' . implode('; ', $this->prasyaratKurang()) . '.');
             return;
@@ -180,7 +219,7 @@ new class extends Component {
                     <dd class="text-xs {{ $pasienIhs ? 'text-body dark:text-gray-300' : 'text-error-deep dark:text-red-300' }}">IHS: <span class="font-mono">{{ $pasienIhs ?: 'belum ada' }}</span></dd>
                 </div>
                 <div>
-                    <dt class="text-xs text-muted dark:text-gray-400">Dokter (DPJP)</dt>
+                    <dt class="text-xs text-muted dark:text-gray-400">Dokter (user login)</dt>
                     <dd class="font-medium text-ink dark:text-gray-100">{{ $namaDokter ?: '-' }}</dd>
                     <dd class="text-xs {{ $dokterIhs ? 'text-body dark:text-gray-300' : 'text-error-deep dark:text-red-300' }}">IHS: <span class="font-mono">{{ $dokterIhs ?: 'belum ada' }}</span></dd>
                 </div>
