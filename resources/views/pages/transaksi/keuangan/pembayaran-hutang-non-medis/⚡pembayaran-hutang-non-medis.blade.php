@@ -35,7 +35,7 @@ new class extends Component {
     public function clearSupplier(): void
     {
         $this->reset(['suppId', 'supplier']);
-        unset($this->rcvList, $this->summary);
+        unset($this->rcvList, $this->summary, $this->saldoDp);
     }
 
     #[On('hutang-non-medis.paid')]
@@ -44,14 +44,14 @@ new class extends Component {
         // Auto-clear supplier setelah bayar sukses → user balik ke fresh state.
         // Kalau ada cicilan tersisa, user tinggal search supplier yg sama lagi.
         $this->reset(['suppId', 'supplier']);
-        unset($this->rcvList, $this->summary);
+        unset($this->rcvList, $this->summary, $this->saldoDp);
     }
 
     /** Hapus salah bayar di modal → angka daftar disegarkan, supplier tetap. */
     #[On('hutang-non-medis.refresh')]
     public function segarkanDaftar(): void
     {
-        unset($this->rcvList, $this->summary);
+        unset($this->rcvList, $this->summary, $this->saldoDp);
     }
 
     /* ── List rcv hutang utk supplier terpilih ── */
@@ -196,7 +196,7 @@ new class extends Component {
                 ->update(['check_boxstatus' => '0', 'vcount' => null]);
         }
 
-        unset($this->rcvList, $this->summary);
+        unset($this->rcvList, $this->summary, $this->saldoDp);
     }
 
     /**
@@ -236,7 +236,7 @@ new class extends Component {
             });
         }
 
-        unset($this->rcvList, $this->summary);
+        unset($this->rcvList, $this->summary, $this->saldoDp);
     }
 
     #[Computed]
@@ -252,6 +252,19 @@ new class extends Component {
             'totsisa'        => (float) $list->sum('sisa'),
             'sisa_checked'   => (float) $checked->sum('sisa'),
         ];
+    }
+
+    /** Saldo DP supplier = Σ setor (cashouthdrtopups) − Σ terpakai (cashouthdrs.cashout_value_topup). */
+    #[Computed]
+    public function saldoDp(): int
+    {
+        if (!$this->suppId) {
+            return 0;
+        }
+        $setor = (float) DB::table('imtxn_cashouthdrtopupsnon')->where('supp_id', $this->suppId)->sum('cashout_value');
+        $pakai = (float) DB::table('imtxn_cashouthdrsnon')->where('supp_id', $this->suppId)->sum('cashout_value_topup');
+
+        return (int) round($setor - $pakai);
     }
 
     /* ── Trigger ke modal ── */
@@ -342,6 +355,10 @@ new class extends Component {
                                     <span class="text-muted dark:text-gray-400">Sudah dibayar (titipan)</span>
                                     <span class="font-medium text-emerald-700 dark:text-emerald-400">Rp {{ number_format($this->summary['tottitipan'], 0, ',', '.') }}</span>
                                 </div>
+                                <div class="flex justify-between gap-3">
+                                    <span class="text-muted dark:text-gray-400">Saldo DP (uang muka)</span>
+                                    <span class="font-medium text-brand-green dark:text-brand-lime">Rp {{ number_format($this->saldoDp, 0, ',', '.') }}</span>
+                                </div>
                                 <div class="flex justify-between gap-3 pt-1.5 border-t border-hairline dark:border-gray-700">
                                     <span class="font-semibold text-rose-700 dark:text-rose-300">Sisa hutang</span>
                                     <span class="font-bold text-rose-700 dark:text-rose-300">Rp {{ number_format($this->summary['totsisa'], 0, ',', '.') }}</span>
@@ -364,9 +381,32 @@ new class extends Component {
                             Proses Pembayaran
                         </x-primary-button>
 
-                        <p class="text-xs text-muted dark:text-gray-400">
-                            <strong>Urutan klik = urutan bayar</strong> — angka di samping saklar menunjukkan nota mana yang dilunasi lebih dulu.
-                        </p>
+                        {{-- PANDUAN (biru-info, collapsible, default tertutup) --}}
+                        <div x-data="{ open: false }"
+                            class="overflow-hidden border rounded-2xl bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-700">
+                            <button type="button" @click="open = !open"
+                                class="flex items-center justify-between w-full px-3 py-2 text-sm font-semibold text-blue-900 transition-colors hover:bg-blue-100 dark:text-blue-200 dark:hover:bg-blue-900/30">
+                                <span class="flex items-center gap-2">
+                                    <svg class="w-4 h-4 text-blue-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    Cara Pakai — Pembayaran Hutang
+                                </span>
+                                <svg class="w-4 h-4 text-blue-600 transition-transform" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </button>
+                            <div x-show="open" x-collapse class="px-3 pb-3 text-xs text-blue-900 dark:text-blue-200">
+                                <ul class="ml-4 space-y-1 list-disc">
+                                    <li>Pilih supplier → nota hutangnya tampil di kanan. Centang nota dengan saklar; <strong>urutan klik = urutan bayar</strong> (angka di samping saklar).</li>
+                                    <li>Klik <strong>Proses Pembayaran</strong> → pilih <strong>Sumber Dana</strong>: Kas/Transfer (pilih akun kas) atau <strong>Saldo DP</strong> (uang muka dari menu Topup Supplier Non-Medis). Saldo DP dipakai sendirian — kalau kurang, sisanya dibayar kas di transaksi berikutnya.</li>
+                                    <li>Nominal boleh lebih kecil dari sisa (angsuran); nota terakhir menjadi cicilan. Nominal melebihi sisa / saldo DP langsung merah.</li>
+                                    <li>Shift terisi otomatis dari jam Tanggal Pembayaran — periksa sebelum proses. Dialog konfirmasi menampilkan nota mana yang LUNAS.</li>
+                                    <li>Di modal, klik baris nota untuk melihat <strong>riwayat pembayarannya</strong>.</li>
+                                    <li><strong>Hapus salah bayar</strong> (Admin / Supervisor Tu, tahun berjalan): menghapus satu pembayaran UTUH, termasuk nota lain yang ikut dibayar di transaksi itu. Kas (atau saldo DP) kembali, nota kembali menjadi hutang. Angsuran awal tidak dihapus di sini — batalkan posting di menu Barang Non-Medis dari Supplier.</li>
+                                </ul>
+                            </div>
+                        </div>
                     </div>
                 </div>
 

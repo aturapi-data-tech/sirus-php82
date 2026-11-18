@@ -20,6 +20,11 @@
  * Hapus salah bayar = hapus SATU kas keluar UTUH beserta seluruh nota yang ditutupnya
  * (jurnal "BAYAR PBF" membaca header kas keluar — menghapus sebagian akan membuat kas
  * dan hutang tak cocok). Angsuran awal dibatalkan lewat menu penerimaan, bukan di sini.
+ *
+ * Sumber dana (pola Forms, 908 baris data lama): KAS → cashout_value; SALDO DP → cashout_value
+ * NULL + cashout_value_topup (jurnal "BAYAR PBF TOPUP": uang muka RCV6 → hutang, kas tak
+ * berubah). Tidak dicampur dalam satu kas keluar. acc_id NOT NULL → untuk DP diisi akun
+ * setoran DP terakhir supplier (jurnal kas mengabaikannya karena cashout_value kosong).
  */
 
 use Livewire\Component;
@@ -54,6 +59,10 @@ new class extends Component {
     public ?string $accId       = null; // akun cash-out (acmst_accounts.acc_id)
     public ?string $keterangan  = null;
     public ?int    $bayar       = null;
+    /** 'kas' | 'dp' — sumber dana pelunasan. */
+    public string  $sumberDana  = 'kas';
+    /** Saldo DP supplier saat modal dibuka — tampilan; dihitung ulang saat menulis. */
+    public int     $saldoDp     = 0;
     /** Pratinjau alokasi untuk dialog konfirmasi — kosong = dialog tertutup. Hanya tampilan. */
     public array   $pratinjau   = [];
 
@@ -86,7 +95,10 @@ new class extends Component {
 
         $this->tanggal    = Carbon::now()->format('d/m/Y H:i:s');
         $this->shift      = $this->shiftPadaJam($this->tanggal);
-        $this->bayar      = $this->sisaChecked; // default: lunasi semua yg dicentang
+        $this->saldoDp    = $this->hitungSaldoDp();
+        // Saldo DP ada → dipakai dulu (sampai habis / sampai sisa hutang); sisanya bayar kas berikutnya.
+        $this->sumberDana = $this->saldoDp > 0 ? 'dp' : 'kas';
+        $this->bayar      = $this->nominalDefault();
         $this->keterangan = '';
         $this->incrementVersion('modal');
         $this->dispatch('open-modal', name: 'pembayaran-hutang-pbf-actions');
@@ -105,6 +117,18 @@ new class extends Component {
 
         $this->notaDipilih = $rcvNo;
         $this->riwayatBayar = $this->ambilRiwayatBayar($rcvNo);
+    }
+
+    protected function nominalDefault(): int
+    {
+        return $this->sumberDana === 'dp' ? min($this->saldoDp, $this->sisaChecked) : $this->sisaChecked;
+    }
+
+    public function updatedSumberDana(): void
+    {
+        $this->sumberDana = $this->sumberDana === 'dp' ? 'dp' : 'kas';
+        $this->bayar = $this->nominalDefault();
+        $this->resetErrorBag(['bayar', 'accId']);
     }
 
     #[On('lov.selected.kas-hutang-pbf')]
@@ -136,6 +160,8 @@ new class extends Component {
         $this->resetErrorBag('bayar');
         if ((int) $this->bayar > $this->sisaChecked) {
             $this->addError('bayar', 'Melebihi total sisa hutang Rp ' . number_format($this->sisaChecked, 0, ',', '.') . '.');
+        } elseif ($this->sumberDana === 'dp' && (int) $this->bayar > $this->saldoDp) {
+            $this->addError('bayar', 'Melebihi saldo DP Rp ' . number_format($this->saldoDp, 0, ',', '.') . '.');
         }
     }
 
@@ -145,8 +171,9 @@ new class extends Component {
             'suppId'  => 'required|string',
             'tanggal' => 'required|date_format:d/m/Y H:i:s',
             'shift'   => 'required|in:1,2,3',
-            'accId'   => 'required|string|exists:acmst_accounts,acc_id',
+            'accId'   => $this->sumberDana === 'dp' ? 'nullable' : 'required|string|exists:acmst_accounts,acc_id',
             'bayar'   => 'required|integer|min:1',
+            'sumberDana' => 'required|in:kas,dp',
         ];
     }
 
@@ -185,6 +212,13 @@ new class extends Component {
             $this->addError('bayar', 'Melebihi total sisa hutang Rp ' . number_format($totalKini, 0, ',', '.') . '.');
             return;
         }
+        if ($this->sumberDana === 'dp') {
+            $this->saldoDp = $this->hitungSaldoDp();
+            if ($bayar > $this->saldoDp) {
+                $this->addError('bayar', 'Melebihi saldo DP Rp ' . number_format($this->saldoDp, 0, ',', '.') . '.');
+                return;
+            }
+        }
 
         $sisaBayar = $bayar;
         $alokasi = [];
@@ -205,7 +239,9 @@ new class extends Component {
         $this->pratinjau = [
             'bayar'     => $bayar,
             'totalSisa' => $totalKini,
-            'accName'   => DB::table('acmst_accounts')->where('acc_id', $this->accId)->value('acc_name') ?? $this->accId,
+            'accName'   => $this->sumberDana === 'dp'
+                ? 'Saldo DP (sisa Rp ' . number_format($this->saldoDp - $bayar) . ')'
+                : (DB::table('acmst_accounts')->where('acc_id', $this->accId)->value('acc_name') ?? $this->accId),
             'alokasi'   => $alokasi,
         ];
     }
@@ -254,17 +290,37 @@ new class extends Component {
                         . ') melebihi total sisa hutang nota terpilih (Rp ' . number_format($totalKini) . ').');
                 }
 
+                $pakaiDp = $this->sumberDana === 'dp';
+                $accId = $this->accId;
+                if ($pakaiDp) {
+                    // Kunci supplier: dua petugas tak bisa memakai saldo DP yang sama bersamaan.
+                    DB::table('immst_suppliers')->where('supp_id', $this->suppId)->lockForUpdate()->first(['supp_id']);
+                    $saldo = $this->hitungSaldoDp();
+                    if ($bayar > $saldo) {
+                        throw new \RuntimeException('Saldo DP tinggal Rp ' . number_format($saldo) . ' — kurang dari nominal bayar.');
+                    }
+                    // acc_id NOT NULL: akun setoran DP terakhir supplier (jurnal kas mengabaikannya).
+                    $accId = DB::table('imtxn_cashouthdrtopups')->where('supp_id', $this->suppId)
+                        ->orderByDesc('cashout_date')->value('acc_id');
+                    if (!$accId) {
+                        throw new \RuntimeException('Supplier ini belum pernah setor DP.');
+                    }
+                }
+
                 // Insert master cashout (1x)
                 $cashoutNo = (int) DB::selectOne('SELECT cashout_seq.nextval AS val FROM dual')->val;
-                $desc = 'Angsuran Atas Nama "' . $this->suppName . '"'
-                    . (!empty($this->keterangan) ? ' - ' . $this->keterangan : '');
+                // cashout_desc VARCHAR2(100)
+                $desc = mb_substr('Angsuran Atas Nama "' . $this->suppName . '"'
+                    . ($pakaiDp ? ' (DP)' : '')
+                    . (!empty($this->keterangan) ? ' - ' . $this->keterangan : ''), 0, 100);
 
                 DB::table('imtxn_cashouthdrs')->insert([
-                    'acc_id'        => $this->accId,
+                    'acc_id'        => $accId,
                     'cashout_no'    => $cashoutNo,
                     'cashout_date'  => DB::raw($tanggalDb),
                     'cashout_desc'  => $desc,
-                    'cashout_value' => $bayar,
+                    'cashout_value' => $pakaiDp ? null : $bayar,
+                    'cashout_value_topup' => $pakaiDp ? $bayar : null,
                     'emp_id'        => $empId,
                     'supp_id'       => $this->suppId,
                     'shift'         => $shift,
@@ -328,7 +384,7 @@ new class extends Component {
                     ]);
             });
 
-            $msg = "Pembayaran Rp " . number_format($totalDibayarkan) . " berhasil. ";
+            $msg = "Pembayaran Rp " . number_format($totalDibayarkan) . ($this->sumberDana === 'dp' ? ' dari saldo DP' : '') . " berhasil. ";
             $msg .= "{$notaLunas} nota lunas";
             if ($notaCicilan > 0) $msg .= ", {$notaCicilan} nota cicilan";
             $msg .= '.';
@@ -355,7 +411,7 @@ new class extends Component {
     protected function resetFormFields(): void
     {
         $this->reset(['suppId', 'suppName', 'sisaChecked', 'jumlah', 'baris', 'notaDipilih', 'riwayatBayar',
-            'tanggal', 'shift', 'accId', 'keterangan', 'bayar', 'pratinjau']);
+            'tanggal', 'shift', 'accId', 'keterangan', 'bayar', 'pratinjau', 'sumberDana', 'saldoDp']);
         $this->resetValidation();
     }
 
@@ -475,6 +531,7 @@ new class extends Component {
             ->select([
                 DB::raw("to_char(h.cashout_date,'dd/mm/yyyy hh24:mi:ss') as tgl"),
                 'h.cashout_no', 'h.shift', 'h.acc_id', 'a.acc_name', 'h.cashout_desc',
+                DB::raw('NVL(h.cashout_value_topup,0) as nilai_dp'),
             ])
             ->where('d.rcv_no', $rcvNo)
             ->get()
@@ -498,8 +555,8 @@ new class extends Component {
                 'petugas'   => (string) ($row->emp_name ?? ''),
                 'cashoutNo' => (string) ($pasangan->cashout_no ?? ''),
                 'shift'     => (string) ($pasangan->shift ?? ''),
-                'accId'     => (string) ($pasangan->acc_id ?? ''),
-                'accName'   => (string) ($pasangan->acc_name ?? ''),
+                'accId'     => (float) ($pasangan->nilai_dp ?? 0) > 0 ? '' : (string) ($pasangan->acc_id ?? ''),
+                'accName'   => (float) ($pasangan->nilai_dp ?? 0) > 0 ? 'Saldo DP' : (string) ($pasangan->acc_name ?? ''),
                 'notaSekas' => $cashoutNo !== '' ? ($notaSekas[$cashoutNo] ?? []) : [],
                 'angsuranAwal' => str_starts_with((string) ($pasangan->cashout_desc ?? ''), 'Angsuran Awal'),
                 'bolehHapus' => $cashoutNo !== ''
@@ -535,7 +592,8 @@ new class extends Component {
             $hasil = DB::transaction(function () use ($cashoutNo) {
                 $kas = DB::table('imtxn_cashouthdrs')->where('cashout_no', $cashoutNo)->lockForUpdate()->first([
                     'cashout_no', 'supp_id', 'cashout_desc', 'shift', 'acc_id',
-                    DB::raw('NVL(cashout_value,0) as nilai'),
+                    DB::raw('NVL(cashout_value,0) + NVL(cashout_value_topup,0) as nilai'),
+                    DB::raw('NVL(cashout_value_topup,0) as nilai_dp'),
                     DB::raw("to_char(cashout_date,'dd/mm/yyyy hh24:mi:ss') as tgl"),
                 ]);
                 if (!$kas || (string) $kas->supp_id !== (string) $this->suppId) {
@@ -572,7 +630,7 @@ new class extends Component {
                 DB::table('imtxn_receivehdrs')->whereIn('rcv_no', $notaList)->where('rcv_status', 'L')
                     ->update(['rcv_status' => 'H', 'pay_date' => null]);
 
-                return ['nilai' => (int) round((float) $kas->nilai), 'nota' => $notaList, 'kas' => $kas];
+                return ['nilai' => (int) round((float) $kas->nilai), 'dp' => (int) round((float) $kas->nilai_dp), 'nota' => $notaList, 'kas' => $kas];
             });
         } catch (\RuntimeException $e) {
             $this->dispatch('toast', type: 'error', message: $e->getMessage());
@@ -595,14 +653,28 @@ new class extends Component {
         // Segarkan nota, riwayat, dan daftar di halaman (tanpa mengosongkan supplier).
         $nota = $this->ambilNotaTerpilih();
         $this->isiBaris($nota);
-        $this->bayar = $this->sisaChecked;
+        $this->saldoDp = $this->hitungSaldoDp();
+        $this->bayar = $this->nominalDefault();
         $this->resetErrorBag('bayar');
         $this->riwayatBayar = $this->notaDipilih ? $this->ambilRiwayatBayar($this->notaDipilih) : [];
         $this->dispatch('hutang-pbf.refresh');
         $this->dispatch('toast', type: 'success', message: 'Pembayaran Rp ' . number_format($hasil['nilai'])
-            . ' (' . count($hasil['nota']) . ' nota) dihapus. Saldo kas pada tanggal bayar tersebut ikut berubah.');
+            . ' (' . count($hasil['nota']) . ' nota) dihapus. '
+            . ($hasil['dp'] > 0 ? 'Saldo DP supplier kembali Rp ' . number_format($hasil['dp']) . '.' : 'Saldo kas pada tanggal bayar tersebut ikut berubah.'));
     }
 
+
+    /** Saldo DP supplier = Σ setor (cashouthdrtopups) − Σ terpakai (cashouthdrs.cashout_value_topup). */
+    protected function hitungSaldoDp(): int
+    {
+        if (!$this->suppId) {
+            return 0;
+        }
+        $setor = (float) DB::table('imtxn_cashouthdrtopups')->where('supp_id', $this->suppId)->sum('cashout_value');
+        $pakai = (float) DB::table('imtxn_cashouthdrs')->where('supp_id', $this->suppId)->sum('cashout_value_topup');
+
+        return (int) round($setor - $pakai);
+    }
 
     protected function shiftPadaJam(string $tanggal): ?string
     {
@@ -679,9 +751,27 @@ new class extends Component {
                                 </div>
                             </div>
 
+                            {{-- Sumber dana — pola Forms: kas ATAU saldo DP, tidak dicampur --}}
+                            <div>
+                                <x-input-label value="Sumber Dana" :required="true" />
+                                <div class="grid grid-cols-2 gap-2 mt-1">
+                                    <label class="flex items-center gap-2 px-3 py-2 border cursor-pointer rounded-xl {{ $sumberDana === 'kas' ? 'border-brand-green bg-brand-green/5 dark:border-brand-lime dark:bg-brand-lime/10' : 'border-hairline dark:border-gray-700' }}">
+                                        <input type="radio" wire:model.live="sumberDana" value="kas" class="text-brand-green focus:ring-brand-green">
+                                        <span class="text-sm text-ink dark:text-gray-100">Kas / Transfer</span>
+                                    </label>
+                                    <label class="flex items-center gap-2 px-3 py-2 border rounded-xl {{ $saldoDp > 0 ? 'cursor-pointer' : 'opacity-50 cursor-not-allowed' }} {{ $sumberDana === 'dp' ? 'border-brand-green bg-brand-green/5 dark:border-brand-lime dark:bg-brand-lime/10' : 'border-hairline dark:border-gray-700' }}">
+                                        <input type="radio" wire:model.live="sumberDana" value="dp" @disabled($saldoDp <= 0) class="text-brand-green focus:ring-brand-green">
+                                        <span class="text-sm text-ink dark:text-gray-100">Saldo DP <span class="font-mono text-xs text-muted dark:text-gray-400">Rp {{ number_format($saldoDp, 0, ',', '.') }}</span></span>
+                                    </label>
+                                </div>
+                                @if ($sumberDana === 'dp')
+                                    <p class="mt-1 text-xs text-muted dark:text-gray-400">Dibayar dari uang muka yang sudah disetor — kas tidak berkurang lagi.</p>
+                                @endif
+                            </div>
+
                             <div class="grid items-start grid-cols-1 gap-4 sm:grid-cols-12">
-                                {{-- Akun Kas --}}
-                                <div class="sm:col-span-7" x-ref="lovKasWrapper">
+                                {{-- Akun Kas (hanya sumber Kas) --}}
+                                <div class="sm:col-span-7 {{ $sumberDana === 'dp' ? 'hidden' : '' }}" x-ref="lovKasWrapper">
                                     <livewire:lov.kas.lov-kas
                                         target="kas-hutang-pbf"
                                         tipe=""
@@ -703,7 +793,9 @@ new class extends Component {
                                     </div>
                                     <x-input-error :messages="$errors->get('bayar')" class="mt-1" />
                                     <p class="mt-1 text-xs text-muted dark:text-gray-400">
-                                        Default = total sisa nota terpilih. Boleh lebih kecil untuk angsuran.
+                                        {{ $sumberDana === 'dp'
+                                            ? 'Default = saldo DP atau sisa nota (yang lebih kecil).'
+                                            : 'Default = total sisa nota terpilih. Boleh lebih kecil untuk angsuran.' }}
                                     </p>
                                 </div>
 
@@ -819,7 +911,7 @@ new class extends Component {
                                                         @endphp
                                                         <x-hapus-button action="hapusPembayaran({{ (int) $row['cashoutNo'] }})"
                                                             title="Hapus Pembayaran (salah bayar)"
-                                                            :message="'Hapus kas keluar No ' . $row['cashoutNo'] . ' tanggal ' . $row['tgl'] . ' (shift ' . ($row['shift'] ?: '-') . ', ' . ($row['accName'] ?: $row['accId']) . ')?' . (count($notaLain) ? ' Kas keluar ini JUGA membayar nota ' . implode(', ', $notaLain) . ' — semuanya ikut kembali menjadi hutang.' : '') . ' PERHATIAN: saldo kas pada tanggal & shift tersebut ikut BERUBAH MUNDUR. Pastikan uangnya memang tidak jadi dibayarkan ke supplier.'"
+                                                            :message="'Hapus pembayaran No ' . $row['cashoutNo'] . ' tanggal ' . $row['tgl'] . ' (shift ' . ($row['shift'] ?: '-') . ', ' . ($row['accName'] ?: $row['accId']) . ')?' . (count($notaLain) ? ' Pembayaran ini JUGA melunasi nota ' . implode(', ', $notaLain) . ' — semuanya ikut kembali menjadi hutang.' : '') . ($row['accName'] === 'Saldo DP' ? ' Saldo DP supplier kembali sebesar nilainya.' : ' PERHATIAN: saldo kas pada tanggal & shift tersebut ikut BERUBAH MUNDUR. Pastikan uangnya memang tidak jadi dibayarkan ke supplier.')"
                                                             confirmText="Ya, hapus pembayaran" />
                                                     @elseif ($row['angsuranAwal'])
                                                         <span class="text-xs text-muted dark:text-gray-400" title="Batalkan lewat menu penerimaan">awal</span>
@@ -914,7 +1006,7 @@ new class extends Component {
                             </div>
 
                             <div class="text-sm text-muted dark:text-gray-400">
-                                Akun Kas: <strong class="text-ink dark:text-gray-200">{{ $pratinjau['accName'] }}</strong>
+                                {{ $sumberDana === 'dp' ? 'Sumber' : 'Akun Kas' }}: <strong class="text-ink dark:text-gray-200">{{ $pratinjau['accName'] }}</strong>
                                 · Shift <strong class="text-ink dark:text-gray-200">{{ $shift }}</strong>
                                 · {{ $tanggal }}
                             </div>

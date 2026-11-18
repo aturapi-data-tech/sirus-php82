@@ -1,24 +1,16 @@
 <?php
 
 /**
- * Topup Supplier PBF (medis).
+ * Topup Supplier PBF (medis) — setor uang muka (DP) ke supplier.
  *
  * Equivalent dgn Oracle Forms procedure post_transaksi_topup:
- *   - Input: supplier (filter medis) + akun kas + tanggal + nominal + keterangan
  *   - INSERT 1x IMTXN_CASHOUTHDRTOPUPS (saldo titipan, tidak link ke nota)
- *   - Saldo bisa dipakai sebagai DP saat penerimaan barang berikutnya
+ *   - Jurnal "BAYAR DIMUKA PBF": kas berkurang, uang muka (RCV6) bertambah
  *
- * Beda dgn pembayaran-hutang-pbf (angsuran):
- *   - Topup tidak link ke rcv_no spesifik (cuma cashouthdrtopups)
- *   - Tidak ada cashoutdtls / receivepayments
- *   - Hanya pencatatan saldo deposit
- *
- * Sumber tabel:
- *   - IMTXN_CASHOUTHDRTOPUPS  (sirus, medis)
- *   - IMMST_SUPPLIERS         (filter medis='Y')
- *   - ACMST_ACCOUNTS          (via lov-kas, mapping per user)
- *   - RSTXN_SHIFTCTLS         (resolve shift dari jam)
- *   - cashout_seq             (Oracle sequence)
+ * Saldo DP = Σ setor (cashouthdrtopups.cashout_value)
+ *          − Σ terpakai (cashouthdrs.cashout_value_topup — pelunasan hutang sumber "Saldo DP")
+ * Pemakaian DP ada di menu Pembayaran Hutang PBF (pola Forms: DP dipakai sendirian, tak
+ * dicampur tunai). Hapus salah setor ditolak bila saldo DP jadi minus (DP sudah terpakai).
  */
 
 use Livewire\Component;
@@ -26,26 +18,34 @@ use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Database\QueryException;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 
 new class extends Component {
     use WithRenderVersioningTrait;
 
+    /** Hapus salah setor — sama dengan hapus salah bayar hutang/piutang. */
+    private const ROLE_HAPUS_SETOR = ['Admin', 'Supervisor Tu'];
+
     public ?string $suppId   = null;
     public ?array  $supplier = null;
     public ?string $accId    = null;
 
     public ?string $tanggal    = null;
+    /** Shift kas keluar — otomatis dari jam Tanggal, tetap bisa dipilih manual. */
+    public ?string $shift      = null;
     public ?string $keterangan = null;
     public ?int    $nominal    = null;
+    /** Ringkasan untuk dialog konfirmasi — kosong = dialog tertutup. Hanya tampilan. */
+    public array   $pratinjau  = [];
 
     public array $renderVersions = [];
 
     public function mount(): void
     {
         $this->registerAreas(['form']);
-        $this->tanggal = Carbon::now()->format('d/m/Y H:i:s');
+        $this->setTanggalSekarang();
     }
 
     /* ── LOV Listeners ── */
@@ -55,6 +55,7 @@ new class extends Component {
         $this->suppId   = $payload['supp_id'] ?? null;
         $this->supplier = $payload;
         $this->resetErrorBag('suppId');
+        unset($this->riwayat, $this->ringkasan);
     }
 
     #[On('lov.selected.topup-pbf-kas')]
@@ -66,62 +67,153 @@ new class extends Component {
 
     public function clearSupplier(): void
     {
-        $this->reset(['suppId', 'supplier', 'accId', 'nominal', 'keterangan']);
-        $this->tanggal = Carbon::now()->format('d/m/Y H:i:s');
+        $this->reset(['suppId', 'supplier', 'accId', 'nominal', 'keterangan', 'pratinjau']);
+        $this->setTanggalSekarang();
+        $this->resetValidation();
         $this->incrementVersion('form');
+        unset($this->riwayat, $this->ringkasan);
     }
 
-    /* ── Riwayat topup terakhir untuk supplier terpilih ── */
-    #[Computed]
-    public function history()
+    public function setTanggalSekarang(): void
     {
-        if (!$this->suppId) return collect();
+        $this->tanggal = Carbon::now()->format('d/m/Y H:i:s');
+        $this->updatedTanggal($this->tanggal);
+    }
 
-        return DB::table('imtxn_cashouthdrtopups')
-            ->select([
-                'cashout_no',
-                DB::raw("TO_CHAR(cashout_date,'dd/mm/yyyy hh24:mi') as tgl_display"),
-                'cashout_desc',
-                'cashout_value',
-                'acc_id',
-                'shift',
+    /** Tanggal diketik ulang → shift menyesuaikan jamnya (jam di luar master = biarkan, pilih manual). */
+    public function updatedTanggal(?string $value): void
+    {
+        $shift = $this->shiftPadaJam((string) $value);
+        if ($shift !== null) {
+            $this->shift = $shift;
+            $this->resetErrorBag('shift');
+        }
+    }
+
+    /* ── Data ── */
+
+    #[Computed]
+    public function ringkasan(): array
+    {
+        if (!$this->suppId) {
+            return ['setor' => 0, 'pakai' => 0, 'saldo' => 0];
+        }
+
+        return $this->hitungSaldoDp($this->suppId);
+    }
+
+    /** Setor & pemakaian DP supplier ini, terbaru di atas (40 baris terakhir). */
+    #[Computed]
+    public function riwayat(): array
+    {
+        if (!$this->suppId) {
+            return [];
+        }
+
+        $setor = DB::table('imtxn_cashouthdrtopups as t')
+            ->leftJoin('acmst_accounts as a', 'a.acc_id', '=', 't.acc_id')
+            ->where('t.supp_id', $this->suppId)
+            ->orderByDesc('t.cashout_date')
+            ->limit(40)
+            ->get([
+                't.cashout_no', 't.cashout_desc', 't.acc_id', 'a.acc_name', 't.shift',
+                DB::raw('NVL(t.cashout_value,0) as nilai'),
+                DB::raw("to_char(t.cashout_date,'dd/mm/yyyy hh24:mi:ss') as tgl"),
+                DB::raw("to_char(t.cashout_date,'yyyymmddhh24miss') as urut"),
             ])
-            ->where('supp_id', $this->suppId)
-            ->orderByDesc('cashout_date')
-            ->orderByDesc('cashout_no')
-            ->limit(20)
-            ->get();
+            ->map(fn ($row) => [
+                'jenis' => 'setor',
+                'no' => (int) $row->cashout_no,
+                'tgl' => (string) $row->tgl,
+                'urut' => (string) $row->urut,
+                'ket' => (string) ($row->cashout_desc ?? ''),
+                'akun' => trim(($row->acc_name ?? '') . ' (' . $row->acc_id . ')'),
+                'shift' => (string) ($row->shift ?? ''),
+                'nilai' => (int) round((float) $row->nilai),
+                'bolehHapus' => $this->bolehHapusSetor((string) $row->tgl),
+            ]);
+
+        $pakai = DB::table('imtxn_cashouthdrs as c')
+            ->where('c.supp_id', $this->suppId)
+            ->whereRaw('NVL(c.cashout_value_topup,0) > 0')
+            ->orderByDesc('c.cashout_date')
+            ->limit(40)
+            ->get([
+                'c.cashout_no', 'c.cashout_desc', 'c.shift',
+                DB::raw('NVL(c.cashout_value_topup,0) as nilai'),
+                DB::raw("to_char(c.cashout_date,'dd/mm/yyyy hh24:mi:ss') as tgl"),
+                DB::raw("to_char(c.cashout_date,'yyyymmddhh24miss') as urut"),
+            ]);
+
+        $notaPerKas = DB::table('imtxn_cashoutdtls')
+            ->whereIn('cashout_no', $pakai->pluck('cashout_no')->all() ?: [-1])
+            ->get(['cashout_no', 'rcv_no'])
+            ->groupBy('cashout_no')
+            ->map(fn ($baris) => $baris->pluck('rcv_no')->implode(', '));
+
+        $pakai = $pakai->map(fn ($row) => [
+            'jenis' => 'pakai',
+            'no' => (int) $row->cashout_no,
+            'tgl' => (string) $row->tgl,
+            'urut' => (string) $row->urut,
+            'ket' => 'Pelunasan nota ' . ($notaPerKas[$row->cashout_no] ?? '-'),
+            'akun' => 'Saldo DP',
+            'shift' => (string) ($row->shift ?? ''),
+            'nilai' => (int) round((float) $row->nilai),
+            'bolehHapus' => false, // dihapus dari menu Pembayaran Hutang PBF
+        ]);
+
+        return $setor->concat($pakai)->sortByDesc('urut')->take(40)->values()->all();
     }
 
-    #[Computed]
-    public function totalTopup(): int
+    /* ── Simpan: langkah 1 konfirmasi, langkah 2 tulis ── */
+
+    protected function rules(): array
     {
-        if (!$this->suppId) return 0;
-        return (int) DB::table('imtxn_cashouthdrtopups')
-            ->where('supp_id', $this->suppId)
-            ->sum('cashout_value');
+        return [
+            'suppId'  => 'required|string',
+            'tanggal' => 'required|date_format:d/m/Y H:i:s',
+            'shift'   => 'required|in:1,2,3',
+            'accId'   => 'required|string|exists:acmst_accounts,acc_id',
+            'nominal' => 'required|integer|min:1',
+        ];
     }
 
-    /* ── Simpan topup ── */
+    protected function messages(): array
+    {
+        return [
+            'suppId.required'     => 'Supplier wajib dipilih.',
+            'tanggal.required'    => 'Tanggal wajib diisi.',
+            'tanggal.date_format' => 'Format tanggal harus dd/mm/yyyy hh:mm:ss.',
+            'shift.required'      => 'Shift belum dipilih.',
+            'shift.in'            => 'Shift tidak valid.',
+            'accId.required'      => 'Akun kas wajib dipilih.',
+            'accId.exists'        => 'Akun kas tidak valid.',
+            'nominal.required'    => 'Nominal wajib diisi.',
+            'nominal.min'         => 'Nominal minimal Rp 1.',
+        ];
+    }
+
+    public function siapkanKonfirmasi(): void
+    {
+        $this->validate();
+
+        $this->pratinjau = [
+            'nominal' => (int) $this->nominal,
+            'accName' => (string) (DB::table('acmst_accounts')->where('acc_id', $this->accId)->value('acc_name') ?? $this->accId),
+            'saldoSesudah' => $this->ringkasan['saldo'] + (int) $this->nominal,
+        ];
+    }
+
+    public function batalKonfirmasi(): void
+    {
+        $this->pratinjau = [];
+    }
+
     public function simpan(): void
     {
-        $this->validate(
-            [
-                'suppId'   => 'required|string',
-                'tanggal'  => 'required|date_format:d/m/Y H:i:s',
-                'accId'    => 'required|string|exists:acmst_accounts,acc_id',
-                'nominal'  => 'required|integer|min:1',
-            ],
-            [
-                'suppId.required'      => 'Supplier wajib dipilih.',
-                'tanggal.required'     => 'Tanggal wajib diisi.',
-                'tanggal.date_format'  => 'Format tanggal harus dd/mm/yyyy hh:mm:ss.',
-                'accId.required'       => 'Akun kas wajib dipilih.',
-                'accId.exists'         => 'Akun kas tidak valid.',
-                'nominal.required'     => 'Nominal wajib diisi.',
-                'nominal.min'          => 'Nominal minimal Rp 1.',
-            ],
-        );
+        $this->validate();
+        $this->pratinjau = [];
 
         $empId = auth()->user()->emp_id ?? null;
         if (!$empId) {
@@ -130,17 +222,13 @@ new class extends Component {
             return;
         }
 
-        $jam = Carbon::createFromFormat('d/m/Y H:i:s', $this->tanggal)->format('H:i:s');
-        $shift = DB::table('rstxn_shiftctls')
-            ->whereRaw('? BETWEEN shift_start AND shift_end', [$jam])
-            ->value('shift') ?? '1';
-
         $tanggalDb = "to_date('{$this->tanggal}','dd/mm/yyyy hh24:mi:ss')";
-        $desc = 'Topup Atas Nama "' . ($this->supplier['supp_name'] ?? '-') . '"'
-              . (!empty($this->keterangan) ? ' - ' . $this->keterangan : '');
+        // cashout_desc VARCHAR2(100)
+        $desc = mb_substr('Topup Atas Nama "' . ($this->supplier['supp_name'] ?? '-') . '"'
+            . (!empty($this->keterangan) ? ' - ' . $this->keterangan : ''), 0, 100);
 
         try {
-            DB::transaction(function () use ($empId, $shift, $tanggalDb, $desc) {
+            DB::transaction(function () use ($empId, $tanggalDb, $desc) {
                 $cashoutNo = (int) DB::selectOne('SELECT cashout_seq.nextval AS val FROM dual')->val;
 
                 DB::table('imtxn_cashouthdrtopups')->insert([
@@ -151,22 +239,116 @@ new class extends Component {
                     'emp_id'        => $empId,
                     'supp_id'       => $this->suppId,
                     'acc_id'        => $this->accId,
-                    'shift'         => $shift,
+                    'shift'         => (string) $this->shift,
                 ]);
             });
 
             $this->dispatch('toast', type: 'success',
                 message: 'Topup Rp ' . number_format($this->nominal) . ' tersimpan untuk ' . ($this->supplier['supp_name'] ?? '-') . '.');
-
-            // reset nominal & keterangan, biarkan supplier+kas tetap (user mungkin mau topup lagi)
+            // supplier + kas tetap (user mungkin mau topup lagi)
             $this->reset(['nominal', 'keterangan']);
-            $this->tanggal = Carbon::now()->format('d/m/Y H:i:s');
-            unset($this->history, $this->totalTopup);
+            $this->setTanggalSekarang();
+            unset($this->riwayat, $this->ringkasan);
         } catch (QueryException $e) {
             $this->dispatch('toast', type: 'error', message: 'Gagal: ' . $e->getMessage());
         } catch (\Exception $e) {
             $this->dispatch('toast', type: 'error', message: 'Gagal simpan topup: ' . $e->getMessage());
         }
+    }
+
+    /* ── Hapus salah setor ── */
+
+    protected function bolehHapusSetor(string $tanggal): bool
+    {
+        if (!auth()->user()?->hasAnyRole(self::ROLE_HAPUS_SETOR)) {
+            return false;
+        }
+        try {
+            return Carbon::createFromFormat('d/m/Y H:i:s', $tanggal)->year === (int) now()->year;
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
+    public function hapusSetor(int $cashoutNo): void
+    {
+        try {
+            $hasil = DB::transaction(function () use ($cashoutNo) {
+                // Kunci supplier: cegah DP dipakai bersamaan di Pembayaran Hutang saat setoran dicabut.
+                DB::table('immst_suppliers')->where('supp_id', $this->suppId)->lockForUpdate()->first(['supp_id']);
+
+                $setor = DB::table('imtxn_cashouthdrtopups')->where('cashout_no', $cashoutNo)->lockForUpdate()->first([
+                    'cashout_no', 'supp_id', 'acc_id', 'shift',
+                    DB::raw('NVL(cashout_value,0) as nilai'),
+                    DB::raw("to_char(cashout_date,'dd/mm/yyyy hh24:mi:ss') as tgl"),
+                ]);
+                if (!$setor || (string) $setor->supp_id !== (string) $this->suppId) {
+                    throw new \RuntimeException('Data setoran tidak ditemukan.');
+                }
+                if (!$this->bolehHapusSetor((string) $setor->tgl)) {
+                    throw new \RuntimeException('Setoran ini tidak boleh dihapus (beda tahun atau Anda tidak berwenang).');
+                }
+
+                $nilai = (int) round((float) $setor->nilai);
+                $saldo = $this->hitungSaldoDp($this->suppId)['saldo'];
+                if ($saldo - $nilai < 0) {
+                    throw new \RuntimeException('Tidak bisa dihapus — saldo DP tinggal Rp ' . number_format($saldo)
+                        . ', sebagian setoran ini sudah dipakai melunasi hutang. Hapus dulu pelunasannya di menu Pembayaran Hutang PBF.');
+                }
+
+                DB::table('imtxn_cashouthdrtopups')->where('cashout_no', $cashoutNo)->delete();
+
+                return ['nilai' => $nilai, 'setor' => $setor];
+            });
+        } catch (\RuntimeException $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
+            return;
+        } catch (QueryException $e) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal menghapus setoran: ' . $e->getMessage());
+            return;
+        }
+
+        Log::info('Hapus setoran DP supplier PBF (salah setor)', [
+            'cashout_no' => $cashoutNo,
+            'supp_id' => $this->suppId,
+            'nilai' => $hasil['nilai'],
+            'tanggal' => $hasil['setor']->tgl,
+            'shift' => $hasil['setor']->shift,
+            'acc_id' => $hasil['setor']->acc_id,
+            'user' => auth()->user()?->myuser_code,
+        ]);
+
+        unset($this->riwayat, $this->ringkasan);
+        $this->dispatch('toast', type: 'success', message: 'Setoran DP Rp ' . number_format($hasil['nilai'])
+            . ' dihapus. Saldo kas pada tanggal setor tersebut ikut berubah.');
+    }
+
+    /* ── Helper ── */
+
+    /** Saldo DP supplier = Σ setor − Σ pemakaian (cashout_value_topup). */
+    protected function hitungSaldoDp(string $suppId): array
+    {
+        $setor = (int) round((float) DB::table('imtxn_cashouthdrtopups')->where('supp_id', $suppId)->sum('cashout_value'));
+        $pakai = (int) round((float) DB::table('imtxn_cashouthdrs')->where('supp_id', $suppId)->sum('cashout_value_topup'));
+
+        return ['setor' => $setor, 'pakai' => $pakai, 'saldo' => $setor - $pakai];
+    }
+
+    protected function shiftPadaJam(string $tanggal): ?string
+    {
+        try {
+            $jam = Carbon::createFromFormat('d/m/Y H:i:s', $tanggal)->format('H:i:s');
+        } catch (\Throwable) {
+            return null;
+        }
+
+        $shift = DB::table('rstxn_shiftctls')
+            ->whereNotNull('shift_start')
+            ->whereNotNull('shift_end')
+            ->whereRaw('? BETWEEN shift_start AND shift_end', [$jam])
+            ->value('shift');
+
+        return $shift !== null ? (string) $shift : null;
     }
 };
 ?>
@@ -174,136 +356,192 @@ new class extends Component {
 <div>
     <x-page-title
         title="Topup Supplier PBF"
-        subtitle="Setor DP/uang muka ke supplier obat (saldo titipan, tidak terikat nota tertentu)" />
+        subtitle="Setor DP/uang muka ke supplier obat — saldonya dipakai melunasi hutang di menu Pembayaran Hutang PBF" />
 
-    <div class="w-full min-h-[calc(100vh-5rem)] bg-canvas dark:bg-gray-800">
-        <div class="px-6 pt-4 pb-6 space-y-4">
+    <div class="w-full h-[calc(100vh-5rem)] flex flex-col bg-surface-soft dark:bg-gray-800">
+        <div class="flex flex-col flex-1 min-h-0 px-6 pt-2 pb-6">
+            <div class="flex flex-col flex-1 min-h-0 gap-4 mt-2 lg:flex-row">
 
-            {{-- 1) PILIH SUPPLIER --}}
-            <div class="bg-canvas border border-hairline shadow-sm rounded-2xl dark:border-gray-700 dark:bg-gray-900">
-                <div class="flex items-center justify-between px-5 py-4 border-b border-hairline dark:border-gray-700">
-                    <div>
-                        <h3 class="text-base font-semibold text-ink dark:text-gray-100">1. Pilih Supplier (PBF)</h3>
-                        <p class="mt-1 text-xs text-muted dark:text-gray-400">Cari berdasarkan kode / nama / telp supplier</p>
-                    </div>
-                    @if ($suppId)
-                        <x-secondary-button type="button" wire:click="clearSupplier"><x-ikon nama="kembalikan" /> Transaksi Baru</x-secondary-button>
-                    @endif
-                </div>
-                <div class="px-5 py-5">
-                    <livewire:lov.supplier.lov-supplier
-                        target="topup-pbf-supplier"
-                        label="Cari Supplier"
-                        placeholder="Ketik kode / nama / telp supplier..."
-                        jenisSupplier="medis"
-                        :initialSuppId="$suppId"
-                        wire:key="lov-supplier-topup-pbf-{{ $suppId ?? 'empty' }}" />
-                </div>
-            </div>
-
-            @if ($suppId)
-                {{-- 2) RINGKASAN --}}
-                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <div class="px-4 py-4 bg-canvas border border-hairline rounded-2xl dark:border-gray-700 dark:bg-gray-900">
-                        <div class="text-xs text-muted dark:text-gray-400">Total Topup Selama Ini</div>
-                        <div class="mt-1 font-mono text-2xl font-bold text-success dark:text-success">
-                            Rp {{ number_format($this->totalTopup) }}
-                        </div>
-                    </div>
-                    <div class="px-4 py-4 bg-canvas border border-hairline rounded-2xl dark:border-gray-700 dark:bg-gray-900">
-                        <div class="text-xs text-muted dark:text-gray-400">Supplier</div>
-                        <div class="mt-1 text-base font-semibold text-ink dark:text-gray-100">
-                            {{ $supplier['supp_name'] ?? '-' }}
-                        </div>
-                        <div class="font-mono text-xs text-muted">Kode: {{ $suppId }}</div>
-                    </div>
-                </div>
-
-                {{-- 3) FORM TOPUP --}}
-                <div class="bg-canvas border border-hairline shadow-sm rounded-2xl dark:border-gray-700 dark:bg-gray-900"
+                {{-- KOLOM KIRI — supplier, saldo DP, form setor --}}
+                <div class="flex flex-col gap-5 p-5 overflow-y-auto border shadow-sm shrink-0 lg:w-96 bg-canvas border-hairline rounded-2xl dark:bg-gray-900 dark:border-gray-700"
                     wire:key="{{ $this->renderKey('form', [$suppId]) }}">
-                    <div class="px-5 py-4 border-b border-hairline dark:border-gray-700">
-                        <h3 class="text-base font-semibold text-ink dark:text-gray-100">2. Form Topup</h3>
-                        <p class="mt-1 text-xs text-muted dark:text-gray-400">
-                            Isi nominal yang akan disetor ke supplier sebagai saldo titipan/DP.
-                        </p>
-                    </div>
 
-                    <div class="grid grid-cols-1 gap-5 px-5 py-5 sm:grid-cols-2">
-                        <div>
-                            <x-input-label value="Tanggal" :required="true" />
-                            <x-text-input type="text" wire:model="tanggal" placeholder="dd/mm/yyyy hh:mm:ss" class="w-full mt-1" />
-                            <x-input-error :messages="$errors->get('tanggal')" class="mt-1" />
-                        </div>
-
-                        <div>
-                            <livewire:lov.kas.lov-kas
-                                target="topup-pbf-kas"
-                                tipe=""
-                                label="Akun Kas"
-                                placeholder="Ketik kode/nama kas..."
-                                :initialAccId="$accId"
-                                wire:key="lov-kas-topup-pbf-{{ $suppId }}-{{ $renderVersions['form'] ?? 0 }}" />
-                            <x-input-error :messages="$errors->get('accId')" class="mt-1" />
-                        </div>
-
-                        <div>
-                            <x-input-label value="Nominal Topup (Rp)" :required="true" />
-                            <x-text-input-number wire:model="nominal" />
-                            <x-input-error :messages="$errors->get('nominal')" class="mt-1" />
-                        </div>
-
-                        <div>
-                            <x-input-label value="Keterangan (opsional)" />
-                            <x-text-input type="text" wire:model="keterangan"
-                                placeholder="Misal: DP order obat batch 2026-05" class="w-full mt-1" />
+                    {{-- PANDUAN (biru-info, collapsible, default tertutup) --}}
+                    <div x-data="{ open: false }"
+                        class="overflow-hidden border rounded-2xl bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-700">
+                        <button type="button" @click="open = !open"
+                            class="flex items-center justify-between w-full px-3 py-2 text-sm font-semibold text-blue-900 transition-colors hover:bg-blue-100 dark:text-blue-200 dark:hover:bg-blue-900/30">
+                            <span class="flex items-center gap-2">
+                                <svg class="w-4 h-4 text-blue-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                Cara Pakai — Topup (Uang Muka) Supplier
+                            </span>
+                            <svg class="w-4 h-4 text-blue-600 transition-transform" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </button>
+                        <div x-show="open" x-collapse class="px-3 pb-3 text-xs text-blue-900 dark:text-blue-200">
+                            <ul class="ml-4 space-y-1 list-disc">
+                                <li>Setor DP = uang keluar dari kas sebagai uang muka ke supplier; <strong>Saldo DP</strong> bertambah.</li>
+                                <li>Saldo DP dipakai melunasi nota hutang di menu <strong>Pembayaran Hutang PBF</strong> → Sumber Dana: Saldo DP.</li>
+                                <li>Saldo DP = total disetor − yang sudah terpakai. Riwayat di kanan menampilkan setor (+) dan pemakaian (−).</li>
+                                <li>Shift terisi otomatis dari jam Tanggal; periksa dialog konfirmasi sebelum menyimpan.</li>
+                                <li><strong>Hapus salah setor</strong> (Admin / Supervisor Tu, tahun berjalan) ditolak bila DP-nya sudah terpakai — hapus dulu pelunasannya di menu Pembayaran Hutang PBF.</li>
+                            </ul>
                         </div>
                     </div>
 
-                    <div class="px-5 py-4 bg-surface-soft border-t border-hairline dark:border-gray-700 dark:bg-gray-800/50 rounded-b-2xl">
-                        <div class="flex items-center justify-end gap-3">
-                            <x-primary-button type="button" wire:click="simpan"
-                                wire:loading.attr="disabled" wire:target="simpan">
-                                <span wire:loading.remove wire:target="simpan" class="inline-flex items-center gap-2"><x-ikon nama="simpan" /> Simpan Topup</span>
-                                <span wire:loading wire:target="simpan">Memproses...</span>
+                    <div>
+                        @if ($suppId)
+                            <div class="flex items-start justify-between gap-2">
+                                <x-input-label value="Supplier" />
+                                <x-secondary-button type="button" wire:click="clearSupplier"
+                                    title="Ganti supplier / mulai transaksi baru"><x-ikon nama="ubah" /> Ganti</x-secondary-button>
+                            </div>
+                            <div class="px-4 py-3 mt-2 border rounded-xl border-hairline bg-surface-soft dark:bg-gray-800 dark:border-gray-700">
+                                <div class="font-semibold text-ink dark:text-gray-100">{{ $supplier['supp_name'] ?? '-' }}</div>
+                                <div class="font-mono text-xs text-muted dark:text-gray-400">Kode {{ $suppId }}</div>
+                            </div>
+                        @else
+                            <livewire:lov.supplier.lov-supplier
+                                target="topup-pbf-supplier"
+                                label="Cari Supplier"
+                                placeholder="Ketik kode / nama / telp supplier..."
+                                jenisSupplier="medis"
+                                wire:key="lov-supplier-topup-pbf" />
+                        @endif
+                    </div>
+
+                    @if ($suppId)
+                        <div class="pt-4 space-y-1.5 text-sm border-t border-hairline dark:border-gray-700">
+                            <div class="flex justify-between gap-3">
+                                <span class="text-muted dark:text-gray-400">Total disetor</span>
+                                <span class="font-medium text-body dark:text-gray-300">Rp {{ number_format($this->ringkasan['setor'], 0, ',', '.') }}</span>
+                            </div>
+                            <div class="flex justify-between gap-3">
+                                <span class="text-muted dark:text-gray-400">Terpakai melunasi hutang</span>
+                                <span class="font-medium text-body dark:text-gray-300">Rp {{ number_format($this->ringkasan['pakai'], 0, ',', '.') }}</span>
+                            </div>
+                        </div>
+
+                        <div class="px-4 py-3 border rounded-xl bg-brand-green/5 border-brand-green/25 dark:bg-brand-lime/10 dark:border-brand-lime/25">
+                            <div class="text-xs font-semibold tracking-wide uppercase text-muted dark:text-gray-400">Saldo DP</div>
+                            <div class="mt-1 text-2xl font-bold leading-none text-brand-green dark:text-brand-lime">
+                                Rp {{ number_format($this->ringkasan['saldo'], 0, ',', '.') }}
+                            </div>
+                        </div>
+
+                        <div class="pt-4 space-y-4 border-t border-hairline dark:border-gray-700">
+                            <div class="text-sm font-semibold tracking-wide uppercase text-muted dark:text-gray-300">Setor DP</div>
+
+                            <div class="grid grid-cols-1 gap-4 sm:grid-cols-12">
+                                <div class="sm:col-span-8">
+                                    <x-input-label value="Tanggal" :required="true" />
+                                    <div class="flex items-center gap-2 mt-1">
+                                        <x-text-input type="text" wire:model.live.debounce.500ms="tanggal"
+                                            placeholder="dd/mm/yyyy hh:mm:ss" class="w-full text-sm" :error="$errors->has('tanggal')" />
+                                        <x-now-button wire:click.prevent="setTanggalSekarang" />
+                                    </div>
+                                    <x-input-error :messages="$errors->get('tanggal')" class="mt-1" />
+                                </div>
+                                <div class="sm:col-span-4">
+                                    <x-input-label value="Shift" :required="true" />
+                                    <x-select-input wire:model="shift" class="w-full mt-1" :error="$errors->has('shift')">
+                                        <option value="">-- Shift --</option>
+                                        <option value="1">Shift 1</option>
+                                        <option value="2">Shift 2</option>
+                                        <option value="3">Shift 3</option>
+                                    </x-select-input>
+                                    <x-input-error :messages="$errors->get('shift')" class="mt-1" />
+                                </div>
+                            </div>
+
+                            <div>
+                                <livewire:lov.kas.lov-kas
+                                    target="topup-pbf-kas"
+                                    tipe=""
+                                    label="Akun Kas (sumber dana)"
+                                    placeholder="Ketik kode/nama kas..."
+                                    :initialAccId="$accId"
+                                    :error="$errors->has('accId')"
+                                    wire:key="lov-kas-topup-pbf-{{ $suppId }}-{{ $renderVersions['form'] ?? 0 }}" />
+                                <x-input-error :messages="$errors->get('accId')" class="mt-1" />
+                            </div>
+
+                            <div>
+                                <x-input-label value="Nominal Setor (Rp)" :required="true" />
+                                <div class="mt-1">
+                                    <x-text-input-number wire:model="nominal" :error="$errors->has('nominal')" />
+                                </div>
+                                <x-input-error :messages="$errors->get('nominal')" class="mt-1" />
+                            </div>
+
+                            <div>
+                                <x-input-label value="Keterangan (opsional)" />
+                                <x-text-input type="text" wire:model="keterangan" maxlength="60"
+                                    placeholder="Misal: DP order obat batch 2026-05" class="w-full mt-1" />
+                            </div>
+
+                            <x-primary-button type="button" wire:click="siapkanKonfirmasi" class="justify-center w-full h-11"
+                                wire:loading.attr="disabled" wire:target="siapkanKonfirmasi">
+                                <span wire:loading.remove wire:target="siapkanKonfirmasi" class="inline-flex items-center gap-2"><x-ikon nama="simpan" /> Simpan Setoran</span>
+                                <span wire:loading wire:target="siapkanKonfirmasi"><x-loading /> Memeriksa...</span>
                             </x-primary-button>
                         </div>
-                    </div>
+                    @endif
                 </div>
 
-                {{-- 4) RIWAYAT --}}
-                <div class="bg-canvas border border-hairline shadow-sm rounded-2xl dark:border-gray-700 dark:bg-gray-900">
-                    <div class="px-5 py-4 border-b border-hairline dark:border-gray-700">
-                        <h3 class="text-base font-semibold text-ink dark:text-gray-100">3. Riwayat Topup (20 terakhir)</h3>
+                {{-- KOLOM KANAN — riwayat setor & pemakaian DP --}}
+                <div class="flex flex-col flex-1 min-w-0 min-h-0 border shadow-sm bg-canvas border-hairline rounded-2xl dark:border-gray-700 dark:bg-gray-900">
+                    <div class="px-5 py-3 border-b border-hairline dark:border-gray-700">
+                        <div class="text-sm font-semibold tracking-wide uppercase text-muted dark:text-gray-300">Riwayat Setor &amp; Pemakaian DP</div>
                     </div>
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full text-sm">
-                            <thead class="text-muted bg-surface-soft dark:bg-gray-800 dark:text-gray-200">
-                                <tr class="text-left">
-                                    <th class="px-3 py-2 font-semibold">No</th>
-                                    <th class="px-3 py-2 font-semibold">Tanggal</th>
-                                    <th class="px-3 py-2 font-semibold">Keterangan</th>
-                                    <th class="px-3 py-2 font-semibold">Akun Kas</th>
-                                    <th class="px-3 py-2 font-semibold">Shift</th>
-                                    <th class="px-3 py-2 font-semibold text-right">Nominal</th>
+
+                    <div class="flex-1 min-h-0 overflow-x-auto overflow-y-auto">
+                        <table class="w-full min-w-full text-sm">
+                            <thead class="sticky top-0 z-10 text-left text-muted bg-surface-soft dark:bg-gray-800 dark:text-gray-300">
+                                <tr class="text-xs font-semibold tracking-wide uppercase">
+                                    <th class="px-4 py-3">Tanggal</th>
+                                    <th class="px-4 py-3">Jenis</th>
+                                    <th class="px-4 py-3">Keterangan</th>
+                                    <th class="px-4 py-3">Akun</th>
+                                    <th class="px-4 py-3 text-right">Nominal</th>
+                                    <th class="w-16 px-4 py-3 text-center">Aksi</th>
                                 </tr>
                             </thead>
-                            <tbody class="text-body divide-y divide-hairline dark:divide-gray-700 dark:text-gray-200">
-                                @forelse($this->history as $row)
-                                    <tr wire:key="topup-pbf-{{ $row->cashout_no ?? $loop->index }}" class="hover:bg-surface-soft dark:hover:bg-gray-800/60">
-                                        <td class="px-3 py-2 font-mono whitespace-nowrap">{{ $row->cashout_no }}</td>
-                                        <td class="px-3 py-2 whitespace-nowrap">{{ $row->tgl_display }}</td>
-                                        <td class="px-3 py-2">{{ $row->cashout_desc ?? '-' }}</td>
-                                        <td class="px-3 py-2 font-mono">{{ $row->acc_id }}</td>
-                                        <td class="px-3 py-2">{{ $row->shift ?? '-' }}</td>
-                                        <td class="px-3 py-2 font-mono font-semibold text-right text-emerald-700">
-                                            {{ number_format($row->cashout_value) }}
+                            <tbody class="divide-y text-body divide-hairline dark:divide-gray-700 dark:text-gray-200">
+                                @forelse ($this->riwayat as $row)
+                                    <tr wire:key="riwayat-dp-{{ $row['jenis'] }}-{{ $row['no'] }}" class="hover:bg-surface-soft dark:hover:bg-gray-800/60">
+                                        <td class="px-4 py-2.5 whitespace-nowrap">
+                                            <div>{{ $row['tgl'] }}</div>
+                                            <div class="text-xs text-muted dark:text-gray-400">Shift {{ $row['shift'] ?: '-' }} · No {{ $row['no'] }}</div>
+                                        </td>
+                                        <td class="px-4 py-2.5">
+                                            @if ($row['jenis'] === 'setor')
+                                                <x-badge variant="success">Setor</x-badge>
+                                            @else
+                                                <x-badge variant="warning">Dipakai</x-badge>
+                                            @endif
+                                        </td>
+                                        <td class="px-4 py-2.5">{{ $row['ket'] ?: '-' }}</td>
+                                        <td class="px-4 py-2.5 text-muted dark:text-gray-400">{{ $row['akun'] }}</td>
+                                        <td class="px-4 py-2.5 font-mono text-right whitespace-nowrap {{ $row['jenis'] === 'setor' ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-400' }}">
+                                            {{ $row['jenis'] === 'setor' ? '+' : '−' }} {{ number_format($row['nilai'], 0, ',', '.') }}
+                                        </td>
+                                        <td class="px-4 py-2.5 text-center">
+                                            @if ($row['bolehHapus'])
+                                                <x-hapus-button action="hapusSetor({{ $row['no'] }})"
+                                                    title="Hapus Setoran (salah setor)"
+                                                    :message="'Hapus setoran DP Rp ' . number_format($row['nilai']) . ' tanggal ' . $row['tgl'] . ' (shift ' . ($row['shift'] ?: '-') . ', ' . $row['akun'] . ')? PERHATIAN: saldo kas pada tanggal & shift tersebut ikut BERUBAH MUNDUR, dan saldo DP supplier berkurang. Ditolak bila DP-nya sudah terpakai.'"
+                                                    confirmText="Ya, hapus setoran" />
+                                            @endif
                                         </td>
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="6" class="px-4 py-8 text-center text-muted dark:text-gray-400">
-                                            Belum ada riwayat topup untuk supplier ini.
+                                        <td colspan="6" class="px-6 py-16 text-center text-muted dark:text-gray-400">
+                                            {{ $suppId ? 'Belum ada setoran / pemakaian DP untuk supplier ini.' : 'Pilih supplier dulu untuk melihat saldo & riwayat DP.' }}
                                         </td>
                                     </tr>
                                 @endforelse
@@ -311,13 +549,50 @@ new class extends Component {
                         </table>
                     </div>
                 </div>
-            @else
-                <div class="px-6 py-16 text-center bg-canvas border border-hairline border-dashed rounded-2xl dark:border-gray-700 dark:bg-gray-900">
-                    <p class="text-sm text-muted dark:text-gray-400">
-                        Pilih supplier terlebih dahulu untuk mulai topup.
-                    </p>
-                </div>
-            @endif
+            </div>
         </div>
     </div>
+
+    {{-- KONFIRMASI SETOR --}}
+    @if (!empty($pratinjau))
+        <div class="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-gray-900/50"
+            x-data x-init="$nextTick(() => $refs.btnYaSetor?.focus())">
+            <div class="w-full max-w-md overflow-hidden border shadow-xl bg-canvas rounded-2xl border-hairline dark:bg-gray-900 dark:border-gray-700">
+                <div class="px-5 py-4 border-b border-hairline dark:border-gray-700">
+                    <h3 class="text-base font-semibold text-ink dark:text-gray-100">Konfirmasi Setor DP</h3>
+                    <p class="mt-0.5 text-sm text-muted dark:text-gray-400">Uang keluar dari kas sebagai uang muka ke supplier.</p>
+                </div>
+                <dl class="px-5 py-4 space-y-2 text-sm">
+                    <div class="flex justify-between gap-3">
+                        <dt class="text-muted dark:text-gray-400">Supplier</dt>
+                        <dd class="font-medium text-right text-ink dark:text-gray-100">{{ $supplier['supp_name'] ?? '-' }}</dd>
+                    </div>
+                    <div class="flex justify-between gap-3">
+                        <dt class="text-muted dark:text-gray-400">Nominal</dt>
+                        <dd class="font-mono font-semibold text-brand-green dark:text-brand-lime">Rp {{ number_format($pratinjau['nominal']) }}</dd>
+                    </div>
+                    <div class="flex justify-between gap-3">
+                        <dt class="text-muted dark:text-gray-400">Akun kas · shift</dt>
+                        <dd class="text-right text-ink dark:text-gray-100">{{ $pratinjau['accName'] }} · Shift {{ $shift }}</dd>
+                    </div>
+                    <div class="flex justify-between gap-3">
+                        <dt class="text-muted dark:text-gray-400">Tanggal</dt>
+                        <dd class="text-ink dark:text-gray-100">{{ $tanggal }}</dd>
+                    </div>
+                    <div class="flex justify-between gap-3 pt-2 border-t border-hairline dark:border-gray-700">
+                        <dt class="text-muted dark:text-gray-400">Saldo DP sesudahnya</dt>
+                        <dd class="font-mono font-semibold text-ink dark:text-gray-100">Rp {{ number_format($pratinjau['saldoSesudah']) }}</dd>
+                    </div>
+                </dl>
+                <div class="flex justify-end gap-2 px-5 py-4 border-t border-hairline bg-surface-soft dark:bg-gray-800/50 dark:border-gray-700">
+                    <x-secondary-button type="button" wire:click="batalKonfirmasi"><x-ikon nama="batal" /> Batal</x-secondary-button>
+                    <x-primary-button type="button" wire:click="simpan" x-ref="btnYaSetor"
+                        wire:loading.attr="disabled" wire:target="simpan">
+                        <span wire:loading.remove wire:target="simpan" class="inline-flex items-center gap-2"><x-ikon nama="simpan" /> Ya, simpan</span>
+                        <span wire:loading wire:target="simpan"><x-loading /> Menyimpan...</span>
+                    </x-primary-button>
+                </div>
+            </div>
+        </div>
+    @endif
 </div>
