@@ -12,7 +12,7 @@
  * Pemakaian DP ada di menu Pembayaran Hutang Non-Medis (pola Forms: DP dipakai sendirian, tak
  * dicampur tunai). Hapus salah setor ditolak bila saldo DP jadi minus (DP sudah terpakai).
  *
- * Opname saldo DP ada di menu tersendiri (keuangan/opname-dp-supplier, khusus Admin);
+ * Opname saldo DP ada di menu Kartu DP Supplier (keuangan/kartu-dp-supplier, khusus Admin);
  * di sini barisnya hanya tampil di riwayat & rekap.
  */
 
@@ -487,7 +487,7 @@ new class extends Component {
                                 <li>Sebelum memilih supplier, kanan menampilkan <strong>Rekap Saldo DP per tahun</strong> (seperti saldo kas): saldo awal 1 Jan → disetor, terpakai, opname → saldo akhir; transaksi terakhir paling atas. Saldo akhir sebuah tahun = saldo awal tahun berikutnya. Klik baris untuk membuka supplier.</li>
                                 <li>Saldo DP = saldo awal tahun (tutup buku) + disetor − terpakai ± opname. Riwayat di kanan menampilkan setor (+) dan pemakaian (−).</li>
                                 <li>Shift terisi otomatis dari jam Tanggal; periksa dialog konfirmasi sebelum menyimpan.</li>
-                                <li>Selisih saldo DP dengan kartu supplier dibetulkan lewat menu <strong>Opname Saldo DP Supplier</strong> (khusus Admin); barisnya tampil di riwayat sebagai <em>Opname</em>.</li>
+                                <li>Selisih saldo DP dengan kartu supplier dibetulkan lewat menu <strong>Kartu DP Supplier</strong> → Opname (khusus Admin); barisnya tampil di riwayat sebagai <em>Opname</em>.</li>
                                 <li><strong>Hapus salah setor</strong> (Admin / Supervisor Tu, tahun berjalan) ditolak bila DP-nya sudah terpakai — hapus dulu pelunasannya di menu Pembayaran Hutang Non-Medis.</li>
                             </ul>
                         </div>
