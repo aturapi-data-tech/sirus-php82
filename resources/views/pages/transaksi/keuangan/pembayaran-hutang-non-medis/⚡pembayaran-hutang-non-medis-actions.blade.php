@@ -778,7 +778,7 @@ new class extends Component {
                                         <x-text-input type="text" wire:model.live.debounce.500ms="tanggal"
                                             placeholder="dd/mm/yyyy hh:mm:ss" class="w-full text-sm"
                                             x-ref="inputTanggal" :error="$errors->has('tanggal')"
-                                            x-on:keydown.enter.prevent="($refs.lovKasWrapper?.querySelector('input:not([disabled])') || $refs.inputBayar)?.focus()" />
+                                            x-on:keydown.enter.prevent="(($refs.lovKasWrapper?.offsetParent && $refs.lovKasWrapper.querySelector('input:not([disabled])')) || $refs.inputBayar)?.focus()" />
                                         <x-now-button wire:click.prevent="setTanggalSekarang" />
                                     </div>
                                     <x-input-error :messages="$errors->get('tanggal')" class="mt-1" />
@@ -995,7 +995,10 @@ new class extends Component {
                 <div class="flex items-center justify-between gap-3">
                     <div class="text-xs text-muted dark:text-gray-400">
                         Urutan <span class="px-1.5 py-0.5 font-semibold rounded border border-hairline bg-canvas text-body dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200">Enter</span>:
-                        Tanggal → Akun Kas → Nominal → Keterangan → tombol Proses. Nota yang tertutup penuh berubah menjadi Lunas.
+                        {{ $sumberDana === 'dp'
+                            ? 'Tanggal → Nominal → Keterangan → tombol Proses. Dibayar dari Saldo DP — kas tidak berkurang.'
+                            : 'Tanggal → Akun Kas → Nominal → Keterangan → tombol Proses.' }}
+                        Nota yang tertutup penuh berubah menjadi Lunas.
                     </div>
 
                     <div class="flex justify-end gap-2">
