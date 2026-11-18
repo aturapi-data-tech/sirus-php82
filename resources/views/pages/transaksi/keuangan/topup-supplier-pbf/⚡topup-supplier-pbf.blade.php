@@ -482,24 +482,6 @@ new class extends Component {
                     </div>
 
                     @if ($suppId)
-                        <div class="pt-4 space-y-1.5 text-sm border-t border-hairline dark:border-gray-700">
-                            <div class="flex justify-between gap-3">
-                                <span class="text-muted dark:text-gray-400">Total disetor</span>
-                                <span class="font-medium text-body dark:text-gray-300">Rp {{ number_format($this->ringkasan['setor'], 0, ',', '.') }}</span>
-                            </div>
-                            <div class="flex justify-between gap-3">
-                                <span class="text-muted dark:text-gray-400">Terpakai melunasi hutang</span>
-                                <span class="font-medium text-body dark:text-gray-300">Rp {{ number_format($this->ringkasan['pakai'], 0, ',', '.') }}</span>
-                            </div>
-                        </div>
-
-                        <div class="px-4 py-3 border rounded-xl bg-brand-green/5 border-brand-green/25 dark:bg-brand-lime/10 dark:border-brand-lime/25">
-                            <div class="text-xs font-semibold tracking-wide uppercase text-muted dark:text-gray-400">Saldo DP</div>
-                            <div class="mt-1 text-2xl font-bold leading-none text-brand-green dark:text-brand-lime">
-                                Rp {{ number_format($this->ringkasan['saldo'], 0, ',', '.') }}
-                            </div>
-                        </div>
-
                         <div class="pt-4 space-y-4 border-t border-hairline dark:border-gray-700">
                             <div class="text-sm font-semibold tracking-wide uppercase text-muted dark:text-gray-300">Setor DP</div>
 
@@ -631,6 +613,15 @@ new class extends Component {
                     </div>
                 @else
                 <div class="flex flex-col flex-1 min-w-0 min-h-0 border shadow-sm bg-canvas border-hairline rounded-2xl dark:border-gray-700 dark:bg-gray-900">
+                    {{-- Ringkasan saldo DP — satu baris ringkas di atas riwayat --}}
+                    <div class="flex flex-wrap items-baseline gap-x-6 gap-y-1 px-5 py-2.5 text-sm border-b border-hairline bg-surface-soft dark:bg-gray-800/60 dark:border-gray-700">
+                        <span class="text-muted dark:text-gray-400">Total disetor
+                            <span class="ml-1 font-mono font-medium text-body dark:text-gray-200">Rp {{ number_format($this->ringkasan['setor'], 0, ',', '.') }}</span></span>
+                        <span class="text-muted dark:text-gray-400">Terpakai melunasi hutang
+                            <span class="ml-1 font-mono font-medium text-body dark:text-gray-200">Rp {{ number_format($this->ringkasan['pakai'], 0, ',', '.') }}</span></span>
+                        <span class="text-muted dark:text-gray-400">Saldo DP
+                            <span class="ml-1 font-mono text-base font-bold {{ $this->ringkasan['saldo'] < 0 ? 'text-rose-700 dark:text-rose-300' : 'text-brand-green dark:text-brand-lime' }}">Rp {{ number_format($this->ringkasan['saldo'], 0, ',', '.') }}</span></span>
+                    </div>
                     <div class="px-5 py-3 border-b border-hairline dark:border-gray-700">
                         <div class="text-sm font-semibold tracking-wide uppercase text-muted dark:text-gray-300">Riwayat Setor &amp; Pemakaian DP</div>
                     </div>
