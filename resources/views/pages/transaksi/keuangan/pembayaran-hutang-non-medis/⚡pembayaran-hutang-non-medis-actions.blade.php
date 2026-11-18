@@ -12,27 +12,50 @@
  *        - Kalau bayar < sisa nota & bayar > 0: bayar partial (cicilan) → INSERT
  *          cashoutdtls + receivepayments dgn nominal sisa bayar, status tetap 'H'
  *   4. Reset check_boxstatus='0' & vcount=null untuk supplier ini
+ *
+ * Pola tampilan & langkah mengikuti Pembayaran Piutang Pasien: daftar nota yang diproses
+ * (klik = riwayat pembayarannya), shift tampil & otomatis dari jam, nominal > sisa langsung
+ * merah, dan dialog konfirmasi alokasi sebelum menulis. Sisa selalu dihitung ulang dari DB.
+ *
+ * Hapus salah bayar = hapus SATU kas keluar UTUH beserta seluruh nota yang ditutupnya
+ * (header kas keluar = uang keluar sungguhan — menghapus sebagian akan membuat kas dan
+ * hutang tak cocok). Angsuran awal dibatalkan lewat menu penerimaan, bukan di sini.
  */
 
 use Livewire\Component;
 use Livewire\Attributes\On;
 use Carbon\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Database\QueryException;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 
 new class extends Component {
     use WithRenderVersioningTrait;
 
+    /** Hapus salah bayar — sama dengan Pembayaran Piutang. */
+    private const ROLE_HAPUS_BAYAR = ['Admin', 'Supervisor Tu'];
+
     public ?string $suppId   = null;
     public ?string $suppName = null;
-    public float   $sisaChecked = 0.0;
+    public int     $sisaChecked = 0;
     public int     $jumlah  = 0;
+    /** Nota terpilih urut VCOUNT — hanya tampilan. */
+    public array   $baris = [];
+    /** rcv_no yang riwayatnya sedang dibuka — dimuat saat diklik. */
+    public ?string $notaDipilih = null;
+    /** Pembayaran yang sudah masuk untuk nota dipilih (hanya tampil), terbaru di atas. */
+    public array   $riwayatBayar = [];
 
     public ?string $tanggal     = null;
+    /** Shift cashout — otomatis dari jam Tanggal Pembayaran, tetap bisa dipilih manual. */
+    public ?string $shift       = null;
     public ?string $accId       = null; // akun cash-out (acmst_accounts.acc_id)
     public ?string $keterangan  = null;
     public ?int    $bayar       = null;
+    /** Pratinjau alokasi untuk dialog konfirmasi — kosong = dialog tertutup. Hanya tampilan. */
+    public array   $pratinjau   = [];
 
     public array $renderVersions = [];
 
@@ -43,22 +66,47 @@ new class extends Component {
 
     /* ── Open modal ── */
     #[On('hutang-non-medis.openProsesBayar')]
-    public function openProsesBayar(string $suppId, string $suppName, float $sisaChecked, int $jumlah = 0): void
+    public function openProsesBayar(string $suppId, string $suppName, float $sisaChecked = 0, int $jumlah = 0): void
     {
         $this->resetFormFields();
-        $this->suppId      = $suppId;
-        $this->suppName    = $suppName;
-        $this->sisaChecked = $sisaChecked;
-        $this->jumlah      = $jumlah;
-        $this->tanggal     = Carbon::now()->format('d/m/Y H:i:s');
-        $this->bayar       = (int) $sisaChecked; // default: lunasi semua yg dicentang
-        $this->keterangan  = '';
+        $this->suppId   = $suppId;
+        $this->suppName = $suppName;
+
+        $nota = $this->ambilNotaTerpilih();
+        if ($nota->isEmpty()) {
+            $this->dispatch('toast', type: 'info', message: 'Tidak ada nota terpilih dengan sisa hutang.');
+            $this->dispatch('hutang-non-medis.paid');
+            return;
+        }
+
+        $this->isiBaris($nota);
+        if (count($this->baris) === 1) {
+            $this->pilihNota($this->baris[0]['rcvNo']);
+        }
+
+        $this->tanggal    = Carbon::now()->format('d/m/Y H:i:s');
+        $this->shift      = $this->shiftPadaJam($this->tanggal);
+        $this->bayar      = $this->sisaChecked; // default: lunasi semua yg dicentang
+        $this->keterangan = '';
         $this->incrementVersion('modal');
         $this->dispatch('open-modal', name: 'pembayaran-hutang-non-medis-actions');
         $this->dispatch('focus-bayar-tanggal');
     }
 
-    /* ── LOV Listener (lov-kas) ── */
+    /* ── Riwayat per nota (klik baris nota) ── */
+    public function pilihNota(string $rcvNo): void
+    {
+        $ada = collect($this->baris)->contains(fn ($item) => $item['rcvNo'] === $rcvNo);
+        if (!$ada || ($this->notaDipilih === $rcvNo && count($this->baris) > 1)) {
+            $this->notaDipilih = null;
+            $this->riwayatBayar = [];
+            return;
+        }
+
+        $this->notaDipilih = $rcvNo;
+        $this->riwayatBayar = $this->ambilRiwayatBayar($rcvNo);
+    }
+
     #[On('lov.selected.kas-hutang-non-medis')]
     public function onKasSelected(string $target, ?array $payload): void
     {
@@ -69,37 +117,112 @@ new class extends Component {
     public function setTanggalSekarang(): void
     {
         $this->tanggal = Carbon::now()->format('d/m/Y H:i:s');
+        $this->updatedTanggal($this->tanggal);
     }
 
-    /* ── Proses pembayaran ── */
-    public function processBayar(): void
+    /** Tanggal diketik ulang → shift menyesuaikan jamnya (jam di luar master = biarkan, pilih manual). */
+    public function updatedTanggal(?string $value): void
     {
-        $this->validate(
-            [
-                'suppId'   => 'required|string',
-                'tanggal'  => 'required|date_format:d/m/Y H:i:s',
-                'accId'    => 'required|string|exists:acmst_accounts,acc_id',
-                'bayar'    => 'required|integer|min:1',
-            ],
-            [
-                'suppId.required'      => 'Supplier tidak terdeteksi.',
-                'tanggal.required'     => 'Tanggal wajib diisi.',
-                'tanggal.date_format'  => 'Format tanggal harus dd/mm/yyyy hh:mm:ss.',
-                'accId.required'       => 'Akun pengeluaran wajib dipilih.',
-                'accId.exists'         => 'Akun pengeluaran tidak valid.',
-                'bayar.required'       => 'Nominal bayar wajib diisi.',
-                'bayar.min'            => 'Nominal bayar minimal Rp 1.',
-            ],
-        );
+        $shift = $this->shiftPadaJam((string) $value);
+        if ($shift !== null) {
+            $this->shift = $shift;
+            $this->resetErrorBag('shift');
+        }
+    }
 
-        $bayar = (int) $this->bayar;
+    /* ── Cek nominal langsung (sync saat blur) — tak perlu menunggu ditolak server ── */
+    public function updatedBayar(): void
+    {
+        $this->resetErrorBag('bayar');
+        if ((int) $this->bayar > $this->sisaChecked) {
+            $this->addError('bayar', 'Melebihi total sisa hutang Rp ' . number_format($this->sisaChecked, 0, ',', '.') . '.');
+        }
+    }
 
-        if ($bayar > (int) $this->sisaChecked) {
-            $this->dispatch('toast', type: 'error',
-                message: 'Nominal bayar (Rp ' . number_format($bayar)
-                    . ') melebihi total sisa hutang nota terpilih (Rp ' . number_format($this->sisaChecked) . ').');
+    protected function rules(): array
+    {
+        return [
+            'suppId'  => 'required|string',
+            'tanggal' => 'required|date_format:d/m/Y H:i:s',
+            'shift'   => 'required|in:1,2,3',
+            'accId'   => 'required|string|exists:acmst_accounts,acc_id',
+            'bayar'   => 'required|integer|min:1',
+        ];
+    }
+
+    protected function messages(): array
+    {
+        return [
+            'suppId.required'     => 'Supplier tidak terdeteksi.',
+            'tanggal.required'    => 'Tanggal wajib diisi.',
+            'tanggal.date_format' => 'Format tanggal harus dd/mm/yyyy hh:mm:ss.',
+            'shift.required'      => 'Shift belum dipilih.',
+            'shift.in'            => 'Shift tidak valid.',
+            'accId.required'      => 'Akun pengeluaran wajib dipilih.',
+            'accId.exists'        => 'Akun pengeluaran tidak valid.',
+            'bayar.required'      => 'Nominal bayar wajib diisi.',
+            'bayar.min'           => 'Nominal bayar minimal Rp 1.',
+        ];
+    }
+
+    /**
+     * Langkah 1 Proses: validasi + hitung pratinjau alokasi (urutan klik) dari DB tanpa menulis,
+     * lalu tampilkan dialog konfirmasi — salah ketik nominal terlihat sebelum uang tercatat.
+     */
+    public function siapkanKonfirmasi(): void
+    {
+        $this->validate();
+
+        $nota = $this->ambilNotaTerpilih();
+        if ($nota->isEmpty()) {
+            $this->dispatch('toast', type: 'error', message: 'Semua nota terpilih sudah lunas / diproses user lain.');
             return;
         }
+
+        $totalKini = (int) $nota->sum('sisa');
+        $bayar = (int) $this->bayar;
+        if ($bayar > $totalKini) {
+            $this->addError('bayar', 'Melebihi total sisa hutang Rp ' . number_format($totalKini, 0, ',', '.') . '.');
+            return;
+        }
+
+        $sisaBayar = $bayar;
+        $alokasi = [];
+        foreach ($nota as $row) {
+            if ($sisaBayar <= 0) {
+                break;
+            }
+            $nominal = min($sisaBayar, (int) $row->sisa);
+            $alokasi[] = [
+                'rcvNo'       => (string) $row->rcv_no,
+                'urut'        => $row->vcount,
+                'nominal'     => $nominal,
+                'sisaSesudah' => (int) $row->sisa - $nominal,
+            ];
+            $sisaBayar -= $nominal;
+        }
+
+        $this->pratinjau = [
+            'bayar'     => $bayar,
+            'totalSisa' => $totalKini,
+            'accName'   => DB::table('acmst_accounts')->where('acc_id', $this->accId)->value('acc_name') ?? $this->accId,
+            'alokasi'   => $alokasi,
+        ];
+    }
+
+    public function batalKonfirmasi(): void
+    {
+        $this->pratinjau = [];
+        $this->dispatch('focus-bayar-nominal');
+    }
+
+    /* ── Langkah 2: tulis ── */
+    public function prosesBayar(): void
+    {
+        $this->validate();
+        $this->pratinjau = [];
+
+        $bayar = (int) $this->bayar;
 
         // Resolve emp_id dari USERS (sirus IMTXN_CASHOUTHDRS pakai EMP_ID)
         $empId = auth()->user()->emp_id ?? null;
@@ -109,12 +232,7 @@ new class extends Component {
             return;
         }
 
-        // Resolve shift dari RSTXN_SHIFTCTLS by jam tanggal pembayaran
-        $jam = Carbon::createFromFormat('d/m/Y H:i:s', $this->tanggal)->format('H:i:s');
-        $shift = DB::table('rstxn_shiftctls')
-            ->whereRaw('? BETWEEN shift_start AND shift_end', [$jam])
-            ->value('shift') ?? '1';
-
+        $shift = (string) $this->shift;
         $tanggalDb = "to_date('{$this->tanggal}','dd/mm/yyyy hh24:mi:ss')";
 
         $totalDibayarkan = 0;
@@ -124,17 +242,16 @@ new class extends Component {
         try {
             DB::transaction(function () use ($empId, $shift, $tanggalDb, &$totalDibayarkan, &$notaLunas, &$notaCicilan, $bayar) {
                 // Re-fetch nota terpilih dgn lock, urut VCOUNT (urutan klik user)
-                $headers = DB::table('imtxn_receivehdrsnon')
-                    ->where('supp_id', $this->suppId)
-                    ->where('rcv_status', 'H')
-                    ->where('check_boxstatus', '1')
-                    ->orderBy('vcount')
-                    ->orderBy('rcv_no')
-                    ->lockForUpdate()
-                    ->get();
+                $nota = $this->ambilNotaTerpilih(true);
 
-                if ($headers->isEmpty()) {
+                if ($nota->isEmpty()) {
                     throw new \RuntimeException('Tidak ada nota yang ditandai untuk dibayar (check_boxstatus=1).');
+                }
+
+                $totalKini = (int) $nota->sum('sisa');
+                if ($bayar > $totalKini) {
+                    throw new \RuntimeException('Nominal bayar (Rp ' . number_format($bayar)
+                        . ') melebihi total sisa hutang nota terpilih (Rp ' . number_format($totalKini) . ').');
                 }
 
                 // Insert master cashout (1x)
@@ -155,41 +272,11 @@ new class extends Component {
 
                 $sisaBayar = $bayar;
 
-                foreach ($headers as $hdr) {
+                foreach ($nota as $row) {
                     if ($sisaBayar <= 0) break;
 
-                    $rcvNo = $hdr->rcv_no;
-
-                    // Hitung sisa nota ini (re-compute)
-                    $totalDetail = (float) DB::table('imtxn_receivedtlsnon')
-                        ->where('rcv_no', $rcvNo)
-                        ->select(DB::raw("
-                            NVL(SUM(
-                                (NVL(qty,0)*NVL(cost_price,0))
-                                - ((NVL(qty,0)*NVL(cost_price,0)) * NVL(dtl_persen,0)/100)
-                                - NVL(dtl_diskon,0)
-                                - (((NVL(qty,0)*NVL(cost_price,0))
-                                    - ((NVL(qty,0)*NVL(cost_price,0)) * NVL(dtl_persen,0)/100)
-                                    - NVL(dtl_diskon,0))
-                                  * NVL(dtl_persen1,0)/100)
-                                - NVL(dtl_diskon1,0)
-                            ),0) as t"))
-                        ->value('t');
-
-                    $setelahDiskon = $totalDetail - (float) ($hdr->rcv_diskon ?? 0);
-                    $ppn = ((string) ($hdr->rcv_ppn_status ?? '1')) === '1'
-                        ? ($setelahDiskon * (float) ($hdr->rcv_ppn ?? 0)) / 100
-                        : 0;
-                    // Cast ke int rupiah sejak awal — selisih sub-1 rupiah dari kaskade
-                    // PPN/diskon nggak signifikan & bikin status nyangkut di 'H'.
-                    $grandTotal = (int) round($setelahDiskon + $ppn + (float) ($hdr->rcv_materai ?? 0));
-
-                    $titipan = (int) round((float) DB::table('imtxn_receivepaymentsnon')
-                        ->where('rcv_no', $rcvNo)
-                        ->sum('rcvp_value'));
-
-                    $sisaNota = $grandTotal - $titipan;
-                    if ($sisaNota <= 0) continue;
+                    $rcvNo = $row->rcv_no;
+                    $sisaNota = (int) $row->sisa;
 
                     if ($sisaBayar >= $sisaNota) {
                         // Bayar full → lunas
@@ -267,8 +354,271 @@ new class extends Component {
 
     protected function resetFormFields(): void
     {
-        $this->reset(['suppId', 'suppName', 'sisaChecked', 'jumlah', 'tanggal', 'accId', 'keterangan', 'bayar']);
+        $this->reset(['suppId', 'suppName', 'sisaChecked', 'jumlah', 'baris', 'notaDipilih', 'riwayatBayar',
+            'tanggal', 'shift', 'accId', 'keterangan', 'bayar', 'pratinjau']);
         $this->resetValidation();
+    }
+
+    /* ── Data ── */
+
+    /**
+     * Nota tercentang supplier ini (status H) urut VCOUNT, beserta total/titipan/sisa yang dihitung
+     * ulang dari DB. Rumus total sama dengan daftar: detail diskon kaskade − diskon + PPN + materai.
+     * $kunci = true → header dikunci (dipakai di dalam transaksi tulis).
+     */
+    protected function ambilNotaTerpilih(bool $kunci = false): Collection
+    {
+        $query = DB::table('imtxn_receivehdrsnon')
+            ->select([
+                'rcv_no', 'vcount',
+                DB::raw("to_char(rcv_date,'dd/mm/yyyy') as rcv_date_display"),
+                DB::raw("to_char(due_date,'dd/mm/yyyy') as due_date_display"),
+                'rcv_desc',
+                DB::raw('NVL(rcv_diskon,0) as rcv_diskon'),
+                DB::raw('NVL(rcv_ppn,0) as rcv_ppn'),
+                DB::raw("NVL(rcv_ppn_status,'1') as rcv_ppn_status"),
+                DB::raw('NVL(rcv_materai,0) as rcv_materai'),
+            ])
+            ->where('supp_id', $this->suppId)
+            ->where('rcv_status', 'H')
+            ->where('check_boxstatus', '1')
+            ->orderBy('vcount')
+            ->orderBy('rcv_no');
+
+        if ($kunci) {
+            $query->lockForUpdate();
+        }
+
+        $headers = $query->get();
+        if ($headers->isEmpty()) {
+            return collect();
+        }
+
+        $rcvNos = $headers->pluck('rcv_no')->all();
+
+        $totalDetailMap = DB::table('imtxn_receivedtlsnon')
+            ->select('rcv_no', DB::raw("
+                NVL(SUM(
+                    (NVL(qty,0)*NVL(cost_price,0))
+                    - ((NVL(qty,0)*NVL(cost_price,0)) * NVL(dtl_persen,0)/100)
+                    - NVL(dtl_diskon,0)
+                    - (((NVL(qty,0)*NVL(cost_price,0))
+                        - ((NVL(qty,0)*NVL(cost_price,0)) * NVL(dtl_persen,0)/100)
+                        - NVL(dtl_diskon,0))
+                      * NVL(dtl_persen1,0)/100)
+                    - NVL(dtl_diskon1,0)
+                ),0) as total_detail"))
+            ->whereIn('rcv_no', $rcvNos)
+            ->groupBy('rcv_no')
+            ->pluck('total_detail', 'rcv_no');
+
+        $titipanMap = DB::table('imtxn_receivepaymentsnon')
+            ->select('rcv_no', DB::raw('NVL(SUM(rcvp_value),0) as titipan'))
+            ->whereIn('rcv_no', $rcvNos)
+            ->groupBy('rcv_no')
+            ->pluck('titipan', 'rcv_no');
+
+        return $headers->map(function ($hdr) use ($totalDetailMap, $titipanMap) {
+            $setelahDiskon = (float) ($totalDetailMap[$hdr->rcv_no] ?? 0) - (float) $hdr->rcv_diskon;
+            $ppn = ((string) $hdr->rcv_ppn_status) === '1'
+                ? ($setelahDiskon * (float) $hdr->rcv_ppn) / 100
+                : 0;
+            // Int rupiah sejak awal — selisih sub-1 rupiah kaskade PPN/diskon bikin status nyangkut di 'H'.
+            $hdr->total   = (int) round($setelahDiskon + $ppn + (float) $hdr->rcv_materai);
+            $hdr->titipan = (int) round((float) ($titipanMap[$hdr->rcv_no] ?? 0));
+            $hdr->sisa    = $hdr->total - $hdr->titipan;
+            $hdr->vcount  = $hdr->vcount !== null ? (int) $hdr->vcount : null;
+
+            return $hdr;
+        })->filter(fn ($hdr) => $hdr->sisa > 0)->values();
+    }
+
+    protected function isiBaris(Collection $nota): void
+    {
+        $this->baris = $nota->map(fn ($row) => [
+            'rcvNo'   => (string) $row->rcv_no,
+            'urut'    => $row->vcount,
+            'tgl'     => (string) ($row->rcv_date_display ?? ''),
+            'tempo'   => (string) ($row->due_date_display ?? ''),
+            'ket'     => (string) ($row->rcv_desc ?? ''),
+            'total'   => (int) $row->total,
+            'titipan' => (int) $row->titipan,
+            'sisa'    => (int) $row->sisa,
+        ])->all();
+
+        $this->sisaChecked = (int) $nota->sum('sisa');
+        $this->jumlah = count($this->baris);
+    }
+
+    /**
+     * Riwayat pembayaran satu nota dari receivepayments (sumber titipan), terbaru di atas.
+     * Akun kas & shift diambil dari cashout pasangannya (cashoutdtls rcv_no + cashout_date sama);
+     * pembayaran lama tanpa pasangan tetap tampil dengan akun "-".
+     */
+    protected function ambilRiwayatBayar(string $rcvNo): array
+    {
+        $bayar = DB::table('imtxn_receivepaymentsnon as p')
+            ->leftJoin('immst_employers as e', 'p.emp_id', '=', 'e.emp_id')
+            ->select([
+                'p.rcvp_no', 'p.rcvp_value',
+                DB::raw("to_char(p.rcvp_date,'dd/mm/yyyy hh24:mi:ss') as tgl"),
+                'e.emp_name',
+            ])
+            ->where('p.rcv_no', $rcvNo)
+            ->orderByDesc('p.rcvp_date')
+            ->orderByDesc('p.rcvp_no')
+            ->get();
+
+        $cashout = DB::table('imtxn_cashoutdtlsnon as d')
+            ->join('imtxn_cashouthdrsnon as h', 'h.cashout_no', '=', 'd.cashout_no')
+            ->leftJoin('acmst_accounts as a', 'a.acc_id', '=', 'h.acc_id')
+            ->select([
+                DB::raw("to_char(h.cashout_date,'dd/mm/yyyy hh24:mi:ss') as tgl"),
+                'h.cashout_no', 'h.shift', 'h.acc_id', 'a.acc_name', 'h.cashout_desc',
+            ])
+            ->where('d.rcv_no', $rcvNo)
+            ->get()
+            ->groupBy('tgl');
+
+        // Nota lain yang ikut ditutup kas keluar yang sama — untuk pesan konfirmasi hapus.
+        $notaSekas = DB::table('imtxn_cashoutdtlsnon')
+            ->whereIn('cashout_no', $cashout->flatten()->pluck('cashout_no')->unique()->all() ?: [-1])
+            ->get(['cashout_no', 'rcv_no'])
+            ->groupBy('cashout_no')
+            ->map(fn ($baris) => $baris->pluck('rcv_no')->map(fn ($no) => (string) $no)->unique()->values()->all());
+
+        return $bayar->map(function ($row) use ($cashout, $notaSekas) {
+            $pasangan = $cashout->get($row->tgl)?->first();
+            $cashoutNo = (string) ($pasangan->cashout_no ?? '');
+
+            return [
+                'id'        => (int) $row->rcvp_no,
+                'tgl'       => (string) $row->tgl,
+                'nominal'   => (int) round((float) $row->rcvp_value),
+                'petugas'   => (string) ($row->emp_name ?? ''),
+                'cashoutNo' => (string) ($pasangan->cashout_no ?? ''),
+                'shift'     => (string) ($pasangan->shift ?? ''),
+                'accId'     => (string) ($pasangan->acc_id ?? ''),
+                'accName'   => (string) ($pasangan->acc_name ?? ''),
+                'notaSekas' => $cashoutNo !== '' ? ($notaSekas[$cashoutNo] ?? []) : [],
+                'angsuranAwal' => str_starts_with((string) ($pasangan->cashout_desc ?? ''), 'Angsuran Awal'),
+                'bolehHapus' => $cashoutNo !== ''
+                    && $this->bolehHapusPembayaran((string) $row->tgl, (string) ($pasangan->cashout_desc ?? '')),
+            ];
+        })->all();
+    }
+
+    protected function bolehHapusPembayaran(string $tanggal, string $keterangan): bool
+    {
+        if (!auth()->user()?->hasAnyRole(self::ROLE_HAPUS_BAYAR)) {
+            return false;
+        }
+        if (str_starts_with($keterangan, 'Angsuran Awal')) {
+            return false; // dibatalkan lewat menu penerimaan (batal posting)
+        }
+        try {
+            return Carbon::createFromFormat('d/m/Y H:i:s', $tanggal)->year === (int) now()->year;
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
+    /**
+     * Hapus satu kas keluar (salah bayar) beserta pasangan receivepayments di SETIAP nota yang
+     * ditutupnya. receivepayments tak menyimpan cashout_no, jadi pasangan = rcv_no + tanggal-jam
+     * yang sama dengan cashout_date; wajib tepat satu per nota dan jumlahnya = cashout_value —
+     * kalau tidak (data lama Forms), ditolak daripada menghapus baris yang salah.
+     */
+    public function hapusPembayaran(int $cashoutNo): void
+    {
+        try {
+            $hasil = DB::transaction(function () use ($cashoutNo) {
+                $kas = DB::table('imtxn_cashouthdrsnon')->where('cashout_no', $cashoutNo)->lockForUpdate()->first([
+                    'cashout_no', 'supp_id', 'cashout_desc', 'shift', 'acc_id',
+                    DB::raw('NVL(cashout_value,0) as nilai'),
+                    DB::raw("to_char(cashout_date,'dd/mm/yyyy hh24:mi:ss') as tgl"),
+                ]);
+                if (!$kas || (string) $kas->supp_id !== (string) $this->suppId) {
+                    throw new \RuntimeException('Data pembayaran tidak ditemukan.');
+                }
+                if (!$this->bolehHapusPembayaran((string) $kas->tgl, (string) ($kas->cashout_desc ?? ''))) {
+                    throw new \RuntimeException('Pembayaran ini tidak boleh dihapus (angsuran awal, beda tahun, atau Anda tidak berwenang).');
+                }
+
+                $notaList = DB::table('imtxn_cashoutdtlsnon')->where('cashout_no', $cashoutNo)->pluck('rcv_no')->map(fn ($no) => (string) $no)->unique()->values()->all();
+                if (empty($notaList) || ($this->notaDipilih !== null && !in_array($this->notaDipilih, $notaList, true))) {
+                    throw new \RuntimeException('Kas keluar ini tidak terhubung ke nota yang dipilih.');
+                }
+
+                DB::table('imtxn_receivehdrsnon')->whereIn('rcv_no', $notaList)->lockForUpdate()->get(['rcv_no']);
+
+                $pasangan = DB::table('imtxn_receivepaymentsnon')
+                    ->whereIn('rcv_no', $notaList)
+                    ->whereRaw("to_char(rcvp_date,'dd/mm/yyyy hh24:mi:ss') = ?", [$kas->tgl])
+                    ->get(['rcvp_no', 'rcv_no', 'rcvp_value']);
+
+                $perNota = $pasangan->groupBy(fn ($row) => (string) $row->rcv_no);
+                $tepat = count($notaList) === $perNota->count()
+                    && $perNota->every(fn ($baris) => $baris->count() === 1)
+                    && (int) round((float) $pasangan->sum('rcvp_value')) === (int) round((float) $kas->nilai);
+                if (!$tepat) {
+                    throw new \RuntimeException('Pasangan pembayaran per nota tidak bisa dipastikan (data lama) — tidak dihapus. Hubungi admin.');
+                }
+
+                DB::table('imtxn_receivepaymentsnon')->whereIn('rcvp_no', $pasangan->pluck('rcvp_no')->all())->delete();
+                DB::table('imtxn_cashoutdtlsnon')->where('cashout_no', $cashoutNo)->delete();
+                DB::table('imtxn_cashouthdrsnon')->where('cashout_no', $cashoutNo)->delete();
+                // Uang dicabut → nota yang tadinya lunas kembali menjadi hutang.
+                DB::table('imtxn_receivehdrsnon')->whereIn('rcv_no', $notaList)->where('rcv_status', 'L')
+                    ->update(['rcv_status' => 'H', 'pay_date' => null]);
+
+                return ['nilai' => (int) round((float) $kas->nilai), 'nota' => $notaList, 'kas' => $kas];
+            });
+        } catch (\RuntimeException $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
+            return;
+        } catch (QueryException $e) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal menghapus pembayaran: ' . $e->getMessage());
+            return;
+        }
+
+        Log::info('Hapus pembayaran hutang Non-Medis (salah bayar)', [
+            'cashout_no' => $cashoutNo,
+            'nilai' => $hasil['nilai'],
+            'nota' => $hasil['nota'],
+            'tanggal' => $hasil['kas']->tgl,
+            'shift' => $hasil['kas']->shift,
+            'acc_id' => $hasil['kas']->acc_id,
+            'user' => auth()->user()?->myuser_code,
+        ]);
+
+        // Segarkan nota, riwayat, dan daftar di halaman (tanpa mengosongkan supplier).
+        $nota = $this->ambilNotaTerpilih();
+        $this->isiBaris($nota);
+        $this->bayar = $this->sisaChecked;
+        $this->resetErrorBag('bayar');
+        $this->riwayatBayar = $this->notaDipilih ? $this->ambilRiwayatBayar($this->notaDipilih) : [];
+        $this->dispatch('hutang-non-medis.refresh');
+        $this->dispatch('toast', type: 'success', message: 'Pembayaran Rp ' . number_format($hasil['nilai'])
+            . ' (' . count($hasil['nota']) . ' nota) dihapus. Saldo kas pada tanggal bayar tersebut ikut berubah.');
+    }
+
+
+    protected function shiftPadaJam(string $tanggal): ?string
+    {
+        try {
+            $jam = Carbon::createFromFormat('d/m/Y H:i:s', $tanggal)->format('H:i:s');
+        } catch (\Throwable) {
+            return null;
+        }
+
+        $shift = DB::table('rstxn_shiftctls')
+            ->whereNotNull('shift_start')
+            ->whereNotNull('shift_end')
+            ->whereRaw('? BETWEEN shift_start AND shift_end', [$jam])
+            ->value('shift');
+
+        return $shift !== null ? (string) $shift : null;
     }
 };
 ?>
@@ -285,42 +635,29 @@ new class extends Component {
             {{-- HEADER --}}
             <x-modul-dokumen.header judul="Proses Pembayaran Hutang Non-Medis"
                 ikon="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
-                Pembayaran dialokasikan ke nota yang dicentang sesuai urutan klik (nota terlama dulu).
+                Nominal dialokasikan ke nota tercentang sesuai urutan klik — nota urutan 1 dilunasi lebih dulu.
                 <x-slot:badge>
-                    <x-badge variant="info">{{ $jumlah }} nota terpilih</x-badge>
+                    @if (filled($suppName))
+                        <x-badge variant="info">{{ $suppName }}</x-badge>
+                    @endif
+                    <x-badge variant="gray">{{ $jumlah }} nota</x-badge>
                     <x-badge variant="warning">Sisa Rp {{ number_format($sisaChecked) }}</x-badge>
                 </x-slot:badge>
             </x-modul-dokumen.header>
 
             {{-- BODY --}}
             <div class="flex-1 px-4 py-4 bg-surface-soft/70 dark:bg-gray-950/20">
-                <div class="space-y-4 max-w-4xl">
-
-                    {{-- Info supplier & sisa hutang --}}
-                    <div class="px-4 py-3 border border-hairline rounded-2xl bg-canvas dark:bg-gray-900 dark:border-gray-700">
-                        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                            <div>
-                                <div class="text-[11px] font-semibold tracking-wide uppercase text-muted dark:text-gray-400">Supplier</div>
-                                <div class="text-base font-semibold text-ink dark:text-gray-100">{{ $suppName ?? '-' }}</div>
-                                <div class="font-mono text-xs text-muted">Kode: {{ $suppId ?? '-' }}</div>
-                            </div>
-                            <div class="sm:text-right">
-                                <div class="text-[11px] font-semibold tracking-wide uppercase text-muted dark:text-gray-400">Total Sisa Hutang Terpilih</div>
-                                <div class="font-mono text-2xl font-bold leading-none text-error dark:text-rose-400">
-                                    Rp {{ number_format($sisaChecked) }}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                {{-- Kiri: data pembayaran · Kanan: nota yang diproses + riwayat --}}
+                <div class="grid items-start grid-cols-1 gap-4 xl:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
 
                     <x-border-form title="Data Pembayaran">
                         <div class="space-y-4">
-                            <div class="grid grid-cols-1 gap-4 sm:grid-cols-12 items-start">
+                            <div class="grid items-start grid-cols-1 gap-4 sm:grid-cols-12">
                                 {{-- Tanggal --}}
-                                <div class="sm:col-span-5">
+                                <div class="sm:col-span-8">
                                     <x-input-label value="Tanggal Pembayaran" :required="true" />
                                     <div class="flex items-center gap-2 mt-1">
-                                        <x-text-input type="text" wire:model="tanggal"
+                                        <x-text-input type="text" wire:model.live.debounce.500ms="tanggal"
                                             placeholder="dd/mm/yyyy hh:mm:ss" class="w-full text-sm"
                                             x-ref="inputTanggal" :error="$errors->has('tanggal')"
                                             x-on:keydown.enter.prevent="($refs.lovKasWrapper?.querySelector('input:not([disabled])') || $refs.inputBayar)?.focus()" />
@@ -329,6 +666,20 @@ new class extends Component {
                                     <x-input-error :messages="$errors->get('tanggal')" class="mt-1" />
                                 </div>
 
+                                {{-- Shift — otomatis dari jam Tanggal Pembayaran, tetap bisa dipilih manual --}}
+                                <div class="sm:col-span-4">
+                                    <x-input-label value="Shift" :required="true" />
+                                    <x-select-input wire:model="shift" class="w-full mt-1" :error="$errors->has('shift')">
+                                        <option value="">-- Shift --</option>
+                                        <option value="1">Shift 1</option>
+                                        <option value="2">Shift 2</option>
+                                        <option value="3">Shift 3</option>
+                                    </x-select-input>
+                                    <x-input-error :messages="$errors->get('shift')" class="mt-1" />
+                                </div>
+                            </div>
+
+                            <div class="grid items-start grid-cols-1 gap-4 sm:grid-cols-12">
                                 {{-- Akun Kas --}}
                                 <div class="sm:col-span-7" x-ref="lovKasWrapper">
                                     <livewire:lov.kas.lov-kas
@@ -341,10 +692,8 @@ new class extends Component {
                                         wire:key="lov-kas-hutang-non-medis-{{ $suppId ?? 'empty' }}-{{ $renderVersions['modal'] ?? 0 }}" />
                                     <x-input-error :messages="$errors->get('accId')" class="mt-1" />
                                 </div>
-                            </div>
 
-                            <div class="grid grid-cols-1 gap-4 sm:grid-cols-12 items-start">
-                                {{-- Nominal --}}
+                                {{-- Nominal — sebaris dengan Akun Kas --}}
                                 <div class="sm:col-span-5">
                                     <x-input-label value="Nominal Bayar (Rp)" :required="true" />
                                     <div class="mt-1">
@@ -359,7 +708,7 @@ new class extends Component {
                                 </div>
 
                                 {{-- Keterangan --}}
-                                <div class="sm:col-span-7">
+                                <div class="sm:col-span-12">
                                     <x-input-label value="Keterangan (opsional)" />
                                     <x-text-input type="text" wire:model="keterangan"
                                         placeholder="Keterangan tambahan..." class="w-full mt-1 text-sm"
@@ -370,20 +719,133 @@ new class extends Component {
                         </div>
                     </x-border-form>
 
-                    {{-- Cara alokasi --}}
-                    <div class="px-4 py-3 border rounded-2xl border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700">
-                        <div class="flex items-start gap-2">
-                            <svg class="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                            </svg>
-                            <div class="text-xs text-amber-800 dark:text-amber-300">
-                                <p class="font-semibold">Cara alokasi pembayaran:</p>
-                                <ul class="mt-1 ml-5 space-y-0.5 list-disc">
-                                    <li>Nota dialokasikan sesuai <strong>urutan klik</strong> (badge angka di tabel) — user yang menentukan nota mana dilunasi duluan</li>
-                                    <li>Nominal bayar dialokasikan penuh sampai nota lunas, sisa diteruskan ke nota berikutnya</li>
-                                    <li>Kalau nominal kurang dari total sisa, nota terakhir menjadi <strong>cicilan</strong> (status tetap Hutang)</li>
-                                </ul>
+                    <div class="space-y-4">
+                        {{-- Nota yang akan dibayar --}}
+                        <div class="overflow-hidden border border-hairline rounded-2xl bg-canvas dark:bg-gray-900 dark:border-gray-700">
+                            <div class="px-4 py-3 border-b border-hairline dark:border-gray-700">
+                                <h3 class="text-sm font-semibold tracking-wide uppercase text-muted dark:text-gray-400">
+                                    Nota yang diproses ({{ count($baris) }}) — urut klik
+                                </h3>
+                            </div>
+                            <div class="overflow-x-auto overflow-y-auto max-h-[40vh]">
+                                <table class="w-full text-sm">
+                                    <thead class="sticky top-0 z-10 text-left text-muted bg-surface-soft dark:bg-gray-800 dark:text-gray-300">
+                                        <tr>
+                                            <th class="w-12 px-4 py-2 font-semibold text-center">#</th>
+                                            <th class="px-4 py-2 font-semibold">No Nota</th>
+                                            <th class="px-4 py-2 font-semibold">Tgl Beli</th>
+                                            <th class="px-4 py-2 font-semibold">Keterangan</th>
+                                            <th class="px-4 py-2 font-semibold text-right">Sisa</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-hairline dark:divide-gray-700">
+                                        @foreach ($baris as $item)
+                                            @php $notaAktif = $notaDipilih === $item['rcvNo']; @endphp
+                                            <tr wire:key="nota-hutang-{{ $item['rcvNo'] }}"
+                                                wire:click="pilihNota('{{ $item['rcvNo'] }}')"
+                                                title="Klik untuk melihat riwayat pembayaran nota ini"
+                                                class="transition cursor-pointer {{ $notaAktif ? 'bg-brand-green/10 dark:bg-brand-lime/10' : 'hover:bg-surface-soft dark:hover:bg-gray-800/40' }}">
+                                                <td class="px-4 py-2 text-center">
+                                                    <span class="inline-flex items-center justify-center w-6 h-6 text-xs font-bold text-white rounded-full bg-brand-green dark:bg-brand-lime dark:text-gray-900">{{ $item['urut'] ?? '-' }}</span>
+                                                </td>
+                                                <td class="px-4 py-2 font-mono">{{ $item['rcvNo'] }}</td>
+                                                <td class="px-4 py-2 whitespace-nowrap text-muted dark:text-gray-400">
+                                                    {{ $item['tgl'] }}
+                                                    @if (filled($item['tempo']))
+                                                        <div class="text-xs text-amber-700 dark:text-amber-400">Tempo {{ $item['tempo'] }}</div>
+                                                    @endif
+                                                </td>
+                                                <td class="px-4 py-2 text-muted dark:text-gray-400">{{ $item['ket'] ?: '-' }}</td>
+                                                <td class="px-4 py-2 font-mono text-right text-rose-700 dark:text-rose-300 whitespace-nowrap">
+                                                    Rp {{ number_format($item['sisa']) }}
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                    <tfoot class="border-t border-hairline bg-surface-soft dark:bg-gray-800/50 dark:border-gray-700">
+                                        <tr>
+                                            <td colspan="4" class="px-4 py-2 font-semibold text-muted dark:text-gray-400">Total Sisa</td>
+                                            <td class="px-4 py-2 font-mono font-bold text-right text-ink dark:text-white whitespace-nowrap">
+                                                Rp {{ number_format($sisaChecked) }}
+                                            </td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+
+                        {{-- Riwayat pembayaran nota terpilih — hanya tampil --}}
+                        <div class="overflow-hidden border border-hairline rounded-2xl bg-canvas dark:bg-gray-900 dark:border-gray-700">
+                            <div class="flex items-center justify-between gap-2 px-4 py-3 border-b border-hairline dark:border-gray-700">
+                                <h3 class="text-sm font-semibold tracking-wide uppercase text-muted dark:text-gray-400">
+                                    Riwayat Pembayaran{{ $notaDipilih ? ' — Nota ' . $notaDipilih : '' }}
+                                </h3>
+                                @if ($notaDipilih)
+                                    <x-badge variant="gray">{{ count($riwayatBayar) }} pembayaran</x-badge>
+                                @endif
+                            </div>
+                            <div class="overflow-x-auto overflow-y-auto max-h-[30vh]">
+                                <table class="w-full text-sm">
+                                    <thead class="sticky top-0 z-10 text-left text-muted bg-surface-soft dark:bg-gray-800 dark:text-gray-300">
+                                        <tr>
+                                            <th class="px-4 py-2 font-semibold">Tanggal</th>
+                                            <th class="px-4 py-2 font-semibold">Akun Kas</th>
+                                            <th class="px-4 py-2 font-semibold">Petugas</th>
+                                            <th class="px-4 py-2 font-semibold text-right">Nominal</th>
+                                            <th class="w-16 px-4 py-2 font-semibold text-center">Aksi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-hairline dark:divide-gray-700">
+                                        @forelse ($riwayatBayar as $row)
+                                            <tr wire:key="riwayat-hutang-{{ $row['id'] }}">
+                                                <td class="px-4 py-2 whitespace-nowrap">
+                                                    <div class="text-muted dark:text-gray-400">{{ $row['tgl'] }}</div>
+                                                    <div class="text-xs text-muted dark:text-gray-400">
+                                                        Shift {{ $row['shift'] ?: '-' }}{{ $row['cashoutNo'] ? ' · Kas keluar ' . $row['cashoutNo'] : '' }}
+                                                    </div>
+                                                </td>
+                                                <td class="px-4 py-2">
+                                                    <div class="text-ink dark:text-gray-200">{{ $row['accName'] ?: '-' }}</div>
+                                                    <div class="font-mono text-xs text-muted dark:text-gray-400">{{ $row['accId'] ?: '-' }}</div>
+                                                </td>
+                                                <td class="px-4 py-2 text-muted dark:text-gray-400">{{ $row['petugas'] ?: '-' }}</td>
+                                                <td class="px-4 py-2 font-mono text-right text-ink dark:text-gray-200 whitespace-nowrap">
+                                                    Rp {{ number_format($row['nominal']) }}
+                                                </td>
+                                                <td class="px-4 py-2 text-center">
+                                                    @if ($row['bolehHapus'])
+                                                        @php
+                                                            $notaLain = array_values(array_diff($row['notaSekas'], [$notaDipilih]));
+                                                        @endphp
+                                                        <x-hapus-button action="hapusPembayaran({{ (int) $row['cashoutNo'] }})"
+                                                            title="Hapus Pembayaran (salah bayar)"
+                                                            :message="'Hapus kas keluar No ' . $row['cashoutNo'] . ' tanggal ' . $row['tgl'] . ' (shift ' . ($row['shift'] ?: '-') . ', ' . ($row['accName'] ?: $row['accId']) . ')?' . (count($notaLain) ? ' Kas keluar ini JUGA membayar nota ' . implode(', ', $notaLain) . ' — semuanya ikut kembali menjadi hutang.' : '') . ' PERHATIAN: saldo kas pada tanggal & shift tersebut ikut BERUBAH MUNDUR. Pastikan uangnya memang tidak jadi dibayarkan ke supplier.'"
+                                                            confirmText="Ya, hapus pembayaran" />
+                                                    @elseif ($row['angsuranAwal'])
+                                                        <span class="text-xs text-muted dark:text-gray-400" title="Batalkan lewat menu penerimaan">awal</span>
+                                                    @endif
+                                                </td>
+                                            </tr>
+                                        @empty
+                                            <tr>
+                                                <td colspan="5" class="px-4 py-6 text-sm text-center text-muted-soft dark:text-gray-500">
+                                                    {{ $notaDipilih ? 'Belum ada pembayaran untuk nota ini.' : 'Klik salah satu nota di atas untuk melihat riwayat pembayarannya.' }}
+                                                </td>
+                                            </tr>
+                                        @endforelse
+                                    </tbody>
+                                    @if (!empty($riwayatBayar))
+                                        <tfoot class="border-t border-hairline bg-surface-soft dark:bg-gray-800/50 dark:border-gray-700">
+                                            <tr>
+                                                <td colspan="3" class="px-4 py-2 font-semibold text-muted dark:text-gray-400">Total sudah dibayar</td>
+                                                <td class="px-4 py-2 font-mono font-bold text-right text-brand-green dark:text-brand-lime whitespace-nowrap">
+                                                    Rp {{ number_format(collect($riwayatBayar)->sum('nominal')) }}
+                                                </td>
+                                                <td></td>
+                                            </tr>
+                                        </tfoot>
+                                    @endif
+                                </table>
                             </div>
                         </div>
                     </div>
@@ -395,19 +857,86 @@ new class extends Component {
                 <div class="flex items-center justify-between gap-3">
                     <div class="text-xs text-muted dark:text-gray-400">
                         Urutan <span class="px-1.5 py-0.5 font-semibold rounded border border-hairline bg-canvas text-body dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200">Enter</span>:
-                        Tanggal → Akun Kas → Nominal → Keterangan → tombol Proses.
+                        Tanggal → Akun Kas → Nominal → Keterangan → tombol Proses. Nota yang tertutup penuh berubah menjadi Lunas.
                     </div>
 
                     <div class="flex justify-end gap-2">
                         <x-secondary-button type="button" wire:click="closeModal"><x-ikon nama="batal" /> Batal</x-secondary-button>
-                        <x-primary-button type="button" wire:click="processBayar" x-ref="btnProses"
-                            wire:loading.attr="disabled" wire:target="processBayar">
-                            <span wire:loading.remove wire:target="processBayar" class="inline-flex items-center gap-2"><x-ikon nama="proses" /> Proses Pembayaran</span>
-                            <span wire:loading wire:target="processBayar"><x-loading /> Memproses...</span>
+                        <x-primary-button type="button" wire:click="siapkanKonfirmasi" x-ref="btnProses"
+                            :disabled="(int) $bayar > $sisaChecked"
+                            wire:loading.attr="disabled" wire:target="siapkanKonfirmasi">
+                            <span wire:loading.remove wire:target="siapkanKonfirmasi" class="inline-flex items-center gap-2"><x-ikon nama="proses" /> Proses Pembayaran</span>
+                            <span wire:loading wire:target="siapkanKonfirmasi"><x-loading /> Memeriksa...</span>
                         </x-primary-button>
                     </div>
                 </div>
             </div>
+
+            {{-- KONFIRMASI — ringkasan alokasi sebelum uang tercatat --}}
+            @if (!empty($pratinjau))
+                <div class="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-gray-900/50"
+                    x-data
+                    x-init="$nextTick(() => $refs.btnYaProses?.focus())">
+                    <div class="w-full max-w-lg overflow-hidden border shadow-xl bg-canvas rounded-2xl border-hairline dark:bg-gray-900 dark:border-gray-700">
+                        <div class="px-5 py-4 border-b border-hairline dark:border-gray-700">
+                            <h3 class="text-base font-semibold text-ink dark:text-gray-100">Konfirmasi Pembayaran Hutang</h3>
+                            <p class="mt-0.5 text-sm text-muted dark:text-gray-400">
+                                Periksa nominal &amp; nota yang akan lunas sebelum diproses.
+                            </p>
+                        </div>
+
+                        <div class="px-5 py-4 space-y-3">
+                            <div class="flex items-baseline justify-between gap-3">
+                                <span class="text-sm text-muted dark:text-gray-400">
+                                    Bayar ke {{ $suppName }} untuk {{ count($pratinjau['alokasi']) }} nota
+                                </span>
+                                <span class="text-2xl font-bold text-brand-green dark:text-brand-lime whitespace-nowrap">
+                                    Rp {{ number_format($pratinjau['bayar']) }}
+                                </span>
+                            </div>
+
+                            <div class="overflow-y-auto border divide-y max-h-64 rounded-xl border-hairline divide-hairline dark:border-gray-700 dark:divide-gray-700">
+                                @foreach ($pratinjau['alokasi'] as $row)
+                                    <div class="flex items-center justify-between gap-3 px-3 py-2 text-sm" wire:key="pratinjau-hutang-{{ $row['rcvNo'] }}">
+                                        <div class="font-mono text-ink dark:text-gray-200">
+                                            <span class="text-muted dark:text-gray-400">{{ $row['urut'] ?? '-' }}.</span> Nota {{ $row['rcvNo'] }}
+                                        </div>
+                                        <div class="text-right shrink-0">
+                                            <div class="font-mono text-ink dark:text-gray-200">Rp {{ number_format($row['nominal']) }}</div>
+                                            @if ($row['sisaSesudah'] === 0)
+                                                <x-badge variant="success">LUNAS</x-badge>
+                                            @else
+                                                <span class="text-xs text-amber-700 dark:text-amber-300">sisa Rp {{ number_format($row['sisaSesudah']) }}</span>
+                                            @endif
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+
+                            <div class="text-sm text-muted dark:text-gray-400">
+                                Akun Kas: <strong class="text-ink dark:text-gray-200">{{ $pratinjau['accName'] }}</strong>
+                                · Shift <strong class="text-ink dark:text-gray-200">{{ $shift }}</strong>
+                                · {{ $tanggal }}
+                            </div>
+
+                            @if ($pratinjau['bayar'] >= $pratinjau['totalSisa'])
+                                <p class="px-3 py-2 text-xs border rounded-lg text-amber-800 bg-amber-50 border-amber-200 dark:text-amber-200 dark:bg-amber-900/20 dark:border-amber-700">
+                                    Seluruh nota terpilih akan LUNAS dan hilang dari daftar hutang. Pastikan nominalnya benar.
+                                </p>
+                            @endif
+                        </div>
+
+                        <div class="flex justify-end gap-2 px-5 py-4 border-t border-hairline bg-surface-soft dark:bg-gray-800/50 dark:border-gray-700">
+                            <x-secondary-button type="button" wire:click="batalKonfirmasi"><x-ikon nama="batal" /> Batal</x-secondary-button>
+                            <x-primary-button type="button" wire:click="prosesBayar" x-ref="btnYaProses"
+                                wire:loading.attr="disabled" wire:target="prosesBayar">
+                                <span wire:loading.remove wire:target="prosesBayar" class="inline-flex items-center gap-2"><x-ikon nama="proses" /> Ya, proses</span>
+                                <span wire:loading wire:target="prosesBayar"><x-loading /> Memproses...</span>
+                            </x-primary-button>
+                        </div>
+                    </div>
+                </div>
+            @endif
         </div>
     </x-modal>
 </div>

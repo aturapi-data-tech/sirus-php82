@@ -35,6 +35,7 @@ new class extends Component {
     public function clearSupplier(): void
     {
         $this->reset(['suppId', 'supplier']);
+        unset($this->rcvList, $this->summary);
     }
 
     #[On('hutang-pbf.paid')]
@@ -43,6 +44,13 @@ new class extends Component {
         // Auto-clear supplier setelah bayar sukses → user balik ke fresh state.
         // Kalau ada cicilan tersisa, user tinggal search supplier yg sama lagi.
         $this->reset(['suppId', 'supplier']);
+        unset($this->rcvList, $this->summary);
+    }
+
+    /** Hapus salah bayar di modal → angka daftar disegarkan, supplier tetap. */
+    #[On('hutang-pbf.refresh')]
+    public function segarkanDaftar(): void
+    {
         unset($this->rcvList, $this->summary);
     }
 
@@ -281,193 +289,173 @@ new class extends Component {
         title="Pembayaran Hutang PBF"
         subtitle="Pelunasan / angsuran hutang ke PBF / supplier obat" />
 
-    <div class="w-full min-h-[calc(100vh-5rem)] bg-canvas dark:bg-gray-800">
-        <div class="px-6 pt-4 pb-6 space-y-4">
+    <div class="w-full h-[calc(100vh-5rem)] flex flex-col bg-surface-soft dark:bg-gray-800">
+        <div class="flex flex-col flex-1 min-h-0 px-6 pt-2 pb-6">
 
-            {{-- 1) PILIH SUPPLIER --}}
-            <div class="bg-canvas border border-hairline shadow-sm rounded-2xl dark:border-gray-700 dark:bg-gray-900">
-                <div class="flex items-center justify-between px-5 py-4 border-b border-hairline dark:border-gray-700">
+            {{-- DUA KOLOM (pola Pembayaran Piutang Per Pasien): KIRI = supplier + ringkasan + Proses;
+                 KANAN = daftar nota hutang supplier terpilih. --}}
+            <div class="flex flex-col flex-1 min-h-0 gap-4 mt-2 lg:flex-row">
+
+                {{-- KOLOM KIRI --}}
+                <div class="flex flex-col gap-5 p-5 overflow-y-auto border shadow-sm shrink-0 lg:w-96 bg-canvas border-hairline rounded-2xl dark:bg-gray-900 dark:border-gray-700">
+
                     <div>
-                        <h3 class="text-base font-semibold text-ink dark:text-gray-100">
-                            1. Pilih Supplier / PBF
-                        </h3>
-                        <p class="mt-1 text-xs text-muted dark:text-gray-400">
-                            Cari berdasarkan kode / nama / telp supplier
+                        @if ($suppId)
+                            <div class="flex items-start justify-between gap-2">
+                                <x-input-label value="Supplier" />
+                                <x-secondary-button type="button" wire:click="clearSupplier"
+                                    title="Ganti supplier / mulai transaksi baru"><x-ikon nama="ubah" /> Ganti</x-secondary-button>
+                            </div>
+                            <div class="px-4 py-3 mt-2 border rounded-xl border-hairline bg-surface-soft dark:bg-gray-800 dark:border-gray-700">
+                                <div class="font-semibold text-ink dark:text-gray-100">{{ $supplier['supp_name'] ?? '-' }}</div>
+                                <div class="font-mono text-xs text-muted dark:text-gray-400">Kode {{ $suppId }}</div>
+                                @if (filled($supplier['phone'] ?? null))
+                                    <div class="text-xs text-muted dark:text-gray-400">Telp {{ $supplier['phone'] }}</div>
+                                @endif
+                                @if (filled($supplier['address'] ?? null))
+                                    <div class="text-xs text-muted dark:text-gray-400">{{ $supplier['address'] }}</div>
+                                @endif
+                            </div>
+                        @else
+                            <livewire:lov.supplier.lov-supplier
+                                target="hutang-pbf-supplier"
+                                label="Cari Supplier"
+                                placeholder="Ketik kode / nama / telp supplier..."
+                                wire:key="lov-supplier-hutang-pbf" />
+                        @endif
+                    </div>
+
+                    {{-- Ringkasan + Proses: langsung di bawah supplier supaya tak terpotong layar --}}
+                    <div class="pt-4 space-y-3 border-t border-hairline dark:border-gray-700">
+                        @if ($suppId)
+                            <div class="space-y-1.5 text-sm">
+                                <div class="flex justify-between gap-3">
+                                    <span class="text-muted dark:text-gray-400">Jumlah nota</span>
+                                    <span class="font-medium text-ink dark:text-gray-100">{{ $this->summary['jumlah'] }}</span>
+                                </div>
+                                <div class="flex justify-between gap-3">
+                                    <span class="text-muted dark:text-gray-400">Total tagihan</span>
+                                    <span class="font-medium text-body dark:text-gray-300">Rp {{ number_format($this->summary['tottotal'], 0, ',', '.') }}</span>
+                                </div>
+                                <div class="flex justify-between gap-3">
+                                    <span class="text-muted dark:text-gray-400">Sudah dibayar (titipan)</span>
+                                    <span class="font-medium text-emerald-700 dark:text-emerald-400">Rp {{ number_format($this->summary['tottitipan'], 0, ',', '.') }}</span>
+                                </div>
+                                <div class="flex justify-between gap-3 pt-1.5 border-t border-hairline dark:border-gray-700">
+                                    <span class="font-semibold text-rose-700 dark:text-rose-300">Sisa hutang</span>
+                                    <span class="font-bold text-rose-700 dark:text-rose-300">Rp {{ number_format($this->summary['totsisa'], 0, ',', '.') }}</span>
+                                </div>
+                            </div>
+                        @endif
+
+                        <div class="px-4 py-3 border rounded-xl bg-brand-green/5 border-brand-green/25 dark:bg-brand-lime/10 dark:border-brand-lime/25">
+                            <div class="text-xs font-semibold tracking-wide uppercase text-muted dark:text-gray-400">
+                                Terpilih {{ $this->summary['jumlah_checked'] }} Nota
+                            </div>
+                            <div class="mt-1 text-2xl font-bold leading-none text-brand-green dark:text-brand-lime">
+                                Rp {{ number_format($this->summary['sisa_checked'], 0, ',', '.') }}
+                            </div>
+                        </div>
+
+                        <x-primary-button type="button" wire:click="openProsesBayar" class="justify-center w-full h-11"
+                            wire:loading.attr="disabled" wire:target="openProsesBayar">
+                            <x-ikon nama="proses" />
+                            Proses Pembayaran
+                        </x-primary-button>
+
+                        <p class="text-xs text-muted dark:text-gray-400">
+                            <strong>Urutan klik = urutan bayar</strong> — angka di samping saklar menunjukkan nota mana yang dilunasi lebih dulu.
                         </p>
                     </div>
-                    @if ($suppId)
-                        <x-secondary-button type="button" wire:click="clearSupplier"
-                            title="Reset pilihan supplier untuk transaksi baru">
-                            <x-ikon nama="kembalikan" class="mr-1" />
-                            Transaksi Baru
-                        </x-secondary-button>
-                    @endif
-                </div>
-                <div class="px-5 py-5">
-                    <livewire:lov.supplier.lov-supplier
-                        target="hutang-pbf-supplier"
-                        label="Cari Supplier"
-                        placeholder="Ketik kode / nama / telp supplier..."
-                        :initialSuppId="$suppId"
-                        wire:key="lov-supplier-hutang-pbf-{{ $suppId ?? 'empty' }}" />
-                </div>
-            </div>
-
-            @if ($suppId)
-                {{-- 2) RINGKASAN --}}
-                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
-                    <div class="px-4 py-4 bg-canvas border border-hairline rounded-2xl dark:border-gray-700 dark:bg-gray-900">
-                        <div class="text-xs text-muted dark:text-gray-400">Jumlah Nota</div>
-                        <div class="mt-1 text-2xl font-bold text-ink dark:text-gray-100">{{ $this->summary['jumlah'] }}</div>
-                    </div>
-                    <div class="px-4 py-4 bg-canvas border border-hairline rounded-2xl dark:border-gray-700 dark:bg-gray-900">
-                        <div class="text-xs text-muted dark:text-gray-400">Total Tagihan</div>
-                        <div class="mt-1 font-mono text-xl font-bold text-ink dark:text-gray-100">
-                            Rp {{ number_format($this->summary['tottotal']) }}
-                        </div>
-                    </div>
-                    <div class="px-4 py-4 bg-canvas border border-hairline rounded-2xl dark:border-gray-700 dark:bg-gray-900">
-                        <div class="text-xs text-muted dark:text-gray-400">Sudah Dibayar (Titipan)</div>
-                        <div class="mt-1 font-mono text-xl font-bold text-success dark:text-success">
-                            Rp {{ number_format($this->summary['tottitipan']) }}
-                        </div>
-                    </div>
-                    <div class="px-4 py-4 bg-canvas border border-hairline rounded-2xl dark:border-gray-700 dark:bg-gray-900">
-                        <div class="text-xs text-muted dark:text-gray-400">Sisa Hutang (Semua)</div>
-                        <div class="mt-1 font-mono text-xl font-bold {{ $this->summary['totsisa'] > 0 ? 'text-error dark:text-rose-400' : 'text-success dark:text-success' }}">
-                            Rp {{ number_format($this->summary['totsisa']) }}
-                        </div>
-                    </div>
-                    <div class="px-4 py-4 border-2 rounded-2xl
-                        {{ $this->summary['sisa_checked'] > 0 ? 'border-amber-500 bg-amber-50 dark:bg-amber-950/30' : 'border-gray-300 bg-surface-soft dark:bg-gray-800/50' }}">
-                        <div class="text-xs {{ $this->summary['sisa_checked'] > 0 ? 'text-amber-700 dark:text-amber-400' : 'text-muted' }}">
-                            Akan Dibayar ({{ $this->summary['jumlah_checked'] }} dipilih) ✓
-                        </div>
-                        <div class="mt-1 font-mono text-xl font-bold {{ $this->summary['sisa_checked'] > 0 ? 'text-amber-700 dark:text-amber-400' : 'text-muted-soft' }}">
-                            Rp {{ number_format($this->summary['sisa_checked']) }}
-                        </div>
-                    </div>
                 </div>
 
-                {{-- 3) DETAIL TABEL --}}
-                <div class="bg-canvas border border-hairline shadow-sm rounded-2xl dark:border-gray-700 dark:bg-gray-900">
-                    <div class="flex items-center justify-between px-5 py-4 border-b border-hairline dark:border-gray-700">
-                        <div>
-                            <h3 class="text-base font-semibold text-ink dark:text-gray-100">
-                                2. Daftar Hutang
-                            </h3>
-                            <p class="mt-1 text-xs text-muted dark:text-gray-400">
-                                Centang nota dengan toggle. <strong>Urutan klik = urutan bayar</strong> (badge angka di samping toggle).
-                                {{ $this->summary['jumlah_checked'] }} dari {{ $this->summary['jumlah'] }} dipilih.
-                            </p>
+                {{-- KOLOM KANAN — daftar nota hutang --}}
+                <div class="flex flex-col flex-1 min-w-0 min-h-0 border shadow-sm bg-canvas border-hairline rounded-2xl dark:border-gray-700 dark:bg-gray-900">
+                    @php $allChecked = $this->rcvList->isNotEmpty() && $this->rcvList->every(fn ($r) => $r->is_checked); @endphp
+                    <div class="flex items-center justify-between gap-3 px-5 py-3 border-b border-hairline dark:border-gray-700">
+                        <div class="text-sm font-semibold tracking-wide uppercase text-muted dark:text-gray-300">
+                            Nota Hutang
+                            @if ($suppId)
+                                <span class="font-normal normal-case">({{ $this->summary['jumlah_checked'] }} dari {{ $this->summary['jumlah'] }} dipilih)</span>
+                            @endif
                         </div>
-                        <x-primary-button type="button" wire:click="openProsesBayar"
-                            @class(['opacity-50 cursor-not-allowed' => $this->summary['sisa_checked'] <= 0])>
-                            <x-ikon nama="proses" />
-                            Proses Pembayaran →
-                        </x-primary-button>
+                        @if ($suppId)
+                            <x-toggle :current="$allChecked ? '1' : '0'" trueValue="1" falseValue="0"
+                                wireClick="toggleCheckBoxAll" label="Centang semua nota"
+                                title="Nyala = centang semua nota (urut tanggal beli), mati = kosongkan pilihan" />
+                        @endif
                     </div>
 
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full text-sm">
-                            <thead class="text-muted bg-surface-soft dark:bg-gray-800 dark:text-gray-200">
-                                <tr class="text-left">
-                                    @php
-                                        $allChecked = $this->rcvList->isNotEmpty() && $this->rcvList->every(fn ($r) => $r->is_checked);
-                                    @endphp
-                                    <th class="px-3 py-2 font-semibold text-center w-16">
-                                        <x-toggle :current="$allChecked ? '1' : '0'" trueValue="1" falseValue="0"
-                                            wireClick="toggleCheckBoxAll" />
-                                    </th>
-                                    <th class="px-3 py-2 font-semibold">No Nota</th>
-                                    <th class="px-3 py-2 font-semibold">Tgl Beli</th>
-                                    <th class="px-3 py-2 font-semibold">Jatuh Tempo</th>
-                                    <th class="px-3 py-2 font-semibold">Keterangan</th>
-                                    <th class="px-3 py-2 font-semibold text-right text-ink dark:text-gray-100">Total</th>
-                                    <th class="px-3 py-2 font-semibold text-right text-emerald-700">Titipan</th>
-                                    <th class="px-3 py-2 font-semibold text-right text-error">Sisa</th>
+                    <div class="flex-1 min-h-0 overflow-x-auto overflow-y-auto">
+                        <table class="w-full min-w-full text-sm">
+                            <thead class="sticky top-0 z-10 text-left text-muted bg-surface-soft dark:bg-gray-800 dark:text-gray-300">
+                                <tr class="text-xs font-semibold tracking-wide uppercase">
+                                    <th class="w-28 px-4 py-3">Pilih</th>
+                                    <th class="px-4 py-3">No Nota</th>
+                                    <th class="px-4 py-3">Tgl Beli</th>
+                                    <th class="px-4 py-3">Jatuh Tempo</th>
+                                    <th class="px-4 py-3">Keterangan</th>
+                                    <th class="px-4 py-3 text-right">Total</th>
+                                    <th class="px-4 py-3 text-right">Titipan</th>
+                                    <th class="px-4 py-3 text-right">Sisa</th>
                                 </tr>
                             </thead>
-                            <tbody class="text-body divide-y divide-hairline dark:divide-gray-700 dark:text-gray-200">
-                                @forelse($this->rcvList as $row)
+                            <tbody class="divide-y text-body divide-hairline dark:divide-gray-700 dark:text-gray-200">
+                                @forelse ($this->rcvList as $row)
                                     <tr wire:key="hutang-pbf-{{ $row->rcv_no }}"
-                                        class="hover:bg-surface-soft dark:hover:bg-gray-800/60
-                                            {{ $row->is_checked ? 'bg-amber-50/60 dark:bg-amber-950/20' : '' }}">
-                                        <td class="px-3 py-2">
+                                        class="transition {{ $row->is_checked ? 'bg-brand-green/5 dark:bg-brand-lime/10' : 'hover:bg-surface-soft dark:hover:bg-gray-800/60' }}">
+                                        <td class="px-4 py-2.5">
                                             <div class="flex items-center gap-2">
                                                 <x-toggle :current="$row->is_checked ? '1' : '0'" trueValue="1" falseValue="0"
-                                                    wireClick="toggleCheckBox({{ $row->rcv_no }})" />
+                                                    wireClick="toggleCheckBox({{ $row->rcv_no }})"
+                                                    title="Pilih nota ini untuk dibayar" />
                                                 @if ($row->is_checked && $row->vcount !== null)
-                                                    <span class="inline-flex items-center justify-center w-6 h-6 text-xs font-bold rounded-full bg-amber-500 text-white"
-                                                        title="Urutan bayar (vcount)">
-                                                        {{ $row->vcount }}
-                                                    </span>
+                                                    <span class="inline-flex items-center justify-center w-6 h-6 text-xs font-bold text-white rounded-full bg-brand-green dark:bg-brand-lime dark:text-gray-900"
+                                                        title="Urutan bayar">{{ $row->vcount }}</span>
                                                 @endif
                                             </div>
                                         </td>
-                                        <td class="px-3 py-2 font-mono whitespace-nowrap">{{ $row->rcv_no }}</td>
-                                        <td class="px-3 py-2 whitespace-nowrap">{{ $row->rcv_date_display }}</td>
-                                        <td class="px-3 py-2 whitespace-nowrap">
+                                        <td class="px-4 py-2.5 font-mono whitespace-nowrap">{{ $row->rcv_no }}</td>
+                                        <td class="px-4 py-2.5 whitespace-nowrap">{{ $row->rcv_date_display }}</td>
+                                        <td class="px-4 py-2.5 whitespace-nowrap">
                                             @if ($row->due_date_display)
                                                 <span class="text-amber-700 dark:text-amber-400">{{ $row->due_date_display }}</span>
                                             @else
                                                 <span class="text-muted-soft">-</span>
                                             @endif
                                         </td>
-                                        <td class="px-3 py-2">{{ $row->rcv_desc ?? '-' }}</td>
-                                        <td class="px-3 py-2 font-mono font-semibold text-right">{{ number_format($row->total) }}</td>
-                                        <td class="px-3 py-2 font-mono text-right text-emerald-700">{{ number_format($row->titipan) }}</td>
-                                        <td class="px-3 py-2 font-mono font-bold text-right text-error">{{ number_format($row->sisa) }}</td>
+                                        <td class="px-4 py-2.5">{{ $row->rcv_desc ?? '-' }}</td>
+                                        <td class="px-4 py-2.5 font-mono text-right whitespace-nowrap">{{ number_format($row->total, 0, ',', '.') }}</td>
+                                        <td class="px-4 py-2.5 font-mono text-right text-emerald-700 dark:text-emerald-400 whitespace-nowrap">{{ number_format($row->titipan, 0, ',', '.') }}</td>
+                                        <td class="px-4 py-2.5 font-mono font-bold text-right text-rose-700 dark:text-rose-300 whitespace-nowrap">{{ number_format($row->sisa, 0, ',', '.') }}</td>
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="8" class="px-4 py-12 text-center text-muted dark:text-gray-400">
+                                        <td colspan="8" class="px-6 py-16 text-center text-muted dark:text-gray-400">
                                             <div class="flex flex-col items-center gap-2">
-                                                <svg class="w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                        d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                                                <svg class="w-10 h-10 text-hairline" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                                 </svg>
-                                                <p>Tidak ada hutang untuk supplier ini.</p>
-                                                <p class="text-xs text-muted-soft">Supplier tidak memiliki nota dengan status Hutang (rcv_status='H').</p>
+                                                <span>{{ $suppId ? 'Supplier ini tidak punya nota hutang.' : 'Pilih supplier dulu untuk melihat daftar hutangnya.' }}</span>
                                             </div>
                                         </td>
                                     </tr>
                                 @endforelse
                             </tbody>
                             @if ($this->rcvList->isNotEmpty())
-                                <tfoot class="text-body bg-surface-soft dark:bg-gray-800 dark:text-gray-200">
-                                    <tr class="font-semibold">
-                                        <td colspan="5" class="px-3 py-3 text-right">TOTAL SEMUA</td>
-                                        <td class="px-3 py-3 font-mono text-right">Rp {{ number_format($this->summary['tottotal']) }}</td>
-                                        <td class="px-3 py-3 font-mono text-right text-emerald-700">Rp {{ number_format($this->summary['tottitipan']) }}</td>
-                                        <td class="px-3 py-3 font-mono text-right text-error">Rp {{ number_format($this->summary['totsisa']) }}</td>
+                                <tfoot class="sticky bottom-0 z-10 font-semibold border-t text-body bg-surface-soft border-hairline dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700">
+                                    <tr>
+                                        <td colspan="5" class="px-4 py-3 text-right">TOTAL</td>
+                                        <td class="px-4 py-3 font-mono text-right whitespace-nowrap">{{ number_format($this->summary['tottotal'], 0, ',', '.') }}</td>
+                                        <td class="px-4 py-3 font-mono text-right text-emerald-700 dark:text-emerald-400 whitespace-nowrap">{{ number_format($this->summary['tottitipan'], 0, ',', '.') }}</td>
+                                        <td class="px-4 py-3 font-mono text-right text-rose-700 dark:text-rose-300 whitespace-nowrap">{{ number_format($this->summary['totsisa'], 0, ',', '.') }}</td>
                                     </tr>
-                                    @if ($this->summary['jumlah_checked'] > 0)
-                                        <tr class="font-semibold bg-amber-50 dark:bg-amber-950/30">
-                                            <td colspan="7" class="px-3 py-3 text-right text-amber-800 dark:text-amber-300">
-                                                AKAN DIBAYAR ({{ $this->summary['jumlah_checked'] }} dipilih)
-                                            </td>
-                                            <td class="px-3 py-3 font-mono text-right text-amber-800 dark:text-amber-300">
-                                                Rp {{ number_format($this->summary['sisa_checked']) }}
-                                            </td>
-                                        </tr>
-                                    @endif
                                 </tfoot>
                             @endif
                         </table>
                     </div>
                 </div>
-            @else
-                <div class="px-6 py-16 text-center bg-canvas border border-hairline border-dashed rounded-2xl dark:border-gray-700 dark:bg-gray-900">
-                    <svg class="w-16 h-16 mx-auto text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M3 7h18M3 12h18M3 17h18" />
-                    </svg>
-                    <p class="mt-3 text-sm text-muted dark:text-gray-400">
-                        Pilih supplier terlebih dahulu untuk melihat daftar hutang.
-                    </p>
-                </div>
-            @endif
+            </div>
 
             {{-- Modal proses bayar --}}
             <livewire:pages::transaksi.keuangan.pembayaran-hutang-pbf.pembayaran-hutang-pbf-actions

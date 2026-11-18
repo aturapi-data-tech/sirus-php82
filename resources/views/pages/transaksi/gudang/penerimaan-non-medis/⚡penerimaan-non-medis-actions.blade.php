@@ -4,11 +4,16 @@ use Livewire\Component;
 use Livewire\Attributes\On;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Database\QueryException;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
+use App\Http\Traits\Stock\StockBalanceTrait;
 
 new class extends Component {
-    use WithRenderVersioningTrait;
+    use WithRenderVersioningTrait, StockBalanceTrait;
+
+    /** Kategori ledger stok untuk cek batal posting (StockBalanceTrait). */
+    private const KATEGORI_STOK = 'nonmedis';
 
     public array $renderVersions = [];
     public string $formMode = 'create';
@@ -53,6 +58,10 @@ new class extends Component {
     // ── Cara Bayar (akun kas keluar) ──
     public ?string $accId = null;
     public ?string $accName = null;
+    /** Shift kas keluar angsuran awal — otomatis dari jam Tanggal Penerimaan, tetap bisa dipilih manual. */
+    public ?string $shift = null;
+    /** Ringkasan posting untuk dialog konfirmasi — kosong = dialog tertutup. Hanya tampilan. */
+    public array $pratinjau = [];
 
     public function mount(): void
     {
@@ -441,24 +450,41 @@ new class extends Component {
     public function updatedRcvDiskon(): void
     {
         $this->hitungSemua();
+        $this->cekBayarMelebihi();
     }
     public function updatedRcvPpn(): void
     {
         $this->hitungSemua();
+        $this->cekBayarMelebihi();
     }
     public function updatedRcvMaterai(): void
     {
         $this->hitungSemua();
+        $this->cekBayarMelebihi();
     }
     public function updatedBayar(): void
     {
         $this->hitungSemua();
+        $this->cekBayarMelebihi();
+    }
+
+    /** Bayar ke supplier tidak mengenal kembalian: nominal > grand total ditandai merah. */
+    protected function cekBayarMelebihi(): bool
+    {
+        $this->resetErrorBag('bayar');
+        if ((int) ($this->bayar ?? 0) > (int) $this->grandTotal) {
+            $this->addError('bayar', 'Melebihi grand total Rp ' . number_format($this->grandTotal, 0, ',', '.') . ' — bayar ke supplier tidak ada kembalian.');
+            return true;
+        }
+
+        return false;
     }
 
     /* ══════════════════════════════
      | SIMPAN (INSERT HEADER + DETAILS)
      ══════════════════════════════ */
-    public function simpan(): void
+    /** Semua pemeriksaan sebelum posting. Mengembalikan emp_id, atau null bila ditolak. */
+    protected function periksaPosting(): ?string
     {
         // validate() DULUAN, sebelum guard toast lain — kalau ditaruh setelahnya,
         // early-return bikin field bernilai salah tidak pernah ditandai merah.
@@ -471,6 +497,7 @@ new class extends Component {
                 'rcvDiskon' => 'nullable|numeric|min:0',
                 'rcvMaterai' => 'nullable|numeric|min:0',
                 'bayar' => 'nullable|numeric|min:0',
+                'shift' => 'required|in:1,2,3',
             ],
             [
                 'rcvPpn.numeric' => 'PPN harus berupa angka.',
@@ -482,6 +509,8 @@ new class extends Component {
                 'rcvMaterai.min' => 'Materai tidak boleh negatif.',
                 'bayar.numeric' => 'Nominal bayar harus berupa angka.',
                 'bayar.min' => 'Nominal bayar tidak boleh negatif.',
+                'shift.required' => 'Shift belum dipilih.',
+                'shift.in' => 'Shift tidak valid.',
             ],
         );
 
@@ -490,29 +519,71 @@ new class extends Component {
             $currentStatus = (string) (DB::table('imtxn_receivehdrsnon')->where('rcv_no', $this->rcvNo)->value('rcv_status') ?? '');
             if ($currentStatus !== 'A') {
                 $this->dispatch('toast', type: 'error', message: "Status '{$currentStatus}' — transaksi sudah final, tidak bisa diubah. Batalkan dulu untuk mengembalikan ke Daftar Tunggu.");
-                return;
+                return null;
             }
         }
 
         if (!$this->suppId) {
             $this->dispatch('toast', type: 'error', message: 'Supplier wajib dipilih.');
-            return;
+            return null;
         }
 
         if (count($this->details) === 0) {
             $this->dispatch('toast', type: 'error', message: 'Keranjang masih kosong, tambahkan barang.');
-            return;
+            return null;
         }
 
         if (!$this->accId) {
             $this->addError('accId', 'Cara bayar wajib dipilih.');
             $this->dispatch('toast', type: 'error', message: 'Cara bayar wajib dipilih.');
-            return;
+            return null;
         }
 
         $empId = auth()->user()->emp_id ?? null;
         if (!$empId) {
             $this->dispatch('toast', type: 'error', message: 'EMP ID belum diisi di profil user.');
+            return null;
+        }
+
+        $this->hitungSemua();
+        if ($this->cekBayarMelebihi()) {
+            $this->dispatch('toast', type: 'error', message: 'Nominal bayar melebihi grand total.');
+            return null;
+        }
+
+        return (string) $empId;
+    }
+
+    /** Langkah 1 posting: periksa, lalu tampilkan dialog konfirmasi — belum menulis apa pun. */
+    public function siapkanPosting(): void
+    {
+        if ($this->periksaPosting() === null) {
+            return;
+        }
+
+        $bayar = (int) ($this->bayar ?? 0);
+        $grandTotal = (int) $this->grandTotal;
+        $this->pratinjau = [
+            'grandTotal' => $grandTotal,
+            'bayar' => $bayar,
+            'status' => $bayar >= $grandTotal && $grandTotal > 0 ? 'L' : 'H',
+            'sisaHutang' => max(0, $grandTotal - $bayar),
+            'jumlahItem' => count($this->details),
+            'accName' => (string) (DB::table('acmst_accounts')->where('acc_id', $this->accId)->value('acc_name') ?? $this->accId),
+        ];
+    }
+
+    public function batalKonfirmasiPosting(): void
+    {
+        $this->pratinjau = [];
+    }
+
+    /** Langkah 2 posting: tulis. Pemeriksaan diulang — dialog hanya tampilan. */
+    public function simpan(): void
+    {
+        $this->pratinjau = [];
+        $empId = $this->periksaPosting();
+        if ($empId === null) {
             return;
         }
 
@@ -527,14 +598,9 @@ new class extends Component {
         // Supplier name untuk keterangan cashout
         $suppName = DB::table('immst_suppliers')->where('supp_id', $this->suppId)->value('supp_name') ?? ($this->suppName ?? '');
 
-        $now = Carbon::now();
-        $findShift = DB::table('rstxn_shiftctls')
-            ->select('shift')
-            ->whereNotNull('shift_start')
-            ->whereNotNull('shift_end')
-            ->whereRaw('? BETWEEN shift_start AND shift_end', [$now->format('H:i:s')])
-            ->first();
-        $shift = (string) ($findShift?->shift ?? 1);
+        // Shift ikut Tanggal Penerimaan (= cashout_date), bukan jam tombol ditekan —
+        // Saldo Kas per shift membaca kolom ini.
+        $shift = (string) $this->shift;
 
         try {
             DB::transaction(function () use ($empId, $shift, $bayar, $grandTotal, $rcvStatus, $payDate, $cashoutValue, $suppName) {
@@ -687,6 +753,13 @@ new class extends Component {
             return;
         }
 
+        // Nota terposting (H/L) sudah masuk stok & kas — hapus fisik akan merusak keduanya.
+        $statusHapus = (string) (DB::table('imtxn_receivehdrsnon')->where('rcv_no', $rcvNo)->value('rcv_status') ?? '');
+        if (!in_array($statusHapus, ['A', 'F'], true)) {
+            $this->dispatch('toast', type: 'error', message: 'Hanya nota Daftar Tunggu / Batal yang boleh dihapus. Batalkan posting dulu.');
+            return;
+        }
+
         try {
             DB::transaction(function () use ($rcvNo) {
                 DB::table('imtxn_receivedtlsnon')->where('rcv_no', $rcvNo)->delete();
@@ -753,16 +826,26 @@ new class extends Component {
             }
 
             if (in_array($status, ['H', 'L'], true)) {
-                $cekPembayaran = (int) DB::table('imtxn_cashoutdtlsnon')->where('rcv_no', $rcvNo)->count();
-                if ($cekPembayaran > 1) {
-                    $this->dispatch('toast', type: 'error', message: 'Tidak bisa membatalkan — status pembayaran terkunci dengan nota lain.');
+                $penghalang = $this->penghalangBatalPosting($rcvNo, $hdr);
+                if ($penghalang !== null) {
+                    $this->dispatch('toast', type: 'error', message: $penghalang);
                     return;
                 }
 
-                DB::transaction(function () use ($rcvNo) {
-                    DB::table('imtxn_receivepaymentsnon')->where('rcv_no', $rcvNo)->delete();
+                $cashoutNos = DB::transaction(function () use ($rcvNo) {
+                    // Kunci & periksa ulang — bisa saja user lain membayar di antara cek dan tulis.
+                    $kini = (string) (DB::table('imtxn_receivehdrsnon')->where('rcv_no', $rcvNo)->lockForUpdate()->value('rcv_status') ?? '');
+                    if (!in_array($kini, ['H', 'L'], true)) {
+                        throw new \RuntimeException('Status nota sudah berubah. Muat ulang daftar.');
+                    }
 
-                    $cashoutNos = DB::table('imtxn_cashoutdtlsnon')->where('rcv_no', $rcvNo)->pluck('cashout_no')->all();
+                    $cashoutNos = DB::table('imtxn_cashoutdtlsnon')->where('rcv_no', $rcvNo)->pluck('cashout_no')->unique()->values()->all();
+                    // Penjaga terakhir: kas keluar yang juga menutup nota lain TIDAK boleh ikut terhapus.
+                    if (!empty($cashoutNos) && DB::table('imtxn_cashoutdtlsnon')->whereIn('cashout_no', $cashoutNos)->where('rcv_no', '<>', $rcvNo)->exists()) {
+                        throw new \RuntimeException('Pembayaran nota ini satu kas keluar dengan nota lain — hapus dulu di menu Pembayaran Hutang Non-Medis.');
+                    }
+
+                    DB::table('imtxn_receivepaymentsnon')->where('rcv_no', $rcvNo)->delete();
                     DB::table('imtxn_cashoutdtlsnon')->where('rcv_no', $rcvNo)->delete();
                     if (!empty($cashoutNos)) {
                         DB::table('imtxn_cashouthdrsnon')->whereIn('cashout_no', $cashoutNos)->delete();
@@ -773,17 +856,92 @@ new class extends Component {
                         'rcv_bayar' => 0,
                         'pay_date' => null,
                     ]);
+
+                    return $cashoutNos;
                 });
 
-                $this->dispatch('toast', type: 'success', message: 'Pembayaran di-rollback. Status kembali ke Daftar Tunggu (A).');
+                Log::info('Batal posting penerimaan nonmedis', [
+                    'rcv_no' => $rcvNo,
+                    'status_lama' => $status,
+                    'cashout_dihapus' => $cashoutNos,
+                    'user' => auth()->user()?->myuser_code,
+                ]);
+
+                $this->dispatch('toast', type: 'success', message: 'Posting dibatalkan — stok ditarik dari gudang' . (empty($cashoutNos) ? '' : ', angsuran awal dihapus dari kas') . '. Status kembali ke Daftar Tunggu.');
                 $this->dispatch('penerimaan-non-medis.saved');
                 return;
             }
 
             $this->dispatch('toast', type: 'warning', message: "Status '{$status}' tidak dikenal, pembatalan dilewati.");
+        } catch (\RuntimeException $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
         } catch (QueryException $e) {
             $this->dispatch('toast', type: 'error', message: 'Gagal membatalkan: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Alasan batal posting DITOLAK, atau null bila boleh.
+     *  1. Hanya nota tahun berjalan — saldo awal stok tahun ini sudah memuat nota tahun lalu.
+     *  2. Pembayaran: yang boleh ikut terhapus hanya SATU kas keluar milik nota ini sendiri
+     *     (angsuran awal). Pelunasan lain / kas keluar bersama nota lain → hapus dulu di menu
+     *     pembayaran hutang (header kas keluar yang menutup nota lain tak boleh hilang).
+     *  3. Stok gudang saat ini harus cukup untuk ditarik kembali (barang belum terpakai).
+     */
+    protected function penghalangBatalPosting(string $rcvNo, object $hdr): ?string
+    {
+        if ($hdr->rcv_date && Carbon::parse($hdr->rcv_date)->year !== (int) now()->year) {
+            return 'Nota tahun lalu tidak bisa dibatalkan — saldo awal stok tahun ini sudah memuatnya.';
+        }
+
+        $cashoutNos = DB::table('imtxn_cashoutdtlsnon')->where('rcv_no', $rcvNo)->pluck('cashout_no')->unique()->values();
+        $jumlahBayar = (int) DB::table('imtxn_receivepaymentsnon')->where('rcv_no', $rcvNo)->count();
+        if ($cashoutNos->count() > 1 || $jumlahBayar > 1) {
+            return 'Nota ini sudah punya ' . max($cashoutNos->count(), $jumlahBayar) . ' pembayaran (angsuran awal + pelunasan). Hapus pelunasannya dulu di menu Pembayaran Hutang Non-Medis.';
+        }
+        if ($cashoutNos->isNotEmpty()) {
+            $notaLain = DB::table('imtxn_cashoutdtlsnon')->whereIn('cashout_no', $cashoutNos->all())->where('rcv_no', '<>', $rcvNo)->pluck('rcv_no')->unique()->take(5)->implode(', ');
+            if ($notaLain !== '') {
+                return "Pembayaran nota ini satu kas keluar dengan nota lain ({$notaLain}). Hapus dulu pembayaran itu di menu Pembayaran Hutang Non-Medis.";
+            }
+        }
+
+        $qtyPerProduk = DB::table('imtxn_receivedtlsnon')->where('rcv_no', $rcvNo)
+            ->select('product_id', DB::raw('SUM(NVL(qty,0)) as qty'))
+            ->groupBy('product_id')
+            ->pluck('qty', 'product_id');
+
+        $kurang = [];
+        foreach ($qtyPerProduk as $productId => $qty) {
+            $saldo = $this->saldoStok('04', (string) $productId, null, self::KATEGORI_STOK);
+            if ($saldo - (float) $qty < 0) {
+                $kurang[] = (string) $productId;
+            }
+        }
+        if (!empty($kurang)) {
+            $nama = DB::table('immst_productsnon')->whereIn('product_id', array_slice($kurang, 0, 5))->pluck('product_name')->implode(', ');
+            return 'Stok gudang tidak cukup untuk ditarik — ' . count($kurang) . ' barang sudah terpakai/ditransfer (' . $nama . (count($kurang) > 5 ? ', …' : '') . '). Batal posting akan membuat stok minus.';
+        }
+
+        return null;
+    }
+
+    /** Shift dari jam tanggal (rstxn_shiftctls); null bila jam di luar master. */
+    protected function shiftPadaJam(string $tanggal): ?string
+    {
+        try {
+            $jam = Carbon::createFromFormat('d/m/Y H:i:s', $tanggal)->format('H:i:s');
+        } catch (\Throwable) {
+            return null;
+        }
+
+        $shift = DB::table('rstxn_shiftctls')
+            ->whereNotNull('shift_start')
+            ->whereNotNull('shift_end')
+            ->whereRaw('? BETWEEN shift_start AND shift_end', [$jam])
+            ->value('shift');
+
+        return $shift !== null ? (string) $shift : null;
     }
 
     /* ══════════════════════════════
@@ -809,6 +967,9 @@ new class extends Component {
         }
 
         $this->hitungSemua();
+        $this->pratinjau = [];
+        $this->resetErrorBag(['bayar', 'shift']);
+        $this->shift = $this->shiftPadaJam((string) $this->rcvDate) ?? $this->shift;
         $this->incrementVersion('bayar');
         $this->dispatch('open-modal', name: 'penerimaan-non-medis-bayar');
         $this->dispatch('focus-input-diskon-rcv');
@@ -817,8 +978,8 @@ new class extends Component {
     public function closeBayar(): void
     {
         // Reset semua input pembayaran ke default 0 / null — biar tampilan bersih saat reopen.
-        $this->reset(['rcvDiskon', 'rcvPpn', 'rcvMaterai', 'bayar', 'accId', 'accName']);
-        $this->resetErrorBag('accId');
+        $this->reset(['rcvDiskon', 'rcvPpn', 'rcvMaterai', 'bayar', 'accId', 'accName', 'shift', 'pratinjau']);
+        $this->resetErrorBag(['accId', 'bayar', 'shift']);
         $this->hitungSemua();
         // Bump versi area 'bayar' supaya LOV kas remount (state bersih) tanpa
         // ganggu LOV lain di main modal.
@@ -841,7 +1002,7 @@ new class extends Component {
 
     protected function resetFormFields(): void
     {
-        $this->reset(['rcvNo', 'rcvDate', 'suppId', 'suppName', 'rcvDesc', 'spNo', 'rcvStatus', 'entryProductId', 'entryProductName', 'entryQty', 'entryCostPrice', 'entryDiscount1', 'entryDiscount2', 'entryRcvBath', 'entryRcvEd', 'details', 'totalBarang', 'totalQty', 'rcvDiskon', 'totalSetelahDiskon', 'rcvPpn', 'rcvPpnStatus', 'ppnNominal', 'rcvMaterai', 'grandTotal', 'bayar', 'sisa', 'pendingPriceUpdate', 'accId', 'accName']);
+        $this->reset(['rcvNo', 'rcvDate', 'suppId', 'suppName', 'rcvDesc', 'spNo', 'rcvStatus', 'entryProductId', 'entryProductName', 'entryQty', 'entryCostPrice', 'entryDiscount1', 'entryDiscount2', 'entryRcvBath', 'entryRcvEd', 'details', 'totalBarang', 'totalQty', 'rcvDiskon', 'totalSetelahDiskon', 'rcvPpn', 'rcvPpnStatus', 'ppnNominal', 'rcvMaterai', 'grandTotal', 'bayar', 'sisa', 'pendingPriceUpdate', 'accId', 'accName', 'shift', 'pratinjau']);
         $this->detailCounter = 0;
         $this->resetValidation();
     }
@@ -1187,8 +1348,8 @@ new class extends Component {
                                     <dt class="text-base font-bold text-success dark:text-success">Pas — Lunas</dt>
                                     <dd class="text-2xl font-bold text-emerald-700 dark:text-emerald-300">Rp 0</dd>
                                 @else
-                                    <dt class="text-base font-bold text-success dark:text-success">Kembalian</dt>
-                                    <dd class="text-2xl font-bold text-emerald-700 dark:text-emerald-300">Rp
+                                    <dt class="text-base font-bold text-amber-700 dark:text-amber-400">Lebih Bayar (kas keluar dibatasi grand total)</dt>
+                                    <dd class="text-2xl font-bold text-amber-700 dark:text-amber-300">Rp
                                         {{ number_format($selisih) }}</dd>
                                 @endif
                             </div>
@@ -1209,7 +1370,7 @@ new class extends Component {
                                 @php
                                     $batalMsg = $rcvStatus === 'A'
                                         ? 'Transaksi (Daftar Tunggu) akan di-set ke status Batal (F). Lanjut?'
-                                        : 'Pembayaran akan di-rollback & status kembali ke Daftar Tunggu (A). Lanjut?';
+                                        : 'Posting dibatalkan: stok nota ini ditarik dari gudang, angsuran awal (bila ada) dihapus dari kas, status kembali ke Daftar Tunggu. Ditolak bila stok sudah terpakai, nota tahun lalu, atau sudah ada pelunasan dari menu Pembayaran Hutang Non-Medis. Lanjut?';
                                 @endphp
                                 <x-confirm-button variant="danger" action="batalCurrentRcv()"
                                     title="Batalkan Transaksi" :message="$batalMsg"
@@ -1406,8 +1567,9 @@ new class extends Component {
                                 </dt>
                                 <dd class="w-48">
                                     <x-text-input-number wire:model="bayar" placeholder="0" x-ref="inputBayarRcv"
-                                        class="text-2xl font-bold"
+                                        class="text-2xl font-bold" :error="$errors->has('bayar')"
                                         x-on:keydown.enter.prevent="$el.blur(); $dispatch('focus-lov-kas-rcv')" />
+                                    <x-input-error :messages="$errors->get('bayar')" class="mt-1 text-right" />
                                 </dd>
                             </div>
 
@@ -1423,8 +1585,8 @@ new class extends Component {
                                         <dt class="text-base font-bold text-success dark:text-success">Pas — Lunas</dt>
                                         <dd class="text-2xl font-bold text-emerald-700 dark:text-emerald-300">Rp 0</dd>
                                     @else
-                                        <dt class="text-base font-bold text-success dark:text-success">Kembalian</dt>
-                                        <dd class="text-2xl font-bold text-emerald-700 dark:text-emerald-300">Rp
+                                        <dt class="text-base font-bold text-error dark:text-rose-400">Melebihi Grand Total</dt>
+                                        <dd class="text-2xl font-bold text-error dark:text-rose-300">Rp
                                             {{ number_format($sisa) }}</dd>
                                     @endif
                                 </div>
@@ -1438,6 +1600,19 @@ new class extends Component {
                                 wire:key="lov-kas-rcv-{{ $rcvNo ?? 'new' }}-{{ $renderVersions['bayar'] ?? 0 }}" />
                             <x-input-error :messages="$errors->get('accId')" class="mt-1" />
                         </div>
+
+                        {{-- Shift kas keluar — otomatis dari jam Tanggal Penerimaan, tetap bisa dipilih manual --}}
+                        <div class="mt-4">
+                            <x-input-label value="Shift" :required="true" />
+                            <x-select-input wire:model="shift" class="w-full mt-1" :error="$errors->has('shift')">
+                                <option value="">-- Shift --</option>
+                                <option value="1">Shift 1</option>
+                                <option value="2">Shift 2</option>
+                                <option value="3">Shift 3</option>
+                            </x-select-input>
+                            <x-input-error :messages="$errors->get('shift')" class="mt-1" />
+                            <p class="mt-1 text-xs text-muted dark:text-gray-400">Diisi otomatis dari jam Tanggal Penerimaan.</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1448,12 +1623,72 @@ new class extends Component {
                     <x-ikon nama="batal" />
                     Batal
                 </x-secondary-button>
-                <x-primary-button type="button" wire:click="simpan" wire:loading.attr="disabled"
-                    x-ref="btnSaveRcv">
-                    <span wire:loading.remove class="inline-flex items-center gap-2"><x-ikon nama="simpan" /> Simpan &amp; Posting</span>
-                    <span wire:loading><x-loading /> Menyimpan...</span>
+                <x-primary-button type="button" wire:click="siapkanPosting" wire:loading.attr="disabled"
+                    wire:target="siapkanPosting" x-ref="btnSaveRcv"
+                    :disabled="(int) ($bayar ?? 0) > $grandTotal">
+                    <span wire:loading.remove wire:target="siapkanPosting" class="inline-flex items-center gap-2"><x-ikon nama="simpan" /> Simpan &amp; Posting</span>
+                    <span wire:loading wire:target="siapkanPosting"><x-loading /> Memeriksa...</span>
                 </x-primary-button>
             </div>
+
+            {{-- KONFIRMASI POSTING — ringkasan sebelum stok & kas tercatat --}}
+            @if (!empty($pratinjau))
+                <div class="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-gray-900/50"
+                    x-data x-init="$nextTick(() => $refs.btnYaPosting?.focus())">
+                    <div class="w-full max-w-lg overflow-hidden border shadow-xl bg-canvas rounded-2xl border-hairline dark:bg-gray-900 dark:border-gray-700">
+                        <div class="px-5 py-4 border-b border-hairline dark:border-gray-700">
+                            <h3 class="text-base font-semibold text-ink dark:text-gray-100">Konfirmasi Posting</h3>
+                            <p class="mt-0.5 text-sm text-muted dark:text-gray-400">
+                                Setelah diposting, stok masuk gudang dan nota tidak bisa diubah lagi.
+                            </p>
+                        </div>
+
+                        <dl class="px-5 py-4 space-y-2 text-sm">
+                            <div class="flex justify-between gap-3">
+                                <dt class="text-muted dark:text-gray-400">Supplier</dt>
+                                <dd class="font-medium text-right text-ink dark:text-gray-100">{{ $suppName }}</dd>
+                            </div>
+                            <div class="flex justify-between gap-3">
+                                <dt class="text-muted dark:text-gray-400">Jumlah item</dt>
+                                <dd class="text-ink dark:text-gray-100">{{ $pratinjau['jumlahItem'] }}</dd>
+                            </div>
+                            <div class="flex justify-between gap-3">
+                                <dt class="text-muted dark:text-gray-400">Grand total</dt>
+                                <dd class="font-mono font-semibold text-ink dark:text-gray-100">Rp {{ number_format($pratinjau['grandTotal']) }}</dd>
+                            </div>
+                            <div class="flex justify-between gap-3">
+                                <dt class="text-muted dark:text-gray-400">Dibayar sekarang</dt>
+                                <dd class="font-mono font-semibold text-brand-green dark:text-brand-lime">Rp {{ number_format($pratinjau['bayar']) }}</dd>
+                            </div>
+                            @if ($pratinjau['bayar'] > 0)
+                                <div class="flex justify-between gap-3">
+                                    <dt class="text-muted dark:text-gray-400">Akun kas · shift</dt>
+                                    <dd class="text-right text-ink dark:text-gray-100">{{ $pratinjau['accName'] }} · Shift {{ $shift }}</dd>
+                                </div>
+                            @endif
+                            <div class="flex items-center justify-between gap-3 pt-2 border-t border-hairline dark:border-gray-700">
+                                <dt class="text-muted dark:text-gray-400">Status</dt>
+                                <dd>
+                                    @if ($pratinjau['status'] === 'L')
+                                        <x-badge variant="success">LUNAS</x-badge>
+                                    @else
+                                        <x-badge variant="warning">HUTANG Rp {{ number_format($pratinjau['sisaHutang']) }}</x-badge>
+                                    @endif
+                                </dd>
+                            </div>
+                        </dl>
+
+                        <div class="flex justify-end gap-2 px-5 py-4 border-t border-hairline bg-surface-soft dark:bg-gray-800/50 dark:border-gray-700">
+                            <x-secondary-button type="button" wire:click="batalKonfirmasiPosting"><x-ikon nama="batal" /> Batal</x-secondary-button>
+                            <x-primary-button type="button" wire:click="simpan" x-ref="btnYaPosting"
+                                wire:loading.attr="disabled" wire:target="simpan">
+                                <span wire:loading.remove wire:target="simpan" class="inline-flex items-center gap-2"><x-ikon nama="simpan" /> Ya, posting</span>
+                                <span wire:loading wire:target="simpan"><x-loading /> Menyimpan...</span>
+                            </x-primary-button>
+                        </div>
+                    </div>
+                </div>
+            @endif
         </div>
     </x-modal>
 </div>
