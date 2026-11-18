@@ -40,6 +40,11 @@ new class extends Component {
     /** Ringkasan untuk dialog konfirmasi — kosong = dialog tertutup. Hanya tampilan. */
     public array   $pratinjau  = [];
 
+    /* ── Rekap saldo DP semua supplier (tampil selama belum ada supplier dipilih) ── */
+    public string  $cariRekap        = '';
+    /** false = hanya supplier yang saldonya masih ada; true = semua yang pernah setor. */
+    public bool    $rekapSemua       = false;
+
     public array $renderVersions = [];
 
     public function mount(): void
@@ -55,7 +60,7 @@ new class extends Component {
         $this->suppId   = $payload['supp_id'] ?? null;
         $this->supplier = $payload;
         $this->resetErrorBag('suppId');
-        unset($this->riwayat, $this->ringkasan);
+        unset($this->riwayat, $this->ringkasan, $this->rekapSaldo);
     }
 
     #[On('lov.selected.topup-non-medis-kas')]
@@ -71,7 +76,7 @@ new class extends Component {
         $this->setTanggalSekarang();
         $this->resetValidation();
         $this->incrementVersion('form');
-        unset($this->riwayat, $this->ringkasan);
+        unset($this->riwayat, $this->ringkasan, $this->rekapSaldo);
     }
 
     public function setTanggalSekarang(): void
@@ -90,7 +95,69 @@ new class extends Component {
         }
     }
 
+    /** Klik baris rekap → supplier itu dibuka (sama dengan memilih lewat LOV). */
+    public function pilihDariRekap(string $suppId): void
+    {
+        $row = DB::table('immst_suppliers')->where('supp_id', $suppId)->first(['supp_id', 'supp_name', 'phone', 'address']);
+        if (!$row) {
+            $this->dispatch('toast', type: 'error', message: 'Supplier tidak ditemukan.');
+            return;
+        }
+        $this->onSupplierSelected('rekap', [
+            'supp_id' => (string) $row->supp_id,
+            'supp_name' => (string) ($row->supp_name ?? ''),
+            'phone' => (string) ($row->phone ?? ''),
+            'address' => (string) ($row->address ?? ''),
+        ]);
+    }
+
     /* ── Data ── */
+
+    /**
+     * Saldo DP per supplier (satu query, dua agregat): setor dari cashouthdrtopups, pakai dari
+     * cashouthdrs.cashout_value_topup. Rumus sama dengan hitungSaldoDp(). Urut saldo terbesar.
+     */
+    #[Computed]
+    public function rekapSaldo(): array
+    {
+        if ($this->suppId) {
+            return [];
+        }
+
+        $query = DB::table(DB::raw('(SELECT supp_id, SUM(NVL(cashout_value,0)) setor, MAX(cashout_date) terakhir
+                    FROM imtxn_cashouthdrtopupsnon GROUP BY supp_id) t'))
+            ->join('immst_suppliers as s', 's.supp_id', '=', 't.supp_id')
+            ->leftJoin(DB::raw('(SELECT supp_id, SUM(cashout_value_topup) pakai
+                    FROM imtxn_cashouthdrsnon WHERE NVL(cashout_value_topup,0) > 0 GROUP BY supp_id) c'), 'c.supp_id', '=', 't.supp_id')
+            ->select([
+                't.supp_id', 's.supp_name',
+                DB::raw('t.setor'),
+                DB::raw('NVL(c.pakai,0) as pakai'),
+                DB::raw('t.setor - NVL(c.pakai,0) as saldo'),
+                DB::raw("to_char(t.terakhir,'dd/mm/yyyy') as terakhir"),
+            ]);
+
+        if (!$this->rekapSemua) {
+            $query->whereRaw('t.setor - NVL(c.pakai,0) <> 0');
+        }
+        $cari = trim($this->cariRekap);
+        if ($cari !== '') {
+            $query->where(function ($q) use ($cari) {
+                $q->whereRaw('UPPER(s.supp_name) LIKE ?', ['%' . mb_strtoupper($cari) . '%'])
+                    ->orWhereRaw('UPPER(t.supp_id) LIKE ?', ['%' . mb_strtoupper($cari) . '%']);
+            });
+        }
+
+        return $query->orderByRaw('t.setor - NVL(c.pakai,0) DESC')->orderBy('s.supp_name')->get()
+            ->map(fn ($row) => [
+                'suppId' => (string) $row->supp_id,
+                'nama' => (string) ($row->supp_name ?? ''),
+                'setor' => (int) round((float) $row->setor),
+                'pakai' => (int) round((float) $row->pakai),
+                'saldo' => (int) round((float) $row->saldo),
+                'terakhir' => (string) ($row->terakhir ?? ''),
+            ])->all();
+    }
 
     #[Computed]
     public function ringkasan(): array
@@ -248,7 +315,7 @@ new class extends Component {
             // supplier + kas tetap (user mungkin mau topup lagi)
             $this->reset(['nominal', 'keterangan']);
             $this->setTanggalSekarang();
-            unset($this->riwayat, $this->ringkasan);
+            unset($this->riwayat, $this->ringkasan, $this->rekapSaldo);
         } catch (QueryException $e) {
             $this->dispatch('toast', type: 'error', message: 'Gagal: ' . $e->getMessage());
         } catch (\Exception $e) {
@@ -318,7 +385,7 @@ new class extends Component {
             'user' => auth()->user()?->myuser_code,
         ]);
 
-        unset($this->riwayat, $this->ringkasan);
+        unset($this->riwayat, $this->ringkasan, $this->rekapSaldo);
         $this->dispatch('toast', type: 'success', message: 'Setoran DP Rp ' . number_format($hasil['nilai'])
             . ' dihapus. Saldo kas pada tanggal setor tersebut ikut berubah.');
     }
@@ -385,6 +452,7 @@ new class extends Component {
                             <ul class="ml-4 space-y-1 list-disc">
                                 <li>Setor DP = uang keluar dari kas sebagai uang muka ke supplier; <strong>Saldo DP</strong> bertambah.</li>
                                 <li>Saldo DP dipakai melunasi nota hutang di menu <strong>Pembayaran Hutang Non-Medis</strong> → Sumber Dana: Saldo DP.</li>
+                                <li>Sebelum memilih supplier, kanan menampilkan <strong>Rekap Saldo DP</strong> semua supplier (saldo terbesar di atas) — klik baris untuk membuka supplier itu.</li>
                                 <li>Saldo DP = total disetor − yang sudah terpakai. Riwayat di kanan menampilkan setor (+) dan pemakaian (−).</li>
                                 <li>Shift terisi otomatis dari jam Tanggal; periksa dialog konfirmasi sebelum menyimpan.</li>
                                 <li><strong>Hapus salah setor</strong> (Admin / Supervisor Tu, tahun berjalan) ditolak bila DP-nya sudah terpakai — hapus dulu pelunasannya di menu Pembayaran Hutang Non-Medis.</li>
@@ -492,7 +560,76 @@ new class extends Component {
                     @endif
                 </div>
 
-                {{-- KOLOM KANAN — riwayat setor & pemakaian DP --}}
+                {{-- KOLOM KANAN — rekap saldo DP (belum pilih supplier) / riwayat setor & pemakaian --}}
+                @if (!$suppId)
+                    @php
+                        $rekap = $this->rekapSaldo;
+                        $totalRekap = collect($rekap);
+                    @endphp
+                    <div class="flex flex-col flex-1 min-w-0 min-h-0 border shadow-sm bg-canvas border-hairline rounded-2xl dark:border-gray-700 dark:bg-gray-900">
+                        <div class="flex flex-wrap items-center justify-between gap-3 px-5 py-3 border-b border-hairline dark:border-gray-700">
+                            <div class="text-sm font-semibold tracking-wide uppercase text-muted dark:text-gray-300">
+                                Rekap Saldo DP Supplier
+                                <span class="font-normal normal-case">({{ count($rekap) }} supplier)</span>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <x-text-input type="text" wire:model.live.debounce.400ms="cariRekap"
+                                    placeholder="Cari nama / kode supplier..." class="w-56 text-sm" />
+                                <x-toggle wire:model.live="rekapSemua" :trueValue="true" :falseValue="false" label="Tampilkan saldo 0"
+                                    title="Nyala = semua supplier yang pernah setor DP, mati = hanya yang saldonya masih ada" />
+                            </div>
+                        </div>
+
+                        <div class="flex-1 min-h-0 overflow-x-auto overflow-y-auto">
+                            <table class="w-full min-w-full text-sm">
+                                <thead class="sticky top-0 z-10 text-left text-muted bg-surface-soft dark:bg-gray-800 dark:text-gray-300">
+                                    <tr class="text-xs font-semibold tracking-wide uppercase">
+                                        <th class="px-4 py-3">Supplier</th>
+                                        <th class="px-4 py-3">Setor Terakhir</th>
+                                        <th class="px-4 py-3 text-right">Disetor</th>
+                                        <th class="px-4 py-3 text-right">Terpakai</th>
+                                        <th class="px-4 py-3 text-right">Saldo DP</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y text-body divide-hairline dark:divide-gray-700 dark:text-gray-200">
+                                    @forelse ($rekap as $row)
+                                        <tr wire:key="rekap-dp-{{ $row['suppId'] }}"
+                                            wire:click="pilihDariRekap(@js($row['suppId']))"
+                                            title="Klik untuk membuka saldo & riwayat DP supplier ini"
+                                            class="transition cursor-pointer hover:bg-surface-soft dark:hover:bg-gray-800/60">
+                                            <td class="px-4 py-2.5">
+                                                <div class="font-medium text-ink dark:text-gray-100">{{ $row['nama'] }}</div>
+                                                <div class="font-mono text-xs text-muted dark:text-gray-400">{{ $row['suppId'] }}</div>
+                                            </td>
+                                            <td class="px-4 py-2.5 whitespace-nowrap text-muted dark:text-gray-400">{{ $row['terakhir'] ?: '-' }}</td>
+                                            <td class="px-4 py-2.5 font-mono text-right whitespace-nowrap">{{ number_format($row['setor'], 0, ',', '.') }}</td>
+                                            <td class="px-4 py-2.5 font-mono text-right whitespace-nowrap">{{ number_format($row['pakai'], 0, ',', '.') }}</td>
+                                            <td class="px-4 py-2.5 font-mono font-bold text-right whitespace-nowrap {{ $row['saldo'] < 0 ? 'text-rose-700 dark:text-rose-300' : 'text-brand-green dark:text-brand-lime' }}">
+                                                {{ number_format($row['saldo'], 0, ',', '.') }}
+                                            </td>
+                                        </tr>
+                                    @empty
+                                        <tr>
+                                            <td colspan="5" class="px-6 py-16 text-center text-muted dark:text-gray-400">
+                                                {{ trim($cariRekap) !== '' ? 'Tidak ada supplier yang cocok.' : 'Belum ada supplier dengan saldo DP.' }}
+                                            </td>
+                                        </tr>
+                                    @endforelse
+                                </tbody>
+                                @if (count($rekap) > 0)
+                                    <tfoot class="sticky bottom-0 z-10 font-semibold border-t text-body bg-surface-soft border-hairline dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700">
+                                        <tr>
+                                            <td colspan="2" class="px-4 py-3 text-right">TOTAL</td>
+                                            <td class="px-4 py-3 font-mono text-right whitespace-nowrap">{{ number_format($totalRekap->sum('setor'), 0, ',', '.') }}</td>
+                                            <td class="px-4 py-3 font-mono text-right whitespace-nowrap">{{ number_format($totalRekap->sum('pakai'), 0, ',', '.') }}</td>
+                                            <td class="px-4 py-3 font-mono text-right whitespace-nowrap text-brand-green dark:text-brand-lime">{{ number_format($totalRekap->sum('saldo'), 0, ',', '.') }}</td>
+                                        </tr>
+                                    </tfoot>
+                                @endif
+                            </table>
+                        </div>
+                    </div>
+                @else
                 <div class="flex flex-col flex-1 min-w-0 min-h-0 border shadow-sm bg-canvas border-hairline rounded-2xl dark:border-gray-700 dark:bg-gray-900">
                     <div class="px-5 py-3 border-b border-hairline dark:border-gray-700">
                         <div class="text-sm font-semibold tracking-wide uppercase text-muted dark:text-gray-300">Riwayat Setor &amp; Pemakaian DP</div>
@@ -541,7 +678,7 @@ new class extends Component {
                                 @empty
                                     <tr>
                                         <td colspan="6" class="px-6 py-16 text-center text-muted dark:text-gray-400">
-                                            {{ $suppId ? 'Belum ada setoran / pemakaian DP untuk supplier ini.' : 'Pilih supplier dulu untuk melihat saldo & riwayat DP.' }}
+                                            Belum ada setoran / pemakaian DP untuk supplier ini.
                                         </td>
                                     </tr>
                                 @endforelse
@@ -549,6 +686,7 @@ new class extends Component {
                         </table>
                     </div>
                 </div>
+                @endif
             </div>
         </div>
     </div>
