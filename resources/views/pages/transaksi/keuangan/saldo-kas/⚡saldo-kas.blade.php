@@ -5,6 +5,7 @@ use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use App\Support\Keuangan\SaldoKas;
+use App\Support\Shift;
 use Carbon\Carbon;
 
 new class extends Component {
@@ -29,7 +30,7 @@ new class extends Component {
     {
         $this->embedded = $embedded;
         $this->setTanggal(now()->toDateString());
-        $this->shift   = SaldoKas::shiftSekarang();
+        $this->shift   = Shift::sekarang();
     }
 
     /**
@@ -67,7 +68,7 @@ new class extends Component {
         if (!in_array($mode, ['shift', 'harian'], true)) return;
         $this->mode = $mode;
         if ($mode === 'shift' && $this->shift === '') {
-            $this->shift = SaldoKas::shiftSekarang();
+            $this->shift = Shift::sekarang();
         }
     }
 
@@ -83,7 +84,7 @@ new class extends Component {
     {
         $this->mode = 'shift';
         $this->setTanggal(now()->toDateString());
-        $this->shift   = SaldoKas::shiftSekarang();
+        $this->shift   = Shift::sekarang();
         $this->searchKeyword = '';
     }
 
@@ -152,7 +153,7 @@ new class extends Component {
     #[Computed]
     public function daftarShift(): array
     {
-        return SaldoKas::daftarShift();
+        return Shift::daftar();
     }
 
     #[Computed]
