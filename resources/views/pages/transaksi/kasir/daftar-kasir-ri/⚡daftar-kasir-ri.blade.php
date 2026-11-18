@@ -21,6 +21,9 @@ new class extends Component {
     public string $filterStatus = 'I';
     #[Session(key: 'daftar-kasir-ri-filterBangsal')]
     public string $filterBangsal = '';
+    /** '' | UMUM | BPJS — rsmst_klaimtypes.klaim_status */
+    #[Session(key: 'daftar-kasir-ri-filterKlaim')]
+    public string $filterKlaim = '';
     #[Session(key: 'daftar-kasir-ri-itemsPerPage')]
     public int $itemsPerPage = 10;
 
@@ -43,6 +46,12 @@ new class extends Component {
         $this->resetPage();
         $this->incrementVersion('daftar-kasir-ri-toolbar');
     }
+    public function updatedFilterKlaim(): void
+    {
+        $this->filterKlaim = in_array($this->filterKlaim, ['UMUM', 'BPJS'], true) ? $this->filterKlaim : '';
+        $this->resetPage();
+        $this->incrementVersion('daftar-kasir-ri-toolbar');
+    }
     public function updatedItemsPerPage(): void
     {
         $this->resetPage();
@@ -51,7 +60,7 @@ new class extends Component {
 
     public function resetFilters(): void
     {
-        $this->reset(['searchKeyword', 'filterStatus', 'filterBangsal']);
+        $this->reset(['searchKeyword', 'filterStatus', 'filterBangsal', 'filterKlaim']);
         $this->filterStatus = 'I';
         $this->incrementVersion('daftar-kasir-ri-toolbar');
         $this->resetPage();
@@ -103,6 +112,9 @@ new class extends Component {
         }
         if ($this->filterBangsal !== '') {
             $query->where('rv.bangsal_id', $this->filterBangsal);
+        }
+        if (in_array($this->filterKlaim, ['UMUM', 'BPJS'], true)) {
+            $query->where('kt.klaim_status', $this->filterKlaim);
         }
 
         $search = trim($this->searchKeyword);
@@ -189,6 +201,15 @@ new class extends Component {
                             <option value="">Semua</option>
                             <option value="I">Dirawat</option>
                             <option value="P">Pulang</option>
+                        </x-select-input>
+                    </div>
+
+                    <div class="w-full sm:w-auto">
+                        <x-input-label value="Klaim" />
+                        <x-select-input wire:model.live="filterKlaim" class="w-full mt-1 sm:w-32">
+                            <option value="">Semua</option>
+                            <option value="UMUM">Umum</option>
+                            <option value="BPJS">BPJS</option>
                         </x-select-input>
                     </div>
 
