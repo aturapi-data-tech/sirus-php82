@@ -40,6 +40,13 @@ saldo awal lalu + setor − pakai) + setor − `cashout_value_topup` sejak 1 Jan
 kalau kelak tutup buku DP pindah ke web dan memasukkan opname ke SAH, ubah rumus jadi opname sejak tahun saldo awal.
 Oracle 10g: subquery di syarat outer join ditolak (ORA-01799) → tahun saldo awal dihitung di subquery dulu.
 
+**Tutup buku tahunan** (`App\Support\Keuangan\TutupBukuSupplier`, halaman `/keuangan/tutup-buku-supplier`, khusus Admin):
+menulis `TKTXN_SALDOAWALHUTANGS[NON]` tahun T+1 dengan rumus PERSIS Forms (terbukti di data 2023–2026):
+`SAH_VALUE(T+1) = SAH_VALUE(T) + Σ TKVIEW_RCVHDRS[NON].TOTALALL nota H/L tahun T − Σ (cashout_value + cashout_value_topup) tahun T`;
+`SAH_VALUE_TOP(T+1) = SAH_VALUE_TOP(T) + Σ setor DP tahun T − Σ cashout_value_topup tahun T`. Desimal disimpan apa adanya
+(Forms tidak membulatkan, mis. 5.060.822,99) — jangan bulatkan per komponen (itu memberi selisih Rp 1). Opname TIDAK
+dimasukkan supaya tutup buku Forms & web identik. Boleh diulang; angka lama di `Log::info`. Tidak menyentuh saldo akun Neraca.
+
 **Opname saldo DP** (DDL `docs/ddl-opname-dp-supplier.sql`, seq `sodpsupp_seq`/`sodpsuppnon_seq`): pola opname stok —
 saldo sebenarnya + alasan → selisih jadi baris bertanggal SYSDATE; saldo awal & transaksi lama tak diubah;
 **TIDAK dijurnal** (keputusan user: fungsi beda, sama dengan opname stok) → saldo DP supplier ≠ akun 1.1A13 sebesar

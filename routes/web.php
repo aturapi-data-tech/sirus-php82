@@ -435,6 +435,16 @@ Route::middleware(['auth'])->group(function () {
         ->name('keuangan.topup-supplier-non-medis');
 
     // ===========================================
+    // KEUANGAN - TUTUP BUKU TAHUNAN (akun, stok, supplier — khusus Admin)
+    // ===========================================
+    Route::livewire('/keuangan/tutup-buku', 'pages::transaksi.keuangan.tutup-buku.tutup-buku')
+        ->name('keuangan.tutup-buku');
+
+    // Tutup buku supplier juga bisa dibuka sendiri (dipakai sebagai tab di Tutup Buku Tahunan)
+    Route::livewire('/keuangan/tutup-buku-supplier', 'pages::transaksi.keuangan.tutup-buku-supplier.tutup-buku-supplier')
+        ->name('keuangan.tutup-buku-supplier');
+
+    // ===========================================
     // KEUANGAN - SALDO KAS
     // ===========================================
     Route::livewire('/keuangan/saldo-kas', 'pages::transaksi.keuangan.saldo-kas.saldo-kas')

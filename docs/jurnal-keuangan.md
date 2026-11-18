@@ -66,3 +66,27 @@ berdampak. Bereskan sebelum SaldoKas dipakai akun K.
   hutang+ekuitas 28,0 M) dan 2 akun `4.1D`/`4.1E` bergrup AKTIVA tapi sub-grup PENDAPATAN — masalah DATA master/saldo awal.
 - Struktur template lama di komponen (`temp_id` di DTLS, section '1'/'2'/'3') SALAH — tabel DTLS hanya punya
   `temp_idl1`; hirarki sebenarnya HDRS(temp_id) → L2S → L1S → DTLS → TEMACCOUNTES.
+
+## Tutup buku tahunan (2026-11-18)
+
+Menu **Keuangan → Tutup Buku Tahunan** (`/keuangan/tutup-buku`, khusus Admin), tiga tab. Rumus
+dibongkar dari data tutup buku Forms 6i dan dibuktikan pada tutup 2023–2026:
+
+| Tab | Kelas | Tabel | Rumus |
+|---|---|---|---|
+| Saldo Akun | `TutupBukuAkun` | `tktxn_saldoawalakuns` | akun ber-baris tahun T ∪ `bpl_flag='BL'`: D = awal + debit − kredit, K = awal + kredit − debit; **L01 = penyeimbang** (Σ D − Σ K tetap sama dengan tahun T) |
+| Stok | `TutupBukuStok` | `tktxn_saldoawalstocks[non]` | semua produk master: awal + mutasi ledger (`tkview_iostock*`); HPP baris baru = `cost_price` master saat diproses, baris yang ada dipertahankan |
+| Hutang & DP | `TutupBukuSupplier` | `tktxn_saldoawalhutangs[non]` | hutang = awal + Σ TOTALALL nota H/L − Σ bayar (kas + DP); DP = awal + setor − pakai; desimal apa adanya |
+
+Bukti kesinambungan: saldo awal KAS TU 2027 hasil tutup buku = Cek Saldo Kas 31/12 = Saldo Kas 1/1/2027.
+Sisa "Beda" terhadap baris Forms = koreksi manual (mis. KAS 1.1A01 2025 = 500.000.000) atau transaksi yang
+berubah setelah tutup buku — default tidak ditimpa (Akun & Stok).
+
+### PERHATIAN: wrong result Oracle 10.2.0.1 pada `Jurnal::queryBanyak` / `arusPerAkun`
+
+UNION ALL raksasa memberi hasil berbeda tergantung cabang mana yang ikut: akun 4.1BB tahun 2025 diminta
+sendiri → kredit 8,19 M; diminta bersama 2.1A04 → 3,01 M (yang benar, cocok Forms). Cabang "TRF PIUTANG RJ
+ke UGD" yang kreditnya literal `0` keluar 322.300 per baris. Hint (`NO_QUERY_TRANSFORMATION`, `NO_MERGE`,
+`NO_PUSH_PRED`) tidak menolong. `Jurnal::arusPerAkunPerCabang()` (tiap cabang query sendiri, dijumlah di PHP)
+stabil dan dipakai tutup buku. **Neraca / Laba Rugi / Buku Besar masih memakai `arusPerAkun`** — perlu
+ditinjau saat pekerjaan Neraca (cek juga versi Oracle produksi).
