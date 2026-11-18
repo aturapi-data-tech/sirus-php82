@@ -42,7 +42,8 @@ new class extends Component {
         </div> --}}
         {{-- TAB NAV + AKSI --}}
         <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <x-tabs variant="underline">
+            {{-- flex-wrap: 12 tab turun ke baris kedua, bukan menggeser halaman ke kanan --}}
+            <x-tabs variant="underline" class="flex-wrap flex-1 min-w-0">
                 <x-tab :active="$activeTab === 'rj'" color="emerald" wire:click="setTab('rj')">Rawat Jalan</x-tab>
                 <x-tab :active="$activeTab === 'ugd'" color="rose" wire:click="setTab('ugd')">UGD</x-tab>
                 <x-tab :active="$activeTab === 'ri'" color="blue" wire:click="setTab('ri')">Resep Inap</x-tab>
