@@ -58,9 +58,70 @@ final class Jurnal
     }
 
     /**
+     * Arus D/K per akun, TIAP CABANG DIJUMLAH DENGAN QUERY SENDIRI lalu dijumlah di PHP.
+     *
+     * Kenapa ada: di Oracle 10.2.0.1 (DB lokal) UNION ALL raksasa queryBanyak() terbukti memberi
+     * WRONG RESULT yang bergantung pada cabang mana yang ikut (2026-11-18: akun 4.1BB tahun 2025
+     * diminta sendiri → kredit 8,19 M; diminta bersama 2.1A04 → 3,01 M, yang benar). Cabang "TRF
+     * PIUTANG RJ ke UGD" yang kreditnya literal 0 keluar 322.300 per baris. Hint optimizer tidak
+     * menolong. Per cabang hasilnya stabil di semua kombinasi akun dan cocok dengan tutup buku Forms.
+     * Lebih lambat (±6 dtk / tahun / 45 akun) — dipakai proses yang jarang (tutup buku), bukan layar harian.
+     * Hanya sisi SISI_ACC (baris milik akun); cabang berpasangan cermin sehingga cukup satu sisi.
+     */
+    public static function arusPerAkunPerCabang(array $accIds, string $dari, string $sampai): array
+    {
+        $accIds = array_values(array_unique(array_map('strval', $accIds)));
+        $peta = self::konfigurasiAkun();
+        $hasil = array_fill_keys($accIds, ['debit' => 0.0, 'kredit' => 0.0]);
+        if ($accIds === []) {
+            return $hasil;
+        }
+
+        foreach (JurnalCabang::semua() as $cabang) {
+            $akun = $cabang['akun'];
+            $binding = [];
+            if (self::isKonfigurasi($akun)) {
+                $id = self::akunKonfigurasi($akun, $peta);
+                if ($id === null || !in_array($id, $accIds, true)) {
+                    continue;
+                }
+                $akunSql = '?';
+                $binding[] = $id;
+                $saringAkun = '';
+                $kelompok = '';
+            } else {
+                $akunSql = $akun;
+                $saringAkun = " and {$akun} in (" . implode(',', array_fill(0, count($accIds), '?')) . ')';
+                $kelompok = " group by {$akun}";
+            }
+
+            $sql = "select {$akunSql} acc, sum(nvl({$cabang['debit']},0)) d, sum(nvl({$cabang['kredit']},0)) k"
+                . " from {$cabang['from']}"
+                . " where {$cabang['tanggal']} >= TO_DATE(?,'YYYY-MM-DD') and {$cabang['tanggal']} < TO_DATE(?,'YYYY-MM-DD') + 1"
+                . ($cabang['where'] !== '' ? " and ({$cabang['where']})" : '')
+                . $saringAkun . $kelompok;
+            array_push($binding, $dari, $sampai);
+            if ($saringAkun !== '') {
+                array_push($binding, ...$accIds);
+            }
+
+            foreach (DB::select($sql, $binding) as $baris) {
+                $id = (string) $baris->acc;
+                if (isset($hasil[$id])) {
+                    $hasil[$id]['debit'] += (float) $baris->d;
+                    $hasil[$id]['kredit'] += (float) $baris->k;
+                }
+            }
+        }
+
+        return $hasil;
+    }
+
+    /**
      * Arus D/K per akun untuk SEKUMPULAN akun sekaligus (satu pemindaian, bukan satu query per akun) —
      * dipakai laporan ber-template (Laba Rugi, Neraca). Hasil: [acc_id => ['debit' => float, 'kredit' => float]],
      * akun tanpa transaksi tetap ada dengan nol.
+     * PERHATIAN Oracle 10.2.0.1: lihat arusPerAkunPerCabang() — UNION ALL besar ini bisa wrong result.
      */
     public static function arusPerAkun(array $accIds, string $dari, string $sampai): array
     {

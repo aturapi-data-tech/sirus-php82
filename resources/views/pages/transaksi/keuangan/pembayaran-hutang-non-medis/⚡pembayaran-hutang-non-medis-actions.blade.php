@@ -18,8 +18,8 @@
  * merah, dan dialog konfirmasi alokasi sebelum menulis. Sisa selalu dihitung ulang dari DB.
  *
  * Hapus salah bayar = hapus SATU kas keluar UTUH beserta seluruh nota yang ditutupnya
- * (header kas keluar = uang keluar sungguhan — menghapus sebagian akan membuat kas dan
- * hutang tak cocok). Angsuran awal dibatalkan lewat menu penerimaan, bukan di sini.
+ * (jurnal "BAYAR NON MEDIS" membaca header kas keluar — menghapus sebagian akan membuat
+ * kas dan hutang tak cocok). Angsuran awal dibatalkan lewat menu penerimaan, bukan di sini.
  *
  * Sumber dana (pola Forms, 908 baris data lama): KAS → cashout_value; SALDO DP → cashout_value
  * NULL + cashout_value_topup (jurnal "BAYAR NON MEDIS TOPUP": uang muka RCV6 → hutang, kas tak
@@ -35,6 +35,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Database\QueryException;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
+use App\Support\Keuangan\SaldoDpSupplier;
 
 new class extends Component {
     use WithRenderVersioningTrait;
@@ -710,16 +711,10 @@ new class extends Component {
         return array_map(fn ($row) => $row->rcvp_no, $cocok[0]);
     }
 
-    /** Saldo DP supplier = Σ setor (cashouthdrtopups) − Σ terpakai (cashouthdrs.cashout_value_topup). */
+    /** Saldo DP supplier — satu rumus (SaldoDpSupplier: saldo awal + setor − terpakai ± opname). */
     protected function hitungSaldoDp(): int
     {
-        if (!$this->suppId) {
-            return 0;
-        }
-        $setor = (float) DB::table('imtxn_cashouthdrtopupsnon')->where('supp_id', $this->suppId)->sum('cashout_value');
-        $pakai = (float) DB::table('imtxn_cashouthdrsnon')->where('supp_id', $this->suppId)->sum('cashout_value_topup');
-
-        return (int) round($setor - $pakai);
+        return $this->suppId ? SaldoDpSupplier::saldo(SaldoDpSupplier::JENIS_NON_MEDIS, $this->suppId) : 0;
     }
 
     protected function shiftPadaJam(string $tanggal): ?string

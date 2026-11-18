@@ -52,10 +52,10 @@ new class extends Component {
                 <x-tab :active="$activeTab === 'cash-out'" color="violet" wire:click="setTab('cash-out')">Cash Out</x-tab>
                 <x-tab :active="$activeTab === 'piutang-pasien'" color="blue" wire:click="setTab('piutang-pasien')">Pembayaran Piutang Pasien</x-tab>
                 <x-tab :active="$activeTab === 'list-piutang'" color="purple" wire:click="setTab('list-piutang')">List Piutang Pasien</x-tab>
-                <x-tab :active="$activeTab === 'hutang-pbf'" color="rose" wire:click="setTab('hutang-pbf')">Hutang PBF</x-tab>
-                <x-tab :active="$activeTab === 'hutang-non-medis'" color="rose" wire:click="setTab('hutang-non-medis')">Hutang Non-Medis</x-tab>
-                <x-tab :active="$activeTab === 'dp-pbf'" color="emerald" wire:click="setTab('dp-pbf')">DP PBF</x-tab>
-                <x-tab :active="$activeTab === 'dp-non-medis'" color="emerald" wire:click="setTab('dp-non-medis')">DP Non-Medis</x-tab>
+                <x-tab :active="$activeTab === 'hutang-pbf'" color="rose" wire:click="setTab('hutang-pbf')">Bayar Hutang PBF</x-tab>
+                <x-tab :active="$activeTab === 'hutang-non-medis'" color="rose" wire:click="setTab('hutang-non-medis')">Bayar Hutang Non-Medis</x-tab>
+                <x-tab :active="$activeTab === 'dp-pbf'" color="emerald" wire:click="setTab('dp-pbf')">Bayar DP PBF</x-tab>
+                <x-tab :active="$activeTab === 'dp-non-medis'" color="emerald" wire:click="setTab('dp-non-medis')">Bayar DP Non-Medis</x-tab>
             </x-tabs>
 
             <x-outline-button type="button" wire:click="openCekSaldo"

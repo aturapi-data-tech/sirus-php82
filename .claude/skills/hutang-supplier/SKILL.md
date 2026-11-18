@@ -33,7 +33,24 @@ kembar (cek dengan `diff` setelah menormalkan nama).
 | `imtxn_cashouthdrtopups` | setoran DP (uang muka), tidak terikat nota |
 
 **Sisa hutang nota** = total nota − Σ `receivepayments.rcvp_value`.
-**Saldo DP supplier** = Σ `cashouthdrtopups.cashout_value` − Σ `cashouthdrs.cashout_value_topup`.
+**Saldo DP supplier** — SATU rumus di `App\Support\Keuangan\SaldoDpSupplier` (rincian/saldo/rekap), jangan ditulis ulang:
+saldo awal tahun terakhir ≤ tahun ini (`TKTXN_SALDOAWALHUTANGS[NON].SAH_VALUE_TOP`, dibuat tutup buku Forms =
+saldo awal lalu + setor − pakai) + setor − `cashout_value_topup` sejak 1 Jan tahun itu + **Σ SEMUA opname**
+(`TKTXN_SODPSUPPS[NON]`, so_d − so_k). Opname dijumlah semua tahun karena tutup buku Forms tak mengenalnya —
+kalau kelak tutup buku DP pindah ke web dan memasukkan opname ke SAH, ubah rumus jadi opname sejak tahun saldo awal.
+Oracle 10g: subquery di syarat outer join ditolak (ORA-01799) → tahun saldo awal dihitung di subquery dulu.
+
+**Tutup buku tahunan** (`App\Support\Keuangan\TutupBukuSupplier`, halaman `/keuangan/tutup-buku-supplier`, khusus Admin):
+menulis `TKTXN_SALDOAWALHUTANGS[NON]` tahun T+1 dengan rumus PERSIS Forms (terbukti di data 2023–2026):
+`SAH_VALUE(T+1) = SAH_VALUE(T) + Σ TKVIEW_RCVHDRS[NON].TOTALALL nota H/L tahun T − Σ (cashout_value + cashout_value_topup) tahun T`;
+`SAH_VALUE_TOP(T+1) = SAH_VALUE_TOP(T) + Σ setor DP tahun T − Σ cashout_value_topup tahun T`. Desimal disimpan apa adanya
+(Forms tidak membulatkan, mis. 5.060.822,99) — jangan bulatkan per komponen (itu memberi selisih Rp 1). Opname TIDAK
+dimasukkan supaya tutup buku Forms & web identik. Boleh diulang; angka lama di `Log::info`. Tidak menyentuh saldo akun Neraca.
+
+**Opname saldo DP** (DDL `docs/ddl-opname-dp-supplier.sql`, seq `sodpsupp_seq`/`sodpsuppnon_seq`): pola opname stok —
+saldo sebenarnya + alasan → selisih jadi baris bertanggal SYSDATE; saldo awal & transaksi lama tak diubah;
+**TIDAK dijurnal** (keputusan user: fungsi beda, sama dengan opname stok) → saldo DP supplier ≠ akun 1.1A13 sebesar
+total opname, disengaja. Admin/Supervisor Tu, selisih 0 ditolak, tak ada hapus opname (jejak koreksi).
 
 ## Jurnal: apa yang dibaca
 
