@@ -886,7 +886,8 @@ new class extends Component {
      *  2. Pembayaran: yang boleh ikut terhapus hanya SATU kas keluar milik nota ini sendiri
      *     (angsuran awal). Pelunasan lain / kas keluar bersama nota lain → hapus dulu di menu
      *     pembayaran hutang (header kas keluar yang menutup nota lain tak boleh hilang).
-     *  3. Stok gudang saat ini harus cukup untuk ditarik kembali (barang belum terpakai).
+     *  3. Stok gudang harus cukup untuk ditarik kembali: ditolak bila tanpa nota ini stok minus
+     *     DAN ada barang keluar sejak tanggal nota (ledger yang sudah minus dari dulu tak menghalangi).
      */
     protected function penghalangBatalPosting(string $rcvNo, object $hdr): ?string
     {
@@ -911,10 +912,20 @@ new class extends Component {
             ->groupBy('product_id')
             ->pluck('qty', 'product_id');
 
+        // Ditolak hanya bila tanpa nota ini stok jadi minus DAN ada barang keluar sejak nota diposting.
+        // Ledger yang memang sudah minus sebelum nota ini (data lama) tidak menghalangi — batal hanya
+        // mengembalikan ke keadaan sebelum posting.
         $kurang = [];
         foreach ($qtyPerProduk as $productId => $qty) {
             $saldo = $this->saldoStok('04', (string) $productId, null, self::KATEGORI_STOK);
-            if ($saldo - (float) $qty < 0) {
+            if ($saldo - (float) $qty >= 0) {
+                continue;
+            }
+            $keluarSejakPosting = (float) DB::table('tkview_iostockwhs')
+                ->where('product_id', (string) $productId)
+                ->where('txn_date', '>=', $hdr->rcv_date)
+                ->sum(DB::raw('NVL(qty_k,0)'));
+            if ($keluarSejakPosting > 0) {
                 $kurang[] = (string) $productId;
             }
         }
