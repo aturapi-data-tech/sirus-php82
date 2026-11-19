@@ -19,4 +19,5 @@ Route::middleware(AuthSikeuApi::class)->group(function () {
     Route::get('akun', [JurnalApiController::class, 'akun'])->name('akun');
     Route::get('cabang', [JurnalApiController::class, 'cabang'])->name('cabang');
     Route::get('jurnal/{tahun}/{bulan}', [JurnalApiController::class, 'jurnal'])->name('jurnal');
+    Route::get('saldo-awal/{tahun}', [JurnalApiController::class, 'saldoAwal'])->name('saldo-awal');
 });

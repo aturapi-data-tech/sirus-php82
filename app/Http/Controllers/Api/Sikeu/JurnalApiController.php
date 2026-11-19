@@ -21,6 +21,7 @@ use Illuminate\Support\Facades\DB;
  *   GET  /api/sikeu/akun                           bagan akun (acmst_accounts, semua kolom)
  *   GET  /api/sikeu/cabang                         katalog cabang jurnal: no, kunci, sumber, label
  *   GET  /api/sikeu/jurnal/{tahun}/{bulan}?cabang=N  SEMUA baris jurnal cabang N pada bulan itu
+ *   GET  /api/sikeu/saldo-awal/{tahun}             saldo awal akun per 1 Januari (tktxn_saldoawalakuns)
  *
  * Satu panggilan = satu cabang (satu SELECT tanpa UNION, aman dari wrong-result Oracle 10.2.0.1); SIKEU
  * memanggil berulang untuk tiap cabang dari /cabang. Sumber angka = App\Support\Keuangan\Jurnal, mesin yang
@@ -102,5 +103,30 @@ class JurnalApiController extends Controller
             'jumlah' => count($barisList),
             'baris' => $barisList,
         ], 200, [], self::OPSI_JSON);
+    }
+
+    /**
+     * Saldo awal akun per 1 Januari tahun itu, apa adanya dari tktxn_saldoawalakuns (hasil tutup buku SIRUS).
+     * Nilai disimpan di kolom sisi normal akunnya (sa_acc_d untuk akun D, sa_acc_k untuk akun K) dan boleh negatif;
+     * SIKEU menghitung nilai bertanda = sa_acc_d - sa_acc_k. Total D/K TIDAK dijamin seimbang (L01 = penyeimbang SIRUS).
+     */
+    public function saldoAwal(string $tahun): JsonResponse
+    {
+        if (!preg_match('/^\d{4}$/', $tahun)) {
+            return response()->json(['error' => 'Tahun harus 4 digit.'], 422);
+        }
+        $saldoList = DB::table('tktxn_saldoawalakuns as s')
+            ->leftJoin('acmst_accounts as a', 'a.acc_id', '=', 's.acc_id')
+            ->where('s.sa_year', $tahun)->orderBy('s.acc_id')
+            ->get(['s.acc_id', 'a.acc_name', 'a.dk_status', 's.sa_acc_d', 's.sa_acc_k'])
+            ->map(fn ($saldo) => [
+                'acc_id' => trim((string) $saldo->acc_id),
+                'acc_name' => trim((string) $saldo->acc_name),
+                'dk_status' => trim((string) $saldo->dk_status),
+                'sa_acc_d' => (float) $saldo->sa_acc_d,
+                'sa_acc_k' => (float) $saldo->sa_acc_k,
+            ]);
+
+        return response()->json(['tahun' => $tahun, 'jumlah' => $saldoList->count(), 'saldo' => $saldoList->values()], 200, [], self::OPSI_JSON);
     }
 }
