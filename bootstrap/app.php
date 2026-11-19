@@ -25,6 +25,14 @@ return Application::configure(basePath: dirname(__DIR__))
                     ->name('siap.')
                     ->group(base_path('routes/api-siap.php'));
             }
+            // API SIKEU (keuangan, baca saja) — prefix /api/sikeu di host SIRUS biasa, aktif hanya bila SIKEU_API_JWT_SECRET
+            // terisi. Rate limiter 'sikeu-api' & 'sikeu-token' di AppServiceProvider::boot(); host Mobile JKN ditolak di AuthSikeuApi.
+            if (strlen((string) config('services.sikeu.jwt_secret')) >= 32) {
+                Route::prefix('api/sikeu')
+                    ->middleware([\Illuminate\Routing\Middleware\SubstituteBindings::class, 'throttle:sikeu-api'])
+                    ->name('sikeu.')
+                    ->group(base_path('routes/api-sikeu.php'));
+            }
             // API Mobile JKN hanya di host-nya sendiri (URL terdaftar di BPJS, path di root).
             // Host kosong = API tidak dimuat.
             $hostMobileJkn = config('services.mobile_jkn.host');

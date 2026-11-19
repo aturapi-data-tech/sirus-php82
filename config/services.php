@@ -48,6 +48,16 @@ return [
         'ip_whitelist' => env('SIAP_API_IP_WHITELIST', ''),
     ],
 
+    // API SIKEU (aplikasi keuangan: cutoff & pembanding versi jurnal) — baca saja; aktif hanya bila jwt_secret terisi (≥ 32 karakter).
+    // Dilayani di host SIRUS biasa (ditolak di host Mobile JKN).
+    'sikeu' => [
+        // Akun API = user di tabel users SIRUS dengan role ini (dibuat lewat `php artisan sikeu-api:akun`).
+        'role' => env('SIKEU_API_ROLE', 'Api Sikeu'),
+        'jwt_secret' => env('SIKEU_API_JWT_SECRET'),
+        'token_ttl' => (int) env('SIKEU_API_TOKEN_TTL', 3600),
+        'ip_whitelist' => env('SIKEU_API_IP_WHITELIST', ''),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),
