@@ -155,8 +155,8 @@ final class KamarOperasiTarif
      * Pos persentase — SELALU dihitung ulang dari jasa dokter operator terkini.
      *
      * Persentase di sini fungsinya membantu petugas supaya tidak menghitung manual,
-     * bukan mengunci nilai. Karena itu tombol "Hitung Tarif OK" menyegarkannya setiap
-     * kali ditekan: begitu tindakan bertambah/berkurang, `oprdoc_fee` berubah dan
+     * bukan mengunci nilai. Karena itu hitungUlang() menyegarkannya setiap kali
+     * dipanggil (tambah/hapus tindakan & bahan-alat): begitu tindakan bertambah/berkurang, `oprdoc_fee` berubah dan
      * turunannya harus ikut, bukan tertinggal di angka lama.
      *
      * Petugas tetap bebas menimpa hasilnya lewat edit manual sesudahnya — total
@@ -179,7 +179,7 @@ final class KamarOperasiTarif
      * Tarif baku flat untuk pos yang BELUM PERNAH diisi.
      *
      * Beda perlakuan dengan pos persentase: nilai ini tidak turunan dari apa pun,
-     * jadi menekan tombol hitung ulang tidak boleh mengembalikannya ke baku —
+     * jadi hitung ulang tidak boleh mengembalikannya ke baku —
      * itu akan menghapus penyesuaian petugas (mis. OM LOP 50rb diubah jadi 75rb)
      * tanpa ada yang perlu dihitung ulang.
      *
@@ -226,21 +226,24 @@ final class KamarOperasiTarif
     /**
      * Hitung ulang seluruh pos turunan lalu simpan ke rstxn_oks.
      *
-     * SATU-satunya tempat rumus ini ditulis. Ada dua pintu masuk yang memicunya
-     * (modul Kamar Operasi dan order dari EMR Rawat Inap) plus tiga pemicu tak
-     * langsung (tambah/hapus tindakan, tambah/hapus bahan-alat); kalau rumusnya
+     * SATU-satunya tempat rumus ini ditulis. Pemicunya: order dari EMR RJ/UGD/RI dan
+     * tambah/hapus tindakan & bahan-alat (tombol "Hitung Tarif OK" dihapus 2026-11-20); kalau rumusnya
      * disalin ke masing-masing, angka pasien akan berbeda tergantung lewat pintu
      * mana petugas masuk.
      *
      * WAJIB dipanggil DI DALAM DB::transaction dengan baris `rstxn_oks` sudah
      * dikunci (`lockForUpdate`) — $row adalah hasil kunci itu.
      *
+     * `$segarkanPersentase = false` dipakai tambah/hapus Bahan-Alat: bahan tidak
+     * menggeser Jasa Dokter Operator, jadi tak ada alasan menimpa pos persentase
+     * (Anestesi, Asisten, Instrument) yang mungkin sudah disesuaikan operator —
+     * mis. pola tarif BPJS yang beda dari umum. Hanya `equipment_fee` (dan tarif
+     * baku yang masih kosong) yang ditulis.
+     *
      * @return array{0:array<string,int>,1:int,2:list<string>} [update, totalBaru, ringkasanPerubahan]
      */
-    public static function hitungUlang(string $okReg, object $row): array
+    public static function hitungUlang(string $okReg, object $row, bool $segarkanPersentase = true): array
     {
-        $oprdocFee = (int) DB::table('rstxn_okacts')->where('ok_reg', $okReg)->sum('okact_price');
-
         $equipmentFee = (int) DB::table('rstxn_okobats')->where('ok_reg', $okReg)->selectRaw('NVL(SUM(NVL(okobat_qty,0) * NVL(okobat_price,0)),0) as total')->value('total');
 
         $existing = [];
@@ -250,7 +253,12 @@ final class KamarOperasiTarif
 
         // Turunan detail + pos persentase disegarkan; tarif baku flat hanya
         // mengisi yang masih kosong supaya penyesuaian petugas tidak terhapus.
-        $update = ['oprdoc_fee' => $oprdocFee, 'equipment_fee' => $equipmentFee] + self::hitungPersentase($oprdocFee) + self::bakuPosKosong($existing);
+        $update = ['equipment_fee' => $equipmentFee];
+        if ($segarkanPersentase) {
+            $oprdocFee = (int) DB::table('rstxn_okacts')->where('ok_reg', $okReg)->sum('okact_price');
+            $update = ['oprdoc_fee' => $oprdocFee] + $update + self::hitungPersentase($oprdocFee);
+        }
+        $update += self::bakuPosKosong($existing);
 
         DB::table('rstxn_oks')->where('ok_reg', $okReg)->update($update);
 

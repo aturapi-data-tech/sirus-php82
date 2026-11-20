@@ -11,8 +11,9 @@ use App\Support\KamarOperasiTarif;
  * Shell modal transaksi Kamar Operasi.
  *
  * Dipecah per bagian mengikuti Administrasi RJ: shell ini hanya memegang
- * identitas, total, status, dan aksi tingkat transaksi (Hitung Tarif OK,
- * Kirim ke Tagihan, Batal Transaksi). Isi tiap bagian ada di komponen anaknya:
+ * identitas, total, status, dan aksi tingkat transaksi (Kirim ke Tagihan,
+ * Batal Transaksi). Tarif tidak punya tombol hitung — pos turunannya disegarkan
+ * otomatis tiap tambah/hapus Tindakan dan Bahan-Alat (KamarOperasiTarif::hitungUlang). Isi tiap bagian ada di komponen anaknya:
  *
  *   crew-jasa-kamar-operasi   — crew + pos tarif + jasa on call
  *   tindakan-kamar-operasi    — tab Tindakan Operasi
@@ -215,44 +216,6 @@ new class extends Component {
     }
 
     /* =======================
-     | HITUNG TARIF OK
-     * ======================= */
-    public function hitungTarifOk(): void
-    {
-        if (!$this->isAllowedRoleOk()) {
-            $this->dispatch('toast', type: 'error', message: 'Anda tidak memiliki akses.');
-            return;
-        }
-
-        if ($this->isFormLocked) {
-            $this->dispatch('toast', type: 'error', message: 'Transaksi sudah selesai/dibatalkan — tarif tidak bisa dihitung ulang.');
-            return;
-        }
-
-        $sumber = $this->sumber;
-        $refNo = $this->refNo;
-        $totalBaru = 0;
-
-        $berhasil = $this->jalankanDenganRetryOk(function () use ($sumber, $refNo, &$totalBaru) {
-            $row = $this->kunciBarisOk($this->okReg);
-
-            [, $totalBaru, $berubah] = KamarOperasiTarif::hitungUlang($this->okReg, $row);
-
-            $ringkasan = $berubah === [] ? 'tidak ada pos yang berubah' : implode(', ', $berubah);
-            $this->catatLogOk($sumber, $refNo, "Hitung Tarif OK No.{$this->okReg} — {$ringkasan}. Total Rp " . number_format($totalBaru));
-        }, 'Gagal menghitung tarif');
-
-        if (!$berhasil) {
-            return;
-        }
-
-        $this->findData();
-        $this->dispatch('kamar-operasi.updated');
-        $this->dispatch('refresh-after-kamar-operasi.saved');
-        $this->dispatch('toast', type: 'success', message: 'Tarif OK dihitung ulang — total Rp ' . number_format($totalBaru) . '.');
-    }
-
-    /* =======================
      | TRANSFER BIAYA KE TAGIHAN KUNJUNGAN (A -> L)
      |
      | Tujuannya mengikuti sumber layanan: rstxn_rjoks / rstxn_ugdoks / rstxn_rioks.
@@ -294,6 +257,14 @@ new class extends Component {
 
             $row = $this->kunciBarisOk($this->okReg);
 
+            // Tanpa tindakan, tarif belum pernah dihitung: Jasa Operator 0, pos
+            // persentase 0, dan tarif baku flat (Sewa OK dst.) masih kosong karena
+            // baru diisi saat tindakan/bahan pertama ditambahkan. Dicek di bawah
+            // kunci supaya tindakan yang baru dihapus di tab lain ikut terlihat.
+            if (!DB::table('rstxn_okacts')->where('ok_reg', $this->okReg)->exists()) {
+                throw new \RuntimeException('Belum ada tindakan operasi — isi tab Tindakan Operasi dulu, tarif akan terhitung otomatis.');
+            }
+
             $statusInduk = $this->kunciIndukOk($sumber, $refNo);
             if (!$this->indukAktifOk($sumber, $statusInduk)) {
                 throw new \RuntimeException('Proses dibatalkan: ' . lcfirst($this->sebabIndukTerkunciOk($sumber, $statusInduk)) . '.');
@@ -317,7 +288,7 @@ new class extends Component {
             }
 
             if ($jumlahPos === 0) {
-                throw new \RuntimeException('Tidak ada tarif yang bisa ditransfer — hitung tarif OK terlebih dahulu.');
+                throw new \RuntimeException('Tidak ada tarif yang bisa ditransfer — semua pos bernilai 0.');
             }
 
             DB::table('rstxn_oks')->where('ok_reg', $this->okReg)->update(['ok_status' => 'L']);
@@ -649,14 +620,6 @@ new class extends Component {
                     {{-- KANAN: Aksi utama --}}
                     <div class="flex items-center gap-2">
                         @if ($statusOk === 'A')
-                            <x-secondary-button type="button" wire:click="hitungTarifOk" wire:loading.attr="disabled"
-                                wire:target="hitungTarifOk" class="text-xs">
-                                <span wire:loading.remove wire:target="hitungTarifOk" class="inline-flex items-center gap-2"><x-ikon nama="proses" ukuran="w-3.5 h-3.5" /> Hitung Ulang Tarif</span>
-                                <span wire:loading wire:target="hitungTarifOk" class="flex items-center gap-1.5">
-                                    <x-loading /> Menghitung...
-                                </span>
-                            </x-secondary-button>
-
                             @php
                                 // Tujuan transfer ikut sumber layanan. "Trf Biaya-INAP" adalah
                                 // istilah form legacy — di layar ditulis apa adanya supaya petugas

@@ -13,7 +13,9 @@ use App\Support\KamarOperasiTarif;
  * Tab Bahan dan Alat (`rstxn_okobats`).
  *
  * Total (qty x harga) membentuk pos `equipment_fee` — ditagihkan ke pasien.
- * Tiap tambah/hapus memanggil KamarOperasiTarif::hitungUlang().
+ * Tiap tambah/hapus memanggil KamarOperasiTarif::hitungUlang() TANPA menyegarkan
+ * pos persentase — bahan tidak mengubah Jasa Operator, jadi editan manual
+ * Anestesi/Asisten/Instrument tetap utuh.
  */
 new class extends Component {
     use KamarOperasiTrait, WithRenderVersioningTrait;
@@ -133,7 +135,7 @@ new class extends Component {
 
             DB::table('rstxn_okobats')->insert(['okobat_id' => $nomor, 'product_id' => $productId, 'okobat_qty' => $qty, 'okobat_price' => $harga, 'ok_reg' => $this->okReg]);
 
-            [, $totalBaru] = KamarOperasiTarif::hitungUlang($this->okReg, $row);
+            [, $totalBaru] = KamarOperasiTarif::hitungUlang($this->okReg, $row, segarkanPersentase: false);
 
             $this->catatLogOk($sumber, $refNo, "Tambah bahan/alat OK No.{$this->okReg} — {$productId} {$productName} {$qty} x Rp " . number_format($harga) . '. Total Rp ' . number_format($totalBaru));
         }, 'Gagal menambah bahan/alat');
@@ -170,7 +172,7 @@ new class extends Component {
 
             DB::table('rstxn_okobats')->where('okobat_id', $okobatId)->where('ok_reg', $this->okReg)->delete();
 
-            [, $totalBaru] = KamarOperasiTarif::hitungUlang($this->okReg, $row);
+            [, $totalBaru] = KamarOperasiTarif::hitungUlang($this->okReg, $row, segarkanPersentase: false);
 
             $this->catatLogOk($sumber, $refNo, "Hapus bahan/alat OK No.{$this->okReg} — {$baris->product_id} " . (int) $baris->okobat_qty . ' x Rp ' . number_format((int) $baris->okobat_price) . '. Total Rp ' . number_format($totalBaru));
         }, 'Gagal menghapus bahan/alat');
