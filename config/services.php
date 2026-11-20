@@ -49,8 +49,10 @@ return [
     ],
 
     // API SIKEU (aplikasi keuangan: cutoff & pembanding versi jurnal) — baca saja; aktif hanya bila jwt_secret terisi (≥ 32 karakter).
-    // Dilayani di host SIRUS biasa (ditolak di host Mobile JKN).
+    // SIKEU_API_HOST terisi → hanya di host itu (pola SIAP); kosong → host SIRUS biasa (ditolak di host Mobile JKN).
     'sikeu' => [
+        // Host khusus API SIKEU (tanpa http:// dan port). Kosong = /api/sikeu dilayani di host SIRUS biasa
+        'host' => env('SIKEU_API_HOST'),
         // Akun API = user di tabel users SIRUS dengan role ini (dibuat lewat `php artisan sikeu-api:akun`).
         'role' => env('SIKEU_API_ROLE', 'Api Sikeu'),
         'jwt_secret' => env('SIKEU_API_JWT_SECRET'),

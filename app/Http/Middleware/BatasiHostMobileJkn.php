@@ -9,7 +9,7 @@ use Symfony\Component\HttpFoundation\Response;
 /**
  * Host API Mobile JKN terbuka ke internet (dipanggil BPJS). Halaman SIRUS
  * (grup web) tidak boleh ikut bisa dibuka lewat host itu -> 404. Berlaku juga
- * untuk host khusus API SIAP (SIAP_API_HOST) bila diisi.
+ * untuk host khusus API SIAP (SIAP_API_HOST) & API SIKEU (SIKEU_API_HOST) bila diisi.
  * Route API Mobile JKN memakai grup api, jadi tidak melewati middleware ini.
  */
 class BatasiHostMobileJkn
@@ -22,11 +22,14 @@ class BatasiHostMobileJkn
             abort(404);
         }
 
-        // Host khusus API SIAP (SIAP_API_HOST) diperlakukan sama — kecuali bila nilainya host SIRUS sendiri
+        // Host khusus API SIAP (SIAP_API_HOST) & SIKEU (SIKEU_API_HOST) diperlakukan sama — kecuali bila nilainya host SIRUS sendiri
         // (APP_URL), supaya salah isi tidak mematikan seluruh halaman SIRUS.
-        $hostSiap = (string) config('services.siap.host', '');
-        if ($hostSiap !== '' && $request->getHost() === $hostSiap && $hostSiap !== parse_url((string) config('app.url'), PHP_URL_HOST)) {
-            abort(404);
+        $hostSirus = parse_url((string) config('app.url'), PHP_URL_HOST);
+        foreach (['services.siap.host', 'services.sikeu.host'] as $kunciHost) {
+            $hostApi = (string) config($kunciHost, '');
+            if ($hostApi !== '' && $request->getHost() === $hostApi && $hostApi !== $hostSirus) {
+                abort(404);
+            }
         }
 
         return $next($request);
