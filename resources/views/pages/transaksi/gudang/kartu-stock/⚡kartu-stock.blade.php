@@ -71,46 +71,77 @@ new class extends Component {
         $this->reset(['productId', 'product', 'editSaldo', 'stockFisik']);
     }
 
-    /* ── Master list semua produk dengan saldo per year ── */
+    /**
+     * Rentang tanggal tahun terpilih utk filter txn_date (sargable, ganti filter TO_CHAR tahun).
+     * Tahun tak valid (input belum 4 digit) → null → daftar/mutasi kosong.
+     */
+    protected function rentangTahun(): ?array
+    {
+        if (!preg_match('/^\d{4}$/', (string) $this->year)) return null;
+        return [$this->year . '-01-01', ((int) $this->year + 1) . '-01-01'];
+    }
+
+    /* ── Master list produk + saldo per tahun ──
+     * Dua tahap (perf): (1) paginate master produk saja — murah;
+     * (2) saldo awal + agregat mutasi HANYA utk product_id di halaman aktif.
+     * Dulu agregat tkview_iostockwhs dihitung utk SEMUA produk setahun penuh,
+     * dua kali (count + data) di SETIAP request (~1,8 dtk di apotek).
+     */
     #[Computed]
     public function productList()
     {
-        $sub = DB::table('tkview_iostockwhs')
-            ->select('product_id',
-                DB::raw('NVL(SUM(qty_d),0) as masuk'),
-                DB::raw('NVL(SUM(qty_k),0) as keluar'))
-            ->whereRaw("TO_CHAR(txn_date,'YYYY') = ?", [$this->year])
-            ->groupBy('product_id');
-
         $query = DB::table('immst_products as p')
-            ->leftJoinSub($sub, 'io', fn ($j) => $j->on('io.product_id', '=', 'p.product_id'))
-            ->leftJoin('tktxn_saldoawalstocks as s', function ($j) {
-                $j->on('s.product_id', '=', 'p.product_id')
-                  ->where('s.sa_year', '=', $this->year);
-            })
             ->select([
                 'p.product_id',
                 'p.product_name',
-                DB::raw("'' as product_type"), // TODO: sirus immst_products tidak punya product_type
                 'p.qty_box',
                 'p.limit_stock',
                 'p.active_status',
-                DB::raw('NVL(s.sa_stockwh,0) as saldo_awal'),
-                DB::raw('NVL(io.masuk,0) as masuk'),
-                DB::raw('NVL(io.keluar,0) as keluar'),
-                DB::raw('NVL(s.sa_stockwh,0) + NVL(io.masuk,0) - NVL(io.keluar,0) as saldo_akhir'),
             ])
             ->where('p.active_status', '1');
 
         if ($this->searchProduct !== '') {
-            $kw = mb_strtoupper(trim($this->searchProduct));
-            $query->where(function ($q) use ($kw) {
-                $q->whereRaw('UPPER(p.product_id) LIKE ?', ["%{$kw}%"])
-                  ->orWhereRaw('UPPER(p.product_name) LIKE ?', ["%{$kw}%"]);
+            $keyword = mb_strtoupper(trim($this->searchProduct));
+            $query->where(function ($subQuery) use ($keyword) {
+                $subQuery->whereRaw('UPPER(p.product_id) LIKE ?', ["%{$keyword}%"])
+                    ->orWhereRaw('UPPER(p.product_name) LIKE ?', ["%{$keyword}%"]);
             });
         }
 
-        return $query->orderBy('p.product_name')->paginate($this->itemsPerPage);
+        $halaman = $query->orderBy('p.product_name')->paginate($this->itemsPerPage);
+
+        $productIds = $halaman->getCollection()->pluck('product_id')->all();
+        $rentang = $this->rentangTahun();
+        $saldoAwalList = collect();
+        $mutasiList = collect();
+
+        if ($productIds && $rentang) {
+            $saldoAwalList = DB::table('tktxn_saldoawalstocks')
+                ->whereIn('product_id', $productIds)
+                ->where('sa_year', $this->year)
+                ->groupBy('product_id')
+                ->selectRaw('product_id, NVL(SUM(sa_stockwh),0) as saldo_awal')
+                ->pluck('saldo_awal', 'product_id');
+
+            $mutasiList = DB::table('tkview_iostockwhs')
+                ->whereIn('product_id', $productIds)
+                ->whereRaw("txn_date >= TO_DATE(?,'YYYY-MM-DD') AND txn_date < TO_DATE(?,'YYYY-MM-DD')", $rentang)
+                ->groupBy('product_id')
+                ->selectRaw('product_id, NVL(SUM(qty_d),0) as masuk, NVL(SUM(qty_k),0) as keluar')
+                ->get()
+                ->keyBy('product_id');
+        }
+
+        $halaman->getCollection()->transform(function ($row) use ($saldoAwalList, $mutasiList) {
+            $mutasi = $mutasiList->get($row->product_id);
+            $row->saldo_awal  = (float) ($saldoAwalList[$row->product_id] ?? 0);
+            $row->masuk       = (float) ($mutasi->masuk ?? 0);
+            $row->keluar      = (float) ($mutasi->keluar ?? 0);
+            $row->saldo_akhir = $row->saldo_awal + $row->masuk - $row->keluar;
+            return $row;
+        });
+
+        return $halaman;
     }
 
     /* ── Stock Opname (port Oracle Forms NEW logic) ──
@@ -238,14 +269,10 @@ new class extends Component {
             ->where('sa_year', $this->year)
             ->sum('sa_stockwh') ?? 0);
 
-        $mut = DB::table('tkview_iostockwhs')
-            ->where('product_id', $this->productId)
-            ->whereRaw("TO_CHAR(txn_date,'YYYY') = ?", [$this->year])
-            ->selectRaw('NVL(SUM(qty_d),0) as masuk, NVL(SUM(qty_k),0) as keluar')
-            ->first();
-
-        $masuk  = (int) ($mut->masuk  ?? 0);
-        $keluar = (int) ($mut->keluar ?? 0);
+        // Masuk/keluar dijumlah dari baris mutations (filter sama, sudah di-load utk tabel)
+        // → hemat satu scan view per request.
+        $masuk  = (int) $this->mutations->sum('qty_d');
+        $keluar = (int) $this->mutations->sum('qty_k');
 
         return [
             'awal'   => $awal,
@@ -262,7 +289,8 @@ new class extends Component {
     #[Computed]
     public function mutations()
     {
-        if (!$this->productId) return collect();
+        $rentang = $this->rentangTahun();
+        if (!$this->productId || !$rentang) return collect();
 
         $rows = DB::table('tkview_iostockwhs')
             ->select([
@@ -274,7 +302,7 @@ new class extends Component {
                 DB::raw('NVL(qty_k,0) as qty_k'),
             ])
             ->where('product_id', $this->productId)
-            ->whereRaw("TO_CHAR(txn_date,'YYYY') = ?", [$this->year])
+            ->whereRaw("txn_date >= TO_DATE(?,'YYYY-MM-DD') AND txn_date < TO_DATE(?,'YYYY-MM-DD')", $rentang)
             ->orderBy('txn_date')
             ->orderBy('txn_no')
             ->get();
