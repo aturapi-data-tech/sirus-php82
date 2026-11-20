@@ -267,7 +267,7 @@ new class extends Component {
     {
         if (!$this->productId) return collect();
 
-        return DB::table('tkview_iostockwhsnon')
+        $rows = DB::table('tkview_iostockwhsnon')
             ->select([
                 DB::raw("TO_CHAR(txn_date,'dd/mm/yyyy hh24:mi:ss') as txn_date_display"),
                 'txn_date',
@@ -281,18 +281,88 @@ new class extends Component {
             ->orderBy('txn_date')
             ->orderBy('txn_no')
             ->get();
+
+        return $this->lengkapiKeterangan($rows);
     }
 
     /**
-     * Mapping txn_status → keterangan (port Oracle Forms).
+     * Keterangan rinci per baris mutasi, sesuai sumber view tkview_iostockwhsnon:
+     *   RCV     → imtxn_receivehdrsnon (supplier + no faktur)
+     *   TRF_IN / TRF_OUT → imtxn_trfhdrnonmedes (lokasi asal / tujuan transfer)
+     *   (view non-medis tidak punya retur maupun beban)
+     * Lookup per jenis, nomor dipecah per 1000 (batas IN Oracle).
+     */
+    protected function lengkapiKeterangan(\Illuminate\Support\Collection $rows): \Illuminate\Support\Collection
+    {
+        $nomorPerStatus = $rows->groupBy('txn_status')
+            ->map(fn ($rowsStatus) => $rowsStatus->pluck('txn_no')->filter()->unique()->values());
+
+        $ambil = function (string $status, callable $buatQuery) use ($nomorPerStatus): array {
+            $daftarNomor = $nomorPerStatus->get($status);
+            if (!$daftarNomor || $daftarNomor->isEmpty()) return [];
+
+            $detailList = [];
+            foreach ($daftarNomor->chunk(1000) as $potongan) {
+                foreach ($buatQuery($potongan->all())->get() as $row) {
+                    $detailList[(string) $row->nomor] = $row;
+                }
+            }
+            return $detailList;
+        };
+
+        $transfer = fn (array $nomor) => DB::table('imtxn_trfhdrnonmedes as h')
+            ->leftJoin('immst_stocklocations as asal', 'asal.sl_code', '=', 'h.sl_codefrom')
+            ->leftJoin('immst_stocklocations as tujuan', 'tujuan.sl_code', '=', 'h.sl_codeto')
+            ->whereIn('h.trf_no', $nomor)
+            ->select([
+                'h.trf_no as nomor',
+                DB::raw('NVL(asal.sl_name, h.sl_codefrom) as asal_nama'),
+                DB::raw('NVL(tujuan.sl_name, h.sl_codeto) as tujuan_nama'),
+            ]);
+
+        $detailPerStatus = [
+            'RCV' => $ambil('RCV', fn (array $nomor) => DB::table('imtxn_receivehdrsnon as h')
+                ->leftJoin('immst_suppliers as sup', 'sup.supp_id', '=', 'h.supp_id')
+                ->whereIn('h.rcv_no', $nomor)
+                ->select(['h.rcv_no as nomor', 'sup.supp_name', 'h.faktur', 'h.rcv_desc'])),
+            'TRF_IN'  => $ambil('TRF_IN', $transfer),
+            'TRF_OUT' => $ambil('TRF_OUT', $transfer),
+        ];
+
+        return $rows->map(function ($row) use ($detailPerStatus) {
+            $detail = $detailPerStatus[$row->txn_status][(string) $row->txn_no] ?? null;
+
+            $row->judul = match ($row->txn_status) {
+                'RCV'     => 'PENERIMAAN ' . $row->txn_no,
+                'TRF_IN'  => 'TRANSFER MASUK ' . $row->txn_no,
+                'TRF_OUT' => 'TRANSFER KELUAR ' . $row->txn_no,
+                'SOD', 'SOK' => 'OPNAME #' . $row->txn_no,
+                default   => trim($row->txn_status . ' ' . $row->txn_no),
+            };
+            $row->supplier = $detail->supp_name ?? null;
+            $row->faktur   = $detail->faktur ?? null;
+            $row->ruang = match ($row->txn_status) {
+                'TRF_IN'  => isset($detail->asal_nama) ? 'dari ' . $detail->asal_nama : null,
+                'TRF_OUT' => isset($detail->tujuan_nama) ? 'ke ' . $detail->tujuan_nama : null,
+                default   => null,
+            };
+            $row->catatan = $detail->rcv_desc ?? null;
+
+            return $row;
+        });
+    }
+
+    /**
+     * Mapping txn_status (kode di view tkview_iostockwhsnon) → label + warna badge.
      */
     public static function statusLabel(string $status): array
     {
         return match ($status) {
-            'SLS' => ['Obat Bebas', 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'],
-            'RCV' => ['Beli PBF', 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300'],
-            'RJ'  => ['Rawat Jalan', 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300'],
-            'SO'  => ['Stock Opname', 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300'],
+            'RCV'     => ['Penerimaan', 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300'],
+            'TRF_IN'  => ['Transfer Masuk', 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'],
+            'TRF_OUT' => ['Transfer Keluar', 'bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-300'],
+            'SOD'     => ['Opname (+)', 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300'],
+            'SOK'     => ['Opname (−)', 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300'],
             default => [$status ?: '—', 'bg-surface-soft text-body dark:bg-gray-800 dark:text-gray-300'],
         };
     }
@@ -351,11 +421,11 @@ new class extends Component {
                 </div>
             </div>
 
-            {{-- MAIN GRID: KIRI = list produk (col-4) | KANAN = detail (col-8) --}}
+            {{-- MAIN GRID: KIRI = list produk (col-3) | KANAN = detail (col-9) --}}
             <div class="grid grid-cols-1 gap-4 lg:grid-cols-12">
 
                 {{-- KIRI: LIST PRODUK --}}
-                <div class="lg:col-span-4 bg-canvas border border-hairline shadow-sm rounded-2xl dark:border-gray-700 dark:bg-gray-900">
+                <div class="lg:col-span-3 bg-canvas border border-hairline shadow-sm rounded-2xl dark:border-gray-700 dark:bg-gray-900">
                     <div class="px-5 py-4 border-b border-hairline dark:border-gray-700">
                         <h3 class="text-base font-semibold text-ink dark:text-gray-100">
                             Daftar Obat
@@ -413,13 +483,13 @@ new class extends Component {
                 </div>
 
                 {{-- KANAN: DETAIL --}}
-                <div class="lg:col-span-8">
+                <div class="lg:col-span-9">
                     @if ($productId && $product)
-                        {{-- Sub-grid dalam kanan: history (col-7) + info+opname (col-5) --}}
+                        {{-- Sub-grid dalam kanan: history (col-8) + info+opname (col-4) --}}
                         <div class="grid grid-cols-1 gap-4 lg:grid-cols-12">
 
                     {{-- HISTORY MUTASI (kiri dlm panel kanan) --}}
-                    <div class="lg:col-span-7 bg-canvas border border-hairline shadow-sm rounded-2xl dark:border-gray-700 dark:bg-gray-900">
+                    <div class="lg:col-span-8 bg-canvas border border-hairline shadow-sm rounded-2xl dark:border-gray-700 dark:bg-gray-900">
                         <div class="px-5 py-4 border-b border-hairline dark:border-gray-700">
                             <h3 class="text-base font-semibold text-ink dark:text-gray-100">
                                 History Mutasi {{ $year }}
@@ -446,20 +516,29 @@ new class extends Component {
                                     @forelse($this->mutationsWithBalance as $row)
                                         @php
                                             [$label, $badgeClass] = $this::statusLabel($row->txn_status);
-                                            $ket = match ($row->txn_status) {
-                                                'SLS' => 'OBAT BEBAS ' . $row->txn_no,
-                                                'RCV' => 'BELI PBF ' . $row->txn_no,
-                                                'RJ'  => 'RAWAT JALAN ' . $row->txn_no,
-                                                'SO'  => 'OPNAME #' . $row->txn_no,
-                                                default => $row->txn_status . ' ' . $row->txn_no,
-                                            };
                                         @endphp
                                         <tr wire:key="kartu-stock-non-mut-{{ $row->txn_status }}-{{ $row->txn_no ?? $loop->index }}" class="hover:bg-surface-soft dark:hover:bg-gray-800/60">
                                             <td class="px-3 py-2 font-mono whitespace-nowrap">{{ $row->txn_date_display }}</td>
                                             <td class="px-3 py-2">
                                                 <span class="px-2 py-0.5 text-xs rounded-full {{ $badgeClass }}">{{ $label }}</span>
                                             </td>
-                                            <td class="px-3 py-2">{{ $ket }}</td>
+                                            <td class="px-3 py-2">
+                                                <div class="text-ink dark:text-gray-100">{{ $row->judul }}</div>
+                                                @if ($row->supplier || $row->faktur)
+                                                    <div class="text-xs text-muted dark:text-gray-400">
+                                                        <span class="font-medium text-body dark:text-gray-300">{{ $row->supplier ?? '-' }}</span>
+                                                        @if ($row->faktur)
+                                                            &middot; Faktur <span class="font-mono">{{ $row->faktur }}</span>
+                                                        @endif
+                                                    </div>
+                                                @endif
+                                                @if ($row->ruang)
+                                                    <div class="text-xs text-muted dark:text-gray-400">Ruang: <span class="font-medium text-body dark:text-gray-300">{{ $row->ruang }}</span></div>
+                                                @endif
+                                                @if ($row->catatan)
+                                                    <div class="text-xs italic text-muted dark:text-gray-400">{{ $row->catatan }}</div>
+                                                @endif
+                                            </td>
                                             <td class="px-3 py-2 font-mono text-right text-emerald-700">
                                                 {{ $row->qty_d > 0 ? number_format($row->qty_d) : '-' }}
                                             </td>
@@ -493,7 +572,7 @@ new class extends Component {
                     </div>
 
                     {{-- DATA OBAT + SALDO + OPNAME (kanan dlm panel kanan) --}}
-                    <div class="lg:col-span-5 space-y-4">
+                    <div class="lg:col-span-4 space-y-4">
                         {{-- Card: Data Obat --}}
                         <div class="bg-canvas border border-hairline shadow-sm rounded-2xl dark:border-gray-700 dark:bg-gray-900">
                             <div class="px-5 py-4 border-b border-hairline dark:border-gray-700">
@@ -672,7 +751,7 @@ new class extends Component {
                     </p>
                 </div>
             @endif
-                </div> {{-- close: KANAN col-span-8 wrapper --}}
+                </div> {{-- close: KANAN col-span-9 wrapper --}}
             </div> {{-- close: MAIN GRID lg:grid-cols-12 --}}
         </div>
     </div>
