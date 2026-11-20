@@ -60,8 +60,8 @@ class LoginRequest extends FormRequest
             ]);
         }
 
-        // Akun API SIAP (role services.siap.role) hanya untuk mesin — tidak boleh masuk ke web.
-        if (Auth::user()->hasRole((string) config('services.siap.role', 'Api Siap'))) {
+        // Akun API SIAP / SIKEU (role services.siap.role / services.sikeu.role) hanya untuk mesin — tidak boleh masuk ke web.
+        if (Auth::user()->hasAnyRole([(string) config('services.siap.role', 'Api Siap'), (string) config('services.sikeu.role', 'Api Sikeu')])) {
             Auth::logout();
             RateLimiter::hit($this->throttleKey());
 

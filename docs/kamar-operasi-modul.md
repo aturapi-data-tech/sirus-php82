@@ -78,13 +78,16 @@ Satu kelas jadi sumber tunggal: daftar pos, tarif baku, pemetaan crew, dan **rum
 
 ### `hitungUlang($okReg, $row)` — satu-satunya tempat rumus ditulis
 
-Dipanggil dari **6 pemicu**: tombol Hitung Tarif OK, tambah/hapus tindakan,
-tambah/hapus bahan-alat, dan order dari EMR RI. Kalau rumusnya disalin ke masing-masing,
+Dipanggil dari: tambah/hapus tindakan, tambah/hapus bahan-alat, dan order dari EMR
+RJ/UGD/RI. Tombol **Hitung Tarif OK dihapus 2026-11-20** — membingungkan karena menimpa
+kembali pos persentase yang sudah diedit manual. Sebagai gantinya, **Kirim ke Tagihan
+ditolak bila belum ada tindakan** (tanpa tindakan tarif baku flat masih NULL). Kalau rumusnya disalin ke masing-masing,
 angka pasien akan berbeda tergantung lewat pintu mana petugas masuk.
 
 Aturannya:
 1. `oprdoc_fee` & `equipment_fee` **selalu** dijumlah ulang dari tabel detail.
-2. Pos persentase **selalu disegarkan** dari `oprdoc_fee` terkini — persentase itu alat
+2. Pos persentase **disegarkan** dari `oprdoc_fee` terkini saat tambah/hapus **tindakan**
+   (bahan-alat memanggil `segarkanPersentase: false` sejak 2026-11-20 supaya editan manual tidak hilang) — persentase itu alat
    bantu hitung, bukan pengunci (keputusan user 2026-07-31).
 3. Tarif baku flat **hanya mengisi yang masih NULL** — penyesuaian petugas (mis. OM LOP
    50rb diubah 75rb) tidak boleh kembali ke baku.
@@ -111,7 +114,7 @@ app/Support/KamarOperasiTarif.php                     registry pos + mesin tarif
 ```
 
 **Shell** hanya memegang identitas, total, status, dan aksi tingkat transaksi
-(Hitung Tarif OK, Trf Biaya-INAP, Batal Transaksi). Semula satu file 1.999 baris;
+(Trf Biaya-INAP, Batal Transaksi). Semula satu file 1.999 baris;
 dipecah supaya tiap bagian bisa dibuka & diubah sendiri.
 
 **Kontrak induk–anak** (sama persis dengan Administrasi RJ):

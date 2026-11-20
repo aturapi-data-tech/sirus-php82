@@ -79,31 +79,4 @@ final class SaldoKas
     {
         return self::arus($accId, $dkStatus, sprintf('%04d-01-01', $tahun), sprintf('%04d-12-31', $tahun));
     }
-
-    /** Nomor shift sesuai jam sekarang (rstxn_shiftctls), fallback '1'. */
-    public static function shiftSekarang(): string
-    {
-        $shift = DB::table('rstxn_shiftctls')
-            ->select('shift')
-            ->whereNotNull('shift_start')
-            ->whereNotNull('shift_end')
-            ->whereRaw('? BETWEEN shift_start AND shift_end', [now()->format('H:i:s')])
-            ->first();
-
-        return (string) ($shift?->shift ?? '1');
-    }
-
-    /** Daftar nomor shift yang terdefinisi, urut jam mulai. */
-    public static function daftarShift(): array
-    {
-        return DB::table('rstxn_shiftctls')
-            ->whereNotNull('shift_start')
-            ->whereNotNull('shift_end')
-            ->orderBy('shift_start')
-            ->pluck('shift')
-            ->map(fn ($nomorShift) => (string) $nomorShift)
-            ->unique()
-            ->values()
-            ->all();
-    }
 }

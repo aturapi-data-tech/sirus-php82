@@ -8,6 +8,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 use App\Support\Keuangan\SaldoKas;
+use App\Support\Shift;
 
 new class extends Component {
     use WithRenderVersioningTrait;
@@ -102,7 +103,7 @@ new class extends Component {
         // Tampilan, tanggal & shift MENGIKUTI induk (set tanggalHarian + input + periode).
         $this->mode = $mode === 'harian' ? 'harian' : 'shift';
         $this->setTanggalHarian($tanggal);
-        $this->shiftPilihan = $shift !== '' ? $shift : SaldoKas::shiftSekarang();
+        $this->shiftPilihan = $shift !== '' ? $shift : Shift::sekarang();
 
         $this->incrementVersion('modal');
         $this->dispatch('open-modal', name: 'saldo-kas-history');

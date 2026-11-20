@@ -371,7 +371,7 @@ new class extends Component {
 
                     <div class="p-3 text-xs border rounded-xl border-blue-200 bg-blue-50 text-blue-900 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-200">
                         Transaksi dibuat dengan status <span class="font-semibold">Proses Transaksi</span> dan tarif masih kosong.
-                        Setelah tersimpan, isi tindakan operasi lalu tekan Hitung Tarif OK.
+                        Setelah tersimpan, isi tindakan operasi — tarif terhitung otomatis. Transaksi tanpa tindakan tidak bisa dikirim ke tagihan.
                     </div>
                 @endif
 

@@ -42,6 +42,9 @@ class AppServiceProvider extends ServiceProvider
         // API SIAP (penggajian): data 120/menit per IP; permintaan token 10/menit per IP (rem brute force).
         RateLimiter::for('siap-api', fn (Request $request) => Limit::perMinute(120)->by($request->ip()));
         RateLimiter::for('siap-token', fn (Request $request) => Limit::perMinute(10)->by($request->ip()));
+        // API SIKEU (keuangan): satu snapshot = satu panggilan per cabang jurnal (±200) → 600/menit per IP; token 10/menit.
+        RateLimiter::for('sikeu-api', fn (Request $request) => Limit::perMinute(600)->by($request->ip()));
+        RateLimiter::for('sikeu-token', fn (Request $request) => Limit::perMinute(10)->by($request->ip()));
 
         // Gate aksi yang dibatasi — daftar role dari SATU sumber berklaster
         // (App\Support\AksiRole). Ubah role cukup di file itu; nama Gate di bawah

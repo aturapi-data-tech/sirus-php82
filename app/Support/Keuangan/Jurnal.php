@@ -200,6 +200,40 @@ final class Jurnal
     }
 
     /**
+     * Kunci tetap satu cabang katalog (12 heksa dari definisinya). Dipakai SIKEU untuk mengenali cabang
+     * antar-snapshot: berubah HANYA bila definisi cabangnya di JurnalCabang diubah — dan itu memang perubahan.
+     */
+    public static function kunciCabang(array $cabang): string
+    {
+        return substr(sha1(json_encode($cabang)), 0, 12);
+    }
+
+    /**
+     * SEMUA baris jurnal satu cabang pada rentang tanggal (inklusif), semua akun — satu SELECT tanpa UNION,
+     * jadi aman dari wrong-result Oracle 10.2.0.1 (lihat arusPerAkunPerCabang). Akun konfigurasi yang
+     * belum dipetakan di tkacc_confacctxns keluar NULL, barisnya tetap ikut supaya transaksi tidak hilang.
+     * Kolom hasil sama dengan queryBanyak(): txn_name, txn_acc, txn_acc_k, shift, txn_date, txn_d, txn_k.
+     */
+    public static function barisCabang(array $cabang, string $dari, string $sampai): array
+    {
+        $petaKonfigurasi = self::konfigurasiAkun();
+        $binding = [];
+
+        $akunSql = $cabang['akun'];
+        if (self::isKonfigurasi($akunSql)) { $binding[] = self::akunKonfigurasi($akunSql, $petaKonfigurasi); $akunSql = '?'; }
+        $akunLawanSql = $cabang['akunLawan'];
+        if (self::isKonfigurasi($akunLawanSql)) { $binding[] = self::akunKonfigurasi($akunLawanSql, $petaKonfigurasi); $akunLawanSql = '?'; }
+
+        $sql = "select {$cabang['label']} txn_name, {$akunSql} txn_acc, {$akunLawanSql} txn_acc_k, {$cabang['shift']} shift, "
+            . "{$cabang['tanggal']} txn_date, {$cabang['debit']} txn_d, {$cabang['kredit']} txn_k from {$cabang['from']}"
+            . " where {$cabang['tanggal']} >= TO_DATE(?,'YYYY-MM-DD') and {$cabang['tanggal']} < TO_DATE(?,'YYYY-MM-DD') + 1"
+            . ($cabang['where'] !== '' ? " and ({$cabang['where']})" : '');
+        array_push($binding, $dari, $sampai);
+
+        return DB::select($sql, $binding);
+    }
+
+    /**
      * Saldo awal tahun (tktxn_saldoawalakuns) untuk sekumpulan akun:
      * [acc_id => ['debit' => sa_acc_d, 'kredit' => sa_acc_k]], akun tanpa baris = nol.
      */

@@ -438,7 +438,7 @@ new class extends Component {
                 <span class="mt-0.5 text-xs italic shrink-0 text-blue-700 dark:text-blue-300">50% / 10%</span>
                 <span>
                     Angka usulan, dihitung dari pos <span class="font-semibold">Jasa Dokter Operator</span>.
-                    Disegarkan tiap kali tombol <span class="font-semibold">Hitung Tarif OK</span> ditekan.
+                    Disegarkan otomatis tiap kali tindakan operasi ditambah atau dihapus (bahan/alat tidak memengaruhinya).
                     Boleh Anda ubah manual — total tetap mengikuti nilai yang tersimpan, bukan persentasenya.
                 </span>
             </div>
@@ -499,7 +499,7 @@ new class extends Component {
                                 <span class="italic" title="Dijumlah dari tabel tindakan">&middot; otomatis</span>
                             @elseif ($persen !== null)
                                 <span class="italic"
-                                    title="Usulan {{ $persen }}% dari pos Jasa Dokter Operator; disegarkan tiap kali tarif dihitung ulang. Boleh diedit — total tetap mengikuti nilai yang Anda isi.">&middot; {{ $persen }}%</span>
+                                    title="Usulan {{ $persen }}% dari pos Jasa Dokter Operator; disegarkan tiap kali tindakan operasi ditambah/dihapus. Boleh diedit — total tetap mengikuti nilai yang Anda isi.">&middot; {{ $persen }}%</span>
                             @endif
                         </span>
                     </div>

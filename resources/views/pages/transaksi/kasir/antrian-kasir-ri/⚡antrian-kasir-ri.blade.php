@@ -6,6 +6,7 @@ use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Session;
 use Illuminate\Support\Facades\DB;
+use App\Support\Shift;
 use App\Support\OracleLob;
 use Carbon\Carbon;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
@@ -27,6 +28,8 @@ new class extends Component {
     public string $filterStatus = 'A';
     #[Session(key: 'antrian-kasir-ri-filterDokter')]
     public string $filterDokter = '';
+    #[Session(key: 'antrian-kasir-ri-filterShift')]
+    public string $filterShift = ''; // '' = semua shift
     #[Session(key: 'antrian-kasir-ri-itemsPerPage')]
     public int $itemsPerPage = 10;
     public string $autoRefresh = 'Ya';
@@ -62,6 +65,12 @@ new class extends Component {
         $this->incrementVersion('antrian-kasir-ri-toolbar');
     }
 
+    public function updatedFilterShift(): void
+    {
+        $this->resetPage();
+        $this->incrementVersion('antrian-kasir-ri-toolbar');
+    }
+
     public function updatedItemsPerPage(): void
     {
         $this->resetPage();
@@ -70,7 +79,7 @@ new class extends Component {
 
     public function resetFilters(): void
     {
-        $this->reset(['searchKeyword', 'filterStatus', 'filterDokter']);
+        $this->reset(['searchKeyword', 'filterStatus', 'filterDokter', 'filterShift']);
         $this->filterStatus = 'A';
         $this->filterTanggal = Carbon::now()->format('d/m/Y');
         $this->incrementVersion('antrian-kasir-ri-toolbar');
@@ -135,6 +144,10 @@ new class extends Component {
 
         if ($this->filterDokter !== '') {
             $query->where('s.dr_id', $this->filterDokter);
+        }
+
+        if ($this->filterShift !== '') {
+            $query->where('s.shift', $this->filterShift);
         }
 
         $search = trim($this->searchKeyword);
@@ -261,11 +274,11 @@ new class extends Component {
             {{-- TOOLBAR --}}
             <div
                 class="sticky z-30 px-4 py-3 bg-surface-soft border-b border-hairline top-20 dark:bg-gray-900 dark:border-gray-700">
-                <div class="flex flex-wrap items-end gap-3"
+                <div class="flex flex-wrap items-end gap-2"
                     wire:key="{{ $this->renderKey('antrian-kasir-ri-toolbar', []) }}">
 
                     {{-- SEARCH --}}
-                    <div class="w-full sm:flex-1">
+                    <div class="w-full min-w-0 sm:flex-1">
                         <x-input-label value="Pencarian" class="sr-only" />
                         <div class="relative mt-1">
                             <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
@@ -276,12 +289,12 @@ new class extends Component {
                                 </svg>
                             </div>
                             <x-text-input wire:model.live.debounce.300ms="searchKeyword" class="block w-full pl-10"
-                                placeholder="Cari No SLS / No RM / Nama Pasien / Dokter..." />
+                                placeholder="Cari No SLS / RM / Nama / Dokter" />
                         </div>
                     </div>
 
                     {{-- TANGGAL --}}
-                    <div class="w-full sm:w-auto">
+                    <div class="w-full sm:w-36">
                         <x-input-label value="Tanggal" />
                         <div class="relative mt-1">
                             <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
@@ -292,23 +305,34 @@ new class extends Component {
                                 </svg>
                             </div>
                             <x-text-input type="text" wire:model.live="filterTanggal"
-                                class="block w-full pl-10 sm:w-40" placeholder="dd/mm/yyyy" />
+                                class="block w-full pl-10" placeholder="dd/mm/yyyy" />
                         </div>
                     </div>
 
                     {{-- STATUS --}}
-                    <div class="w-full sm:w-auto">
+                    <div class="w-full sm:w-32">
                         <x-input-label value="Status" />
-                        <x-select-input wire:model.live="filterStatus" class="w-full mt-1 sm:w-36">
+                        <x-select-input wire:model.live="filterStatus" class="w-full mt-1">
                             <option value="A">Antrian</option>
                             <option value="L">Selesai</option>
                         </x-select-input>
                     </div>
 
+                    {{-- SHIFT --}}
+                    <div class="w-full sm:w-28">
+                        <x-input-label value="Shift" />
+                        <x-select-input wire:model.live="filterShift" class="w-full mt-1">
+                            <option value="">Semua</option>
+                            @foreach (Shift::daftar() as $nomorShift)
+                                <option value="{{ $nomorShift }}">Shift {{ $nomorShift }}</option>
+                            @endforeach
+                        </x-select-input>
+                    </div>
+
                     {{-- DOKTER --}}
-                    <div class="w-full sm:w-auto">
+                    <div class="w-full sm:w-40">
                         <x-input-label value="Dokter" />
-                        <x-select-input wire:model.live="filterDokter" class="w-full mt-1 sm:w-48">
+                        <x-select-input wire:model.live="filterDokter" class="w-full mt-1">
                             <option value="">Semua Dokter</option>
                             @foreach ($this->dokterList as $dokter)
                                 <option value="{{ $dokter->dr_id }}">
@@ -319,17 +343,17 @@ new class extends Component {
                     </div>
 
                     {{-- AUTO REFRESH --}}
-                    <div class="w-full sm:w-auto">
+                    <div class="w-full sm:w-28">
                         <x-input-label value="Auto Refresh" />
-                        <x-select-input wire:model.live="autoRefresh" class="w-full mt-1 sm:w-28">
+                        <x-select-input wire:model.live="autoRefresh" class="w-full mt-1">
                             <option value="Ya">Ya (20s)</option>
                             <option value="Tidak">Tidak</option>
                         </x-select-input>
                     </div>
 
-                    <div class="w-full sm:w-auto">
+                    <div class="w-full sm:w-20">
                         <x-input-label value="Per Hal." />
-                        <x-select-input wire:model.live="itemsPerPage" class="w-full mt-1 sm:w-28">
+                        <x-select-input wire:model.live="itemsPerPage" class="w-full mt-1">
                             <option value="10">10</option>
                             <option value="25">25</option>
                             <option value="50">50</option>
