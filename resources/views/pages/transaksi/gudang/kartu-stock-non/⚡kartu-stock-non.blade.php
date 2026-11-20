@@ -478,7 +478,31 @@ new class extends Component {
                     </div>
 
                     <div class="sticky bottom-0 z-10 px-3 py-2 text-xs bg-canvas border-t border-hairline rounded-b-2xl dark:bg-gray-900 dark:border-gray-700">
-                        {{ $this->productList->links() }}
+                        {{-- Pagination ringkas: panel sempit (col-3), template bersama terlalu lebar --}}
+                        @php $halamanProduk = $this->productList; @endphp
+                        @if ($halamanProduk->total() > 0)
+                            <div class="flex items-center justify-between gap-2">
+                                <span class="text-muted dark:text-gray-400 whitespace-nowrap">
+                                    {{ number_format($halamanProduk->firstItem()) }}–{{ number_format($halamanProduk->lastItem()) }}
+                                    dari {{ number_format($halamanProduk->total()) }}
+                                </span>
+                                @if ($halamanProduk->hasPages())
+                                    <div class="flex items-center gap-1">
+                                        <button type="button" class="ds-page-btn" wire:click="previousPage" wire:loading.attr="disabled"
+                                            @disabled($halamanProduk->onFirstPage()) aria-label="Halaman sebelumnya">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" /></svg>
+                                        </button>
+                                        <span class="px-1 text-body dark:text-gray-300 whitespace-nowrap">
+                                            Hal <span class="font-semibold text-ink dark:text-gray-100">{{ $halamanProduk->currentPage() }}</span> / {{ $halamanProduk->lastPage() }}
+                                        </span>
+                                        <button type="button" class="ds-page-btn" wire:click="nextPage" wire:loading.attr="disabled"
+                                            @disabled(!$halamanProduk->hasMorePages()) aria-label="Halaman berikutnya">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+                                        </button>
+                                    </div>
+                                @endif
+                            </div>
+                        @endif
                     </div>
                 </div>
 
