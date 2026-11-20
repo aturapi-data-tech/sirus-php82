@@ -366,14 +366,14 @@ new class extends Component {
     public static function statusLabel(string $status): array
     {
         return match ($status) {
-            'RCV'     => ['Penerimaan PBF', 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300'],
-            'RTN'     => ['Retur PBF', 'bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300'],
-            'TRF_IN'  => ['Transfer Masuk', 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'],
-            'TRF_OUT' => ['Transfer Keluar', 'bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-300'],
-            'B'       => ['Beban', 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300'],
-            'SOD'     => ['Opname (+)', 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300'],
-            'SOK'     => ['Opname (−)', 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300'],
-            default => [$status ?: '—', 'bg-surface-soft text-body dark:bg-gray-800 dark:text-gray-300'],
+            'RCV'     => ['RCV', 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300', 'Penerimaan PBF'],
+            'RTN'     => ['RTN', 'bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300', 'Retur PBF'],
+            'TRF_IN'  => ['TRF-I', 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300', 'Transfer Masuk'],
+            'TRF_OUT' => ['TRF-O', 'bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-300', 'Transfer Keluar'],
+            'B'       => ['BBN', 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300', 'Beban'],
+            'SOD'     => ['SO+', 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300', 'Opname (+)'],
+            'SOK'     => ['SO−', 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300', 'Opname (−)'],
+            default => [$status ?: '—', 'bg-surface-soft text-body dark:bg-gray-800 dark:text-gray-300', $status ?: '—'],
         };
     }
 
@@ -525,12 +525,12 @@ new class extends Component {
                                 <tbody class="text-body divide-y divide-hairline dark:divide-gray-700 dark:text-gray-200">
                                     @forelse($this->mutationsWithBalance as $row)
                                         @php
-                                            [$label, $badgeClass] = $this::statusLabel($row->txn_status);
+                                            [$label, $badgeClass, $labelLengkap] = $this::statusLabel($row->txn_status);
                                         @endphp
                                         <tr wire:key="kartu-stock-mut-{{ $row->txn_status }}-{{ $row->txn_no ?? $loop->index }}" class="hover:bg-surface-soft dark:hover:bg-gray-800/60">
-                                            <td class="px-3 py-2 font-mono whitespace-nowrap">{{ $row->txn_date_display }}</td>
+                                            <td class="px-3 py-2 font-mono text-xs whitespace-nowrap">{{ $row->txn_date_display }}</td>
                                             <td class="px-3 py-2">
-                                                <span class="px-2 py-0.5 text-xs rounded-full {{ $badgeClass }}">{{ $label }}</span>
+                                                <span title="{{ $labelLengkap }}" class="px-2 py-0.5 text-xs whitespace-nowrap rounded-full cursor-help {{ $badgeClass }}">{{ $label }}</span>
                                             </td>
                                             <td class="px-3 py-2">
                                                 <div class="text-ink dark:text-gray-100">{{ $row->judul }}</div>
@@ -567,9 +567,9 @@ new class extends Component {
 
                                     {{-- Row penutup: saldo awal (paling bawah karena urut DESC) --}}
                                     <tr class="bg-surface-soft/50 dark:bg-gray-800/30">
-                                        <td class="px-3 py-2 font-mono whitespace-nowrap">01/01/{{ $year }} 00:00:00</td>
+                                        <td class="px-3 py-2 font-mono text-xs whitespace-nowrap">01/01/{{ $year }} 00:00:00</td>
                                         <td class="px-3 py-2">
-                                            <span class="px-2 py-0.5 text-xs rounded-full bg-gray-200 text-body dark:bg-gray-700 dark:text-gray-200">SALDO AWAL</span>
+                                            <span class="px-2 py-0.5 text-xs rounded-full bg-gray-200 text-body dark:bg-gray-700 dark:text-gray-200 cursor-help" title="Saldo Awal">SA</span>
                                         </td>
                                         <td class="px-3 py-2 italic text-muted">Saldo awal tahun {{ $year }}</td>
                                         <td class="px-3 py-2 font-mono text-right text-muted-soft">-</td>
