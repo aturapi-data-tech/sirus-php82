@@ -3,6 +3,7 @@
 use Livewire\Component;
 use Livewire\Attributes\Layout;
 use Illuminate\Support\Facades\DB;
+use App\Support\OracleLob;
 use Carbon\Carbon;
 
 new #[Layout('layouts.app-fullscreen')] class extends Component {
@@ -24,8 +25,10 @@ new #[Layout('layouts.app-fullscreen')] class extends Component {
      *                (waktu_masuk_apt) ATAU rj_status 'L'
      *  • Diperiksa = sudah masuk poli (waktu_masuk_poli = taskId4) dan belum selesai
      *  • Menunggu  = belum masuk poli
-     *  taskId5 hanya ada di JSON → penanda 0/1 dihitung di SQL dengan DBMS_LOB.INSTR
-     *  (pola Antrian Kasir RJ), CLOB tidak ikut diambil.
+     *  taskId5 hanya ada di JSON → penanda 0/1 dihitung dengan DBMS_LOB.INSTR, TERPISAH
+     *  dari query daftar lewat OracleLob::penandaMany (INSTR tetap membaca LOB; di query
+     *  besar ikut jatuh ORA-22924 saat kunjungan lain disimpan — Kasir RJ 2026-11-21).
+     *  Hanya dihitung untuk pasien yang belum selesai menurut kolom biasa.
      *
      *  "SEDANG DIPERIKSA" = pasien Diperiksa dengan waktu masuk poli TERBARU
      *  (bila petugas lupa mencatat keluar poli, pasien sebelumnya tetap Diperiksa
@@ -64,10 +67,9 @@ new #[Layout('layouts.app-fullscreen')] class extends Component {
         $now = Carbon::now(env('APP_TIMEZONE'));
         $today = $now->format('Y-m-d');
 
-        $keluarPoli = DB::raw("CASE WHEN DBMS_LOB.INSTR(datadaftarpolirj_json, '\"taskId5\":\"') > 0 AND DBMS_LOB.INSTR(datadaftarpolirj_json, '\"taskId5\":\"\"') = 0 THEN 1 ELSE 0 END AS keluar_poli");
-
-        $pasienList = DB::table('rsview_rjkasir')
+        $pasienMentah = DB::table('rsview_rjkasir')
             ->select([
+                'rj_no',
                 'poli_id',
                 'poli_desc',
                 'dr_id',
@@ -78,17 +80,28 @@ new #[Layout('layouts.app-fullscreen')] class extends Component {
                 DB::raw("to_char(waktu_masuk_poli, 'yyyymmddhh24miss') AS masuk_poli"),
                 DB::raw("to_char(waktu_masuk_apt, 'yyyymmddhh24miss') AS masuk_apt"),
                 DB::raw("to_char(rj_date, 'yyyymmddhh24miss') AS waktu_daftar"),
-                $keluarPoli,
             ])
             ->where(DB::raw("to_char(rj_date,'yyyy-mm-dd')"), $today)
             ->where('klaim_id', '!=', 'KR')
             ->whereIn(DB::raw("nvl(rj_status,'A')"), ['A', 'L'])
-            ->get()
+            ->get();
+
+        // Penanda keluar poli (taskId5 terisi) hanya untuk yang belum selesai menurut kolom biasa.
+        // Baris gagal dibaca → dianggap belum keluar poli (0).
+        $rjNoBelumSelesai = $pasienMentah
+            ->filter(fn($row) => empty($row->masuk_apt) && ($row->rj_status ?? '') !== 'L')
+            ->pluck('rj_no')
+            ->all();
+        $penandaPerRjNo = OracleLob::penandaMany('rstxn_rjhdrs', 'rj_no', $rjNoBelumSelesai, [
+            'keluar_poli' => "CASE WHEN DBMS_LOB.INSTR(datadaftarpolirj_json, '\"taskId5\":\"') > 0 AND DBMS_LOB.INSTR(datadaftarpolirj_json, '\"taskId5\":\"\"') = 0 THEN 1 ELSE 0 END",
+        ]);
+
+        $pasienList = $pasienMentah
             // DTO bersih: nama lengkap tidak ikut keluar dari sini — hanya bentuk samaran, dan hanya untuk
             // pasien yang sedang di poli (satu-satunya yang namanya tampil). Data ini dipakai saat render
             // saja (with()), bukan properti publik, jadi tidak ikut snapshot Livewire di browser.
-            ->map(function ($row) {
-                $selesai = (int) $row->keluar_poli === 1 || !empty($row->masuk_apt) || ($row->rj_status ?? '') === 'L';
+            ->map(function ($row) use ($penandaPerRjNo) {
+                $selesai = ($penandaPerRjNo[$row->rj_no]['keluar_poli'] ?? 0) === 1 || !empty($row->masuk_apt) || ($row->rj_status ?? '') === 'L';
                 $tahap = $selesai ? 'selesai' : (!empty($row->masuk_poli) ? 'diperiksa' : 'menunggu');
 
                 return [
