@@ -6,11 +6,11 @@ use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Session;
 use Illuminate\Support\Facades\DB;
-use App\Support\OracleLob;
+use App\Http\Traits\Txn\Ri\JsonKunjunganRITrait;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 
 new class extends Component {
-    use WithPagination, WithRenderVersioningTrait;
+    use WithPagination, WithRenderVersioningTrait, JsonKunjunganRITrait;
 
     public array $renderVersions = [];
     protected array $renderAreas = ['daftar-kasir-ri-toolbar'];
@@ -106,7 +106,8 @@ new class extends Component {
                 'rv.bangsal_name',
                 'rv.room_id',
                 'rv.room_name',
-                'rv.datadaftarri_json',
+                // CLOB datadaftarri_json TIDAK di sini (ORA-01555/ORA-22924) — dibaca terpisah
+                // hanya untuk baris halaman aktif lewat bacaJsonKunjunganRI().
             ]);
 
         // Urutan: Pulang → tanggal pulang terbaru di atas; Dirawat / Semua → tanggal masuk terbaru.
@@ -142,8 +143,10 @@ new class extends Component {
 
         $paginator = $query->paginate($this->itemsPerPage);
 
-        $paginator->getCollection()->transform(function ($row) {
-            $jsonRaw = OracleLob::read($row->datadaftarri_json ?? null, 'rstxn_rihdrs', 'rihdr_no', $row->rihdr_no, 'datadaftarri_json');
+        $jsonPerRiHdrNo = $this->bacaJsonKunjunganRI($paginator->getCollection()->pluck('rihdr_no')->all());
+
+        $paginator->getCollection()->transform(function ($row) use ($jsonPerRiHdrNo) {
+            $jsonRaw = $jsonPerRiHdrNo[$row->rihdr_no] ?? '';
             $json = json_decode($jsonRaw ?: '{}', true) ?? [];
             $row->no_sep = $json['sep']['noSep'] ?? ($row->vno_sep ?? null);
             $row->no_spri = $json['spri']['noSPRIBPJS'] ?? null;

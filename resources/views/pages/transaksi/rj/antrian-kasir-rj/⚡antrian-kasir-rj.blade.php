@@ -10,6 +10,7 @@ use App\Support\Shift;
 use Carbon\Carbon;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 use App\Http\Traits\Txn\Rj\JsonKunjunganRJTrait;
+use App\Support\OracleLob;
 use App\Http\Traits\Txn\Rj\EmrRJTrait;
 
 new class extends Component {
@@ -244,19 +245,16 @@ new class extends Component {
         // Kolom di sini = yang DITAMPILKAN daftar + yang dipakai filter/urut, tidak lebih.
         // Query ini mencakup seluruh pasien di tanggal itu: CLOB JSON utuh dan hitungan
         // lab/rad TIDAK diambil di sini (CLOB di query besar memicu ORA-01555 saat
-        // kunjungan lain disimpan — kasus Pelayanan RJ 2026-10-26). Urutan antrean butuh
-        // dua penanda dari JSON → dihitung di server dgn DBMS_LOB.INSTR, CLOB-nya tak ikut
-        // terkirim. taskId5 dibuat '' saat pendaftaran, jadi "terisi" = ada kunci bernilai
-        // string dan bukan string kosong.
-        $urutAdministrasi = DB::raw("CASE WHEN DBMS_LOB.INSTR(h.datadaftarpolirj_json, '\"AdministrasiRj\"') > 0 THEN 0 ELSE 1 END as urut_administrasi");
-        $urutKeluarPoli = DB::raw("CASE WHEN DBMS_LOB.INSTR(h.datadaftarpolirj_json, '\"taskId5\":\"') > 0 AND DBMS_LOB.INSTR(h.datadaftarpolirj_json, '\"taskId5\":\"\"') = 0 THEN 0 ELSE 1 END as urut_keluar_poli");
+        // kunjungan lain disimpan — kasus Pelayanan RJ 2026-10-26). Penanda urut dari JSON
+        // (DBMS_LOB.INSTR) juga TIDAK di sini: INSTR tetap membaca LOB, ikut kena ORA-22924
+        // (Kasir RJ 2026-11-21) → dihitung terpisah per potongan lewat OracleLob::penandaMany.
 
         $query = DB::table('rstxn_rjhdrs as h')
             ->join('rsmst_pasiens as p', 'p.reg_no', '=', 'h.reg_no')
             ->leftJoin('rsmst_polis as po', 'po.poli_id', '=', 'h.poli_id')
             ->leftJoin('rsmst_doctors as d', 'd.dr_id', '=', 'h.dr_id')
             ->leftJoin('rsmst_klaimtypes as k', 'k.klaim_id', '=', 'h.klaim_id')
-            ->select(['h.rj_no', DB::raw("to_char(h.rj_date,'dd/mm/yyyy hh24:mi:ss') as rj_date_display"), 'h.reg_no', 'p.reg_name', 'p.sex', 'p.address', DB::raw("to_char(p.birth_date,'dd/mm/yyyy') as birth_date"), 'h.no_antrian', 'po.poli_desc', 'd.dr_name', 'h.klaim_id', 'h.shift', 'h.rj_status', 'h.vno_sep', 'k.klaim_desc', 'k.klaim_status', 'h.status_kronis', $urutAdministrasi, $urutKeluarPoli])
+            ->select(['h.rj_no', DB::raw("to_char(h.rj_date,'dd/mm/yyyy hh24:mi:ss') as rj_date_display"), 'h.reg_no', 'p.reg_name', 'p.sex', 'p.address', DB::raw("to_char(p.birth_date,'dd/mm/yyyy') as birth_date"), 'h.no_antrian', 'po.poli_desc', 'd.dr_name', 'h.klaim_id', 'h.shift', 'h.rj_status', 'h.vno_sep', 'k.klaim_desc', 'k.klaim_status', 'h.status_kronis'])
             ->whereBetween('h.rj_date', [$start, $end])
             ->where(DB::raw("NVL(h.rj_status,'A')"), $this->filterStatus)
             ->where('h.klaim_id', '!=', 'KR');
@@ -305,6 +303,17 @@ new class extends Component {
 
         // Ambil semua dulu untuk sorting custom (antrian kasir)
         $all = $query->get();
+
+        // Penanda urut dari JSON. taskId5 dibuat '' saat pendaftaran, jadi "terisi" = ada
+        // kunci bernilai string dan bukan string kosong. Baris gagal dibaca → urut bawah (1).
+        $penandaPerRjNo = OracleLob::penandaMany('rstxn_rjhdrs', 'rj_no', $all->pluck('rj_no')->all(), [
+            'urut_administrasi' => "CASE WHEN DBMS_LOB.INSTR(datadaftarpolirj_json, '\"AdministrasiRj\"') > 0 THEN 0 ELSE 1 END",
+            'urut_keluar_poli' => "CASE WHEN DBMS_LOB.INSTR(datadaftarpolirj_json, '\"taskId5\":\"') > 0 AND DBMS_LOB.INSTR(datadaftarpolirj_json, '\"taskId5\":\"\"') = 0 THEN 0 ELSE 1 END",
+        ]);
+        foreach ($all as $row) {
+            $row->urut_administrasi = $penandaPerRjNo[$row->rj_no]['urut_administrasi'] ?? 1;
+            $row->urut_keluar_poli = $penandaPerRjNo[$row->rj_no]['urut_keluar_poli'] ?? 1;
+        }
 
         // Sort: pasien yang sudah Administrasi paling atas (siap dibayar),
         // lalu yang sudah keluar poli (taskId5), tie-breaker no_antrian poli asc.

@@ -91,6 +91,54 @@ class OracleLob
         return $hasil;
     }
 
+    /**
+     * Hitung penanda angka dari isi CLOB (mis. CASE WHEN DBMS_LOB.INSTR(...)) untuk banyak
+     * baris → [kunci => [alias => int]]. Baris yang gagal dibaca TIDAK ada di hasil
+     * (pemanggil memakai nilai bawaan).
+     *
+     * DBMS_LOB.INSTR tetap membaca LOB: bila dipasang di query besar daftar, ORA-22924
+     * saat kunjungan lain disimpan menjatuhkan seluruh daftar (Kasir RJ 2026-11-21).
+     * Di sini dihitung per potongan 200 kunci (jendela baca pendek); potongan gagal →
+     * ulang per baris; satu baris gagal dilewati.
+     *
+     * @param  array<string, string>  $penandaSql  [alias => ekspresi SQL bernilai angka]
+     */
+    public static function penandaMany(string $table, string $keyCol, array $keyList, array $penandaSql): array
+    {
+        $kolom = collect($penandaSql)->map(fn($sql, $alias) => "{$sql} AS {$alias}")->implode(', ');
+        $ambil = fn(array $kunci) => DB::table($table)
+            ->whereIn($keyCol, $kunci)
+            ->selectRaw("{$keyCol} AS kunci_penanda, {$kolom}")
+            ->get();
+
+        $hasil = [];
+        $simpan = function ($rows) use (&$hasil, $penandaSql) {
+            foreach ($rows as $row) {
+                foreach (array_keys($penandaSql) as $alias) {
+                    $hasil[$row->kunci_penanda][$alias] = (int) $row->{$alias};
+                }
+            }
+        };
+
+        foreach (array_chunk(array_values(array_unique($keyList)), 200) as $potonganKunci) {
+            try {
+                $simpan($ambil($potonganKunci));
+                continue;
+            } catch (\Throwable $e) {
+            }
+
+            foreach ($potonganKunci as $kunci) {
+                try {
+                    $simpan($ambil([$kunci]));
+                } catch (\Throwable $e) {
+                    // satu baris gagal → pakai nilai bawaan di pemanggil
+                }
+            }
+        }
+
+        return $hasil;
+    }
+
     /** Ambil ulang satu baris lewat statement segar; gagal apa pun → ''. */
     private static function readFresh(string $table, string $keyCol, $keyVal, string $lobCol): string
     {

@@ -7,12 +7,12 @@ use Livewire\Attributes\On;
 use Livewire\Attributes\Session;
 use Illuminate\Support\Facades\DB;
 use App\Support\Shift;
-use App\Support\OracleLob;
+use App\Http\Traits\Txn\Ri\JsonKunjunganRITrait;
 use Carbon\Carbon;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 
 new class extends Component {
-    use WithPagination, WithRenderVersioningTrait;
+    use WithPagination, WithRenderVersioningTrait, JsonKunjunganRITrait;
 
     public array $renderVersions = [];
     protected array $renderAreas = ['antrian-kasir-ri-toolbar'];
@@ -132,12 +132,15 @@ new class extends Component {
     {
         [$start, $end] = $this->dateRange();
 
+        // Query seluruh resep di tanggal itu: CLOB datadaftarri_json TIDAK diambil di sini
+        // (CLOB di query besar memicu ORA-01555/ORA-22924 saat kunjungan lain disimpan) —
+        // dibaca terpisah hanya untuk baris halaman aktif lewat bacaJsonKunjunganRI().
         $query = DB::table('imtxn_slshdrs as s')
             ->join('rsmst_pasiens as p', 'p.reg_no', '=', 's.reg_no')
             ->leftJoin('rsmst_doctors as d', 'd.dr_id', '=', 's.dr_id')
             ->join('rstxn_rihdrs as r', 'r.rihdr_no', '=', 's.rihdr_no')
             ->leftJoin('rsmst_klaimtypes as k', 'k.klaim_id', '=', 'r.klaim_id')
-            ->select(['s.sls_no', DB::raw("to_char(s.sls_date,'dd/mm/yyyy hh24:mi:ss') as sls_date_display"), 's.status', 's.rihdr_no', 's.reg_no', 'p.reg_name', 'p.sex', 'p.address', DB::raw("to_char(p.birth_date,'dd/mm/yyyy') as birth_date"), 's.no_antrian', 's.dr_id', 'd.dr_name', 's.shift', 'r.ri_status', 'r.klaim_id', 'k.klaim_desc', 'k.klaim_status', 'r.datadaftarri_json', 'r.vno_sep', DB::raw("to_char(s.waktu_masuk_pelayanan,'dd/mm/yyyy hh24:mi') as waktu_masuk"), DB::raw("to_char(s.waktu_selesai_pelayanan,'dd/mm/yyyy hh24:mi') as waktu_selesai"), DB::raw('(select count(*) from imtxn_slsdtls where sls_no = s.sls_no) as item_count')])
+            ->select(['s.sls_no', DB::raw("to_char(s.sls_date,'dd/mm/yyyy hh24:mi:ss') as sls_date_display"), 's.status', 's.rihdr_no', 's.reg_no', 'p.reg_name', 'p.sex', 'p.address', DB::raw("to_char(p.birth_date,'dd/mm/yyyy') as birth_date"), 's.no_antrian', 's.dr_id', 'd.dr_name', 's.shift', 'r.ri_status', 'r.klaim_id', 'k.klaim_desc', 'k.klaim_status', 'r.vno_sep', DB::raw("to_char(s.waktu_masuk_pelayanan,'dd/mm/yyyy hh24:mi') as waktu_masuk"), DB::raw("to_char(s.waktu_selesai_pelayanan,'dd/mm/yyyy hh24:mi') as waktu_selesai"), DB::raw('(select count(*) from imtxn_slsdtls where sls_no = s.sls_no) as item_count')])
             ->whereNotNull('s.rihdr_no')
             ->whereBetween('s.sls_date', [$start, $end])
             ->where(DB::raw("nvl(s.status,'A')"), $this->filterStatus);
@@ -180,7 +183,9 @@ new class extends Component {
 
         $paginator = new \Illuminate\Pagination\LengthAwarePaginator($items, $total, $perPage, $page, ['path' => \Illuminate\Pagination\Paginator::resolveCurrentPath()]);
 
-        $paginator->getCollection()->transform(function ($row) {
+        $jsonPerRiHdrNo = $this->bacaJsonKunjunganRI($items->pluck('rihdr_no')->all());
+
+        $paginator->getCollection()->transform(function ($row) use ($jsonPerRiHdrNo) {
             $row->no_antrian = (int) ($row->no_antrian ?? 0);
 
             // Ekstrak info per resep dari JSON RI matched by slsNo
@@ -189,7 +194,7 @@ new class extends Component {
             $eresepHdr = null;
             $apotekHdr = null;
             try {
-                $jsonRaw = OracleLob::read($row->datadaftarri_json ?? null, 'rstxn_rihdrs', 'rihdr_no', $row->rihdr_no, 'datadaftarri_json');
+                $jsonRaw = $jsonPerRiHdrNo[$row->rihdr_no] ?? '';
                 $data = $jsonRaw !== '' ? json_decode($jsonRaw, true) : null;
                 if (is_array($data)) {
                     foreach ($data['eresepHdr'] ?? [] as $h) {

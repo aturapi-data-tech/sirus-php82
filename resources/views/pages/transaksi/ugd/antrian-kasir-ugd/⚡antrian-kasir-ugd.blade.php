@@ -7,6 +7,7 @@ use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Session;
 use Illuminate\Support\Facades\DB;
+use App\Support\OracleLob;
 use App\Support\Shift;
 use Carbon\Carbon;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
@@ -142,16 +143,15 @@ new class extends Component {
         // Kolom di sini = yang DITAMPILKAN daftar + yang dipakai filter/urut, tidak lebih.
         // Query ini mencakup seluruh pasien di tanggal itu: CLOB JSON utuh dan hitungan
         // lab/rad TIDAK diambil di sini (CLOB di query besar memicu ORA-01555 saat
-        // kunjungan lain disimpan — kasus Pelayanan RJ 2026-10-26). Urutan antrean butuh
-        // penanda "sudah Administrasi" dari JSON → dihitung di server dgn DBMS_LOB.INSTR,
-        // CLOB-nya tak ikut terkirim.
-        $urutAdministrasi = DB::raw("CASE WHEN DBMS_LOB.INSTR(h.datadaftarugd_json, '\"AdministrasiRj\"') > 0 THEN 0 ELSE 1 END as urut_administrasi");
+        // kunjungan lain disimpan — kasus Pelayanan RJ 2026-10-26). Penanda urut dari JSON
+        // (DBMS_LOB.INSTR) juga TIDAK di sini: INSTR tetap membaca LOB, ikut kena ORA-22924
+        // (Kasir RJ 2026-11-21) → dihitung terpisah per potongan lewat OracleLob::penandaMany.
 
         $query = DB::table('rstxn_ugdhdrs as h')
             ->join('rsmst_pasiens as p', 'p.reg_no', '=', 'h.reg_no')
             ->leftJoin('rsmst_doctors as d', 'd.dr_id', '=', 'h.dr_id')
             ->leftJoin('rsmst_klaimtypes as k', 'k.klaim_id', '=', 'h.klaim_id')
-            ->select(['h.rj_no', DB::raw("to_char(h.rj_date,'dd/mm/yyyy hh24:mi:ss') as rj_date_display"), 'h.reg_no', 'p.reg_name', 'p.sex', 'p.address', DB::raw("to_char(p.birth_date,'dd/mm/yyyy') as birth_date"), 'h.no_antrian', 'd.dr_name', 'h.klaim_id', 'h.shift', 'h.rj_status', 'h.vno_sep', 'k.klaim_desc', 'k.klaim_status', $urutAdministrasi])
+            ->select(['h.rj_no', DB::raw("to_char(h.rj_date,'dd/mm/yyyy hh24:mi:ss') as rj_date_display"), 'h.reg_no', 'p.reg_name', 'p.sex', 'p.address', DB::raw("to_char(p.birth_date,'dd/mm/yyyy') as birth_date"), 'h.no_antrian', 'd.dr_name', 'h.klaim_id', 'h.shift', 'h.rj_status', 'h.vno_sep', 'k.klaim_desc', 'k.klaim_status'])
             ->whereBetween('h.rj_date', [$start, $end])
             ->where(DB::raw("NVL(h.rj_status,'A')"), $this->filterStatus)
             ->where('h.klaim_id', '!=', 'KR');
@@ -197,6 +197,14 @@ new class extends Component {
         }
 
         $all = $query->get();
+
+        // Penanda "sudah Administrasi" dari JSON. Baris gagal dibaca → urut bawah (1).
+        $penandaPerRjNo = OracleLob::penandaMany('rstxn_ugdhdrs', 'rj_no', $all->pluck('rj_no')->all(), [
+            'urut_administrasi' => "CASE WHEN DBMS_LOB.INSTR(datadaftarugd_json, '\"AdministrasiRj\"') > 0 THEN 0 ELSE 1 END",
+        ]);
+        foreach ($all as $row) {
+            $row->urut_administrasi = $penandaPerRjNo[$row->rj_no]['urut_administrasi'] ?? 1;
+        }
 
         // Sort: pasien yang sudah Administrasi paling atas (siap dibayar),
         // tie-breaker no_antrian poli asc (FIFO). UGD tidak punya taskId5 (bukan poli).
