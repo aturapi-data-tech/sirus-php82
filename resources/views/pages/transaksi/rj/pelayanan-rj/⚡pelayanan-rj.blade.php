@@ -1037,7 +1037,7 @@ new class extends Component {
                                                                  Tombol di sini; logika di komponen host task-id-poli-actions (mount 1×).
                                                                  wire:click="$dispatch(...)" = aksi Livewire (BUKAN Alpine) → host tangkap
                                                                  via #[On]. Nol komponen Livewire per baris. Redup dari $row->task_id4/5. --}}
-                                                            @hasanyrole('Perawat|Admin')
+                                                            @can('rj.pelayanan.taskIdPoli')
                                                                 <div class="flex space-x-1">
                                                                     <x-info-button type="button"
                                                                         wire:click="$dispatch('task-id-poli-proses', { rjNo: {{ $row->rj_no }}, aksi: '4' })"
@@ -1063,7 +1063,7 @@ new class extends Component {
                                                                         TaskId Antrean
                                                                     </x-primary-button>
                                                                 </div>
-                                                            @endhasanyrole
+                                                            @endcan
 
                                                             {{-- GRID 2 KOLOM --}}
                                                             <div class="grid grid-cols-2 gap-1 items-stretch">
@@ -1262,9 +1262,9 @@ new class extends Component {
 
             {{-- Host aksi Task ID poli (berisi fungsi) — mount 1×. Tombol tiap baris
                  dispatch 'task-id-poli-proses' ke sini via wire:click. --}}
-            @hasanyrole('Perawat|Admin')
+            @can('rj.pelayanan.taskIdPoli')
                 <livewire:pages::transaksi.rj.task-id-pelayanan.task-id-poli-actions wire:key="task-id-poli-actions-host" />
-            @endhasanyrole
+            @endcan
 
         </div>
     </div>

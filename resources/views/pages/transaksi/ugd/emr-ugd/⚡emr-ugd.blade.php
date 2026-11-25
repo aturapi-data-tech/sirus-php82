@@ -72,6 +72,8 @@ new class extends Component {
         $this->dispatch('close-modal', name: 'icare-modal-ugd');
     }
 
+    #[Authorize('ugd.emr.myiCare')]
+
     public function myiCare(string $noSep): void
     {
         if (!$noSep) {

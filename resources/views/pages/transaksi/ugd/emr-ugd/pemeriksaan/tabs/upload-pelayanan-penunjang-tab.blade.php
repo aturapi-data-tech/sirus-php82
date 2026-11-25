@@ -1,7 +1,7 @@
 {{-- pages/transaksi/ugd/emr-ugd/pemeriksaan/tabs/upload-pelayanan-penunjang-tab.blade.php --}}
 <div class="space-y-4">
 
-    @role(['Perawat', 'Admin'])
+    @can('ugd.emr.uploadPenunjang')
         <div class="p-4 bg-canvas border border-hairline rounded-xl shadow-sm dark:bg-gray-900 dark:border-gray-700">
             <h3 class="mb-3 text-base font-semibold text-body dark:text-gray-300">
                 Upload Hasil Penunjang
@@ -57,7 +57,7 @@
                 <div></div>
             </div>
         </div>
-    @endrole
+    @endcan
 
     {{-- TABEL DAFTAR FILE --}}
     <div
@@ -85,7 +85,7 @@
                         <td class="px-4 py-3">
                             <div class="flex items-center justify-center gap-2">
 
-                                @role(['Perawat', 'Admin', 'Dokter'])
+                                @can('ugd.emr.lihatUploadPenunjang')
                                     <x-icon-button wire:click="openModalViewPenunjang('{{ $item['file'] ?? '' }}')"
                                         title="Lihat PDF">
                                         <svg class="w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"
@@ -98,9 +98,9 @@
                                                              0 2h-5a1 1 0 0 1-1-1Z" clip-rule="evenodd" />
                                         </svg>
                                     </x-icon-button>
-                                @endrole
+                                @endcan
 
-                                @role(['Perawat', 'Admin'])
+                                @can('ugd.emr.uploadPenunjang')
                                     <x-confirm-button variant="danger" :action="'deleteHasilPenunjang(\'' . ($item['file'] ?? '') . '\')'" title="Hapus File Penunjang"
                                         message="Yakin ingin menghapus file {{ $item['desc'] ?? '' }}?"
                                         confirmText="Ya, hapus" cancelText="Batal" :disabled="$isFormLocked">
@@ -113,7 +113,7 @@
                                                          1 0 0 1 2 0v8Z" />
                                         </svg>
                                     </x-confirm-button>
-                                @endrole
+                                @endcan
 
                             </div>
                         </td>

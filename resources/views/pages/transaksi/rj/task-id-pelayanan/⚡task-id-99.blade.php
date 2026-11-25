@@ -1,5 +1,6 @@
 <?php
 
+use Livewire\Attributes\Authorize;
 use Livewire\Component;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
@@ -27,6 +28,7 @@ new class extends Component {
      | ROUTER — dipicu tombol Batal baris via wire:click $dispatch
      =============================== */
     #[On('task-id-batal-proses-rj')]
+    #[Authorize('rj.daftar.batalTaskId99')]
     public function proses(int $rjNo): void
     {
         $this->rjNo = $rjNo;
@@ -44,6 +46,7 @@ new class extends Component {
      | 5. Push ke BPJS jika poli spesialis — DI LUAR transaksi (API call)
      | 6. lockRJRow + patch hanya key taskIdPelayanan — ATOMIK
     =============================== */
+    #[Authorize('rj.daftar.batalTaskId99')]
     public function prosesTaskId99(): void
     {
         // 1. Guard: rjNo belum di-set

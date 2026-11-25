@@ -43,6 +43,11 @@ return [
                 'ri.emr.bukaModulDokumen' => ['label' => 'EMR: buka Modul Dokumen', 'roles' => ['Admin', 'Apoteker', 'Casemix', 'Dokter', 'Gizi', 'Laboratorium', 'Perawat', 'Radiologi']],
                 'ri.emr.bukaAdministrasi' => ['label' => 'EMR: buka Administrasi', 'roles' => ['Admin', 'Apoteker', 'Casemix', 'Gizi', 'Perawat']],
                 'ri.emr.bukaEresep' => ['label' => 'EMR: buka E-Resep', 'roles' => ['Admin', 'Dokter', 'Perawat']],
+                'ri.emr.tulisEresep' => ['label' => 'E-Resep: tambah/hapus obat, CITO, TTD, copy resep', 'roles' => ['Admin', 'Dokter']],
+                'ri.emr.uploadPenunjang' => ['label' => 'Upload/hapus hasil penunjang', 'roles' => ['Admin', 'Perawat']],
+                // Tombol di tampilan Rekam Medis: salin asesmen kunjungan UGD ke pengkajian awal RI.
+                'ri.emr.salinAsesmenPerawatUgd' => ['label' => 'Rekam Medis: copy asesmen perawat UGD', 'roles' => ['Admin', 'Perawat']],
+                'ri.emr.salinAsesmenDokterUgd' => ['label' => 'Rekam Medis: copy asesmen dokter UGD', 'roles' => ['Admin', 'Dokter']],
                 'ri.emr.bukaRingkasanPulang' => ['label' => 'EMR: ringkasan Pulang', 'roles' => ['Admin', 'Perawat']],
                 'ri.emr.bukaRekamMedisNasional' => ['label' => 'EMR: rekam Medis Nasional (SSRME)', 'roles' => ['Admin', 'Dokter', 'Perawat']],
                 'ri.emr.bukaHasilPenunjang' => ['label' => 'EMR: lihat Hasil Penunjang', 'roles' => ['Admin', 'Dokter', 'Perawat']],

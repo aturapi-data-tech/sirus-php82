@@ -119,7 +119,7 @@
                             </x-badge>
                         @endif
 
-                        @role(['Dokter', 'Admin'])
+                        @can('rj.emr.myiCare')
                             @if (filled($noSep))
                                 <x-primary-button type="button"
                                     wire:click="myiCare('{{ $noSep }}')"
@@ -134,7 +134,7 @@
                                     </span>
                                 </x-primary-button>
                             @endif
-                        @endrole
+                        @endcan
 
                         @can('rj.emr.bukaScreening')
                             {{-- Screening RJ — teal outline (skrining awal poli, buka via dispatch) --}}

@@ -1,5 +1,6 @@
 <?php
 
+use Livewire\Attributes\Authorize;
 use Livewire\Component;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
@@ -65,6 +66,7 @@ new class extends Component {
      | OPEN
      =============================== */
     #[On('open-rm-screening-ugd')]
+    #[Authorize('pintu.open-rm-screening-ugd')]
     public function openScreening(int $rjNo): void
     {
         if (empty($rjNo)) {

@@ -31,6 +31,7 @@ new class extends Component {
     /* =======================
      | i-Care BPJS
      * ======================= */
+    #[Authorize('rj.emr.myiCare')]
     public function myiCare(string $noSep): void
     {
         if (!$noSep) {

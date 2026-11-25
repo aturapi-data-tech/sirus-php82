@@ -143,7 +143,7 @@ new class extends Component {
 
     public function bolehAmbilIhs(): bool
     {
-        return (bool) auth()->user()?->hasAnyRole(['Admin', 'Mr']);
+        return (bool) auth()->user()?->can('master.pasien.ambilIhs');
     }
 
     public function ihsDiStaging(): bool

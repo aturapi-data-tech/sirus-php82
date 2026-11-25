@@ -129,6 +129,7 @@ new class extends Component {
      | Pola sama dengan komponen berkas-bpjs-rj-actions, di-parameter per rj_no.
      | Slot lain (GROUPING/LAIN-LAIN/Lab/Radiologi) tetap lewat modal Berkas BPJS.
      * ------------------------- */
+    #[Authorize('rj.daftar.bukaBerkasBpjs')]
     public function generateSep(int $rjNo): void
     {
         try {
@@ -181,6 +182,8 @@ new class extends Component {
         }
     }
 
+    #[Authorize('rj.daftar.bukaBerkasBpjs')]
+
     public function generateRm(int $rjNo): void
     {
         try {
@@ -221,6 +224,8 @@ new class extends Component {
             $this->dispatch('toast', type: 'error', message: 'Gagal generate RM: ' . $e->getMessage());
         }
     }
+
+    #[Authorize('rj.daftar.bukaBerkasBpjs')]
 
     public function generateSkdp(int $rjNo): void
     {
@@ -1071,7 +1076,7 @@ new class extends Component {
                                             $berkasTerupload = $row->berkas_uploaded ?? [];
                                         @endphp
                                         @if ($isBpjs)
-                                            @hasanyrole('Admin|Casemix|Tu|Mr')
+                                            @can('rj.daftar.bukaBerkasBpjs')
                                                 @php
                                                     $berkasInline = [
                                                         1 => ['label' => 'SEP', 'method' => 'generateSep'],
@@ -1119,7 +1124,7 @@ new class extends Component {
                                                         @endforeach
                                                     </div>
                                                 @endif
-                                            @endhasanyrole
+                                            @endcan
                                         @endif
 
                                         <div x-show="expanded" x-collapse class="space-y-0.5">
@@ -1389,7 +1394,7 @@ new class extends Component {
                                                 {{-- Batal (Task ID 99) — baris bawah. Manager Medis/Umum (Admin otomatis via super-user).
                                                      Tombol di sini; logika di host task-id-99 (mount 1×). wire:click="$dispatch(...)"
                                                      = aksi Livewire → host tangkap via #[On]. Redup dari $row->task_id99. --}}
-                                                @hasanyrole('Admin|Manager Medis|Manager Umum')
+                                                @can('rj.daftar.batalTaskId99')
                                                     <div class="inline-block">
                                                         <x-danger-button type="button"
                                                             wire:click="$dispatch('task-id-batal-proses-rj', { rjNo: {{ $row->rj_no }} })"
@@ -1402,7 +1407,7 @@ new class extends Component {
                                                             </span>
                                                         </x-danger-button>
                                                     </div>
-                                                @endhasanyrole
+                                                @endcan
 
                                             </div>
                                         @endif
@@ -1436,10 +1441,10 @@ new class extends Component {
 
             {{-- Host aksi Batal antrian (task-id-99) — mount 1×. Tombol Batal tiap baris
                  dispatch 'task-id-batal-proses-rj' ke sini via wire:click. --}}
-            @hasanyrole('Admin|Manager Medis|Manager Umum')
+            @can('rj.daftar.batalTaskId99')
                 <livewire:pages::transaksi.rj.task-id-pelayanan.task-id-99
                     wire:key="task-id-99-rj-host" />
-            @endhasanyrole
+            @endcan
 
             <livewire:pages::transaksi.rj.daftar-rj.daftar-rj-actions wire:key="daftar-rj-actions" />
             <livewire:pages::transaksi.rj.daftar-rj.satu-sehat-rj-actions wire:key="satu-sehat-rj-actions" />

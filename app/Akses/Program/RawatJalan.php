@@ -19,7 +19,7 @@ return [
     'program' => [
         'Pendaftaran Rawat Jalan' => [
             'menu' => [
-                ['group' => 'Rawat Jalan', 'groupOrder' => 5, 'order' => 1, 'route' => 'rj.daftar', 'khusus' => ['bukaModulDokumen' => ['Buka Modul Dokumen', ['admin', 'casemix', 'dokter', 'mr', 'perawat', 'supervisor tu', 'tu']], 'bukaDiagnosa' => ['Buka Diagnosa', ['admin', 'casemix', 'dokter', 'mr']], 'bukaRiwayatKontrol' => ['Riwayat Kontrol', ['admin', 'casemix', 'mr', 'tu']]], 'aksi' => ['lihat', 'tambah', 'ubah'], 'rolesAksi' => ['tambah' => AppMenu::ROLES_PENDAFTARAN, 'ubah' => AppMenu::ROLES_PENDAFTARAN], 'title' => 'Daftar Rawat Jalan', 'desc' => 'Pendaftaran & manajemen pasien poli rawat jalan harian', 'roles' => ['admin', 'manager umum', 'supervisor tu', 'mr'], 'badge' => 'RJ'],
+                ['group' => 'Rawat Jalan', 'groupOrder' => 5, 'order' => 1, 'route' => 'rj.daftar', 'khusus' => ['bukaModulDokumen' => ['Buka Modul Dokumen', ['admin', 'casemix', 'dokter', 'mr', 'perawat', 'supervisor tu', 'tu']], 'bukaDiagnosa' => ['Buka Diagnosa', ['admin', 'casemix', 'dokter', 'mr']], 'bukaRiwayatKontrol' => ['Riwayat Kontrol', ['admin', 'casemix', 'mr', 'tu']], 'bukaBerkasBpjs' => ['Berkas BPJS (generate SEP/RM/SKDP)', ['admin', 'casemix', 'mr', 'tu']], 'batalTaskId99' => ['Batal antrean BPJS (TaskID 99)', ['admin', 'manager medis', 'manager umum']]], 'aksi' => ['lihat', 'tambah', 'ubah'], 'rolesAksi' => ['tambah' => AppMenu::ROLES_PENDAFTARAN, 'ubah' => AppMenu::ROLES_PENDAFTARAN], 'title' => 'Daftar Rawat Jalan', 'desc' => 'Pendaftaran & manajemen pasien poli rawat jalan harian', 'roles' => ['admin', 'manager umum', 'supervisor tu', 'mr'], 'badge' => 'RJ'],
             ],
             'pintu' => [
                 'daftar-rj.diagnosa.open' => ['rj.daftar.bukaDiagnosa'],
@@ -36,7 +36,7 @@ return [
 
         'Pelayanan Rawat Jalan' => [
             'menu' => [
-                ['group' => 'Rawat Jalan', 'groupOrder' => 5, 'order' => 2, 'route' => 'rj.pelayanan', 'aksi' => ['lihat'], 'khusus' => ['bukaRekamMedis' => ['Buka Rekam Medis', ['admin', 'casemix', 'dokter', 'mr', 'perawat']], 'bukaPengkajianMedis' => ['Pengkajian Medis', ['admin', 'dokter', 'mr', 'perawat']], 'bukaPrmrj' => ['PRMRJ', ['admin', 'dokter', 'mr', 'perawat']], 'bukaModulDokumen' => ['Buka Modul Dokumen', ['admin', 'casemix', 'dokter', 'mr', 'perawat']], 'bukaAdministrasi' => ['Buka Administrasi', ['admin', 'casemix', 'perawat', 'tu']], 'bukaTransferUgd' => ['Transfer ke UGD', ['admin', 'manager umum', 'perawat', 'supervisor tu', 'tu']]], 'title' => 'Pelayanan Rawat Jalan', 'desc' => 'EMR poli — anamnesis, pemeriksaan, diagnosa & resep oleh dokter/perawat', 'roles' => ['admin', 'manager medis', 'dokter', 'perawat'], 'badge' => 'PEL-RJ'],
+                ['group' => 'Rawat Jalan', 'groupOrder' => 5, 'order' => 2, 'route' => 'rj.pelayanan', 'aksi' => ['lihat'], 'khusus' => ['bukaRekamMedis' => ['Buka Rekam Medis', ['admin', 'casemix', 'dokter', 'mr', 'perawat']], 'bukaPengkajianMedis' => ['Pengkajian Medis', ['admin', 'dokter', 'mr', 'perawat']], 'bukaPrmrj' => ['PRMRJ', ['admin', 'dokter', 'mr', 'perawat']], 'bukaModulDokumen' => ['Buka Modul Dokumen', ['admin', 'casemix', 'dokter', 'mr', 'perawat']], 'bukaAdministrasi' => ['Buka Administrasi', ['admin', 'casemix', 'perawat', 'tu']], 'bukaTransferUgd' => ['Transfer ke UGD', ['admin', 'manager umum', 'perawat', 'supervisor tu', 'tu']], 'taskIdPoli' => ['Catat TaskID 4/5 (masuk/keluar poli)', ['admin', 'perawat']]], 'title' => 'Pelayanan Rawat Jalan', 'desc' => 'EMR poli — anamnesis, pemeriksaan, diagnosa & resep oleh dokter/perawat', 'roles' => ['admin', 'manager medis', 'dokter', 'perawat'], 'badge' => 'PEL-RJ'],
             ],
             'aksiKhusus' => [
                 'rj.detailKunjungan' => ['label' => 'Lihat detail kunjungan', 'roles' => AksiRole::RJ_DETAIL_KUNJUNGAN],
@@ -55,6 +55,13 @@ return [
             'aksiKhusus' => [
                 'rj.emr.bukaScreening' => ['label' => 'EMR: buka Screening', 'roles' => ['Admin', 'Dokter', 'Perawat']],
                 'rj.emr.bukaEresep' => ['label' => 'EMR: buka E-Resep', 'roles' => ['Admin', 'Dokter', 'Perawat']],
+                'rj.emr.tulisEresep' => ['label' => 'E-Resep: tambah/hapus obat', 'roles' => ['Admin', 'Dokter']],
+                'rj.emr.myiCare' => ['label' => 'EMR: i-Care BPJS', 'roles' => ['Admin', 'Dokter']],
+                'rj.emr.uploadPenunjang' => ['label' => 'Upload/hapus hasil penunjang', 'roles' => ['Admin', 'Perawat']],
+                'rj.emr.lihatUploadPenunjang' => ['label' => 'Lihat upload hasil penunjang', 'roles' => ['Admin', 'Dokter', 'Perawat']],
+                // Tombol di tampilan Rekam Medis (riwayat kunjungan pasien).
+                'rj.emr.salinResep' => ['label' => 'Rekam Medis: copy resep ke kunjungan ini', 'roles' => ['Admin', 'Dokter']],
+                'rj.emr.lihatRekamMedisV1' => ['label' => 'Rekam Medis: lihat RM RJ versi lama (V1)', 'roles' => ['Admin', 'Casemix', 'Manager Medis', 'Manager Umum', 'Mr', 'Perawat']],
                 'rj.emr.bukaAdministrasi' => ['label' => 'EMR: buka Administrasi', 'roles' => ['Admin', 'Casemix', 'Perawat']],
                 'rj.emr.bukaModulDokumen' => ['label' => 'EMR: buka Modul Dokumen', 'roles' => ['Admin', 'Casemix', 'Dokter', 'Mr', 'Perawat']],
                 'rj.emr.bukaRekamMedisNasional' => ['label' => 'EMR: rekam Medis Nasional (SSRME)', 'roles' => ['Admin', 'Dokter', 'Perawat']],

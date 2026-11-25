@@ -168,7 +168,7 @@
                             <x-badge variant="danger">Read Only</x-badge>
                         @endif
 
-                        @role(['Perawat', 'Dokter', 'Admin'])
+                        @can('ugd.emr.bukaScreening')
                             {{-- Screening UGD — indigo (buka form skrining) --}}
                             <x-primary-button type="button"
                                 wire:click="$dispatch('open-rm-screening-ugd', { rjNo: {{ $rjNo }} })"
@@ -176,9 +176,9 @@
                                 <x-ikon nama="setujui" />
                                 Screening
                             </x-primary-button>
-                        @endrole
+                        @endcan
 
-                        @role(['Dokter', 'Admin'])
+                        @can('ugd.emr.myiCare')
                             @if (filled($noSep))
                                 <x-primary-button type="button"
                                     wire:click="myiCare('{{ $noSep }}')"
@@ -193,7 +193,7 @@
                                     </span>
                                 </x-primary-button>
                             @endif
-                        @endrole
+                        @endcan
 
                         @can('ugd.emr.bukaAdministrasi')
                             <x-primary-button type="button" wire:click="openAdministrasiPasien({{ $rjNo }})"

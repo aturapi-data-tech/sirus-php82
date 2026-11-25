@@ -1,6 +1,6 @@
 <div class="space-y-4">
 
-    @role(['Perawat', 'Admin'])
+    @can('rj.emr.uploadPenunjang')
         <div class="p-4 bg-canvas border border-hairline rounded-xl shadow-sm dark:bg-gray-900 dark:border-gray-700">
             <h3 class="mb-3 text-base font-semibold text-body dark:text-gray-300">
                 Upload Hasil Penunjang
@@ -60,7 +60,7 @@
                 <div>{{-- kolom ketiga kosong, placeholder agar grid tetap 3 kolom --}}</div>
             </div>
         </div>
-    @endrole
+    @endcan
 
     {{-- ── TABEL DAFTAR FILE ───────────────────────────────────── --}}
     <div
@@ -90,7 +90,7 @@
 
                                 {{-- Tombol Lihat PDF
                                      x-icon-button: icon only, aksi di row tabel --}}
-                                @role(['Perawat', 'Admin', 'Dokter'])
+                                @can('rj.emr.lihatUploadPenunjang')
                                     <x-icon-button wire:click="openModalViewPenunjang('{{ $item['file'] ?? '' }}')"
                                         title="Lihat PDF">
                                         <svg class="w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"
@@ -104,11 +104,11 @@
                                                 clip-rule="evenodd" />
                                         </svg>
                                     </x-icon-button>
-                                @endrole
+                                @endcan
 
                                 {{-- Tombol Hapus
                                      x-confirm-button: row tabel, trigger confirm, aksi irreversible --}}
-                                @role(['Perawat', 'Admin'])
+                                @can('rj.emr.uploadPenunjang')
                                     <x-confirm-button variant="danger" :action="'deleteHasilPenunjang(\'' . ($item['file'] ?? '') . '\')'" title="Hapus File Penunjang"
                                         message="Yakin ingin menghapus file {{ $item['desc'] ?? '' }}?"
                                         confirmText="Ya, hapus" cancelText="Batal" :disabled="$isFormLocked">
@@ -121,7 +121,7 @@
                                              1 0 0 1 2 0v8Z" />
                                         </svg>
                                     </x-confirm-button>
-                                @endrole
+                                @endcan
 
                             </div>
                         </td>

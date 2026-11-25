@@ -1,5 +1,6 @@
 <?php
 
+use Livewire\Attributes\Authorize;
 use Livewire\Component;
 use Livewire\Attributes\Locked;
 use Livewire\WithPagination;
@@ -95,6 +96,7 @@ new class extends Component {
     /* =======================
  | Copy Resep
  * ======================= */
+    #[Authorize('rj.emr.salinResep')]
     public function copyResep(string $txnNo, string $layananStatus): void
     {
         if ($layananStatus !== 'RJ') {
@@ -427,6 +429,8 @@ new class extends Component {
         $this->openRekamMedis($rjNo, 'UGD');
     }
 
+    #[Authorize('rj.emr.lihatRekamMedisV1')]
+
     public function OpenRekamMedisRjV1($rjNo): void
     {
         $this->dispatch('cetak-rekam-medis-rj-v1.open', rjNo: (int) $rjNo);
@@ -497,6 +501,7 @@ new class extends Component {
      * Hanya valid kalau component di-mount dengan contextRI=true.
      * Listener di rm-pengkajian-awal-ri-actions akan fetch data UGD & set fields.
      */
+    #[Authorize('ri.emr.salinAsesmenPerawatUgd')]
     public function copyAssessmentPerawatUGD(int $txnNoUGD): void
     {
         if (!$this->contextRI) {
@@ -511,6 +516,7 @@ new class extends Component {
      * Copy Asesmen Dokter dari kunjungan UGD ke Pengkajian Dokter RI.
      * Listener di rm-pengkajian-dokter-ri-actions akan fetch data UGD & set fields.
      */
+    #[Authorize('ri.emr.salinAsesmenDokterUgd')]
     public function copyAssessmentDokterUGD(int $txnNoUGD): void
     {
         if (!$this->contextRI) {
@@ -793,14 +799,14 @@ new class extends Component {
                                                                 @if ($isRJ)
                                                                     <div class="flex flex-wrap gap-2">
                                                                         @if (!$contextRI)
-                                                                            @hasanyrole('Dokter|Admin')
+                                                                            @can('rj.emr.salinResep')
                                                                                 <x-primary-button type="button"
                                                                                     wire:click="copyResep('{{ $myQData->txn_no }}','{{ $myQData->layanan_status }}')"
                                                                                     class="text-sm px-3 py-1.5">
                                                                                     <x-ikon nama="salin" class="mr-1" />
                                                                                     Copy Resep
                                                                                 </x-primary-button>
-                                                                            @endhasanyrole
+                                                                            @endcan
                                                                         @endif
 
                                                                         <x-outline-button type="button"
@@ -821,7 +827,7 @@ new class extends Component {
                                                                             </span>
                                                                         </x-outline-button>
 
-                                                                        @hasanyrole('Perawat|Admin|Casemix|Mr|Manager Medis|Manager Umum')
+                                                                        @can('rj.emr.lihatRekamMedisV1')
                                                                             <x-outline-button type="button"
                                                                                 wire:click="OpenRekamMedisRjV1('{{ $myQData->txn_no }}')"
                                                                                 wire:loading.attr="disabled"
@@ -859,7 +865,7 @@ new class extends Component {
                                                                                     </span>
                                                                                 </x-outline-button>
                                                                             @endif
-                                                                        @endhasanyrole
+                                                                        @endcan
                                                                     </div>
                                                                 @endif
 
@@ -911,7 +917,7 @@ new class extends Component {
                                                                         @endif
 
                                                                         @if ($contextRI)
-                                                                            @hasanyrole('Perawat|Admin')
+                                                                            @can('ri.emr.salinAsesmenPerawatUgd')
                                                                                 <x-primary-button type="button"
                                                                                     wire:click="copyAssessmentPerawatUGD({{ $myQData->txn_no }})"
                                                                                     wire:confirm="Copy asesmen perawat (keluhan utama, tanda vital, BB/TB) dari kunjungan UGD ini ke Pengkajian Awal Rawat Inap?"
@@ -931,9 +937,9 @@ new class extends Component {
                                                                                         Menyalin...
                                                                                     </span>
                                                                                 </x-primary-button>
-                                                                            @endhasanyrole
+                                                                            @endcan
 
-                                                                            @hasanyrole('Dokter|Admin')
+                                                                            @can('ri.emr.salinAsesmenDokterUgd')
                                                                                 <x-primary-button type="button"
                                                                                     wire:click="copyAssessmentDokterUGD({{ $myQData->txn_no }})"
                                                                                     wire:confirm="Copy asesmen dokter (keluhan utama, riwayat penyakit sekarang/dahulu, alergi, pemeriksaan fisik) dari kunjungan UGD ini ke Pengkajian Dokter Rawat Inap?"
@@ -953,7 +959,7 @@ new class extends Component {
                                                                                         Menyalin...
                                                                                     </span>
                                                                                 </x-primary-button>
-                                                                            @endhasanyrole
+                                                                            @endcan
                                                                         @endif
                                                                     </div>
                                                                 @endif

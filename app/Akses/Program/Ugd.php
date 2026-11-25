@@ -40,8 +40,13 @@ return [
         // SBAR UGD: aturan pemilik entri & dokter kunjungan tetap di kode; di sini pengecualiannya.
         'EMR UGD' => [
             'aksiKhusus' => [
+                'ugd.emr.bukaScreening' => ['label' => 'EMR: buka Screening', 'roles' => ['Admin', 'Dokter', 'Perawat']],
                 'ugd.emr.bukaAdministrasi' => ['label' => 'EMR: buka Administrasi', 'roles' => ['Admin', 'Casemix', 'Perawat']],
                 'ugd.emr.bukaEresep' => ['label' => 'EMR: buka E-Resep', 'roles' => ['Admin', 'Dokter', 'Perawat']],
+                'ugd.emr.tulisEresep' => ['label' => 'E-Resep: tambah/hapus obat', 'roles' => ['Admin', 'Dokter']],
+                'ugd.emr.myiCare' => ['label' => 'EMR: i-Care BPJS', 'roles' => ['Admin', 'Dokter']],
+                'ugd.emr.uploadPenunjang' => ['label' => 'Upload/hapus hasil penunjang', 'roles' => ['Admin', 'Perawat']],
+                'ugd.emr.lihatUploadPenunjang' => ['label' => 'Lihat upload hasil penunjang', 'roles' => ['Admin', 'Dokter', 'Perawat']],
                 'ugd.emr.bukaModulDokumen' => ['label' => 'EMR: buka Modul Dokumen', 'roles' => ['Admin', 'Casemix', 'Dokter', 'Mr', 'Perawat']],
                 'ugd.emr.bukaRekamMedisNasional' => ['label' => 'EMR: rekam Medis Nasional (SSRME)', 'roles' => ['Admin', 'Dokter', 'Perawat']],
                 'ugd.sbar.hapus' => ['label' => 'SBAR: hapus entri', 'roles' => AksiRole::UGD_SBAR_HAPUS],
@@ -56,6 +61,7 @@ return [
             'pintu' => [
                 'emr-ugd.modul-dokumen.open' => ['ugd.daftar.bukaModulDokumen', 'ugd.pelayanan.bukaModulDokumen', 'ugd.emr.bukaModulDokumen', 'penunjang.kamar-operasi.bukaDokumenBedah'],
                 'emr-ugd.eresep.open' => ['ugd.emr.bukaEresep'],
+                'open-rm-screening-ugd' => ['ugd.emr.bukaScreening'],
             ],
         ],
 
