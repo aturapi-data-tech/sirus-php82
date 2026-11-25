@@ -28,6 +28,8 @@ use App\Support\Options\SuhuRuangServerOptions;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Livewire\Attributes\Authorize;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
@@ -38,9 +40,11 @@ new class extends Component {
 
     protected array $renderAreas = ['modal'];
 
+    #[Locked]
     public string $formMode = 'create';
 
     /** 0 = laporan belum pernah disimpan. */
+    #[Locked]
     public int $downtimeNo = 0;
 
     public bool $siapDipakai = false;
@@ -67,6 +71,7 @@ new class extends Component {
     /* ══════════════════════ BUKA / TUTUP ══════════════════════ */
 
     #[On('pelaporan-downtime.openCreate')]
+    #[Authorize('downtime.pelaporan.tambah')]
     public function openCreate(): void
     {
         $this->resetLaporan();
@@ -293,6 +298,15 @@ new class extends Component {
         // tetap sah — yang ditolak hanya pulih SEBELUM mulai, yang pasti salah ketik.
         if (PelaporanDowntimeOptions::pulihSebelumMulai($this->kejadian)) {
             $this->dispatch('toast', type: 'error', message: 'Waktu pulih mendahului waktu mulai — periksa tanggal & jamnya.');
+
+            return;
+        }
+
+        // Hak simpan sesudah validate(): laporan baru = Tambah, koreksi laporan lama = Ubah.
+        // openEdit sengaja tidak dijaga — modal yang sama dipakai untuk melihat & mencetak.
+        $aksi = $this->downtimeNo === 0 ? 'tambah' : 'ubah';
+        if (! auth()->user()?->can('downtime.pelaporan.' . $aksi)) {
+            $this->dispatch('toast', type: 'error', message: 'Anda tidak berwenang ' . ($aksi === 'tambah' ? 'mencatat' : 'mengubah') . ' laporan down time.');
 
             return;
         }

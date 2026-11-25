@@ -1,6 +1,7 @@
 <?php
 
 use Livewire\Component;
+use Livewire\Attributes\Authorize;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\BPJS\AplicaresTrait;
 use App\Http\Traits\SIRS\SirsTrait;
@@ -174,6 +175,7 @@ new class extends Component {
         return $i === false ? null : (int) $i;
     }
 
+    #[Authorize('ri.update-tt.kirim')]
     public function kirimAplicByRoom(string $roomId): void
     {
         $i = $this->indexByRoomId($roomId);
@@ -184,6 +186,7 @@ new class extends Component {
         $this->toastDariStatus('Aplicares', $this->rows[$i]['rs_namakamar'] ?? '', $this->rows[$i]['status_aplic'] ?? null, $this->rows[$i]['pesan_aplic'] ?? '');
     }
 
+    #[Authorize('ri.update-tt.kirim')]
     public function kirimSirsByRoom(string $roomId): void
     {
         $i = $this->indexByRoomId($roomId);
@@ -211,6 +214,7 @@ new class extends Component {
     /* -------------------------
      | Aplicares — kirim ketersediaan
      * ------------------------- */
+    #[Authorize('ri.update-tt.kirim')]
     public function kirimAplicSatu(int $index): void
     {
         $row = $this->rows[$index] ?? null;
@@ -255,6 +259,7 @@ new class extends Component {
         }
     }
 
+    #[Authorize('ri.update-tt.kirim')]
     public function kirimAplicSemua(): void
     {
         // Loop 43+ kamar × HTTP timeout 10s bisa lewat dari PHP max_execution_time default 30s.
@@ -281,6 +286,7 @@ new class extends Component {
     /* -------------------------
      | SIRS — kirim tempat tidur
      * ------------------------- */
+    #[Authorize('ri.update-tt.kirim')]
     public function kirimSirsSatu(int $index): void
     {
         $row = $this->rows[$index] ?? null;
@@ -370,6 +376,7 @@ new class extends Component {
         }
     }
 
+    #[Authorize('ri.update-tt.kirim')]
     public function kirimSirsSemua(): void
     {
         // SIRS bisa 2-3 round-trip per kamar (POST → "sudah ada" → GET listing → PUT).
@@ -519,6 +526,7 @@ new class extends Component {
                     </div>
 
                     {{-- Tombol Kirim Semua --}}
+                    @can('ri.update-tt.kirim')
                     <div class="flex items-center gap-2 shrink-0">
                         <x-primary-button wire:click="kirimAplicSemua" wire:loading.attr="disabled"
                             wire:target="kirimAplicSemua" wire:confirm="Kirim semua kamar ke Aplicares BPJS?"
@@ -535,6 +543,7 @@ new class extends Component {
                             Kirim Semua ke SIRS
                         </x-primary-button>
                     </div>
+                    @endcan
                 </div>
             </div>
 
@@ -711,6 +720,7 @@ new class extends Component {
                                                     <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
                                                 </svg>
                                             </x-icon-button>
+                                            @can('ri.update-tt.kirim')
                                             <x-icon-button color="blue" wire:click="kirimAplicByRoom('{{ $row['room_id'] }}')"
                                                 wire:loading.attr="disabled" wire:target="kirimAplicByRoom('{{ $row['room_id'] }}')"
                                                 title="Kirim ketersediaan kamar ini ke Aplicares BPJS"
@@ -721,6 +731,7 @@ new class extends Component {
                                                 </svg>
                                                 Kirim BPJS
                                             </x-icon-button>
+                                            @endcan
                                         </div>
 
                                         {{-- Right: sisa big (display only) --}}
@@ -934,6 +945,7 @@ new class extends Component {
                                                     <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
                                                 </svg>
                                             </x-icon-button>
+                                            @can('ri.update-tt.kirim')
                                             <x-icon-button color="green" wire:click="kirimSirsByRoom('{{ $row['room_id'] }}')"
                                                 wire:loading.attr="disabled" wire:target="kirimSirsByRoom('{{ $row['room_id'] }}')"
                                                 title="Kirim data tempat tidur kamar ini ke SIRS Kemenkes"
@@ -944,6 +956,7 @@ new class extends Component {
                                                 </svg>
                                                 Kirim SIRS
                                             </x-icon-button>
+                                            @endcan
                                         </div>
 
                                         {{-- Right: sisa big (display only) --}}

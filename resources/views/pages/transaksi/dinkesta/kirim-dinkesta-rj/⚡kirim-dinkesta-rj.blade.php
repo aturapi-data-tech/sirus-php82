@@ -27,7 +27,6 @@ new class extends Component {
     private const JALUR = 'RJ';
     private const KEY_JSON_LAMA = 'satuDataKesehatanTulungagung';
     private const MENIT_TERTAHAN = 15; // status P lebih lama dari ini = proses mati di tengah → tidak pasti
-    private const ROLE_PENGIRIM = ['Admin', 'Casemix', 'Tu'];
 
     #[Session(key: 'kirim-dinkesta-rj-searchKeyword')]
     public string $searchKeyword = '';
@@ -342,7 +341,8 @@ new class extends Component {
      * ------------------------- */
     private function bolehKirim(): bool
     {
-        return (bool) auth()->user()?->hasAnyRole(self::ROLE_PENGIRIM);
+        // Centang Khusus "kirim" halaman ini di Role Control (dulu literal Admin|Casemix|Tu).
+        return (bool) auth()->user()?->can('dinkesta.kirim-rj.kirim');
     }
 
     /**
@@ -688,7 +688,7 @@ new class extends Component {
                                 <option value="100">100</option>
                             </x-select-input>
                         </div>
-                        @hasanyrole('Admin|Casemix|Tu')
+                        @can('dinkesta.kirim-rj.kirim')
                             @if ($this->tabelKirimTersedia)
                                 <x-primary-button type="button" x-on:click="siapkan()" x-bind:disabled="tahap !== 'siap'"
                                     title="Kirim semua kunjungan sesuai filter bulan, klaim, dokter & pencarian (bukan hanya halaman ini)">
@@ -698,7 +698,7 @@ new class extends Component {
                                     Kirim Bulk {{ $filterBulan }}
                                 </x-primary-button>
                             @endif
-                        @endhasanyrole
+                        @endcan
                     </div>
                 </div>
 
@@ -843,7 +843,7 @@ new class extends Component {
                                         @endif
                                     </td>
                                     <td class="px-6 py-4 text-center align-top">
-                                        @hasanyrole('Admin|Casemix|Tu')
+                                        @can('dinkesta.kirim-rj.kirim')
                                             @if ($this->tabelKirimTersedia && in_array($row->status_kirim, ['belum', 'gagal', 'sebagian'], true) && !empty($row->status_icd))
                                                 <x-outline-button type="button" wire:click="kirimSatu({{ $row->rj_no }})"
                                                     wire:loading.attr="disabled" wire:target="kirimSatu" class="whitespace-nowrap">
@@ -864,7 +864,7 @@ new class extends Component {
                                                     Kirim Ulang
                                                 </x-confirm-button>
                                             @endif
-                                        @endhasanyrole
+                                        @endcan
                                     </td>
                                 </tr>
                             @empty

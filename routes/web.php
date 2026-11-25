@@ -589,18 +589,6 @@ Route::middleware(['auth', 'akses.halaman'])->group(function () {
     // ===========================================
     // DASHBOARD MANAJEMEN
     // ===========================================
-    Route::livewire('/manajemen/indikator-pelayanan', 'pages::manajemen.indikator-pelayanan.indikator-pelayanan')
-        ->name('manajemen.indikator-pelayanan');
-
-    Route::livewire('/manajemen/indikator-penunjang', 'pages::manajemen.indikator-penunjang.indikator-penunjang')
-        ->name('manajemen.indikator-penunjang');
-
-    Route::livewire('/manajemen/indikator-tu', 'pages::manajemen.indikator-tu.indikator-tu')
-        ->name('manajemen.indikator-tu');
-
-    Route::livewire('/manajemen/monitoring-keuangan', 'pages::manajemen.monitoring-keuangan.monitoring-keuangan')
-        ->name('manajemen.monitoring-keuangan');
-
     Route::livewire('/manajemen/rs/satu-sehat/monitoring-satu-sehat', 'pages::manajemen.rs.satu-sehat.monitoring-satu-sehat.monitoring-satu-sehat')
         ->name('manajemen.rs.satu-sehat.monitoring-satu-sehat');
 
@@ -612,9 +600,6 @@ Route::middleware(['auth', 'akses.halaman'])->group(function () {
 
     Route::livewire('/manajemen/rs/rekam-medis/arsip-modul-dokumen', 'pages::manajemen.rs.rekam-medis.arsip-modul-dokumen.arsip-modul-dokumen')
         ->name('manajemen.rs.rekam-medis.arsip-modul-dokumen');
-
-    Route::livewire('/manajemen/laporan-diagnosa', 'pages::manajemen.laporan-diagnosa.laporan-diagnosa')
-        ->name('manajemen.laporan-diagnosa');
 
     Route::livewire('/manajemen/laporan-diagnosa/hitung-diagnosa', 'pages::manajemen.laporan-diagnosa.hitung-diagnosa.hitung-diagnosa')
         ->name('manajemen.laporan-diagnosa.hitung-diagnosa');

@@ -44,8 +44,28 @@ Mengoreksi centang awal route yang permission-nya **sudah** ada:
 `php artisan akses:sinkron --ulang=rj.daftar,ugd.daftar` — mengisi ulang centang route itu
 dari definisi (menimpa Role Control untuk route itu saja; coba `--dry-run` dulu).
 
-Halaman yang **tidak** tampil di menu (dibuka dari halaman hub) → jangan masuk AppMenu;
-daftarkan induknya di `AksesHalaman::INDUK`. Lupa = halaman tertutup (di mode `log`: tercatat
+**Aturan seragam kolom aksi (2026-11-25)** — tulis `'aksi'` EKSPLISIT di tiap entri, jangan
+mengandalkan default empat kolom (centang yang tak menjaga apa pun menyesatkan admin):
+
+| Tombol di halaman | Masuk ke |
+|---|---|
+| Membuat / mengubah / menghapus data **di halaman itu sendiri** | kolom Tambah / Ubah / Hapus |
+| Membuka modul lain (EMR, Administrasi, Modul Dokumen, Telaah) | `'khusus'` → `buka*` |
+| Kirim ke pihak luar (Aplicares/SIRS, DINKESTA, …) | `'khusus'` → `kirim` |
+| Posting / batal transaksi, aksi dari modal lintas halaman | Aksi Khusus `AksiRole::KHUSUS` |
+| Identitas profesi (TTD dokter, telaah apoteker) | tetap di kode, bukan centang |
+
+Halaman daftar/antrian yang hanya membuka modul = `'aksi' => ['lihat']` + `'khusus'`. Modal yang
+dipakai banyak halaman (Berkas BPJS, Administrasi) dijaga **pintu modal**, bukan kolom halaman.
+Modal Tambah/Edit yang juga dipakai untuk melihat/mencetak: jaga `openCreate` + `save()` (baru =
+tambah, lama = ubah), JANGAN jaga `openEdit` (contoh: Pelaporan Down Time, penerimaan gudang).
+
+Laporan manajemen = **menu sendiri** di AppMenu (grup Laporan Pelayanan/Penunjang/SIRS
+Online/Keuangan, `'aksi' => ['lihat']`); halaman hub berisi kartu tautan sudah dihapus
+(2026-11-25) — jangan membuat hub tautan baru (menu kembar dengan sidebar).
+
+`AksesHalaman::INDUK` hanya untuk halaman turunan yang memang tak layak jadi menu (mis. Tutup
+Buku Supplier dari Tutup Buku). Lupa didaftarkan = halaman tertutup (di mode `log`: tercatat
 `"dikenal": false`).
 
 Sebelum `akses:sinkron` dijalankan, semua cek memakai cadangan `roles` AppMenu / konstanta

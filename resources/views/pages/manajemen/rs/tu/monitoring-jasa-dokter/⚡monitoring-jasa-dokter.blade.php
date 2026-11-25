@@ -211,13 +211,6 @@ new class extends Component {
 
                         <x-toolbar-refresh-reset :label="null" />
 
-                        <a href="{{ route('manajemen.monitoring-keuangan') }}" wire:navigate
-                            class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-body bg-canvas border border-gray-300 rounded-lg hover:bg-surface-soft dark:bg-gray-900 dark:text-gray-200 dark:border-gray-700 dark:hover:bg-gray-800 shrink-0">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                            </svg>
-                            Kembali
-                        </a>
                     </div>
                 </div>
 
