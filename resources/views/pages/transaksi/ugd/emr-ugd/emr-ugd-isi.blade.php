@@ -195,7 +195,7 @@
                             @endif
                         @endrole
 
-                        @hasanyrole('Admin|Perawat|Casemix')
+                        @can('ugd.emr.bukaAdministrasi')
                             <x-primary-button type="button" wire:click="openAdministrasiPasien({{ $rjNo }})"
                                 wire:loading.attr="disabled" wire:target="openAdministrasiPasien"
                                 class="gap-1 !bg-purple-600 hover:!bg-purple-700 !text-white dark:!bg-purple-600 dark:!text-white dark:hover:!bg-purple-700">
@@ -208,16 +208,16 @@
                                     <x-loading /> Memuat...
                                 </span>
                             </x-primary-button>
-                        @endhasanyrole
+                        @endcan
 
-                        @hasanyrole('Admin|Perawat|Dokter|Casemix|Mr')
+                        @can('ugd.emr.bukaModulDokumen')
                             {{-- Dokumen — indigo solid (modal modul dokumen ada di page pelayanan yang sama) --}}
                             <x-primary-button type="button"
                                 wire:click="$dispatch('emr-ugd.modul-dokumen.open', { rjNo: {{ $rjNo }} })"
                                 class="gap-1 !bg-indigo-600 hover:!bg-indigo-700 !text-white focus:!ring-indigo-300 dark:!bg-indigo-600 dark:!text-white dark:hover:!bg-indigo-700 dark:focus:!ring-indigo-900">
                                 <x-ikon nama="dokumen" />Modul Dokumen
                             </x-primary-button>
-                        @endhasanyrole
+                        @endcan
 
                         @can('emr.logAktivitas')
                             {{-- Log Aktivitas — slate solid (manager ke atas) --}}
@@ -286,14 +286,14 @@
                         @endcan
 
                         {{-- Rekam Medis Nasional — riwayat pasien dari faskes lain (SATUSEHAT RME) --}}
-                        @hasanyrole('Dokter|Perawat|Admin')
+                        @can('ugd.emr.bukaRekamMedisNasional')
                             <x-primary-button type="button"
                                 wire:click="$dispatch('rekam-medis-nasional.open', { jalur: 'UGD', nomor: '{{ $rjNo }}' })"
                                 class="gap-1 !bg-emerald-600 hover:!bg-emerald-700 !text-white focus:!ring-emerald-300 dark:!bg-emerald-600 dark:!text-white dark:hover:!bg-emerald-700 dark:focus:!ring-emerald-900">
                                 <x-ikon nama="dokumen" />
                                 Rekam Medis Nasional
                             </x-primary-button>
-                        @endhasanyrole
+                        @endcan
                     </div>
 
                     {{-- KANAN: Tutup + Simpan sebelahan --}}

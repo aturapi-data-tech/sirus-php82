@@ -1,6 +1,7 @@
 <?php
 
 use Livewire\Component;
+use Livewire\Attributes\Authorize;
 use Livewire\WithPagination;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
@@ -104,6 +105,7 @@ new class extends Component {
         $this->dispatch('antrian-apotek.telaah-resep.open', rjNo: $rjNo);
     }
 
+    #[Authorize('rj.antrian-apotek.bukaAdministrasi')]
     public function openAdministrasiPasien(string $rjNo): void
     {
         $this->dispatch('emr-rj.administrasi.open', rjNo: $rjNo);
@@ -735,14 +737,14 @@ new class extends Component {
                                                     <div></div>
                                                 @endif
 
-                                                @hasanyrole('Admin|Perawat|Casemix|Apoteker')
+                                                @can('rj.antrian-apotek.bukaAdministrasi')
                                                     <x-secondary-button
                                                         wire:click="openAdministrasiPasien('{{ $row->rj_no }}')"
                                                         class="text-sm whitespace-nowrap justify-center !bg-purple-600 !text-white !border-purple-700 hover:!bg-purple-700 dark:!bg-purple-600 dark:!text-white dark:!border-purple-700 dark:hover:!bg-purple-700">
                                                         <x-ikon nama="pembayaran" ukuran="w-3.5 h-3.5" class="mr-1" />
                                                         Administrasi
                                                     </x-secondary-button>
-                                                @endhasanyrole
+                                                @endcan
                                             </div>
 
                                         </div>

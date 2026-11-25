@@ -2,6 +2,7 @@
 // resources/views/pages/transaksi/ri/emr-ri/pemeriksaan-ri/rm-pemeriksaan-ri-actions.blade.php
 
 use Livewire\Component;
+use Livewire\Attributes\Authorize;
 use Livewire\Attributes\On;
 use Livewire\WithFileUploads;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
@@ -174,6 +175,7 @@ new class extends Component {
         }
     }
 
+    #[Authorize('ri.emr.bukaHasilPenunjang')]
     public function openModalViewPenunjang(string $file): void
     {
         // Strategi: ambil filename saja, rakit path sesuai setting (mount → upload → legacy).
@@ -391,7 +393,7 @@ new class extends Component {
                             <td class="px-4 py-3 text-body dark:text-gray-300">{{ $item['desc'] ?? '-' }}</td>
                             <td class="px-4 py-3">
                                 <div class="flex items-center justify-center gap-2">
-                                    @hasanyrole('Perawat|Admin|Dokter')
+                                    @can('ri.emr.bukaHasilPenunjang')
                                         <x-icon-button wire:click="openModalViewPenunjang('{{ $item['file'] ?? '' }}')"
                                             title="Lihat PDF">
                                             <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -400,7 +402,7 @@ new class extends Component {
                                                     clip-rule="evenodd" />
                                             </svg>
                                         </x-icon-button>
-                                    @endhasanyrole
+                                    @endcan
                                     @hasanyrole('Perawat|Admin')
                                         <x-confirm-button variant="danger" :action="'deleteHasilPenunjang(\'' . ($item['file'] ?? '') . '\')'" title="Hapus File"
                                             message="Yakin ingin menghapus file {{ $item['desc'] ?? '' }}?"

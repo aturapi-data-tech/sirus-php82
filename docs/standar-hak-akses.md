@@ -31,6 +31,10 @@ User ──(model_has_roles)──> Role ──(role_has_permissions)──> Per
    - `'rolesAksi' => ['tambah' => [...], 'ubah' => [...]]` — centang awal per aksi bila beda
      dari `roles` (contoh: Daftar RJ/UGD/RI — banyak role boleh Lihat, hanya
      `AppMenu::ROLES_PENDAFTARAN` yang boleh Tambah/Ubah).
+   - `'khusus' => ['bukaAdministrasi' => ['Buka Administrasi', [roles]]]` — tombol khusus
+     halaman (pembuka modul lain, dll.). Permission `{route}.{kunci}`, tampil di kolom
+     **Khusus** baris halaman itu di Role Control. Pakai `@can('rj.pelayanan.bukaAdministrasi')`
+     + `#[Authorize(...)]` di method pembukanya.
 3. Guard di komponen (lihat pola di bawah).
 4. Deploy, lalu **`php artisan akses:sinkron`** (lokal & produksi). Membuat 4 permission
    halaman baru + menyalin centang awal. Aman diulang: centang yang dicabut admin tidak kembali.
@@ -93,6 +97,12 @@ role, jadi bukan centang. Yang jadi centang hanya **pengecualiannya**:
 ```php
 $canEdit = (auth()->user()->can('ri.cppt.ubahSemua') || $isOwner) && !$isFormLocked;
 ```
+
+## Tombol di komponen yang dipakai lintas halaman
+
+Tombol di dalam EMR (`emr-rj-isi`, `emr-ri-isi`, …) tampil di beberapa halaman, jadi
+tidak bisa memakai `{route}.{kunci}`. Pakai aksi khusus jalur di `AksiRole::KHUSUS`:
+`rj.emr.bukaAdministrasi`, `ri.emr.bukaEresep`, dst. (area "EMR RJ/UGD/RI").
 
 ## Menambah aksi khusus
 

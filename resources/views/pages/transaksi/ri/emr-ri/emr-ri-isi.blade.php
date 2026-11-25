@@ -413,7 +413,7 @@
                             </x-primary-button>
                         @endcan
 
-                        @hasanyrole('Admin|Perawat|Dokter|Casemix|Apoteker|Gizi|Laboratorium|Radiologi')
+                        @can('ri.emr.bukaModulDokumen')
                             {{-- Dokumen — indigo solid --}}
                             <x-primary-button type="button" wire:click="openModulDokumen('{{ $riHdrNo }}')"
                                 wire:loading.attr="disabled" wire:target="openModulDokumen"
@@ -424,9 +424,9 @@
                                 <span wire:loading wire:target="openModulDokumen"
                                     class="flex items-center gap-1"><x-loading /> Memuat...</span>
                             </x-primary-button>
-                        @endhasanyrole
+                        @endcan
 
-                        @hasanyrole('Admin|Perawat|Casemix|Apoteker|Gizi')
+                        @can('ri.emr.bukaAdministrasi')
                             {{-- Administrasi — teal solid --}}
                             <x-primary-button type="button" wire:click="openAdministrasiPasien('{{ $riHdrNo }}')"
                                 wire:loading.attr="disabled" wire:target="openAdministrasiPasien"
@@ -438,7 +438,7 @@
                                 <span wire:loading wire:target="openAdministrasiPasien"
                                     class="flex items-center gap-1"><x-loading /> Memuat...</span>
                             </x-primary-button>
-                        @endhasanyrole
+                        @endcan
 
                         @can('emr.logAktivitas')
                             {{-- Log Aktivitas — slate solid (manager ke atas) --}}
@@ -453,7 +453,7 @@
                             </x-primary-button>
                         @endcan
 
-                        @hasanyrole('Dokter|Admin|Perawat')
+                        @can('ri.emr.bukaEresep')
                             {{-- E-Resep — brand (x-primary default) --}}
                             <x-primary-button type="button" class="gap-1"
                                 wire:click="openEresep('{{ $riHdrNo }}')" wire:loading.attr="disabled"
@@ -464,7 +464,7 @@
                                 <span wire:loading wire:target="openEresep" class="flex items-center gap-1"><x-loading />
                                     Memuat...</span>
                             </x-primary-button>
-                        @endhasanyrole
+                        @endcan
 
                         {{-- Resume Medis — rose solid. Ikut Gate dokumen.ttdPerwakilan supaya
                              Manager Umum/Medis bisa membuka modal untuk TTD atas nama DPJP. --}}
@@ -478,24 +478,24 @@
                         @endif
 
                         {{-- Ringkasan Pemulangan Pasien — diisi Perawat/Bidan (teal) --}}
-                        @hasanyrole('Perawat|Admin')
+                        @can('ri.emr.bukaRingkasanPulang')
                             <x-primary-button type="button"
                                 wire:click="$dispatch('ringkasan-pulang-ri.open', { riHdrNo: {{ $riHdrNo }} })"
                                 class="gap-1 !bg-teal-600 hover:!bg-teal-700 !text-white focus:!ring-teal-300 dark:!bg-teal-600 dark:!text-white dark:hover:!bg-teal-700 dark:focus:!ring-teal-900">
                                 <x-ikon nama="dokumen" />
                                 Ringkasan Pulang
                             </x-primary-button>
-                        @endhasanyrole
+                        @endcan
 
                         {{-- Rekam Medis Nasional — riwayat pasien dari faskes lain (SATUSEHAT RME) --}}
-                        @hasanyrole('Dokter|Perawat|Admin')
+                        @can('ri.emr.bukaRekamMedisNasional')
                             <x-primary-button type="button"
                                 wire:click="$dispatch('rekam-medis-nasional.open', { jalur: 'RI', nomor: '{{ $riHdrNo }}' })"
                                 class="gap-1 !bg-emerald-600 hover:!bg-emerald-700 !text-white focus:!ring-emerald-300 dark:!bg-emerald-600 dark:!text-white dark:hover:!bg-emerald-700 dark:focus:!ring-emerald-900">
                                 <x-ikon nama="dokumen" />
                                 Rekam Medis Nasional
                             </x-primary-button>
-                        @endhasanyrole
+                        @endcan
                     </div>
 
                     {{-- KANAN: Tutup + Simpan dinamis per active tab --}}

@@ -81,6 +81,7 @@ new class extends Component {
         $this->dispatch('daftar-ugd.edit.open', rjNo: $rjNo);
     }
 
+    #[Authorize('ugd.daftar.bukaBerkasBpjs')]
     public function openBerkasBpjs(int $rjNo): void
     {
         $this->dispatch('berkas-bpjs.open', rjNo: $rjNo);
@@ -93,6 +94,7 @@ new class extends Component {
     }
 
     /** Modul Dokumen dari daftar pendaftaran — admisi langsung ke tab General Consent. */
+    #[Authorize('ugd.daftar.bukaModulDokumen')]
     public function openModulDokumen(int $rjNo): void
     {
         $this->dispatch('emr-ugd.modul-dokumen.open', rjNo: $rjNo, tab: 'general-consent');
@@ -767,7 +769,7 @@ new class extends Component {
                                                                 @endcan
 
                                                                 {{-- Modul Dokumen — admisi (Mr/Tu) mengisi General Consent saat pendaftaran; buka langsung ke tab itu --}}
-                                                                @hasanyrole('Admin|Mr|Supervisor Tu|Tu|Casemix|Perawat|Dokter')
+                                                                @can('ugd.daftar.bukaModulDokumen')
                                                                     <x-dropdown-link href="#"
                                                                         wire:click.prevent="openModulDokumen({{ $row->rj_no }})"
                                                                         class="px-3 py-2 text-sm rounded-lg h-full bg-yellow-50 hover:bg-yellow-100 dark:bg-yellow-900/20 dark:hover:bg-yellow-900/40">
@@ -781,9 +783,9 @@ new class extends Component {
                                                                             </span>
                                                                         </div>
                                                                     </x-dropdown-link>
-                                                                @endhasanyrole
+                                                                @endcan
 
-                                                                @hasanyrole('Admin|Casemix|Mr|Dokter')
+                                                                @can('ugd.daftar.bukaDiagnosa')
                                                                     <x-dropdown-link href="#"
                                                                         x-on:click.prevent="$dispatch('daftar-ugd.diagnosa.open', { rjNo: {{ $row->rj_no }} })"
                                                                         class="px-3 py-2 text-sm rounded-lg h-full bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/40">
@@ -797,9 +799,9 @@ new class extends Component {
                                                                             </span>
                                                                         </div>
                                                                     </x-dropdown-link>
-                                                                @endhasanyrole
+                                                                @endcan
 
-                                                                @hasanyrole('Admin|Casemix|Tu|Mr')
+                                                                @can('ugd.daftar.bukaBerkasBpjs')
                                                                     <x-dropdown-link href="#"
                                                                         wire:click.prevent="openBerkasBpjs({{ $row->rj_no }})"
                                                                         class="px-3 py-2 text-sm rounded-lg h-full bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/30 dark:hover:bg-amber-900/40">
@@ -813,7 +815,7 @@ new class extends Component {
                                                                             </span>
                                                                         </div>
                                                                     </x-dropdown-link>
-                                                                @endhasanyrole
+                                                                @endcan
 
                                                                 @can('emr.codingFhir')
                                                                     <x-dropdown-link href="#"
@@ -831,7 +833,7 @@ new class extends Component {
                                                                     </x-dropdown-link>
                                                                 @endcan
 
-                                                                @hasanyrole('Admin|Mr')
+                                                                @can('satusehat.kirim')
                                                                     <x-dropdown-link href="#"
                                                                         x-on:click.prevent="$dispatch('daftar-ugd.satu-sehat.open', { rjNo: {{ $row->rj_no }} })"
                                                                         class="px-3 py-2 text-sm rounded-lg h-full bg-teal-50 hover:bg-teal-100 dark:bg-teal-900/30 dark:hover:bg-teal-900/40">
@@ -845,7 +847,7 @@ new class extends Component {
                                                                             </span>
                                                                         </div>
                                                                     </x-dropdown-link>
-                                                                @endhasanyrole
+                                                                @endcan
                                                             </div>
 
                                                             {{-- Tombol Hapus DINONAKTIFKAN (dikomentari, permintaan user 2026-10-28) — divider + Hapus untuk
@@ -884,7 +886,7 @@ new class extends Component {
                                                 {{-- SATU SEHAT — status kirim PER-RESOURCE, di kanan tombol Etiket/titik-3.
                                                      Grid 3x3 seragam + hitungan terkirim; abu-abu = belum, hijau/brand = sudah.
                                                      Klik chip = buka modal Kirim Satu Sehat UGD. --}}
-                                                @hasanyrole('Admin|Mr')
+                                                @can('satusehat.kirim')
                                                     @php $satusehatTerkirim = collect($row->satusehat_items)->where('sent', true)->count(); @endphp
                                                     <div class="flex-1 min-w-0 max-w-[280px]">
                                                         <div class="flex items-center justify-between gap-2 mb-1">
@@ -909,7 +911,7 @@ new class extends Component {
                                                             @endforeach
                                                         </div>
                                                     </div>
-                                                @endhasanyrole
+                                                @endcan
 
                                             </div>
                                         @endif

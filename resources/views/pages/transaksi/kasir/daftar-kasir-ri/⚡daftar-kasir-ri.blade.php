@@ -1,6 +1,7 @@
 <?php
 
 use Livewire\Component;
+use Livewire\Attributes\Authorize;
 use Livewire\WithPagination;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
@@ -66,6 +67,7 @@ new class extends Component {
         $this->resetPage();
     }
 
+    #[Authorize('kasir.daftar-ri.bukaAdministrasi')]
     public function openAdministrasiPasien(string $riHdrNo): void
     {
         $this->dispatch('emr-ri.administrasi.open', riHdrNo: $riHdrNo);
@@ -353,7 +355,7 @@ new class extends Component {
                                                         jalur="Rawat Inap" />
 
                                                     <div class="grid grid-cols-2 gap-1 items-stretch">
-                                                    @hasanyrole('Admin|Tu|Manager Umum|Supervisor Tu')
+                                                    @can('kasir.daftar-ri.bukaAdministrasi')
                                                     <x-dropdown-link href="#" wire:click.prevent="openAdministrasiPasien('{{ $row->rihdr_no }}')"
                                                         class="px-3 py-2 text-sm rounded-lg h-full bg-purple-50 hover:bg-purple-100 dark:bg-purple-900/20 dark:hover:bg-purple-900/40">
                                                         <div class="flex items-start gap-2">
@@ -366,7 +368,7 @@ new class extends Component {
                                                             </span>
                                                         </div>
                                                     </x-dropdown-link>
-                                                    @endhasanyrole
+                                                    @endcan
 
                                                     {{-- Pindah Kamar — sama dengan Daftar RI; HANYA selama pasien dirawat --}}
                                                     @can('ri.pindahKamar')

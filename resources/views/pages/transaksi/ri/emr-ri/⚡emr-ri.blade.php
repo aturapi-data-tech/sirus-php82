@@ -2,6 +2,7 @@
 // resources/views/pages/transaksi/ri/emr-ri/emr-ri.blade.php
 
 use Livewire\Component;
+use Livewire\Attributes\Authorize;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
@@ -102,6 +103,7 @@ new class extends Component {
     }
 
     /* ── Shortcuts ── */
+    #[Authorize('ri.emr.bukaAdministrasi')]
     public function openAdministrasiPasien(string $riHdrNo): void
     {
         $this->dispatch('emr-ri.administrasi.open', riHdrNo: $riHdrNo);
@@ -110,6 +112,7 @@ new class extends Component {
     {
         $this->dispatch('emr-ri.pindah-kamar.open', riHdrNo: $riHdrNo);
     }
+    #[Authorize('ri.emr.bukaModulDokumen')]
     public function openModulDokumen(string $riHdrNo): void
     {
         $this->dispatch('emr-ri.modul-dokumen.open', riHdrNo: $riHdrNo);
@@ -118,6 +121,7 @@ new class extends Component {
     {
         $this->dispatch('emr-ri.log-aktivitas.open', riHdrNo: $riHdrNo);
     }
+    #[Authorize('ri.emr.bukaEresep')]
     public function openEresep(string $riHdrNo): void
     {
         $this->dispatch('emr-ri.eresep.open', riHdrNo: (int) $riHdrNo);

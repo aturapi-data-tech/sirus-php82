@@ -116,6 +116,7 @@ new class extends Component {
     }
 
     /** Modul Dokumen dari daftar pendaftaran — admisi langsung ke tab General Consent. */
+    #[Authorize('rj.daftar.bukaModulDokumen')]
     public function openModulDokumen(int $rjNo): void
     {
         $this->dispatch('emr-rj.modul-dokumen.open', rjNo: $rjNo, tab: 'general-consent');
@@ -1255,7 +1256,7 @@ new class extends Component {
                                                                 @endcan
 
                                                                 {{-- Modul Dokumen — admisi (Mr/Tu) mengisi General Consent saat pendaftaran; buka langsung ke tab itu --}}
-                                                                @hasanyrole('Admin|Mr|Supervisor Tu|Tu|Casemix|Perawat|Dokter')
+                                                                @can('rj.daftar.bukaModulDokumen')
                                                                     <x-dropdown-link href="#"
                                                                         wire:click.prevent="openModulDokumen({{ $row->rj_no }})"
                                                                         class="px-3 py-2 text-sm rounded-lg h-full bg-yellow-50 hover:bg-yellow-100 dark:bg-yellow-900/20 dark:hover:bg-yellow-900/40">
@@ -1269,9 +1270,9 @@ new class extends Component {
                                                                             </span>
                                                                         </div>
                                                                     </x-dropdown-link>
-                                                                @endhasanyrole
+                                                                @endcan
 
-                                                                @hasanyrole('Admin|Casemix|Mr|Dokter')
+                                                                @can('rj.daftar.bukaDiagnosa')
                                                                     <x-dropdown-link href="#"
                                                                         x-on:click.prevent="$dispatch('daftar-rj.diagnosa.open', { rjNo: {{ $row->rj_no }} })"
                                                                         class="px-3 py-2 text-sm rounded-lg h-full bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/40">
@@ -1285,9 +1286,9 @@ new class extends Component {
                                                                             </span>
                                                                         </div>
                                                                     </x-dropdown-link>
-                                                                @endhasanyrole
+                                                                @endcan
 
-                                                                @hasanyrole('Admin|Mr|Tu|Casemix')
+                                                                @can('rj.daftar.bukaRiwayatKontrol')
                                                                     <x-dropdown-link href="#"
                                                                         x-on:click.prevent="$dispatch('riwayat-kontrol.open', { regNo: '{{ $row->reg_no }}', regName: '{{ addslashes($row->reg_name) }}' })"
                                                                         class="px-3 py-2 text-sm rounded-lg h-full bg-cyan-50 hover:bg-cyan-100 dark:bg-cyan-900/30 dark:hover:bg-cyan-900/40">
@@ -1301,7 +1302,7 @@ new class extends Component {
                                                                             </span>
                                                                         </div>
                                                                     </x-dropdown-link>
-                                                                @endhasanyrole
+                                                                @endcan
 
                                                                 @can('emr.codingFhir')
                                                                     <x-dropdown-link href="#"

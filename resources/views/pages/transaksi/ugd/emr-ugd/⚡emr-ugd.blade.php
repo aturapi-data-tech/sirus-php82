@@ -2,6 +2,7 @@
 // resources/views/pages/transaksi/ugd/emr-ugd/emr-ugd.blade.php
 
 use Livewire\Component;
+use Livewire\Attributes\Authorize;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
@@ -172,6 +173,7 @@ new class extends Component {
     /* ===============================
      | ADMINISTRASI
      =============================== */
+    #[Authorize('ugd.emr.bukaAdministrasi')]
     public function openAdministrasiPasien(int $rjNo): void
     {
         $this->dispatch('emr-ugd.administrasi.open', rjNo: $rjNo);

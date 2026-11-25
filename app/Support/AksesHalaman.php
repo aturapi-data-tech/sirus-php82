@@ -116,6 +116,9 @@ class AksesHalaman
     /** @var array<string, array<string, array<int, string>>> route → aksi → roles awal */
     private static array $rolesAksiMenu = [];
 
+    /** @var array<string, array<string, array{label: string, roles: array<int, string>}>> route → kunci → tombol khusus halaman */
+    private static array $khususMenu = [];
+
     public static function namaPermission(string $route, string $aksi): string
     {
         return $route . '.' . $aksi;
@@ -184,7 +187,22 @@ class AksesHalaman
     {
         $roles = self::rolesMenu()[$route] ?? [];
 
-        return self::$rolesAksiMenu[$route][$aksi] ?? $roles;
+        return self::$khususMenu[$route][$aksi]['roles']
+            ?? self::$rolesAksiMenu[$route][$aksi]
+            ?? $roles;
+    }
+
+    /**
+     * Tombol khusus halaman (kunci 'khusus' AppMenu), mis. rj.pelayanan → bukaAdministrasi.
+     * Permission-nya `{route}.{kunci}`, tampil di kolom Khusus baris halaman itu.
+     *
+     * @return array<string, array{label: string, roles: array<int, string>}>
+     */
+    public static function khususHalaman(string $route): array
+    {
+        self::rolesMenu();
+
+        return self::$khususMenu[$route] ?? [];
     }
 
     /** @return array<int, string> nama role user, lowercase + trim (nama role di DB pernah ber-spasi) */
@@ -217,7 +235,7 @@ class AksesHalaman
     }
 
     /**
-     * Untuk Gate::before: ability berbentuk `{route}.{aksi}` dengan route dikenal → bool;
+     * Untuk Gate::before: ability berbentuk `{route}.{aksi|kunciKhusus}` dengan route dikenal → bool;
      * selain itu null supaya Gate lain (aksi khusus, Gate lama) yang memutuskan.
      */
     public static function aturAbility(?User $user, string $ability): ?bool
@@ -228,7 +246,10 @@ class AksesHalaman
         }
         $aksi = substr($ability, $titik + 1);
         $route = substr($ability, 0, $titik);
-        if (!in_array($aksi, self::AKSI, true) || !self::dikenal($route)) {
+        if (!self::dikenal($route)) {
+            return null;
+        }
+        if (!in_array($aksi, self::AKSI, true) && !isset(self::khususHalaman(self::INDUK[$route][0] ?? $route)[$aksi])) {
             return null;
         }
 
@@ -258,6 +279,7 @@ class AksesHalaman
         $peta = [];
         self::$aksiMenu = [];
         self::$rolesAksiMenu = [];
+        self::$khususMenu = [];
         $kecil = fn (array $roles) => array_map(fn ($r) => trim(strtolower($r)), $roles);
         foreach (AppMenu::all() as $m) {
             $route = $m['route'];
@@ -267,6 +289,9 @@ class AksesHalaman
             }
             foreach ($m['rolesAksi'] ?? [] as $aksi => $roles) {
                 self::$rolesAksiMenu[$route][$aksi] = $kecil($roles);
+            }
+            foreach ($m['khusus'] ?? [] as $kunci => [$label, $roles]) {
+                self::$khususMenu[$route][$kunci] = ['label' => $label, 'roles' => $kecil($roles)];
             }
         }
 

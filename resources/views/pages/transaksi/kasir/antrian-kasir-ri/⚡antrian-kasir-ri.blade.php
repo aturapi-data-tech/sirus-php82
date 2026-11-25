@@ -1,6 +1,7 @@
 <?php
 
 use Livewire\Component;
+use Livewire\Attributes\Authorize;
 use Livewire\WithPagination;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
@@ -89,6 +90,7 @@ new class extends Component {
     /* -------------------------
      | Dispatch ke child actions
      * ------------------------- */
+    #[Authorize('kasir.antrian-ri.bukaAdministrasi')]
     public function openAdministrasi(int $slsNo, ?string $tab = null): void
     {
         $this->dispatch('administrasi-kasir-ri.open', slsNo: $slsNo, tab: $tab);
@@ -514,7 +516,7 @@ new class extends Component {
                                                         jalur="Rawat Inap" />
 
                                                     <div class="grid grid-cols-2 gap-1 items-stretch">
-                                                    @hasanyrole('Admin|Tu|Manager Umum|Supervisor Tu')
+                                                    @can('kasir.antrian-ri.bukaAdministrasi')
                                                     <x-dropdown-link href="#" wire:click.prevent="openAdministrasi({{ $row->sls_no }}, '{{ $row->status === 'L' ? 'kasir' : 'obat' }}')"
                                                         class="px-3 py-2 text-sm rounded-lg h-full bg-purple-50 hover:bg-purple-100 dark:bg-purple-900/20 dark:hover:bg-purple-900/40">
                                                         <div class="flex items-start gap-2">
@@ -527,7 +529,7 @@ new class extends Component {
                                                             </span>
                                                         </div>
                                                     </x-dropdown-link>
-                                                    @endhasanyrole
+                                                    @endcan
 
                                                     @can('ri.ubahDataResep')
                                                     @if ($row->status !== 'L' && !in_array(strtoupper($row->ri_status ?? ''), ['P', 'B'], true))

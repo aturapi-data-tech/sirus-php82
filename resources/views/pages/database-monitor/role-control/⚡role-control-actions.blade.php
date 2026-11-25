@@ -150,6 +150,13 @@ new class extends Component {
                 'title' => $m['title'],
                 'terbuka' => in_array(AppMenu::SEMUA_ROLE, $m['roles'], true),
                 'sel' => $sel,
+                // Tombol khusus halaman ('khusus' AppMenu) → kolom Khusus baris ini.
+                'khusus' => collect(AksesHalaman::khususHalaman($m['route']))
+                    ->map(function ($k, $kunci) use ($m, $idPerNama, &$terpakai) {
+                        $nama = AksesHalaman::namaPermission($m['route'], $kunci);
+                        $terpakai[$nama] = true;
+                        return ['nama' => $nama, 'label' => $k['label'], 'id' => $idPerNama[$nama] ?? null];
+                    })->values()->all(),
             ];
         }
 
@@ -165,7 +172,7 @@ new class extends Component {
             ->values()
             ->all();
 
-        $belumSinkron = collect($halaman)->flatten(1)->contains(fn ($r) => !$r['terbuka'] && in_array(null, $r['sel'], true))
+        $belumSinkron = collect($halaman)->flatten(1)->contains(fn ($r) => !$r['terbuka'] && (in_array(null, $r['sel'], true) || in_array(null, array_column($r['khusus'], 'id'), true)))
             || collect($khusus)->flatten(1)->contains(fn ($r) => $r['id'] === null);
 
         return compact('halaman', 'khusus', 'lainnya', 'belumSinkron');
@@ -357,12 +364,13 @@ new class extends Component {
                                                 @foreach (AksesHalaman::AKSI as $aksi)
                                                     <th class="w-20 px-2 py-2 text-center">{{ ucfirst($aksi) }}</th>
                                                 @endforeach
+                                                <th class="px-2 py-2 text-left">Khusus</th>
                                                 <th class="w-16 px-2 py-2 text-center">Baris</th>
                                             </tr>
                                         </thead>
                                         @foreach ($matriks['halaman'] as $grup => $baris)
                                             @php
-                                                $teksGrup = mb_strtolower($grup . ' ' . collect($baris)->map(fn ($r) => $r['title'] . ' ' . $r['route'])->implode(' '));
+                                                $teksGrup = mb_strtolower($grup . ' ' . collect($baris)->map(fn ($r) => $r['title'] . ' ' . $r['route'] . ' ' . implode(' ', array_column($r['khusus'], 'label')))->implode(' '));
                                             @endphp
                                             <tbody wire:key="grup-{{ md5($grup) }}" x-show="cocok(@js($teksGrup))">
                                                 <tr class="border-t bg-brand-green/5 border-hairline dark:bg-gray-800/60 dark:border-gray-700">
@@ -379,18 +387,19 @@ new class extends Component {
                                                         </td>
                                                     @endforeach
                                                     <td></td>
+                                                    <td></td>
                                                 </tr>
                                                 @foreach ($baris as $r)
-                                                    @php $idsBaris = array_values(array_filter($r['sel'])); @endphp
+                                                    @php $idsBaris = array_values(array_filter([...array_values($r['sel']), ...array_column($r['khusus'], 'id')])); @endphp
                                                     <tr wire:key="hal-{{ $r['route'] }}"
-                                                        x-show="cocok(@js(mb_strtolower($grup . ' ' . $r['title'] . ' ' . $r['route'])))"
+                                                        x-show="cocok(@js(mb_strtolower($grup . ' ' . $r['title'] . ' ' . $r['route'] . ' ' . implode(' ', array_column($r['khusus'], 'label')))))"
                                                         class="border-t border-hairline dark:border-gray-700 hover:bg-surface-soft dark:hover:bg-gray-800/40">
                                                         <td class="px-3 py-1.5">
                                                             <div class="text-ink dark:text-gray-200">{{ $r['title'] }}</div>
                                                             <div class="font-mono text-xs text-muted-soft">{{ $r['route'] }}</div>
                                                         </td>
                                                         @if ($r['terbuka'])
-                                                            <td colspan="5" class="px-2 py-1.5 text-center">
+                                                            <td colspan="6" class="px-2 py-1.5 text-center">
                                                                 <x-badge variant="alternative">Terbuka untuk semua user</x-badge>
                                                             </td>
                                                         @else
@@ -406,6 +415,21 @@ new class extends Component {
                                                                     @endif
                                                                 </td>
                                                             @endforeach
+                                                            <td class="px-2 py-1.5">
+                                                                <div class="flex flex-col gap-1">
+                                                                    @foreach ($r['khusus'] as $k)
+                                                                        <label class="inline-flex items-center gap-1.5 text-xs cursor-pointer text-ink dark:text-gray-300" title="{{ $k['nama'] }}">
+                                                                            @if ($k['id'])
+                                                                                <input type="checkbox" x-model="pilih" value="{{ $k['id'] }}"
+                                                                                    class="w-4 h-4 bg-gray-100 border-gray-300 rounded cursor-pointer text-brand-green focus:ring-brand-green/50 focus:ring-2 dark:bg-gray-700 dark:border-gray-600">
+                                                                            @else
+                                                                                <span class="text-muted-soft" title="Belum dibuat — jalankan akses:sinkron">—</span>
+                                                                            @endif
+                                                                            {{ $k['label'] }}
+                                                                        </label>
+                                                                    @endforeach
+                                                                </div>
+                                                            </td>
                                                             <td class="px-2 py-1.5 text-center">
                                                                 @if ($idsBaris)
                                                                     <button type="button" x-on:click="atur(@js($idsBaris))"

@@ -136,16 +136,16 @@
                             @endif
                         @endrole
 
-                        @hasanyrole('Admin|Perawat|Dokter')
+                        @can('rj.emr.bukaScreening')
                             {{-- Screening RJ — teal outline (skrining awal poli, buka via dispatch) --}}
                             <x-primary-button type="button"
                                 wire:click="$dispatch('open-rm-screening-rj', { rjNo: {{ $rjNo }} })"
                                 class="gap-1 !bg-teal-600 hover:!bg-teal-700 !text-white focus:!ring-teal-300 dark:!bg-teal-600 dark:!text-white dark:hover:!bg-teal-700 dark:focus:!ring-teal-900">
                                 <x-ikon nama="setujui" />Screening
                             </x-primary-button>
-                        @endhasanyrole
+                        @endcan
 
-                        @hasanyrole('Admin|Perawat|Casemix')
+                        @can('rj.emr.bukaAdministrasi')
                             <x-primary-button type="button" wire:click="openAdministrasiPasien('{{ $rjNo }}')"
                                 wire:loading.attr="disabled" wire:target="openAdministrasiPasien"
                                 class="gap-1 !bg-purple-600 hover:!bg-purple-700 !text-white dark:!bg-purple-600 dark:!text-white dark:hover:!bg-purple-700">
@@ -158,16 +158,16 @@
                                     <x-loading /> Memuat...
                                 </span>
                             </x-primary-button>
-                        @endhasanyrole
+                        @endcan
 
-                        @hasanyrole('Admin|Perawat|Dokter|Casemix|Mr')
+                        @can('rj.emr.bukaModulDokumen')
                             {{-- Dokumen — indigo solid (modal modul dokumen ada di page pelayanan yang sama) --}}
                             <x-primary-button type="button"
                                 wire:click="$dispatch('emr-rj.modul-dokumen.open', { rjNo: '{{ $rjNo }}' })"
                                 class="gap-1 !bg-indigo-600 hover:!bg-indigo-700 !text-white focus:!ring-indigo-300 dark:!bg-indigo-600 dark:!text-white dark:hover:!bg-indigo-700 dark:focus:!ring-indigo-900">
                                 <x-ikon nama="dokumen" />Modul Dokumen
                             </x-primary-button>
-                        @endhasanyrole
+                        @endcan
 
                         @can('emr.logAktivitas')
                             {{-- Log Aktivitas — slate solid (manager ke atas) --}}
@@ -235,14 +235,14 @@
                         @endcan
 
                         {{-- Rekam Medis Nasional — riwayat pasien dari faskes lain (SATUSEHAT RME) --}}
-                        @hasanyrole('Dokter|Perawat|Admin')
+                        @can('rj.emr.bukaRekamMedisNasional')
                             <x-primary-button type="button"
                                 wire:click="$dispatch('rekam-medis-nasional.open', { jalur: 'RJ', nomor: '{{ $rjNo }}' })"
                                 class="gap-1 !bg-emerald-600 hover:!bg-emerald-700 !text-white focus:!ring-emerald-300 dark:!bg-emerald-600 dark:!text-white dark:hover:!bg-emerald-700 dark:focus:!ring-emerald-900">
                                 <x-ikon nama="dokumen" />
                                 Rekam Medis Nasional
                             </x-primary-button>
-                        @endhasanyrole
+                        @endcan
                     </div>
 
                     {{-- KANAN: Tutup + Simpan sebelahan --}}

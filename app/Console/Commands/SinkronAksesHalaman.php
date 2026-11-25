@@ -60,7 +60,8 @@ class SinkronAksesHalaman extends Command
                 continue; // terbuka untuk semua, tak perlu permission
             }
 
-            foreach (AksesHalaman::aksiBerlaku($route) as $aksi) {
+            // 4 aksi halaman yang berlaku + tombol khusus halaman ('khusus' AppMenu)
+            foreach ([...AksesHalaman::aksiBerlaku($route), ...array_keys(AksesHalaman::khususHalaman($route))] as $aksi) {
                 $targetRole = [];
                 foreach (AksesHalaman::rolesAwal($route, $aksi) as $r) {
                     if (isset($roleDb[$r])) {

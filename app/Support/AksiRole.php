@@ -356,6 +356,22 @@ class AksiRole
         'gudang.transferBatalMedis' => ['area' => 'Gudang', 'label' => 'Batal transfer stok medis', 'roles' => self::GUDANG_TRANSFER_BATAL_MEDIS],
         'gudang.transferBatalNonMedis' => ['area' => 'Gudang', 'label' => 'Batal transfer stok non-medis', 'roles' => self::GUDANG_TRANSFER_BATAL_NONMEDIS],
 
+        // Tombol pembuka modul DI DALAM EMR (komponen dipakai lintas halaman, jadi tidak
+        // terikat route). Roles = salinan persis @hasanyrole lama di emr-*-isi (T2, 2026-11-25).
+        'rj.emr.bukaScreening' => ['area' => 'EMR RJ', 'label' => 'Buka Screening', 'roles' => ['Admin', 'Dokter', 'Perawat']],
+        'rj.emr.bukaAdministrasi' => ['area' => 'EMR RJ', 'label' => 'Buka Administrasi', 'roles' => ['Admin', 'Casemix', 'Perawat']],
+        'rj.emr.bukaModulDokumen' => ['area' => 'EMR RJ', 'label' => 'Buka Modul Dokumen', 'roles' => ['Admin', 'Casemix', 'Dokter', 'Mr', 'Perawat']],
+        'rj.emr.bukaRekamMedisNasional' => ['area' => 'EMR RJ', 'label' => 'Rekam Medis Nasional (SSRME)', 'roles' => ['Admin', 'Dokter', 'Perawat']],
+        'ugd.emr.bukaAdministrasi' => ['area' => 'EMR UGD', 'label' => 'Buka Administrasi', 'roles' => ['Admin', 'Casemix', 'Perawat']],
+        'ugd.emr.bukaModulDokumen' => ['area' => 'EMR UGD', 'label' => 'Buka Modul Dokumen', 'roles' => ['Admin', 'Casemix', 'Dokter', 'Mr', 'Perawat']],
+        'ugd.emr.bukaRekamMedisNasional' => ['area' => 'EMR UGD', 'label' => 'Rekam Medis Nasional (SSRME)', 'roles' => ['Admin', 'Dokter', 'Perawat']],
+        'ri.emr.bukaModulDokumen' => ['area' => 'EMR RI', 'label' => 'Buka Modul Dokumen', 'roles' => ['Admin', 'Apoteker', 'Casemix', 'Dokter', 'Gizi', 'Laboratorium', 'Perawat', 'Radiologi']],
+        'ri.emr.bukaAdministrasi' => ['area' => 'EMR RI', 'label' => 'Buka Administrasi', 'roles' => ['Admin', 'Apoteker', 'Casemix', 'Gizi', 'Perawat']],
+        'ri.emr.bukaEresep' => ['area' => 'EMR RI', 'label' => 'Buka E-Resep', 'roles' => ['Admin', 'Dokter', 'Perawat']],
+        'ri.emr.bukaRingkasanPulang' => ['area' => 'EMR RI', 'label' => 'Ringkasan Pulang', 'roles' => ['Admin', 'Perawat']],
+        'ri.emr.bukaRekamMedisNasional' => ['area' => 'EMR RI', 'label' => 'Rekam Medis Nasional (SSRME)', 'roles' => ['Admin', 'Dokter', 'Perawat']],
+        'ri.emr.bukaHasilPenunjang' => ['area' => 'EMR RI', 'label' => 'Lihat Hasil Penunjang', 'roles' => ['Admin', 'Dokter', 'Perawat']],
+
         'downtime.pelaporanHapus' => ['area' => 'Sistem', 'label' => 'Hapus pelaporan down time', 'roles' => self::DOWNTIME_PELAPORAN_HAPUS],
         'sistem.pemantauanRuangServer.hapus' => ['area' => 'Sistem', 'label' => 'Hapus lembar pemantauan ruang server', 'roles' => self::SISTEM_PEMANTAUAN_RUANG_SERVER_HAPUS],
         'sistem.pemantauanRuangServer.bukaKunci' => ['area' => 'Sistem', 'label' => 'Buka kunci pemantauan ruang server', 'roles' => self::SISTEM_PEMANTAUAN_RUANG_SERVER_BUKA_KUNCI],
