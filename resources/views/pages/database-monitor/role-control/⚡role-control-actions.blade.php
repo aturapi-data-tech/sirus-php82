@@ -355,10 +355,11 @@ new class extends Component {
                                     </p>
                                 </div>
 
-                                {{-- Halaman per grup menu --}}
-                                <div class="overflow-x-auto border rounded-lg border-hairline dark:border-gray-700">
+                                {{-- Halaman per grup menu. Tanpa overflow-x-auto: pembungkus ber-overflow jadi
+                                     wadah scroll sendiri dan mematikan thead sticky terhadap scroll modal. --}}
+                                <div class="border rounded-lg border-hairline dark:border-gray-700">
                                     <table class="w-full text-sm">
-                                        <thead class="text-xs uppercase bg-surface-soft text-muted dark:bg-gray-800 dark:text-gray-400">
+                                        <thead class="sticky top-0 z-10 text-xs uppercase shadow-sm bg-surface-soft text-muted dark:bg-gray-800 dark:text-gray-400">
                                             <tr>
                                                 <th class="px-3 py-2 text-left">Halaman</th>
                                                 @foreach (AksesHalaman::AKSI as $aksi)
@@ -436,42 +437,50 @@ new class extends Component {
                                                 @endforeach
                                             </tbody>
                                         @endforeach
-                                    </table>
-                                </div>
 
-                                {{-- Aksi khusus per area --}}
-                                <div class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-                                    @foreach ($matriks['khusus'] as $area => $baris)
-                                        @php
-                                            $idsArea = collect($baris)->pluck('id')->filter()->values()->all();
-                                            $teksArea = mb_strtolower('aksi khusus ' . $area . ' ' . collect($baris)->map(fn ($r) => $r['label'] . ' ' . $r['nama'])->implode(' '));
-                                        @endphp
-                                        <div wire:key="area-{{ md5($area) }}" x-show="cocok(@js($teksArea))"
-                                            class="border rounded-lg border-hairline dark:border-gray-700">
-                                            <div class="flex items-center justify-between px-3 py-2 border-b bg-brand-green/5 border-hairline dark:bg-gray-800/60 dark:border-gray-700">
-                                                <span class="text-sm font-semibold text-ink dark:text-gray-200">Aksi Khusus — {{ $area }}</span>
-                                                @if ($idsArea)
-                                                    <button type="button" x-on:click="atur(@js($idsArea))"
-                                                        class="text-xs font-medium hover:underline"
-                                                        x-bind:class="semuaNyala(@js($idsArea)) ? 'text-brand-green dark:text-brand-lime' : 'text-muted'">semua</button>
-                                                @endif
-                                            </div>
-                                            <div class="p-3 space-y-2">
-                                                @foreach ($baris as $r)
-                                                    <div wire:key="khusus-{{ $r['nama'] }}">
-                                                        @if ($r['id'])
-                                                            <x-toggle-alpine x-model="pilih" :value="$r['id']" class="items-start">
-                                                                <span class="text-sm text-ink dark:text-gray-200">{{ $r['label'] }}</span>
-                                                                <span class="block font-mono text-xs font-normal text-muted-soft">{{ $r['nama'] }}</span>
-                                                            </x-toggle-alpine>
-                                                        @else
-                                                            <span class="text-sm text-muted-soft" title="Belum dibuat — jalankan akses:sinkron">— {{ $r['label'] }}</span>
+                                        {{-- Aksi khusus per area — satu tabel dengan menu di atas: baris grup
+                                             "Aksi Khusus — <area>" + satu baris per aksi, toggle di kolom Khusus. --}}
+                                        @foreach ($matriks['khusus'] as $area => $baris)
+                                            @php
+                                                $idsArea = collect($baris)->pluck('id')->filter()->values()->all();
+                                                $teksArea = mb_strtolower('aksi khusus ' . $area . ' ' . collect($baris)->map(fn ($r) => $r['label'] . ' ' . $r['nama'])->implode(' '));
+                                            @endphp
+                                            <tbody wire:key="area-{{ md5($area) }}" x-show="cocok(@js($teksArea))">
+                                                <tr class="border-t bg-brand-green/5 border-hairline dark:bg-gray-800/60 dark:border-gray-700">
+                                                    <td class="px-3 py-2 font-semibold text-ink dark:text-gray-200">Aksi Khusus — {{ $area }}</td>
+                                                    <td colspan="{{ count(AksesHalaman::AKSI) }}"></td>
+                                                    <td class="px-2 py-2">
+                                                        @if ($idsArea)
+                                                            <button type="button" x-on:click="atur(@js($idsArea))"
+                                                                class="text-xs font-medium hover:underline"
+                                                                x-bind:class="semuaNyala(@js($idsArea)) ? 'text-brand-green dark:text-brand-lime' : 'text-muted'"
+                                                                title="Centang / lepas semua aksi khusus {{ $area }}">semua</button>
                                                         @endif
-                                                    </div>
+                                                    </td>
+                                                    <td></td>
+                                                </tr>
+                                                @foreach ($baris as $r)
+                                                    <tr wire:key="khusus-{{ $r['nama'] }}"
+                                                        x-show="cocok(@js(mb_strtolower('aksi khusus ' . $area . ' ' . $r['label'] . ' ' . $r['nama'])))"
+                                                        class="border-t border-hairline dark:border-gray-700 hover:bg-surface-soft dark:hover:bg-gray-800/40">
+                                                        <td class="px-3 py-1.5">
+                                                            <div class="text-ink dark:text-gray-200">{{ $r['label'] }}</div>
+                                                            <div class="font-mono text-xs text-muted-soft">{{ $r['nama'] }}</div>
+                                                        </td>
+                                                        <td colspan="{{ count(AksesHalaman::AKSI) }}"></td>
+                                                        <td class="px-2 py-1.5">
+                                                            @if ($r['id'])
+                                                                <x-toggle-alpine x-model="pilih" :value="$r['id']" :aria-label="$r['label']" />
+                                                            @else
+                                                                <span class="text-sm text-muted-soft" title="Belum dibuat — jalankan akses:sinkron">—</span>
+                                                            @endif
+                                                        </td>
+                                                        <td></td>
+                                                    </tr>
                                                 @endforeach
-                                            </div>
-                                        </div>
-                                    @endforeach
+                                            </tbody>
+                                        @endforeach
+                                    </table>
                                 </div>
 
                                 {{-- Permission di luar katalog (lama / buatan manual) --}}
