@@ -69,7 +69,8 @@ Pengecualian hanya untuk hak yang memang bukan milik kunjungan/jalur (Hasil Penu
 
 **Memecah hak lama** jadi per jalur: entri baru diberi `'menggantikan' => 'nama.lama'` — saat
 permission dibuat, centangnya DIWARISKAN dari hak lama (termasuk yang sudah diatur admin), jadi
-tak ada yang kehilangan/mendapat hak. Hak lama tersisa di bagian "Lainnya" Role Control.
+tak ada yang kehilangan/mendapat hak. Sesudah semua penggantinya dibuat, hak lama dihapus
+sendiri oleh sinkron (lihat **Bersih-bersih** di bawah).
 
 **Halaman gabungan bertab** (Antrian Apotek, Antrian Kasir): entri menu ber-`'gabungan' => [route
 halaman asal tiap tab]` — tak punya centang sendiri, menu tampil bila boleh salah satunya. Tiap tab
@@ -98,6 +99,14 @@ RJ/UGD/RI-nya tetap ikut hak halaman asal.
    `ProgramAkses.php`; tanda di `storage/framework/akses-sinkron.tanda`, hasil di `laravel.log`,
    gagal di log `akses-halaman`). Aman diulang: centang yang dicabut admin tidak kembali.
    `php artisan akses:sinkron` manual tetap bisa (mis. `--dry-run`).
+
+   **Bersih-bersih:** permission yang tak lagi lahir dari definisi (menu/aksi khusus dihapus,
+   aksi yang tak ada di `'aksi'` menu, nama lama sumber `menggantikan`, buatan manual) ikut
+   DIHAPUS oleh sinkron yang sama, beserta centangnya. Daftar yang dihapus + role-nya dicatat
+   di log `akses-halaman` (untuk mengembalikan bila perlu). Aksi yang tak berlaku di suatu
+   halaman selalu ditolak (`AksesHalaman::boleh()`), jadi kode tidak bisa bergantung padanya.
+   Bagian "Lainnya" di Role Control seharusnya kosong; bila muncul = permission dibuat di luar
+   definisi (manual) dan akan hilang di sinkron berikutnya — masukkan ke blok programnya.
 5. Admin menyesuaikan centang di Role Control.
 
 Mengoreksi centang awal route/aksi yang permission-nya **sudah** ada:

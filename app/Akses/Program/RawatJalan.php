@@ -54,6 +54,7 @@ return [
         'EMR Rawat Jalan' => [
             'aksiKhusus' => [
                 'rj.emr.bukaScreening' => ['label' => 'EMR: buka Screening', 'roles' => ['Admin', 'Dokter', 'Perawat']],
+                'rj.emr.bukaEresep' => ['label' => 'EMR: buka E-Resep', 'roles' => ['Admin', 'Dokter', 'Perawat']],
                 'rj.emr.bukaAdministrasi' => ['label' => 'EMR: buka Administrasi', 'roles' => ['Admin', 'Casemix', 'Perawat']],
                 'rj.emr.bukaModulDokumen' => ['label' => 'EMR: buka Modul Dokumen', 'roles' => ['Admin', 'Casemix', 'Dokter', 'Mr', 'Perawat']],
                 'rj.emr.bukaRekamMedisNasional' => ['label' => 'EMR: rekam Medis Nasional (SSRME)', 'roles' => ['Admin', 'Dokter', 'Perawat']],
@@ -64,6 +65,8 @@ return [
             'pintu' => [
                 'emr-rj.modul-dokumen.open' => ['rj.daftar.bukaModulDokumen', 'rj.pelayanan.bukaModulDokumen', 'rj.emr.bukaModulDokumen', 'penunjang.kamar-operasi.bukaDokumenBedah'],
                 'open-rm-screening-rj' => ['rj.emr.bukaScreening'],
+                // Copy Resep di tampilan Rekam Medis juga membuka E-Resep kunjungan tujuan.
+                'emr-rj.eresep.open' => ['rj.emr.bukaEresep', 'pintu:emr-rj.rekam-medis.open'],
             ],
         ],
 

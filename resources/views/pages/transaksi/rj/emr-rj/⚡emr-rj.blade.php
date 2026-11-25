@@ -201,6 +201,7 @@ new class extends Component {
         $this->dispatch('emr-rj.log-aktivitas.open', rjNo: $rjNo);
     }
 
+    #[Authorize('rj.emr.bukaEresep')]
     public function openEresep(int $rjNo): void
     {
         if (!$rjNo) {

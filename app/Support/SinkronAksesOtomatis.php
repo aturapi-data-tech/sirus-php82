@@ -16,8 +16,9 @@ use Throwable;
  * melihat tandanya berubah (habis git pull) menjalankan sinkron sekali; request lain yang
  * datang bersamaan tidak menunggu (kunci flock non-blocking) dan jalan seperti biasa.
  *
- * Aman diulang: sinkron hanya MEMBUAT permission yang belum ada + centang awalnya; centang
- * yang sudah diatur admin di Role Control tidak disentuh (tanpa --ulang).
+ * Aman diulang: sinkron MEMBUAT permission yang belum ada + centang awalnya dan MENGHAPUS
+ * permission yang tak lagi ada di definisi (dicatat ke log 'akses'); centang yang sudah diatur
+ * admin di Role Control tidak disentuh (tanpa --ulang).
  *
  * Gagal (mis. DB putus) → dicatat ke log, dicoba lagi paling cepat JEDA_GAGAL detik kemudian
  * — supaya error tidak diulang di setiap request.

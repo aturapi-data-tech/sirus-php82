@@ -235,7 +235,7 @@
                             </x-primary-button>
                         @endcan
 
-                        @hasanyrole('Dokter|Admin|Perawat')
+                        @can('ugd.emr.bukaEresep')
                             <x-primary-button type="button" class="gap-1" x-data="{
                                 loadingEresep: false,
                                 async openEresepWithSave(rjNo) {
@@ -277,7 +277,7 @@
                                     <x-loading /> Menyimpan & memuat...
                                 </span>
                             </x-primary-button>
-                        @endhasanyrole
+                        @endcan
 
                         @can('ugd.emr.cetakEresep')
                             @if ($this->hasEresep())

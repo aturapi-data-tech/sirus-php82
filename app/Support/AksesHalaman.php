@@ -158,6 +158,10 @@ class AksesHalaman
         if (in_array(AppMenu::SEMUA_ROLE, $rolesMenu, true)) {
             return true;
         }
+        // Aksi yang tak berlaku di halaman ini (kunci 'aksi' menu) → tak ada yang boleh.
+        if (in_array($aksi, self::AKSI, true) && !in_array($aksi, self::aksiBerlaku($route), true)) {
+            return false;
+        }
 
         $permission = self::namaPermission($route, $aksi);
         if (self::permissionAda($permission)) {

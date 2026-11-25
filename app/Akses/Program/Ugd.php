@@ -41,6 +41,7 @@ return [
         'EMR UGD' => [
             'aksiKhusus' => [
                 'ugd.emr.bukaAdministrasi' => ['label' => 'EMR: buka Administrasi', 'roles' => ['Admin', 'Casemix', 'Perawat']],
+                'ugd.emr.bukaEresep' => ['label' => 'EMR: buka E-Resep', 'roles' => ['Admin', 'Dokter', 'Perawat']],
                 'ugd.emr.bukaModulDokumen' => ['label' => 'EMR: buka Modul Dokumen', 'roles' => ['Admin', 'Casemix', 'Dokter', 'Mr', 'Perawat']],
                 'ugd.emr.bukaRekamMedisNasional' => ['label' => 'EMR: rekam Medis Nasional (SSRME)', 'roles' => ['Admin', 'Dokter', 'Perawat']],
                 'ugd.sbar.hapus' => ['label' => 'SBAR: hapus entri', 'roles' => AksiRole::UGD_SBAR_HAPUS],
@@ -54,6 +55,7 @@ return [
             ],
             'pintu' => [
                 'emr-ugd.modul-dokumen.open' => ['ugd.daftar.bukaModulDokumen', 'ugd.pelayanan.bukaModulDokumen', 'ugd.emr.bukaModulDokumen', 'penunjang.kamar-operasi.bukaDokumenBedah'],
+                'emr-ugd.eresep.open' => ['ugd.emr.bukaEresep'],
             ],
         ],
 

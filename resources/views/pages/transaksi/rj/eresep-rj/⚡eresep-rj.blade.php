@@ -2,6 +2,7 @@
 
 use Livewire\Component;
 use Livewire\Attributes\Locked;
+use Livewire\Attributes\Authorize;
 use Livewire\Attributes\On;
 use App\Http\Traits\Txn\Rj\EmrRJTrait;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
@@ -55,6 +56,7 @@ new class extends Component {
      | OPEN ERESEP RJ
      =============================== */
     #[On('emr-rj.eresep.open')]
+    #[Authorize('pintu.emr-rj.eresep.open')]
     public function openEresep(int $rjNo): void
     {
         $this->resetForm();

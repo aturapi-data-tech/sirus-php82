@@ -10,7 +10,7 @@
     {{-- Shortcut tombol E-Resep — auto-save SOAP child dulu, tunggu konfirmasi,
          baru buka modal eresep. Logika identik dengan tombol toolbar parent EMR
          (lihat emr-rj.blade.php → "Tombol E-Resep"). --}}
-    @hasanyrole('Dokter|Admin|Perawat')
+    @can('rj.emr.bukaEresep')
         <div class="flex justify-end">
             <x-primary-button type="button" class="gap-1"
                 x-data="{
@@ -58,6 +58,6 @@
                 </span>
             </x-primary-button>
         </div>
-    @endhasanyrole
+    @endcan
 
 </div>

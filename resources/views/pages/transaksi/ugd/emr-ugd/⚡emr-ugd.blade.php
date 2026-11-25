@@ -185,6 +185,7 @@ new class extends Component {
         $this->dispatch('emr-ugd.log-aktivitas.open', rjNo: $rjNo);
     }
 
+    #[Authorize('ugd.emr.bukaEresep')]
     public function openEresep(int $rjNo): void
     {
         if (!$rjNo) {

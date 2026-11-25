@@ -7,6 +7,8 @@ use App\Support\AksesHalaman;
 use App\Support\AksiRole;
 use App\Support\SinkronAksesOtomatis;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
@@ -29,6 +31,12 @@ use Spatie\Permission\PermissionRegistrar;
  *
  * `--ulang=rj.daftar,ugd.daftar` : isi ulang centang route itu dari definisi (menimpa
  * Role Control untuk route itu saja) — dipakai saat definisi awal sebuah route dikoreksi.
+ *
+ * BERSIH-BERSIH: permission yang tidak lagi lahir dari definisi (menu/aksi dihapus, aksi
+ * tak berlaku, nama lama yang sudah dipecah per jalur, buatan manual) DIHAPUS beserta
+ * centangnya — tak ada kode yang memeriksanya, jadi hak siapa pun tidak berubah.
+ * Nama lama sumber 'menggantikan' baru dihapus sesudah semua penggantinya ada (centang
+ * sudah diwariskan). Daftar yang dihapus + role-nya dicatat ke log channel 'akses'.
  */
 class SinkronAksesHalaman extends Command
 {
@@ -60,6 +68,7 @@ class SinkronAksesHalaman extends Command
         }
         $diulang = 0;
         $diwarisi = 0;
+        $dikenal = []; // nama permission yang lahir dari definisi
 
         foreach (AksesHalaman::rolesMenu() as $route => $roles) {
             if (in_array(AppMenu::SEMUA_ROLE, $roles, true)) {
@@ -78,6 +87,7 @@ class SinkronAksesHalaman extends Command
                 }
 
                 $nama = AksesHalaman::namaPermission($route, $aksi);
+                $dikenal[$nama] = true;
                 if (isset($ada[$nama])) {
                     // Sudah ada: centang admin dihormati, KECUALI route diminta --ulang.
                     if (in_array($route, $ulang, true)) {
@@ -105,6 +115,7 @@ class SinkronAksesHalaman extends Command
 
         // Aksi khusus (kolom "Khusus" Role Control) — sama: hanya yang baru disalin centangnya.
         foreach (AksiRole::khusus() as $nama => $aksi) {
+            $dikenal[$nama] = true;
             $targetRole = [];
             foreach ($aksi['roles'] as $r) {
                 $kunci = trim(strtolower($r));
@@ -145,17 +156,60 @@ class SinkronAksesHalaman extends Command
             }
         }
 
+        $dibersihkan = $this->bersihkan($dikenal, $dryRun);
+
         if (!$dryRun) {
             app(PermissionRegistrar::class)->forgetCachedPermissions();
             AksesHalaman::lupakanCache();
             SinkronAksesOtomatis::tulisTanda(); // sinkron otomatis tak perlu mengulang
         }
 
-        $this->info(($dryRun ? '[dry-run] ' : '') . "Permission baru: {$baru}, centang role: {$centang}" . ($ulang ? ", diisi ulang: {$diulang}" : '') . ($diwarisi ? ", mewarisi centang hak lama: {$diwarisi}" : ''));
+        $this->info(($dryRun ? '[dry-run] ' : '') . "Permission baru: {$baru}, centang role: {$centang}" . ($ulang ? ", diisi ulang: {$diulang}" : '') . ($diwarisi ? ", mewarisi centang hak lama: {$diwarisi}" : '') . ($dibersihkan ? ", sisa lama dihapus: {$dibersihkan}" : ''));
         if ($roleTakDikenal) {
             $this->warn('Role di AppMenu tapi tidak ada di tabel roles: ' . implode(', ', array_keys($roleTakDikenal)));
         }
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Hapus permission di luar definisi. Nama lama sumber 'menggantikan' ditahan selama masih
+     * ada penggantinya yang belum dibuat (hanya terjadi di --dry-run: di run biasa pengganti
+     * sudah dibuat di atas, centangnya sudah diwariskan).
+     *
+     * @param array<string, true> $dikenal
+     */
+    private function bersihkan(array $dikenal, bool $dryRun): int
+    {
+        $sekarang = Permission::where('guard_name', 'web')->pluck('name')->flip();
+        $ditahan = [];
+        foreach (AksiRole::khusus() as $nama => $aksi) {
+            if (isset($aksi['menggantikan']) && !isset($sekarang[$nama])) {
+                $ditahan[$aksi['menggantikan']] = true;
+            }
+        }
+
+        $sisa = Permission::where('guard_name', 'web')->with('roles')->orderBy('name')->get()
+            ->reject(fn ($p) => isset($dikenal[$p->name]) || isset($ditahan[$p->name]));
+        if ($sisa->isEmpty()) {
+            return 0;
+        }
+
+        $catatan = $sisa->mapWithKeys(fn ($p) => [$p->name => $p->roles->pluck('name')->implode(', ')])->all();
+        foreach ($catatan as $nama => $roles) {
+            $this->line("  hapus {$nama}" . ($roles !== '' ? " (centang: {$roles})" : ''));
+        }
+        if ($dryRun) {
+            return $sisa->count();
+        }
+
+        DB::transaction(function () use ($sisa) {
+            foreach ($sisa as $permission) {
+                $permission->delete(); // Spatie ikut melepas kaitan role & user
+            }
+        });
+        Log::channel('akses')->warning('akses:sinkron menghapus permission di luar definisi', ['permission' => $catatan]);
+
+        return $sisa->count();
     }
 }
