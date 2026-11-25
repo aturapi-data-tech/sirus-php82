@@ -1,0 +1,27 @@
+<?php
+
+/*
+ * Hak akses program "Laporan Pelayanan" — kelompok Laporan Manajemen (urutan & judul: _kelompok.php).
+ * Format & pedoman: App\Support\ProgramAkses, docs/standar-hak-akses.md.
+ */
+
+return [
+    'nama' => 'Laporan Pelayanan',
+    'menu' => [
+        ['group' => 'Laporan Pelayanan', 'groupOrder' => 0, 'order' => 101, 'route' => 'manajemen.rs.rj.laporan-kunjungan-rj', 'aksi' => ['lihat'], 'title' => 'Laporan Kunjungan RJ', 'desc' => 'Tahunan / Multi-Tahun — BPJS/UMUM, pasien baru/lama, breakdown poli', 'roles' => ['admin', 'manager medis', 'manager umum'], 'badge' => 'RJ'],
+        ['group' => 'Laporan Pelayanan', 'groupOrder' => 0, 'order' => 102, 'route' => 'manajemen.rs.ugd.laporan-kunjungan-ugd', 'aksi' => ['lihat'], 'title' => 'Laporan Kunjungan UGD', 'desc' => 'Tahunan / Multi-Tahun — BPJS/UMUM, pasien baru/lama, breakdown dokter, triase P1-P4', 'roles' => ['admin', 'manager medis', 'manager umum'], 'badge' => 'UGD'],
+        ['group' => 'Laporan Pelayanan', 'groupOrder' => 0, 'order' => 103, 'route' => 'manajemen.rs.ri.laporan-kunjungan-ri', 'aksi' => ['lihat'], 'title' => 'Laporan Kunjungan RI', 'desc' => 'Tahunan / Multi-Tahun — BPJS/UMUM, ALOS, breakdown bangsal (filter exit_date)', 'roles' => ['admin', 'manager medis', 'manager umum'], 'badge' => 'RI'],
+        ['group' => 'Laporan Pelayanan', 'groupOrder' => 0, 'order' => 104, 'route' => 'manajemen.rs.rj.laporan-hak-kelas-rj', 'aksi' => ['lihat'], 'title' => 'Kunjungan RJ per Hak Kelas', 'desc' => 'Tahunan / Multi-Tahun — hak kelas rawat BPJS 1 / 2 / 3 dari data SEP, breakdown poli', 'roles' => ['admin', 'manager medis', 'manager umum'], 'badge' => 'RJ'],
+        ['group' => 'Laporan Pelayanan', 'groupOrder' => 0, 'order' => 105, 'route' => 'manajemen.rs.ugd.laporan-hak-kelas-ugd', 'aksi' => ['lihat'], 'title' => 'Kunjungan UGD per Hak Kelas', 'desc' => 'Tahunan / Multi-Tahun — hak kelas rawat BPJS 1 / 2 / 3 dari data SEP, breakdown dokter', 'roles' => ['admin', 'manager medis', 'manager umum'], 'badge' => 'UGD'],
+        ['group' => 'Laporan Pelayanan', 'groupOrder' => 0, 'order' => 106, 'route' => 'manajemen.rs.ri.laporan-hak-kelas-ri', 'aksi' => ['lihat'], 'title' => 'Rawat Inap per Hak Kelas', 'desc' => 'Tahunan / Multi-Tahun — hak kelas rawat BPJS 1 / 2 / 3 + naik kelas, breakdown bangsal', 'roles' => ['admin', 'manager medis', 'manager umum'], 'badge' => 'RI'],
+        ['group' => 'Laporan Pelayanan', 'groupOrder' => 0, 'order' => 107, 'route' => 'manajemen.rs.rj.laporan-task-id-rj', 'aksi' => ['lihat'], 'title' => 'Task ID Antrian RJ', 'desc' => 'Rekap waktu pelayanan BPJS Antrol (Task 1–7) per bulan', 'roles' => ['admin', 'manager medis', 'manager umum'], 'badge' => 'BPJS'],
+        ['group' => 'Laporan Pelayanan', 'groupOrder' => 0, 'order' => 108, 'route' => 'manajemen.rs.ugd.laporan-task-id-ugd', 'aksi' => ['lihat'], 'title' => 'Task ID Antrian UGD', 'desc' => 'Rekap waktu Masuk UGD → Masuk Apotek → Obat Selesai per bulan', 'roles' => ['admin', 'manager medis', 'manager umum'], 'badge' => 'BPJS'],
+        ['group' => 'Laporan Pelayanan', 'groupOrder' => 0, 'order' => 109, 'route' => 'manajemen.rs.vclaim.laporan-rujukan-keluar', 'aksi' => ['lihat'], 'title' => 'Evaluasi Rujukan Keluar', 'desc' => 'Rujukan keluar (VClaim) — poli & dokter perujuk, faskes tujuan, diagnosa rujukan', 'roles' => ['admin', 'manager medis', 'manager umum'], 'badge' => 'BPJS'],
+        ['group' => 'Laporan Pelayanan', 'groupOrder' => 0, 'order' => 110, 'route' => 'manajemen.rs.vclaim.laporan-rujukan-masuk', 'aksi' => ['lihat'], 'title' => 'Evaluasi Rujukan Masuk', 'desc' => 'Rujukan masuk Rawat Jalan — faskes perujuk, poli penerima, diagnosa rujukan', 'roles' => ['admin', 'manager medis', 'manager umum'], 'badge' => 'BPJS'],
+        ['group' => 'Laporan Pelayanan', 'groupOrder' => 0, 'order' => 111, 'route' => 'manajemen.rs.satu-sehat.monitoring-satu-sehat', 'aksi' => ['lihat'], 'title' => 'Monitoring Pengiriman SATUSEHAT', 'desc' => 'Kunjungan sudah/belum terkirim per bulan — capaian kelengkapan & konsistensi', 'roles' => ['admin', 'manager medis', 'manager umum'], 'badge' => 'SATUSEHAT'],
+        ['group' => 'Laporan Pelayanan', 'groupOrder' => 0, 'order' => 112, 'route' => 'manajemen.laporan-diagnosa.hitung-diagnosa', 'aksi' => ['lihat'], 'title' => 'Hitung Jumlah Diagnosa', 'desc' => 'Pilih ICD-10 + periode — jumlah kunjungan & pasien di RJ / UGD / RI (per gender, per sub-kode)', 'roles' => ['admin', 'manager medis', 'manager umum'], 'badge' => 'DX'],
+        ['group' => 'Laporan Pelayanan', 'groupOrder' => 0, 'order' => 113, 'route' => 'manajemen.rs.ri.laporan-surveilans-hais', 'aksi' => ['lihat'], 'title' => 'Surveilans HAIs', 'desc' => 'Insiden rate bulanan IAD, Plebitis, ISK, VAP & ILO — kasus / hari pemakaian alat', 'roles' => ['admin', 'manager medis', 'manager umum'], 'badge' => 'PPI'],
+        ['group' => 'Laporan Pelayanan', 'groupOrder' => 0, 'order' => 114, 'route' => 'manajemen.rs.penunjang.ok.laporan-kasus-operasi', 'aksi' => ['lihat'], 'title' => 'Kasus Operasi (OK)', 'desc' => 'Rekap bulanan jumlah kasus per Dokter Operator per jenis operasi (BP/UM)', 'roles' => ['admin', 'manager medis', 'manager umum'], 'badge' => 'OK'],
+        ['group' => 'Laporan Pelayanan', 'groupOrder' => 0, 'order' => 115, 'route' => 'manajemen.transfer-antar-ruangan', 'aksi' => ['lihat'], 'title' => 'Transfer Antar Ruangan', 'desc' => 'Tahunan / Multi-Tahun — status transfer stok medis & non-medis, rute Dari→Ke', 'roles' => ['admin', 'manager medis', 'manager umum'], 'badge' => 'STK'],
+    ],
+];

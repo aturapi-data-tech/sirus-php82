@@ -94,7 +94,7 @@ class AppMenu
     }
 
     /**
-     * Definisi semua menu — DIAMBIL dari blok program di app/Akses/Program/*.php
+     * Definisi semua menu — DIAMBIL dari berkas program di app/Akses/Program/<Kelompok>/*.php
      * (App\Support\ProgramAkses). Helper $entry guard route existence + inject 'href'.
      * Setiap entry: ['group','groupOrder','order','route','title','desc','roles','badge'].
      *

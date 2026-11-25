@@ -63,7 +63,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::before(fn ($user, string $ability) => AksesHalaman::aturAbility($user, $ability));
 
         // Aksi khusus: Gate = permission bernama sama, dicentang per role di Role Control
-        // (kolom Khusus). Katalog & role awal di blok program (AksiRole::khusus()); cadangan role bila
+        // (kolom Khusus). Katalog & role awal di berkas program (AksiRole::khusus()); cadangan role bila
         // permission belum dibuat `akses:sinkron`. Lihat AksesHalaman::bolehKhusus().
         foreach (array_keys(AksiRole::khusus()) as $namaAksi) {
             Gate::define($namaAksi, fn ($user) => AksesHalaman::bolehKhusus($user, $namaAksi));

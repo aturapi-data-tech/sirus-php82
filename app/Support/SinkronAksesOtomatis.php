@@ -9,8 +9,8 @@ use Throwable;
 /**
  * Menjalankan `php artisan akses:sinkron` OTOMATIS sesudah deploy — tidak perlu diingat manual.
  *
- * Cara kerja: tanda = waktu-ubah + ukuran berkas definisi hak akses (blok program di
- * app/Akses/Program/*.php, AppMenu, AksiRole — termasuk berkas program baru/terhapus).
+ * Cara kerja: tanda = waktu-ubah + ukuran berkas definisi hak akses (berkas program di
+ * app/Akses/Program/<Kelompok>/*.php, AppMenu, AksiRole — termasuk berkas program baru/terhapus).
  * Tanda yang terakhir berhasil disinkron disimpan di storage/framework/akses-sinkron.tanda
  * (berkas, bukan cache — tak ikut hilang/berbeda per driver cache). Request pertama yang
  * melihat tandanya berubah (habis git pull) menjalankan sinkron sekali; request lain yang
@@ -33,7 +33,7 @@ class SinkronAksesOtomatis
     ];
 
     /** Blok program per kelompok — dipantau satu per satu (berkas baru/terhapus ikut mengubah tanda). */
-    private const POLA_BERKAS_PROGRAM = 'app/Akses/Program/*.php';
+    private const POLA_BERKAS_PROGRAM = 'app/Akses/Program/*/*.php';
 
     private const JEDA_GAGAL = 600;
 
@@ -98,7 +98,8 @@ class SinkronAksesOtomatis
         $bagian = [];
         foreach ($daftarPath as $path) {
             clearstatcache(true, $path);
-            $bagian[] = basename($path) . ':' . @filemtime($path) . '-' . @filesize($path);
+            // Path relatif (bukan basename): _kelompok.php ada di tiap folder kelompok.
+            $bagian[] = substr($path, strlen(base_path()) + 1) . ':' . @filemtime($path) . '-' . @filesize($path);
         }
 
         return implode('|', $bagian);

@@ -78,7 +78,7 @@ class AksesHalaman
      * storage/logs/akses-halaman-*.log — supaya pembuka sah yang belum terpetakan ketahuan
      * sebelum mode `tolak`. Menambah pembuka baru = tambah entrinya di sini.
      *
-     * Definisinya di blok program app/Akses/Program/*.php (kunci 'pintu').
+     * Definisinya di berkas program app/Akses/Program/<Kelompok>/*.php (kunci 'pintu').
      *
      * @return array<string, array<int, string>>
      */

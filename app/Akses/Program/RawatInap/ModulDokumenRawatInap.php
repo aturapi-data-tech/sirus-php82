@@ -1,0 +1,18 @@
+<?php
+
+/*
+ * Hak akses program "Modul Dokumen Rawat Inap" — kelompok Rawat Inap (urutan & judul: _kelompok.php).
+ * Format & pedoman: App\Support\ProgramAkses, docs/standar-hak-akses.md.
+ */
+
+use App\Support\AksiRole;
+
+return [
+    'nama' => 'Modul Dokumen Rawat Inap',
+    // Hak modul dokumen JALUR INI (dulu satu hak untuk RJ/UGD/RI). Sel Aksi: <x-modul-dokumen.aksi-entri jalur="..">.
+    'aksiKhusus' => [
+        'ri.dokumen.hapus' => ['label' => 'Hapus entri dokumen', 'roles' => AksiRole::DOKUMEN_HAPUS, 'menggantikan' => 'dokumen.hapus'],
+        'ri.dokumen.bukaKunci' => ['label' => 'Buka kunci (cabut TTD) dokumen', 'roles' => AksiRole::DOKUMEN_BUKA_KUNCI, 'menggantikan' => 'dokumen.bukaKunci'],
+        'ri.dokumen.ttdPerwakilan' => ['label' => 'TTD atas nama pejabat (perwakilan)', 'roles' => AksiRole::DOKUMEN_TTD_PERWAKILAN, 'menggantikan' => 'dokumen.ttdPerwakilan'],
+    ],
+];

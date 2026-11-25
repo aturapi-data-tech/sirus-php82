@@ -24,7 +24,7 @@ namespace App\Support;
  *
  * MENAMBAH AKSI KHUSUS BARU (lihat docs/standar-hak-akses.md):
  *   1. tambah konstanta di sini (beri prefix area) = role CENTANG AWAL,
- *   2. daftarkan di blok programnya (app/Akses/Program/*.php, kunci 'aksiKhusus') — Gate
+ *   2. daftarkan di berkas programnya (app/Akses/Program/<Kelompok>/*.php, kunci 'aksiKhusus') — Gate
  *      terdaftar otomatis di AppServiceProvider dan muncul di baris program itu di Role Control,
  *   3. pakai @can('nama') di blade, DAN guard SERVER #[Authorize('nama')] /
  *      ->can() di method-nya — guard blade saja bisa ditembus karena wire:click
@@ -362,8 +362,8 @@ class AksiRole
     /**
      * KATALOG AKSI KHUSUS — nama Gate => [label, roles awal, program, kelompok, area].
      *
-     * Definisinya di blok program app/Akses/Program/*.php (kunci 'aksiKhusus'), bukan di sini;
-     * konstanta di atas = daftar role CENTANG AWAL yang dirujuk blok program itu.
+     * Definisinya di berkas program app/Akses/Program/<Kelompok>/*.php (kunci 'aksiKhusus'), bukan di sini;
+     * konstanta di atas = daftar role CENTANG AWAL yang dirujuk berkas program itu.
      *
      * Tiap entri jadi (1) Gate dengan nama yang sama (AppServiceProvider) dan (2) permission
      * yang dicentang per role di Role Control (dibuat otomatis saat deploy). Setelah permission

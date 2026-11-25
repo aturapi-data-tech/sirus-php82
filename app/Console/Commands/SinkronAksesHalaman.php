@@ -15,7 +15,7 @@ use Spatie\Permission\PermissionRegistrar;
 
 /**
  * Membuat permission `{route}.{lihat|tambah|ubah|hapus}` untuk setiap menu di AppMenu,
- * ditambah aksi khusus (AksiRole::khusus(), dari blok program app/Akses/Program).
+ * ditambah aksi khusus (AksiRole::khusus(), dari berkas program app/Akses/Program/<Kelompok>).
  *
  * Centang awal disalin dari kolom 'roles' AppMenu HANYA untuk permission yang baru
  * dibuat pada run ini. Permission yang sudah ada tidak disentuh — jadi menjalankan
@@ -62,7 +62,7 @@ class SinkronAksesHalaman extends Command
         $ulang = array_filter(array_map('trim', explode(',', (string) $this->option('ulang'))));
         foreach ($ulang as $r) {
             if (!isset(AksesHalaman::rolesMenu()[$r]) && !isset(AksiRole::khusus()[$r])) {
-                $this->error("--ulang: '{$r}' bukan route AppMenu maupun aksi khusus (blok program 'aksiKhusus')");
+                $this->error("--ulang: '{$r}' bukan route AppMenu maupun aksi khusus (berkas program, kunci 'aksiKhusus')");
                 return self::FAILURE;
             }
         }

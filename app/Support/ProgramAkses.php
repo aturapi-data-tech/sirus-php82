@@ -7,24 +7,27 @@ use RuntimeException;
 /**
  * SUMBER TUNGGAL definisi hak akses — SATU BLOK PER PROGRAM.
  *
- * Satu program (mis. "Pelayanan Rawat Jalan", "Administrasi & Kasir Rawat Jalan") ditulis
- * lengkap di satu tempat, berkas per kelompok di app/Akses/Program/*.php:
+ * Satu program (mis. "Pelayanan Rawat Jalan", "Administrasi & Kasir Rawat Jalan") = SATU BERKAS,
+ * dikelompokkan per folder di app/Akses/Program/<Kelompok>/:
  *
- *   'Pelayanan Rawat Jalan' => [
+ *   RawatJalan/_kelompok.php            → ['judul' => 'Rawat Jalan', 'program' => ['PelayananRawatJalan', ...]]
+ *   RawatJalan/PelayananRawatJalan.php  → [
+ *       'nama'       => 'Pelayanan Rawat Jalan',                              // judul di Role Control
  *       'menu'       => [ [entri menu: route, aksi, khusus, roles, ...] ],   // → AppMenu
  *       'aksiKhusus' => [ 'rj.detailKunjungan' => ['label' => ..., 'roles' => ...] ],  // → Gate
  *       'pintu'      => [ 'emr-rj.rekam-medis.open' => [hak pembuka...] ],   // → listener modal
- *   ],
+ *   ]
  *
  * AppMenu::all(), AksiRole::khusus() dan AksesHalaman::pintu() membaca dari sini, dan Role
  * Control menampilkan matriks per kelompok → program dengan urutan yang sama.
  *
- * Menambah program/aksi: tulis di blok programnya, pasang @can + #[Authorize] di komponen,
- * deploy — permission + centang awal dibuat otomatis (SinkronAksesOtomatis).
+ * Menambah aksi: tulis di berkas programnya. Program baru: buat berkasnya + daftarkan namanya di
+ * 'program' _kelompok.php (urutan tampil). Pasang @can + #[Authorize] di komponen, deploy —
+ * permission + centang awal dibuat otomatis (SinkronAksesOtomatis).
  */
 class ProgramAkses
 {
-    /** Urutan kelompok = urutan tampil di Role Control. Nama berkas di app/Akses/Program. */
+    /** Urutan kelompok = urutan tampil di Role Control. Nama folder di app/Akses/Program. */
     private const BERKAS = [
         'LaporanManajemen',
         'Master',
@@ -58,12 +61,27 @@ class ProgramAkses
         }
 
         $kelompok = [];
-        foreach (self::BERKAS as $berkas) {
-            $isi = require app_path("Akses/Program/{$berkas}.php");
-            if (!is_array($isi) || !isset($isi['judul'], $isi['program'])) {
-                throw new RuntimeException("Definisi hak akses {$berkas}.php tidak berisi 'judul' & 'program'.");
+        foreach (self::BERKAS as $folder) {
+            $kepala = require app_path("Akses/Program/{$folder}/_kelompok.php");
+            if (!is_array($kepala) || !isset($kepala['judul'], $kepala['program']) || !is_array($kepala['program'])) {
+                throw new RuntimeException("Akses/Program/{$folder}/_kelompok.php tidak berisi 'judul' & daftar 'program'.");
             }
-            $kelompok[] = $isi;
+
+            $program = [];
+            foreach ($kepala['program'] as $berkas) {
+                $isi = require app_path("Akses/Program/{$folder}/{$berkas}.php");
+                if (!is_array($isi) || !is_string($isi['nama'] ?? null)) {
+                    throw new RuntimeException("Akses/Program/{$folder}/{$berkas}.php tidak berisi 'nama' program.");
+                }
+                if (isset($program[$isi['nama']])) {
+                    throw new RuntimeException("Program '{$isi['nama']}' dua kali di kelompok {$kepala['judul']}.");
+                }
+                $nama = $isi['nama'];
+                unset($isi['nama']);
+                $program[$nama] = $isi;
+            }
+
+            $kelompok[] = ['judul' => $kepala['judul'], 'program' => $program];
         }
 
         return self::$kelompok = $kelompok;
