@@ -279,6 +279,35 @@ class AksiRole
      * modulnya (yang memuat Laboratorium/Perawat) — itu justru melonggarkan.
      */
 
+    /* ───────────────────── KASIR & APOTEK: POSTING / BATAL ───────────────────── */
+    /*
+     * Disalin persis dari @hasanyrole / hasAnyRole lama di komponen kasir (T3, 2026-11-25).
+     * Batal TIDAK memakai kolom Hapus halaman: batal membalik jurnal/stok/status dan
+     * sering eskalasi ke atasan — kebijakannya beda dari menghapus satu baris data.
+     */
+    public const KASIR_RJ_POSTING = ['Admin', 'Tu'];
+    public const KASIR_RJ_BATAL = ['Admin', 'Tu', 'Perawat', 'Manager Umum', 'Supervisor Tu'];
+    public const KASIR_RJ_BATAL_TRANSFER_UGD = ['Admin', 'Tu', 'Perawat', 'Manager Umum', 'Supervisor Tu'];
+    public const KASIR_RJ_BATAL_KUNJUNGAN = ['Admin', 'Supervisor Tu'];
+    public const KASIR_UGD_POSTING = ['Admin', 'Tu'];
+    public const KASIR_UGD_BATAL = ['Admin', 'Tu', 'Perawat', 'Manager Umum', 'Supervisor Tu'];
+    public const KASIR_UGD_BATAL_TRANSFER_RI = ['Admin', 'Tu', 'Perawat', 'Manager Umum', 'Supervisor Tu'];
+    public const KASIR_UGD_BATAL_KUNJUNGAN = ['Admin', 'Supervisor Tu'];
+    public const KASIR_RI_POSTING = ['Admin', 'Tu'];
+    /**
+     * Batal Transaksi Pulang RI. Dulu tombol = Admin|Supervisor Tu, server = Admin|Tu (tidak
+     * sama). Diputuskan user 2026-11-25: Admin + Supervisor Tu (SEMENTARA — role akan
+     * disesuaikan lagi).
+     */
+    public const KASIR_RI_BATAL = ['Admin', 'Supervisor Tu'];
+    public const KASIR_RI_BATAL_INAP = ['Admin', 'Supervisor Tu'];
+    public const KASIR_RESEP_RI_POSTING = ['Admin', 'Tu', 'Manager Umum', 'Supervisor Tu'];
+    public const KASIR_RESEP_RI_BATAL = ['Admin', 'Manager Umum', 'Supervisor Tu'];
+    public const KASIR_RESEP_RI_UBAH_JASA = ['Admin', 'Tu', 'Manager Umum', 'Supervisor Tu'];
+    public const APOTEK_RESEP_RI_POSTING = ['Apoteker', 'Admin', 'Tu'];
+    public const APOTEK_RESEP_RI_BATAL = ['Apoteker', 'Admin', 'Tu'];
+    public const APOTEK_RESEP_RI_UBAH_JASA = ['Admin', 'Tu'];
+
     /* ─────────────────────── CPPT & SBAR RAWAT INAP ─────────────────────── */
     /**
      * Aturan PEMILIK entri (edit = penulisnya) dan DPJP (review = DPJP Utama) tetap di kode
@@ -347,6 +376,24 @@ class AksiRole
         'ri.resetAdministrasi' => ['area' => 'Transaksi RJ/UGD/RI', 'label' => 'RI: reset tab administrasi', 'roles' => self::RI_RESET_ADMINISTRASI],
         'ri.caseManager' => ['area' => 'Transaksi RJ/UGD/RI', 'label' => 'RI: Case Manager (MPP)', 'roles' => self::RI_CASE_MANAGER],
         'transaksi.batalPenerimaan' => ['area' => 'Transaksi RJ/UGD/RI', 'label' => 'Batal penerimaan barang PBF', 'roles' => self::TRANSAKSI_BATAL_PENERIMAAN],
+
+        'kasir.rj.posting' => ['area' => 'Kasir & Apotek', 'label' => 'Kasir RJ: posting pembayaran', 'roles' => self::KASIR_RJ_POSTING],
+        'kasir.rj.batal' => ['area' => 'Kasir & Apotek', 'label' => 'Kasir RJ: batal transaksi', 'roles' => self::KASIR_RJ_BATAL],
+        'kasir.rj.batalTransferUgd' => ['area' => 'Kasir & Apotek', 'label' => 'Kasir RJ: batal transfer ke UGD', 'roles' => self::KASIR_RJ_BATAL_TRANSFER_UGD],
+        'kasir.rj.batalKunjungan' => ['area' => 'Kasir & Apotek', 'label' => 'Kasir RJ: batal kunjungan', 'roles' => self::KASIR_RJ_BATAL_KUNJUNGAN],
+        'kasir.ugd.posting' => ['area' => 'Kasir & Apotek', 'label' => 'Kasir UGD: posting pembayaran', 'roles' => self::KASIR_UGD_POSTING],
+        'kasir.ugd.batal' => ['area' => 'Kasir & Apotek', 'label' => 'Kasir UGD: batal transaksi', 'roles' => self::KASIR_UGD_BATAL],
+        'kasir.ugd.batalTransferRi' => ['area' => 'Kasir & Apotek', 'label' => 'Kasir UGD: batal transfer ke RI', 'roles' => self::KASIR_UGD_BATAL_TRANSFER_RI],
+        'kasir.ugd.batalKunjungan' => ['area' => 'Kasir & Apotek', 'label' => 'Kasir UGD: batal kunjungan', 'roles' => self::KASIR_UGD_BATAL_KUNJUNGAN],
+        'kasir.ri.posting' => ['area' => 'Kasir & Apotek', 'label' => 'Kasir RI: posting pembayaran pulang', 'roles' => self::KASIR_RI_POSTING],
+        'kasir.ri.batal' => ['area' => 'Kasir & Apotek', 'label' => 'Kasir RI: batal transaksi pulang', 'roles' => self::KASIR_RI_BATAL],
+        'kasir.ri.batalInap' => ['area' => 'Kasir & Apotek', 'label' => 'Kasir RI: batal inap', 'roles' => self::KASIR_RI_BATAL_INAP],
+        'kasir.resepRi.posting' => ['area' => 'Kasir & Apotek', 'label' => 'Kasir Resep Inap: posting', 'roles' => self::KASIR_RESEP_RI_POSTING],
+        'kasir.resepRi.batal' => ['area' => 'Kasir & Apotek', 'label' => 'Kasir Resep Inap: batal', 'roles' => self::KASIR_RESEP_RI_BATAL],
+        'kasir.resepRi.ubahJasa' => ['area' => 'Kasir & Apotek', 'label' => 'Kasir Resep Inap: ubah jasa karyawan', 'roles' => self::KASIR_RESEP_RI_UBAH_JASA],
+        'apotek.resepRi.posting' => ['area' => 'Kasir & Apotek', 'label' => 'Apotek Resep RI: posting', 'roles' => self::APOTEK_RESEP_RI_POSTING],
+        'apotek.resepRi.batal' => ['area' => 'Kasir & Apotek', 'label' => 'Apotek Resep RI: batal', 'roles' => self::APOTEK_RESEP_RI_BATAL],
+        'apotek.resepRi.ubahJasa' => ['area' => 'Kasir & Apotek', 'label' => 'Apotek Resep RI: ubah jasa karyawan', 'roles' => self::APOTEK_RESEP_RI_UBAH_JASA],
 
         'kasTu.koreksi' => ['area' => 'Keuangan', 'label' => 'Kas TU: koreksi transaksi', 'roles' => self::KAS_TU_KOREKSI],
         'kasTu.hapus' => ['area' => 'Keuangan', 'label' => 'Kas TU: hapus transaksi', 'roles' => self::KAS_TU_HAPUS],

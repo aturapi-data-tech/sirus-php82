@@ -29,7 +29,7 @@ class SinkronAksesHalaman extends Command
 {
     protected $signature = 'akses:sinkron
         {--dry-run : Tampilkan rencana tanpa menulis ke DB}
-        {--ulang= : Route (pisah koma) yang centangnya DIISI ULANG dari AppMenu — menimpa centang Role Control route itu}';
+        {--ulang= : Route AppMenu / nama aksi khusus (pisah koma) yang centangnya DIISI ULANG dari definisi — menimpa centang Role Control untuk itu saja}';
 
     protected $description = 'Buat permission halaman dari AppMenu dan salin centang awal dari roles menu';
 
@@ -48,8 +48,8 @@ class SinkronAksesHalaman extends Command
 
         $ulang = array_filter(array_map('trim', explode(',', (string) $this->option('ulang'))));
         foreach ($ulang as $r) {
-            if (!isset(AksesHalaman::rolesMenu()[$r])) {
-                $this->error("--ulang: route '{$r}' tidak ada di AppMenu");
+            if (!isset(AksesHalaman::rolesMenu()[$r]) && !isset(AksiRole::KHUSUS[$r])) {
+                $this->error("--ulang: '{$r}' bukan route AppMenu maupun aksi khusus AksiRole::KHUSUS");
                 return self::FAILURE;
             }
         }
@@ -99,9 +99,6 @@ class SinkronAksesHalaman extends Command
 
         // Aksi khusus (kolom "Khusus" Role Control) — sama: hanya yang baru disalin centangnya.
         foreach (AksiRole::KHUSUS as $nama => $aksi) {
-            if (isset($ada[$nama])) {
-                continue;
-            }
             $targetRole = [];
             foreach ($aksi['roles'] as $r) {
                 $kunci = trim(strtolower($r));
@@ -110,6 +107,16 @@ class SinkronAksesHalaman extends Command
                 } else {
                     $roleTakDikenal[$kunci] = true;
                 }
+            }
+            if (isset($ada[$nama])) {
+                if (in_array($nama, $ulang, true)) {
+                    $diulang++;
+                    $this->line("  ulang {$nama}: " . collect($targetRole)->pluck('name')->implode(', '));
+                    if (!$dryRun) {
+                        Permission::findByName($nama, 'web')->syncRoles($targetRole);
+                    }
+                }
+                continue;
             }
             $baru++;
             $centang += count($targetRole);

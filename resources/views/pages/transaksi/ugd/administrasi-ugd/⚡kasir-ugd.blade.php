@@ -216,6 +216,11 @@ new class extends Component {
      =============================== */
     public function postTransaksi(): void
     {
+        if (!auth()->user()->can('kasir.ugd.posting')) {
+            $this->dispatch('toast', type: 'error', message: 'Anda tidak memiliki akses untuk memposting transaksi.');
+            return;
+        }
+
         // 1. Read-only guard
         if ($this->isFormLocked) {
             $this->dispatch('toast', type: 'error', message: 'Pasien sudah pulang, transaksi terkunci.');
@@ -356,7 +361,7 @@ new class extends Component {
      =============================== */
     public function batalTransaksi(): void
     {
-        if (!auth()->user()->hasAnyRole(['Admin', 'Tu', 'Perawat', 'Manager Umum', 'Supervisor Tu'])) {
+        if (!auth()->user()->can('kasir.ugd.batal')) {
             $this->dispatch('toast', type: 'error', message: 'Anda tidak memiliki akses untuk membatalkan transaksi.');
             return;
         }
@@ -433,8 +438,8 @@ new class extends Component {
      =============================== */
     public function batalKunjungan(): void
     {
-        if (!auth()->user()->hasAnyRole(['Admin', 'Supervisor Tu'])) {
-            $this->dispatch('toast', type: 'error', message: 'Hanya Admin dan Supervisor TU yang dapat membatalkan.');
+        if (!auth()->user()->can('kasir.ugd.batalKunjungan')) {
+            $this->dispatch('toast', type: 'error', message: 'Anda tidak memiliki akses untuk membatalkan kunjungan.');
             return;
         }
 
@@ -516,7 +521,7 @@ new class extends Component {
 
     public function batalTransferRI(): void
     {
-        if (!auth()->user()->hasAnyRole(['Admin', 'Tu', 'Perawat', 'Manager Umum', 'Supervisor Tu'])) {
+        if (!auth()->user()->can('kasir.ugd.batalTransferRi')) {
             $this->dispatch('toast', type: 'error', message: 'Anda tidak memiliki akses untuk membatalkan transfer.');
             return;
         }
@@ -861,26 +866,30 @@ new class extends Component {
             <div class="space-y-3">
                 <div class="flex items-center justify-between">
                     <p class="text-sm italic text-muted-soft dark:text-gray-600">Form input dinonaktifkan.</p>
-                    {{-- Batal Transfer & Batal Transaksi — Admin, Tu, Perawat, Manager Umum, Supervisor Tu (samakan dgn hak transfer) --}}
-                    @hasanyrole(['Admin', 'Tu', 'Perawat', 'Manager Umum', 'Supervisor Tu'])
+                    {{-- Batal Transfer & Batal Transaksi — hak: kasir.ugd.batal / kasir.ugd.batalTransferRi (Role Control) --}}
+                    @canany(['kasir.ugd.batal', 'kasir.ugd.batalTransferRi'])
                     <div class="flex gap-2">
                         @if ($txnStatus === 'I')
+                            @can('kasir.ugd.batalTransferRi')
                             <x-confirm-button variant="warning" :action="'batalTransferRI()'" title="Batal Transfer RI"
                                 message="Yakin ingin membatalkan transfer ke RI? Data RI yang dibuat dari transfer akan dihapus dan UGD kembali aktif. Hanya bisa jika RI belum ada transaksi."
                                 confirmText="Ya, batalkan transfer" cancelText="Batal">
                                 <x-ikon nama="batal" />
                                 Batal Transfer RI
                             </x-confirm-button>
+                            @endcan
                         @else
+                            @can('kasir.ugd.batal')
                             <x-confirm-button variant="danger" :action="'batalTransaksi()'" title="Batal Transaksi"
                                 message="Yakin ingin membatalkan transaksi? Semua data pembayaran akan dihapus."
                                 confirmText="Ya, batalkan" cancelText="Batal">
                                 <x-ikon nama="batalkan" />
                                 Batal Transaksi
                             </x-confirm-button>
+                            @endcan
                         @endif
                     </div>
-                    @endhasanyrole
+                    @endcanany
                 </div>
 
                 @if ($txnStatus === 'I')
@@ -940,13 +949,13 @@ new class extends Component {
                 {{-- Tombol Post & Transfer --}}
                 <div class="flex gap-2">
                     {{-- Post Transaksi — Admin, Tu --}}
-                    @hasanyrole(['Admin', 'Tu'])
+                    @can('kasir.ugd.posting')
                     <x-primary-button wire:click="postTransaksi" wire:loading.attr="disabled"
                         wire:target="postTransaksi" x-ref="btnPost">
                         <span wire:loading.remove wire:target="postTransaksi" class="inline-flex items-center gap-2"><x-ikon nama="kirim" /> Post Transaksi</span>
                         <span wire:loading wire:target="postTransaksi"><x-loading /></span>
                     </x-primary-button>
-                    @endhasanyrole
+                    @endcan
 
                 </div>
 
@@ -954,7 +963,7 @@ new class extends Component {
 
             {{-- Batal Transaksi (Aktif → Batal 'F') — Admin, Supervisor Tu. Terpisah dari Task ID 99 (BPJS). --}}
             @if ($txnStatus === 'A')
-                @hasanyrole(['Admin', 'Supervisor Tu'])
+                @can('kasir.ugd.batalKunjungan')
                     <div class="pt-4 mt-4 border-t border-hairline dark:border-gray-700">
                         <div class="flex items-start gap-2 px-3 py-2 mb-3 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg dark:bg-amber-900/20 dark:border-amber-700 dark:text-amber-300">
                             <svg class="w-4 h-4 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -975,7 +984,7 @@ new class extends Component {
                             </x-confirm-button>
                         </div>
                     </div>
-                @endhasanyrole
+                @endcan
             @endif
 
             {{-- Badge status pembayaran --}}

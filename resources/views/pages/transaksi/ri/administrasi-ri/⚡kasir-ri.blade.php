@@ -567,6 +567,11 @@ new class extends Component {
      =============================== */
     public function postTransaksi(): void
     {
+        if (!auth()->user()->can('kasir.ri.posting')) {
+            $this->dispatch('toast', type: 'error', message: 'Anda tidak memiliki akses untuk memposting transaksi.');
+            return;
+        }
+
         if ($this->isFormLocked) {
             $this->dispatch('toast', type: 'error', message: 'Pasien sudah pulang, transaksi terkunci.');
             return;
@@ -760,8 +765,8 @@ new class extends Component {
      =============================== */
     public function batalTransaksi(): void
     {
-        if (!auth()->user()->hasAnyRole(['Admin', 'Tu'])) {
-            $this->dispatch('toast', type: 'error', message: 'Hanya Admin dan TU yang dapat membatalkan transaksi.');
+        if (!auth()->user()->can('kasir.ri.batal')) {
+            $this->dispatch('toast', type: 'error', message: 'Anda tidak memiliki akses untuk membatalkan transaksi pulang.');
             return;
         }
 
@@ -854,8 +859,8 @@ new class extends Component {
      =============================== */
     public function batalInap(): void
     {
-        if (!auth()->user()->hasAnyRole(['Admin', 'Supervisor Tu'])) {
-            $this->dispatch('toast', type: 'error', message: 'Hanya Admin dan Supervisor TU yang dapat membatalkan inap.');
+        if (!auth()->user()->can('kasir.ri.batalInap')) {
+            $this->dispatch('toast', type: 'error', message: 'Anda tidak memiliki akses untuk membatalkan inap.');
             return;
         }
 
@@ -961,14 +966,14 @@ new class extends Component {
                 Pasien sudah pulang ({{ $statusPulang === 'L' ? 'LUNAS' : 'BON/HUTANG' }}) — transaksi terkunci.
             </div>
             {{-- Batal Transaksi Pulang — Admin, Supervisor Tu (Tu tidak boleh batal) --}}
-            @hasanyrole(['Admin', 'Supervisor Tu'])
+            @can('kasir.ri.batal')
             <x-confirm-button variant="danger" :action="'batalTransaksi()'" title="Batal Transaksi Pulang"
                 message="Yakin ingin membatalkan? Status pasien akan dikembalikan ke Rawat Inap dan data payment dihapus."
                 confirmText="Ya, batalkan" cancelText="Batal">
                 <x-ikon nama="batalkan" />
                 Batal Transaksi
             </x-confirm-button>
-            @endhasanyrole
+            @endcan
         </div>
     @endif
 
@@ -1343,7 +1348,7 @@ new class extends Component {
                 </div>
 
                 {{-- Tombol Post (Proses Pulang) — Admin, Tu --}}
-                @hasanyrole(['Admin', 'Tu'])
+                @can('kasir.ri.posting')
                 <div class="pt-6">
                     <x-primary-button wire:click="postTransaksi" wire:loading.attr="disabled"
                         wire:target="postTransaksi"
@@ -1352,7 +1357,7 @@ new class extends Component {
                         <span wire:loading wire:target="postTransaksi"><x-loading /></span>
                     </x-primary-button>
                 </div>
-                @endhasanyrole
+                @endcan
 
             </div>
 
@@ -1421,7 +1426,7 @@ new class extends Component {
 
         {{-- BATAL INAP — terpisah dari alur bayar supaya tak tertekan saat memproses pulang --}}
         @if ($riStatus === 'I')
-            @hasanyrole(['Admin', 'Supervisor Tu'])
+            @can('kasir.ri.batalInap')
                 <div class="p-4 border border-red-200 rounded-2xl bg-red-50/40 dark:border-red-900/40 dark:bg-red-900/10">
                     <p class="mb-2 text-xs text-muted dark:text-gray-400">
                         Batalkan pendaftaran inap (status jadi <span class="font-semibold">Batal/F</span>).
@@ -1434,7 +1439,7 @@ new class extends Component {
                         Batal Inap
                     </x-confirm-button>
                 </div>
-            @endhasanyrole
+            @endcan
         @endif
     @endif
 

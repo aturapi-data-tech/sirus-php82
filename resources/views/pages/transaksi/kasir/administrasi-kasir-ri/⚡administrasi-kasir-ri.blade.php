@@ -175,7 +175,13 @@ new class extends Component {
         return !$this->isKasirPosted &&
             auth()
                 ->user()
-                ->hasAnyRole(['Admin', 'Tu', 'Manager Umum', 'Supervisor Tu']);
+                ->can('kasir.resepRi.ubahJasa');
+    }
+
+    /** Nilai Jasa Karyawan dari klien hanya diterima bila boleh ubah jasa (kolomnya disembunyikan bagi yang tak berhak, tapi wire:model tetap bisa dikirim dari console). */
+    public function updatingJasaKaryawan(): void
+    {
+        abort_unless($this->canEditJasa, 403);
     }
 
     /* ===============================
@@ -419,7 +425,7 @@ new class extends Component {
         if (
             !auth()
                 ->user()
-                ->hasAnyRole(['Admin', 'Tu', 'Manager Umum', 'Supervisor Tu'])
+                ->can('kasir.resepRi.posting')
         ) {
             $this->dispatch('toast', type: 'error', message: 'Anda tidak memiliki akses untuk memproses kasir.');
             return;
@@ -527,7 +533,7 @@ new class extends Component {
         if (
             !auth()
                 ->user()
-                ->hasAnyRole(['Admin', 'Manager Umum', 'Supervisor Tu'])
+                ->can('kasir.resepRi.batal')
         ) {
             $this->dispatch('toast', type: 'error', message: 'Anda tidak memiliki akses untuk membatalkan transaksi.');
             return;
@@ -1266,7 +1272,7 @@ new class extends Component {
                                     <div class="flex items-center justify-between">
                                         <p class="text-sm italic text-muted-soft dark:text-gray-600">Form input
                                             dinonaktifkan.</p>
-                                        @hasanyrole('Admin|Manager Umum|Supervisor Tu')
+                                        @can('kasir.resepRi.batal')
                                             @if (strtoupper($riStatus ?? '') !== 'P')
                                                 <x-confirm-button variant="danger" :action="'batalTransaksi()'"
                                                     title="Batal Transaksi"
@@ -1276,7 +1282,7 @@ new class extends Component {
                                                     Batal Transaksi
                                                 </x-confirm-button>
                                             @endif
-                                        @endhasanyrole
+                                        @endcan
                                     </div>
 
                                     @if ($sisaTagihan > 0)
@@ -1341,7 +1347,7 @@ new class extends Component {
                                     </div>
 
                                     <div class="flex gap-2">
-                                        @hasanyrole('Admin|Tu|Manager Umum|Supervisor Tu')
+                                        @can('kasir.resepRi.posting')
                                             @if (strtoupper($riStatus ?? '') !== 'P')
                                                 <x-primary-button wire:click="postTransaksi" wire:loading.attr="disabled"
                                                     wire:target="postTransaksi" x-ref="btnPostRi">
@@ -1350,7 +1356,7 @@ new class extends Component {
                                                     <span wire:loading wire:target="postTransaksi"><x-loading /></span>
                                                 </x-primary-button>
                                             @endif
-                                        @endhasanyrole
+                                        @endcan
                                     </div>
                                 </div>
 
