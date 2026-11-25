@@ -388,10 +388,14 @@ new class extends Component {
     /** txn_no kunjungan yg sedang dibuka di modal RM (untuk navigasi Prev/Next). */
     public $navTxnNo = null;
 
+    #[Authorize('rj.emr.bukaRiwayatRekamMedis')]
+
     public function OpenRekamMedisRj($rjNo): void
     {
         $this->openRekamMedis($rjNo, 'RJ');
     }
+
+    #[Authorize('ri.emr.bukaRiwayatRekamMedis')]
 
     public function OpenRekamMedisRi($riHdrNo): void
     {
@@ -404,6 +408,7 @@ new class extends Component {
      * cetak di modul-dokumen hidup bersamaan di halaman Pelayanan UGD (lihat catatan
      * di surat-kematian-riwayat-ugd.blade.php).
      */
+    #[Authorize('ugd.emr.bukaRiwayatRekamMedis')]
     public function lihatSuratKematianUgd($rjNo): void
     {
         $this->dispatch('surat-kematian-riwayat.lihat', rjNo: (int) $rjNo);
@@ -414,15 +419,21 @@ new class extends Component {
         $this->dispatch('surat-kematian-riwayat.cetak', rjNo: (int) $rjNo);
     }
 
+    #[Authorize('ri.emr.bukaRiwayatRekamMedis')]
+
     public function lihatSuratKematianRi($riHdrNo): void
     {
         $this->dispatch('surat-kematian-riwayat-ri.lihat', riHdrNo: (string) $riHdrNo);
     }
 
+    #[Authorize('ri.emr.bukaRiwayatRekamMedis')]
+
     public function cetakSuratKematianRi($riHdrNo): void
     {
         $this->dispatch('surat-kematian-riwayat-ri.cetak', riHdrNo: (string) $riHdrNo);
     }
+
+    #[Authorize('ugd.emr.bukaRiwayatRekamMedis')]
 
     public function OpenRekamMedisUgd($rjNo): void
     {
@@ -793,10 +804,10 @@ new class extends Component {
                                                     </div>
 
                                                     {{-- Actions --}}
-                                                    @role(['Dokter', 'Admin', 'Perawat', 'Casemix', 'Mr'])
+                                                    @canany(['rj.emr.bukaRiwayatRekamMedis', 'ugd.emr.bukaRiwayatRekamMedis', 'ri.emr.bukaRiwayatRekamMedis'])
                                                         <div class="mt-3 space-y-2">
                                                             <div class="flex flex-wrap gap-2">
-                                                                @if ($isRJ)
+                                                                @if ($isRJ && auth()->user()->can('rj.emr.bukaRiwayatRekamMedis'))
                                                                     <div class="flex flex-wrap gap-2">
                                                                         @if (!$contextRI)
                                                                             @can('rj.emr.salinResep')
@@ -869,7 +880,7 @@ new class extends Component {
                                                                     </div>
                                                                 @endif
 
-                                                                @if ($isUGD)
+                                                                @if ($isUGD && auth()->user()->can('ugd.emr.bukaRiwayatRekamMedis'))
                                                                     @php
                                                                         // Pintasan Surat Kematian: hanya bila kunjungan ini P0 DAN suratnya
                                                                         // sudah tersimpan — kalau belum ada, tak ada yg bisa dilihat/dicetak.
@@ -964,7 +975,7 @@ new class extends Component {
                                                                     </div>
                                                                 @endif
 
-                                                                @if ($isRI)
+                                                                @if ($isRI && auth()->user()->can('ri.emr.bukaRiwayatRekamMedis'))
                                                                     {{-- Resume Medis RI (RM 41) — preview modal (read-only).
                                                                          Pakai cetak-rekam-medis-ri.open (preview view), bukan
                                                                          resume-medis-ri.open (editor TinyMCE). Pembuatan/edit
@@ -1024,7 +1035,7 @@ new class extends Component {
                                                                 </div>
                                                             @endif
                                                         </div>
-                                                    @endrole
+                                                    @endcanany
                                                 </td>
                                             </tr>
                                         @empty

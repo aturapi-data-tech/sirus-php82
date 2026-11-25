@@ -47,6 +47,8 @@ return [
                 'ugd.emr.myiCare' => ['label' => 'EMR: i-Care BPJS', 'roles' => ['Admin', 'Dokter']],
                 'ugd.emr.uploadPenunjang' => ['label' => 'Upload/hapus hasil penunjang', 'roles' => ['Admin', 'Perawat']],
                 'ugd.emr.lihatUploadPenunjang' => ['label' => 'Lihat upload hasil penunjang', 'roles' => ['Admin', 'Dokter', 'Perawat']],
+                // Tombol di tampilan Rekam Medis (riwayat kunjungan pasien).
+                'ugd.emr.bukaRiwayatRekamMedis' => ['label' => 'Rekam Medis: buka detail kunjungan UGD & surat kematian', 'roles' => ['Admin', 'Casemix', 'Dokter', 'Mr', 'Perawat']],
                 'ugd.emr.bukaModulDokumen' => ['label' => 'EMR: buka Modul Dokumen', 'roles' => ['Admin', 'Casemix', 'Dokter', 'Mr', 'Perawat']],
                 'ugd.emr.bukaRekamMedisNasional' => ['label' => 'EMR: rekam Medis Nasional (SSRME)', 'roles' => ['Admin', 'Dokter', 'Perawat']],
                 'ugd.sbar.hapus' => ['label' => 'SBAR: hapus entri', 'roles' => AksiRole::UGD_SBAR_HAPUS],

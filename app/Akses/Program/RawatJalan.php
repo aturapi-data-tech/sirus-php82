@@ -60,6 +60,7 @@ return [
                 'rj.emr.uploadPenunjang' => ['label' => 'Upload/hapus hasil penunjang', 'roles' => ['Admin', 'Perawat']],
                 'rj.emr.lihatUploadPenunjang' => ['label' => 'Lihat upload hasil penunjang', 'roles' => ['Admin', 'Dokter', 'Perawat']],
                 // Tombol di tampilan Rekam Medis (riwayat kunjungan pasien).
+                'rj.emr.bukaRiwayatRekamMedis' => ['label' => 'Rekam Medis: buka detail kunjungan RJ', 'roles' => ['Admin', 'Casemix', 'Dokter', 'Mr', 'Perawat']],
                 'rj.emr.salinResep' => ['label' => 'Rekam Medis: copy resep ke kunjungan ini', 'roles' => ['Admin', 'Dokter']],
                 'rj.emr.lihatRekamMedisV1' => ['label' => 'Rekam Medis: lihat RM RJ versi lama (V1)', 'roles' => ['Admin', 'Casemix', 'Manager Medis', 'Manager Umum', 'Mr', 'Perawat']],
                 'rj.emr.bukaAdministrasi' => ['label' => 'EMR: buka Administrasi', 'roles' => ['Admin', 'Casemix', 'Perawat']],

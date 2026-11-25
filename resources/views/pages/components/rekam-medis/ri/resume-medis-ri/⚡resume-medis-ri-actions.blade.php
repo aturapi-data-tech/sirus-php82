@@ -145,6 +145,7 @@
  */
 
 use Carbon\Carbon;
+use Livewire\Attributes\Authorize;
 use Livewire\Component;
 use Livewire\Attributes\On;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -194,6 +195,7 @@ new class extends Component {
      |   3. Dispatch open-modal → TinyMCE boot dgn pre-fill
     ═══════════════════════════════════════ */
     #[On('resume-medis-ri.open')]
+    #[Authorize('pintu.resume-medis-ri.open')]
     public function open(int $riHdrNo): void
     {
         $this->riHdrNo = $riHdrNo;

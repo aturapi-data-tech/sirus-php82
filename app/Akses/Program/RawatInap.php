@@ -45,6 +45,9 @@ return [
                 'ri.emr.bukaEresep' => ['label' => 'EMR: buka E-Resep', 'roles' => ['Admin', 'Dokter', 'Perawat']],
                 'ri.emr.tulisEresep' => ['label' => 'E-Resep: tambah/hapus obat, CITO, TTD, copy resep', 'roles' => ['Admin', 'Dokter']],
                 'ri.emr.uploadPenunjang' => ['label' => 'Upload/hapus hasil penunjang', 'roles' => ['Admin', 'Perawat']],
+                'ri.emr.bukaResumeMedis' => ['label' => 'EMR: buka Resume Medis', 'roles' => ['Admin', 'Dokter', 'Perawat']],
+                // Tombol di tampilan Rekam Medis (riwayat kunjungan pasien).
+                'ri.emr.bukaRiwayatRekamMedis' => ['label' => 'Rekam Medis: buka detail kunjungan RI & surat kematian', 'roles' => ['Admin', 'Casemix', 'Dokter', 'Mr', 'Perawat']],
                 // Tombol di tampilan Rekam Medis: salin asesmen kunjungan UGD ke pengkajian awal RI.
                 'ri.emr.salinAsesmenPerawatUgd' => ['label' => 'Rekam Medis: copy asesmen perawat UGD', 'roles' => ['Admin', 'Perawat']],
                 'ri.emr.salinAsesmenDokterUgd' => ['label' => 'Rekam Medis: copy asesmen dokter UGD', 'roles' => ['Admin', 'Dokter']],
@@ -68,6 +71,7 @@ return [
                 'emr-ri.rekam-medis.open' => ['ri.daftar.bukaRekamMedis'],
                 'emr-ri.eresep.open' => ['ri.emr.bukaEresep', 'pintu:emr-ri.rekam-medis.open', 'ri.gizi.lihat'],
                 'ringkasan-pulang-ri.open' => ['ri.emr.bukaRingkasanPulang'],
+                'resume-medis-ri.open' => ['ri.emr.bukaResumeMedis', 'ri.dokumen.ttdPerwakilan'],
             ],
         ],
 
