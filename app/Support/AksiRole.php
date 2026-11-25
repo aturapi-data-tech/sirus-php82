@@ -54,7 +54,9 @@ class AksiRole
      * Dipisah dari DOKUMEN_BUKA_KUNCI walau isinya kini sama: menandatangani atas nama
      * orang lain adalah hak yang berbeda dari mencabut TTD.
      */
-    public const DOKUMEN_TTD_PERWAKILAN = ['Admin', 'Manager Umum', 'Manager Medis'];
+    // Admin dicabut (keputusan user 2026-11-25): Admin = role sistem, bukan jabatan; perwakilan
+    // tetap pengecualian ber-jejak milik manager (cetakan tetap DPJP, penekan di `diwakilkanOleh`).
+    public const DOKUMEN_TTD_PERWAKILAN = ['Manager Umum', 'Manager Medis'];
 
     /* ─────────────────────────────── EMR ─────────────────────────────── */
 
