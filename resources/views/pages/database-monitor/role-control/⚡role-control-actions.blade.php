@@ -288,8 +288,10 @@ new class extends Component {
             </x-slot:badge>
             </x-modul-dokumen.header>
 
-            {{-- BODY --}}
-            <div class="flex-1 px-4 py-4 overflow-y-auto bg-surface-soft/70 dark:bg-gray-950/20" x-data
+            {{-- BODY — sengaja TANPA overflow-y-auto: yang scroll adalah panel x-modal (pembungkus
+                 di atas min-h, bukan tinggi tetap). overflow di sini menjadikannya wadah sticky yang
+                 tak pernah scroll, sehingga thead tabel hak akses tidak bisa menempel. --}}
+            <div class="flex-1 px-4 py-4 bg-surface-soft/70 dark:bg-gray-950/20" x-data
                 x-on:focus-role-name.window="$nextTick(() => setTimeout(() => $refs.inputRoleName?.focus(), 150))">
                 <div class="max-w-full mx-auto p-1">
                     <div class="space-y-4">
