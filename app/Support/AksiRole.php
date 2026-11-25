@@ -207,12 +207,12 @@ class AksiRole
 
     /**
      * Koreksi (Edit) transaksi Penerimaan & Pengeluaran Kas TU (rstxn_tucashds / rstxn_tucashks).
-     * Manager ke atas saja (keputusan user 2026-11-17) — entri baru tetap boleh petugas kas.
+     * Pengawas keuangan (2026-11-25, dulu Admin|MU|MM) — entri baru tetap boleh petugas kas.
      */
-    public const KAS_TU_KOREKSI = ['Admin', 'Manager Umum', 'Manager Medis'];
+    public const KAS_TU_KOREKSI = self::PENGAWAS_KEUANGAN;
 
-    /** Hapus transaksi Penerimaan & Pengeluaran Kas TU — manager ke atas (keputusan user 2026-11-17). */
-    public const KAS_TU_HAPUS = ['Admin', 'Manager Umum', 'Manager Medis'];
+    /** Hapus transaksi Penerimaan & Pengeluaran Kas TU — lihat PENGAWAS_KEUANGAN. */
+    public const KAS_TU_HAPUS = self::PENGAWAS_KEUANGAN;
 
     /* ─────────────────────────────── GUDANG ─────────────────────────────── */
 
@@ -287,24 +287,32 @@ class AksiRole
      * Batal TIDAK memakai kolom Hapus halaman: batal membalik jurnal/stok/status dan
      * sering eskalasi ke atasan — kebijakannya beda dari menghapus satu baris data.
      */
+    /**
+     * PENGAWAS KEUANGAN — keputusan user 2026-11-25: semua aksi pengawasan transaksi keuangan
+     * (batal kasir, batal kunjungan/transfer/inap, hapus bayar piutang, koreksi/hapus kas TU)
+     * diseragamkan ke Supervisor Tu & manager ke atas, dan manager di sini = MANAGER UMUM saja
+     * (Manager Medis tidak). Posting & entri harian tetap petugas (Tu) — itu bukan pengawasan.
+     * Tiap aksi tetap punya konstantanya sendiri (aturan "satu konstanta per maksud").
+     */
+    private const PENGAWAS_KEUANGAN = ['Admin', 'Manager Umum', 'Supervisor Tu'];
+
     public const KASIR_RJ_POSTING = ['Admin', 'Tu'];
-    public const KASIR_RJ_BATAL = ['Admin', 'Tu', 'Perawat', 'Manager Umum', 'Supervisor Tu'];
-    public const KASIR_RJ_BATAL_TRANSFER_UGD = ['Admin', 'Tu', 'Perawat', 'Manager Umum', 'Supervisor Tu'];
-    public const KASIR_RJ_BATAL_KUNJUNGAN = ['Admin', 'Supervisor Tu'];
+    public const KASIR_RJ_BATAL = self::PENGAWAS_KEUANGAN;
+    public const KASIR_RJ_BATAL_TRANSFER_UGD = self::PENGAWAS_KEUANGAN;
+    public const KASIR_RJ_BATAL_KUNJUNGAN = self::PENGAWAS_KEUANGAN;
     public const KASIR_UGD_POSTING = ['Admin', 'Tu'];
-    public const KASIR_UGD_BATAL = ['Admin', 'Tu', 'Perawat', 'Manager Umum', 'Supervisor Tu'];
-    public const KASIR_UGD_BATAL_TRANSFER_RI = ['Admin', 'Tu', 'Perawat', 'Manager Umum', 'Supervisor Tu'];
-    public const KASIR_UGD_BATAL_KUNJUNGAN = ['Admin', 'Supervisor Tu'];
+    public const KASIR_UGD_BATAL = self::PENGAWAS_KEUANGAN;
+    public const KASIR_UGD_BATAL_TRANSFER_RI = self::PENGAWAS_KEUANGAN;
+    public const KASIR_UGD_BATAL_KUNJUNGAN = self::PENGAWAS_KEUANGAN;
     public const KASIR_RI_POSTING = ['Admin', 'Tu'];
     /**
      * Batal Transaksi Pulang RI. Dulu tombol = Admin|Supervisor Tu, server = Admin|Tu (tidak
-     * sama). Diputuskan user 2026-11-25: Admin + Supervisor Tu (SEMENTARA — role akan
-     * disesuaikan lagi).
+     * sama). Kini PENGAWAS_KEUANGAN (2026-11-25).
      */
-    public const KASIR_RI_BATAL = ['Admin', 'Supervisor Tu'];
-    public const KASIR_RI_BATAL_INAP = ['Admin', 'Supervisor Tu'];
+    public const KASIR_RI_BATAL = self::PENGAWAS_KEUANGAN;
+    public const KASIR_RI_BATAL_INAP = self::PENGAWAS_KEUANGAN;
     public const KASIR_RESEP_RI_POSTING = ['Admin', 'Tu', 'Manager Umum', 'Supervisor Tu'];
-    public const KASIR_RESEP_RI_BATAL = ['Admin', 'Manager Umum', 'Supervisor Tu'];
+    public const KASIR_RESEP_RI_BATAL = self::PENGAWAS_KEUANGAN;
     public const KASIR_RESEP_RI_UBAH_JASA = ['Admin', 'Tu', 'Manager Umum', 'Supervisor Tu'];
     public const APOTEK_RESEP_RI_POSTING = ['Apoteker', 'Admin', 'Tu'];
     public const APOTEK_RESEP_RI_BATAL = ['Apoteker', 'Admin', 'Tu'];
@@ -318,7 +326,7 @@ class AksiRole
     /** Mencatat pembayaran/pelunasan piutang — dulu cukup bisa membuka halaman (role menu). */
     public const PIUTANG_BAYAR = ['Admin', 'Manager Umum', 'Supervisor Tu', 'Tu'];
     /** Hapus pembayaran piutang yang salah — dulu ROLE_HAPUS_BAYAR (aturan tanggal/keterangan tetap di kode). */
-    public const PIUTANG_HAPUS_BAYAR = ['Admin', 'Supervisor Tu'];
+    public const PIUTANG_HAPUS_BAYAR = self::PENGAWAS_KEUANGAN;
 
     /* ─────────────────────── CPPT & SBAR (RI + UGD) ─────────────────────── */
     /**

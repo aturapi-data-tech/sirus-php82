@@ -7,6 +7,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
+use App\Support\AksiRole;
 
 /**
  * Angsuran Awal (titipan) pasien Rawat Inap — uang yang dibayar pasien SELAMA dirawat,
@@ -27,7 +28,7 @@ new class extends Component {
     private const ROLE_ENTRI = ['Admin', 'Tu', 'Supervisor Tu'];
 
     /** Hapus = eskalasi ke atasan (sama dengan Batal Transaksi Pulang): uang sudah diterima. */
-    private const ROLE_HAPUS = ['Admin', 'Supervisor Tu'];
+    private const ROLE_HAPUS = AksiRole::KASIR_RI_BATAL;
 
     public array $renderVersions = [];
     protected array $renderAreas = ['angsuran-awal-ri'];
