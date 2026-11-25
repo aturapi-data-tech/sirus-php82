@@ -377,7 +377,7 @@ new class extends Component {
 
     /* ===============================
      | BUKA KUNCI — cabut TTD petugas → screening editable lagi.
-     | Role dari SATU sumber: Gate 'dokumen.bukaKunci' (AksiRole::DOKUMEN_BUKA_KUNCI),
+     | Role dari SATU sumber: Gate 'ugd.dokumen.bukaKunci' (AksiRole::DOKUMEN_BUKA_KUNCI),
      | sama seperti 43 modul dokumen lain — mekanisme kuncinya identik (terkunci
      | begitu petugas TTD) dan yang menandatangani screening juga Perawat.
      | Tak bisa bila EMR-level terkunci.
@@ -385,7 +385,7 @@ new class extends Component {
      =============================== */
     private function bolehBukaKunci(): bool
     {
-        return (bool) auth()->user()?->can('dokumen.bukaKunci');
+        return (bool) auth()->user()?->can('ugd.dokumen.bukaKunci');
     }
 
     public function bukaKunci(): void
@@ -861,7 +861,7 @@ new class extends Component {
                          selagi EMR masih terkunci TTD dokter, tombolnya diganti keterangan —
                          bukan disembunyikan diam-diam — supaya petugas tahu urutannya. --}}
                     @if ($isFormLocked && $isEmrLocked)
-                        @can('dokumen.bukaKunci')
+                        @can('ugd.dokumen.bukaKunci')
                             <p class="text-xs text-muted dark:text-gray-400">
                                 Buka kunci <strong>TTD-E Dokter Pemeriksa</strong> lebih dulu sebelum
                                 screening bisa dibuka.
@@ -871,7 +871,7 @@ new class extends Component {
 
                     {{-- Terkunci oleh TTD (bukan EMR-level) → Admin/Manager boleh Buka Kunci --}}
                     @if ($isFormLocked && !$isEmrLocked)
-                        @can('dokumen.bukaKunci')
+                        @can('ugd.dokumen.bukaKunci')
                             <x-confirm-button variant="warning-soft" action="bukaKunci()" title="Buka Kunci Screening"
                                 message="TTD petugas akan dicabut & screening kembali bisa diedit. Hasil triase/P0 yang tersimpan tidak diubah. Lanjutkan?"
                                 confirmText="Ya, Buka Kunci" class="gap-1.5">

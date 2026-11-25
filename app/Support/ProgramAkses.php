@@ -32,11 +32,11 @@ class ProgramAkses
         'Ugd',
         'RawatInap',
         'Casemix',
-        'LintasJalur',
         'Penunjang',
         'Gudang',
         'Keuangan',
         'Sistem',
+        'Bersama',
     ];
 
     /** @var array<int, array{judul: string, program: array<string, array>}>|null */

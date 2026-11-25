@@ -1,4 +1,7 @@
 @props([
+    // Jalur pemilik dokumen: 'rj' | 'ugd' | 'ri' — hak Hapus & Buka Kunci dicek PER JALUR
+    // ({jalur}.dokumen.hapus / {jalur}.dokumen.bukaKunci). Kosong/tak dikenal = tombol tak tampil.
+    'jalur' => '',
     // Kunci entri → argumen method: editEntry('kunci'). Nilai apa adanya, di-escape sekali.
     'kunci' => '',
     // Entri sudah final (TTD petugas / terkunci).
@@ -34,15 +37,16 @@
 @php
     $user = auth()->user();
     $tampilLanjut = $lanjut && !$final && !$terkunci && $bisaDiubah;
-    $bolehBukaKunci = $bukaKunci && $final && $bisaDiubah && $user?->can('dokumen.bukaKunci');
-    $bolehHapus = $hapus && $bisaDiubah && !($hapusHanyaDraft && $final) && $user?->can('dokumen.hapus');
+    $jalurDokumen = in_array($jalur, ['rj', 'ugd', 'ri'], true) ? $jalur : null;
+    $bolehBukaKunci = $jalurDokumen && $bukaKunci && $final && $bisaDiubah && $user?->can($jalurDokumen . '.dokumen.bukaKunci');
+    $bolehHapus = $jalurDokumen && $hapus && $bisaDiubah && !($hapusHanyaDraft && $final) && $user?->can($jalurDokumen . '.dokumen.hapus');
     $tampilRisiko = !$terkunci && ($bolehBukaKunci || $bolehHapus);
     $ikonGembok = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-8 4h10a2 2 0 012 2v5a2 2 0 01-2 2H8a2 2 0 01-2-2v-5a2 2 0 012-2z" /></svg>';
 @endphp
 
 {{-- Sel Aksi baris tabel daftar modul dokumen (docs/modul-dokumen-ri-pattern.md §2a "Tabel daftar"):
      [Lanjutkan Pengisian (draft) · slot · Lihat (final) · Cetak]  │  [Buka Kunci (final) · Hapus]
-     Kelompok kanan hanya dirender bila ada tombol yang boleh tampil (hak Gate dokumen.bukaKunci /
+     Kelompok kanan hanya dirender bila ada tombol yang boleh tampil (hak Gate {rj|ugd|ri}.dokumen.bukaKunci /
      dokumen.hapus) — tak menyisakan garis kosong. Hapus selalu paling kanan, Buka Kunci kuning.
      Slot bawaan = tombol khusus modul di kelompok kiri (mis. TTD Petugas menyusul, TTD Saya).
      Atribut wire:* ditulis LITERAL (wire:click="m('{{ kunci }}')"), jangan binding :wire:click —

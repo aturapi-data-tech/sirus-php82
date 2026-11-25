@@ -54,12 +54,31 @@ return [
                 'ri.sbar.ubahSemua' => ['label' => 'SBAR: edit entri petugas lain', 'roles' => AksiRole::RI_SBAR_UBAH_SEMUA],
                 'ri.sbar.copySemua' => ['label' => 'SBAR: copy dari profesi lain', 'roles' => AksiRole::RI_SBAR_COPY_SEMUA],
                 'ri.sbar.reviewSemua' => ['label' => 'SBAR: review walau bukan DPJP', 'roles' => AksiRole::RI_SBAR_REVIEW_SEMUA],
+                'ri.emr.logAktivitas' => ['label' => 'Lihat log aktivitas EMR', 'roles' => AksiRole::EMR_LOG_AKTIVITAS, 'menggantikan' => 'emr.logAktivitas'],
+                'ri.emr.codingFhir' => ['label' => 'Coding SATUSEHAT', 'roles' => AksiRole::EMR_CODING_FHIR, 'menggantikan' => 'emr.codingFhir'],
+                'ri.emr.rekonsiliasiObat' => ['label' => 'Rekonsiliasi obat (titik-3)', 'roles' => AksiRole::REKONSILIASI_OBAT, 'menggantikan' => 'rekonsiliasi.obat'],
             ],
             'pintu' => [
                 'emr-ri.modul-dokumen.open' => ['ri.daftar.bukaModulDokumen', 'ri.gizi.bukaModulDokumen', 'ri.gizi.bukaModulDokumenEntri', 'ri.emr.bukaModulDokumen', 'penunjang.kamar-operasi.bukaDokumenBedah'],
                 'emr-ri.rekam-medis.open' => ['ri.daftar.bukaRekamMedis'],
                 'emr-ri.eresep.open' => ['ri.emr.bukaEresep', 'pintu:emr-ri.rekam-medis.open', 'ri.gizi.lihat'],
                 'ringkasan-pulang-ri.open' => ['ri.emr.bukaRingkasanPulang'],
+            ],
+        ],
+
+        // Hak modul dokumen JALUR INI (dulu satu hak untuk RJ/UGD/RI). Sel Aksi: <x-modul-dokumen.aksi-entri jalur="..">.
+        'Modul Dokumen Rawat Inap' => [
+            'aksiKhusus' => [
+                'ri.dokumen.hapus' => ['label' => 'Hapus entri dokumen', 'roles' => AksiRole::DOKUMEN_HAPUS, 'menggantikan' => 'dokumen.hapus'],
+                'ri.dokumen.bukaKunci' => ['label' => 'Buka kunci (cabut TTD) dokumen', 'roles' => AksiRole::DOKUMEN_BUKA_KUNCI, 'menggantikan' => 'dokumen.bukaKunci'],
+                'ri.dokumen.ttdPerwakilan' => ['label' => 'TTD atas nama pejabat (perwakilan)', 'roles' => AksiRole::DOKUMEN_TTD_PERWAKILAN, 'menggantikan' => 'dokumen.ttdPerwakilan'],
+            ],
+        ],
+
+        'Bridging Rawat Inap' => [
+            'aksiKhusus' => [
+                'ri.satusehat.kirim' => ['label' => 'Kirim SATUSEHAT', 'roles' => AksiRole::SATUSEHAT_KIRIM, 'menggantikan' => 'satusehat.kirim'],
+                'ri.bpjs.hapusSuratKontrol' => ['label' => 'Hapus surat kontrol BPJS', 'roles' => AksiRole::BPJS_HAPUS_SURAT_KONTROL, 'menggantikan' => 'bpjs.hapusSuratKontrol'],
             ],
         ],
 
@@ -71,7 +90,7 @@ return [
 
         'Resep Rawat Inap' => [
             'menu' => [
-                ['group' => 'Apotek', 'groupOrder' => 9, 'order' => 4, 'route' => 'ri-resep.antrian', 'aksi' => ['lihat'], 'khusus' => ['bukaAdministrasi' => ['Buka Administrasi', ['admin', 'apoteker', 'tu']]], 'title' => 'Antrian Apotek RI', 'desc' => 'Telaah resep & pelayanan kefarmasian rawat inap', 'roles' => ['admin', 'apoteker', 'manager medis'], 'badge' => 'APT-RI'],
+                ['group' => 'Apotek', 'groupOrder' => 9, 'order' => 4, 'route' => 'ri-resep.antrian', 'aksi' => ['lihat'], 'khusus' => ['taskIdApotek' => ['Catat TaskID 6/7 (masuk/keluar apotek)', ['admin', 'apoteker']], 'bukaAdministrasi' => ['Buka Administrasi', ['admin', 'apoteker', 'tu']]], 'title' => 'Antrian Apotek RI', 'desc' => 'Telaah resep & pelayanan kefarmasian rawat inap', 'roles' => ['admin', 'apoteker', 'manager medis'], 'badge' => 'APT-RI'],
                 ['group' => 'Apotek', 'groupOrder' => 9, 'order' => 5, 'route' => 'ri.pto', 'aksi' => ['lihat'], 'title' => 'Pemantauan Terapi Obat (PTO) Rawat Inap', 'desc' => 'Pantau seluruh terapi obat pasien rawat inap dari e-resep — khusus apoteker', 'roles' => ['admin', 'apoteker', 'manager medis'], 'badge' => 'PTO'],
                 ['group' => 'Kasir', 'groupOrder' => 9, 'order' => 4, 'route' => 'kasir.antrian-ri', 'aksi' => ['lihat'], 'khusus' => ['bukaAdministrasi' => ['Buka Administrasi', ['admin', 'manager umum', 'supervisor tu', 'tu']]], 'title' => 'Resep Inap', 'desc' => 'Kasir resep rawat inap (per resep)', 'roles' => ['admin', 'tu', 'manager umum', 'supervisor tu'], 'badge' => 'KSR-RI'],
             ],
@@ -102,6 +121,8 @@ return [
                 'kasir.ri.posting' => ['label' => 'Kasir: posting pembayaran pulang', 'roles' => AksiRole::KASIR_RI_POSTING],
                 'kasir.ri.batal' => ['label' => 'Kasir: batal transaksi pulang', 'roles' => AksiRole::KASIR_RI_BATAL],
                 'kasir.ri.batalInap' => ['label' => 'Kasir: batal inap', 'roles' => AksiRole::KASIR_RI_BATAL_INAP],
+                'ri.angsuranAwal.terima' => ['label' => 'Angsuran Awal (titipan): terima', 'roles' => AksiRole::RI_ANGSURAN_AWAL_TERIMA],
+                'ri.angsuranAwal.hapus' => ['label' => 'Angsuran Awal (titipan): hapus', 'roles' => AksiRole::RI_ANGSURAN_AWAL_HAPUS],
             ],
             'pintu' => [
                 'emr-ri.administrasi.open' => ['ri.daftar.bukaAdministrasi', 'ri.daftar-bulanan.bukaAdministrasi', 'ri.gizi.bukaAdministrasi', 'ri.gizi.bukaAdministrasiEntri', 'kasir.daftar-ri.bukaAdministrasi', 'ri.emr.bukaAdministrasi', 'manajemen.rs.tu.piutang-pasien.lihat'],

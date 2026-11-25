@@ -459,7 +459,7 @@ new class extends Component {
      =============================== */
     public function hapus(string $tglPindah): void
     {
-        if (!auth()->user()?->can('dokumen.hapus')) {
+        if (!auth()->user()?->can('ri.dokumen.hapus')) {
             $this->dispatch('toast', type: 'error', message: 'Anda tidak berwenang menghapus entri.');
             return;
         }
@@ -506,11 +506,11 @@ new class extends Component {
     }
 
     /* ===============================
-     | BUKA KUNCI — cabut TTD penerima, entri kembali Transit (Gate dokumen.bukaKunci)
+     | BUKA KUNCI — cabut TTD penerima, entri kembali Transit (Gate ri.dokumen.bukaKunci)
      =============================== */
     public function bukaKunci(string $tglPindah): void
     {
-        if (!auth()->user()?->can('dokumen.bukaKunci')) {
+        if (!auth()->user()?->can('ri.dokumen.bukaKunci')) {
             $this->dispatch('toast', type: 'error', message: 'Anda tidak berwenang membuka kunci.');
             return;
         }
@@ -1091,7 +1091,7 @@ new class extends Component {
                                                 @endif
                                             </td>
                                             <td class="px-4 py-3 text-center align-middle whitespace-nowrap" @click.stop>
-                                                <x-modul-dokumen.aksi-entri kunci="{{ $kunciPindah }}" :final="$rowLocked" :terkunci="$isFormLocked"
+                                                <x-modul-dokumen.aksi-entri jalur="ri" kunci="{{ $kunciPindah }}" :final="$rowLocked" :terkunci="$isFormLocked"
                                                     lanjut="editPindah"
                                                     lihat=""
                                                     cetak="cetakPindahRi"

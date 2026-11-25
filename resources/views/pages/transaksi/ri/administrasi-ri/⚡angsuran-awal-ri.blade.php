@@ -7,7 +7,6 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
-use App\Support\AksiRole;
 
 /**
  * Angsuran Awal (titipan) pasien Rawat Inap — uang yang dibayar pasien SELAMA dirawat,
@@ -24,11 +23,6 @@ use App\Support\AksiRole;
 new class extends Component {
     use EmrRITrait, WithRenderVersioningTrait;
 
-    /** Yang boleh menerima titipan = petugas kasir (sama dengan Proses Pulang) + atasannya. */
-    private const ROLE_ENTRI = ['Admin', 'Tu', 'Supervisor Tu'];
-
-    /** Hapus = eskalasi ke atasan (sama dengan Batal Transaksi Pulang): uang sudah diterima. */
-    private const ROLE_HAPUS = AksiRole::KASIR_RI_BATAL;
 
     public array $renderVersions = [];
     protected array $renderAreas = ['angsuran-awal-ri'];
@@ -95,14 +89,16 @@ new class extends Component {
         }
     }
 
+    /** Terima titipan — aksi khusus Rawat Inap (Role Control), centang awal AksiRole::RI_ANGSURAN_AWAL_TERIMA. */
     public function bolehEntri(): bool
     {
-        return (bool) auth()->user()?->hasAnyRole(self::ROLE_ENTRI);
+        return (bool) auth()->user()?->can('ri.angsuranAwal.terima');
     }
 
+    /** Hapus titipan = eskalasi ke atasan (uang sudah diterima) — AksiRole::RI_ANGSURAN_AWAL_HAPUS. */
     public function bolehHapus(): bool
     {
-        return (bool) auth()->user()?->hasAnyRole(self::ROLE_HAPUS);
+        return (bool) auth()->user()?->can('ri.angsuranAwal.hapus');
     }
 
     /* ===============================

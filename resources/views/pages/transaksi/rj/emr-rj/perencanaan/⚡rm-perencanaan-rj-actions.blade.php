@@ -376,7 +376,7 @@ new class extends Component {
     }
 
     /**
-     * Perwakilan (manager ke atas, Gate dokumen.ttdPerwakilan): boleh TTD-E atas nama
+     * Perwakilan (manager ke atas, Gate rj.dokumen.ttdPerwakilan): boleh TTD-E atas nama
      * dokter kunjungan bila dirinya BUKAN dokter kunjungan itu. Pola sama dengan
      * Resume Medis RI — stempel tetap atas nama dokter, penekan tombol tercatat.
      */
@@ -384,7 +384,7 @@ new class extends Component {
     {
         $kodeSaya = trim((string) (auth()->user()->myuser_code ?? ''));
 
-        return $this->drId !== '' && $kodeSaya !== $this->drId && auth()->user()->can('dokumen.ttdPerwakilan');
+        return $this->drId !== '' && $kodeSaya !== $this->drId && auth()->user()->can('rj.dokumen.ttdPerwakilan');
     }
 
     public function setDrPemeriksaPerwakilan(): void
@@ -485,7 +485,7 @@ new class extends Component {
     public function bukaKunciTtdPemeriksa(): void
     {
         // Guard SERVER — guard blade saja bisa ditembus, wire:click memanggil method publik.
-        if (! auth()->user()?->can('dokumen.bukaKunci')) {
+        if (! auth()->user()?->can('rj.dokumen.bukaKunci')) {
             $this->dispatch('toast', type: 'error', message: 'Anda tidak berhak membuka kunci TTD-E.');
 
             return;

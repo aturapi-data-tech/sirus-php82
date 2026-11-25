@@ -788,7 +788,7 @@ new class extends Component {
                                                             </x-dropdown-link>
                                                         @endcan
 
-                                                        @can('rekonsiliasi.obat')
+                                                        @can('ri.emr.rekonsiliasiObat')
                                                             <x-dropdown-link href="#"
                                                                 wire:click.prevent="openRekonsiliasiObat('{{ $row->rihdr_no }}')"
                                                                 class="px-3 py-2 text-sm rounded-lg h-full bg-cyan-50 hover:bg-cyan-100 dark:bg-cyan-900/20">
@@ -870,7 +870,7 @@ new class extends Component {
                                                             @endif
                                                         @endcan
 
-                                                        @can('emr.codingFhir')
+                                                        @can('ri.emr.codingFhir')
                                                             <x-dropdown-link href="#"
                                                                 wire:click.prevent="openCodingFhir('{{ $row->rihdr_no }}')"
                                                                 class="px-3 py-2 text-sm rounded-lg h-full bg-brand-green/5 hover:bg-brand-green/10 dark:bg-brand-green/10">
@@ -886,7 +886,7 @@ new class extends Component {
                                                             </x-dropdown-link>
                                                         @endcan
 
-                                                        @can('satusehat.kirim')
+                                                        @can('ri.satusehat.kirim')
                                                             <x-dropdown-link href="#"
                                                                 wire:click.prevent="openSatuSehat('{{ $row->rihdr_no }}')"
                                                                 class="px-3 py-2 text-sm rounded-lg h-full bg-teal-50 hover:bg-teal-100 dark:bg-teal-900/20 dark:hover:bg-teal-900/40">

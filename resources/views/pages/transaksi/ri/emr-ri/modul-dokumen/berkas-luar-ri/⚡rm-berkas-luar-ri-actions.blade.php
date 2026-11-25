@@ -215,7 +215,7 @@ new class extends Component {
      =============================== */
     public function hapusBerkas(string $file): void
     {
-        if (!auth()->user()?->can('dokumen.hapus')) {
+        if (!auth()->user()?->can('ri.dokumen.hapus')) {
             $this->dispatch('toast', type: 'error', message: 'Anda tidak berwenang menghapus berkas.');
             return;
         }
@@ -413,7 +413,7 @@ new class extends Component {
                                                 <div>{{ $berkas['penanggungJawab']['userLog'] ?? '-' }}</div>
                                             </td>
                                             <td class="px-4 py-3 text-center align-middle whitespace-nowrap" @click.stop>
-                                                <x-modul-dokumen.aksi-entri kunci="{{ $berkas['file'] ?? '' }}" :final="true"
+                                                <x-modul-dokumen.aksi-entri jalur="ri" kunci="{{ $berkas['file'] ?? '' }}" :final="true"
                                                     :terkunci="$isFormLocked" :bisaDiubah="!empty($berkas['file'])"
                                                     lanjut="" cetak="" bukaKunci="" lihat="{{ $tersedia ? 'lihatBerkas' : '' }}"
                                                     hapus="hapusBerkas" judulLihat="Lihat berkas"

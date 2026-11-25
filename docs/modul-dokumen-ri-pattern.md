@@ -255,8 +255,8 @@ eab5fdbe, 8a941775). Kalau membuat modul baru, salin dari sana; jangan bikin var
 - **Aksi, SATU baris rata kanan** (BAKU 2026-09-08, permintaan user — dua baris lama membuat
   Buka Kunci & hapus berdempetan dan rawan salah klik):
   `[Lanjutkan Pengisian (primary, draft) | <x-lihat-button> (terkunci)] [<x-cetak-button>]  │
-  [Buka Kunci = x-confirm-button variant="warning-soft" (kuning), @can dokumen.bukaKunci]  │
-  [<x-hapus-button>, @can dokumen.hapus]` — pembungkus `flex items-center justify-end gap-2`;
+  [Buka Kunci = x-confirm-button variant="warning-soft" (kuning), @can {rj|ugd|ri}.dokumen.bukaKunci]  │
+  [<x-hapus-button>, @can {rj|ugd|ri}.dokumen.hapus]` — pembungkus `flex items-center justify-end gap-2`;
   kelompok berisiko dalam `<div class="flex items-center gap-2 pl-3 ml-1 border-l border-hairline
   dark:border-gray-700">` yang hanya dirender bila `!$isFormLocked` DAN user punya salah satu hak
   (supaya tak menyisakan garis kosong). Hapus selalu paling kanan; Buka Kunci kuning, bukan merah.
@@ -589,14 +589,14 @@ Aturan yang mengikat:
 - Entri final tak boleh ditimpa: `persistEntry()` melempar RuntimeException bila targetnya final.
 - **Buka kunci** hanya mencabut `finalized` + **TTD petugas**; TTD pasien/keluarga & saksi
   DIPERTAHANKAN (tak boleh dihapus sepihak oleh staf) + audit log wajib menyebut pelakunya.
-  Gate dua lapis: `@can('dokumen.bukaKunci')` di tombol **dan** `bolehBukaKunci()` (yang mengembalikan
-  `auth()->user()?->can('dokumen.bukaKunci')`) di server.
-- **Hapus entri** juga digate: `@can('dokumen.hapus')` di tombol + guard
-  `if (!auth()->user()?->can('dokumen.hapus')) { toast; return; }` sebagai statement pertama
+  Gate dua lapis: `@can('{rj|ugd|ri}.dokumen.bukaKunci')` di tombol **dan** `bolehBukaKunci()` (yang mengembalikan
+  `auth()->user()?->can('{rj|ugd|ri}.dokumen.bukaKunci')`) di server.
+- **Hapus entri** juga digate: `@can('{rj|ugd|ri}.dokumen.hapus')` di tombol + guard
+  `if (!auth()->user()?->can('{rj|ugd|ri}.dokumen.hapus')) { toast; return; }` sebagai statement pertama
   method hapus. Berlaku baik untuk draft maupun entri final.
 - **Role terpusat**: daftar role Hapus & Buka Kunci ada di **satu file** `App\Support\AksiRole`
   (konstanta `DOKUMEN_HAPUS` & `DOKUMEN_BUKA_KUNCI`, saat ini triad `Admin | Manager Umum | Manager Medis`), didaftarkan
-  sebagai Gate `dokumen.hapus` & `dokumen.bukaKunci` di `AppServiceProvider::boot()`. Menambah role =
+  sebagai Gate `{rj|ugd|ri}.dokumen.hapus` & `{rj|ugd|ri}.dokumen.bukaKunci` di `AppServiceProvider::boot()`. Menambah role =
   ubah 1 file itu. **JANGAN** tulis `@hasanyrole('Admin|...')`/`hasAnyRole([...])` literal di modul dokumen.
 
 ## 4. Tanda tangan

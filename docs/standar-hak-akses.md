@@ -34,9 +34,9 @@ Semua hak satu program ditulis di **satu blok**, berkas per kelompok di `app/Aks
 |---|---|
 | `LaporanManajemen.php` | Laporan Pelayanan / Penunjang / SIRS Online / Keuangan |
 | `Master.php` | Master Pelayanan / Laboratorium / Apotek / Akuntansi |
-| `RawatJalan.php`, `Ugd.php`, `RawatInap.php` | semua program milik jalur itu (pendaftaran, pelayanan, EMR, apotek, administrasi & kasir, daftar bulanan, …) |
-| `Casemix.php`, `Penunjang.php`, `Gudang.php`, `Keuangan.php`, `Sistem.php` | programnya masing-masing |
-| `LintasJalur.php` | yang dipakai SEMUA jalur: antrian apotek/kasir gabungan, EMR lintas jalur, Modul Dokumen, Bridging |
+| `RawatJalan.php`, `Ugd.php`, `RawatInap.php` | semua program milik jalur itu (pendaftaran, pelayanan, EMR, Modul Dokumen, Bridging, apotek, administrasi & kasir, daftar bulanan, …) |
+| `Casemix.php`, `Penunjang.php`, `Gudang.php`, `Keuangan.php`, `Sistem.php` | programnya masing-masing (Penunjang juga memuat **Hasil Penunjang** — per pasien lintas kunjungan) |
+| `Bersama.php` | TANPA centang, tak tampil di Role Control: menu halaman gabungan bertab (Antrian Apotek/Kasir) & pintu modal yang dibuka dari >1 jalur |
 
 ```php
 'Pelayanan Rawat Jalan' => [
@@ -59,8 +59,24 @@ Semua hak satu program ditulis di **satu blok**, berkas per kelompok di `app/Aks
 `AksesHalaman::pintu()` dan matriks Role Control semuanya bersumber dari sini. Urutan kelompok
 = `ProgramAkses::BERKAS`; urutan program & aksi = urutan tulis di berkas.
 
-**Menaruh sesuatu:** milik satu jalur → berkas jalurnya (RJ/UGD/RI), di program yang memakainya
-(tombol batal kasir RJ → "Administrasi & Kasir Rawat Jalan"). Dipakai lintas jalur → `LintasJalur.php`.
+**Menaruh sesuatu (keputusan user 2026-11-25): TIDAK ADA hak "lintas jalur".** Hak yang dipakai
+di RJ, UGD dan RI dibuat SATU PER JALUR (`rj.dokumen.hapus`, `ugd.dokumen.hapus`, `ri.dokumen.hapus`)
+dan masing-masing ditulis di berkas jalurnya, di program yang memakainya (batal kasir RJ →
+"Administrasi & Kasir Rawat Jalan", hapus dokumen RJ → "Modul Dokumen Rawat Jalan"). Komponen
+bersama yang dipakai ketiga jalur menerima prop/properti jalur lalu mengecek `{jalur}.…`
+(contoh `<x-modul-dokumen.aksi-entri jalur="ri">`, Daftar Surat Kontrol `#[Locked] $jalur`).
+Pengecualian hanya untuk hak yang memang bukan milik kunjungan/jalur (Hasil Penunjang = per pasien).
+
+**Memecah hak lama** jadi per jalur: entri baru diberi `'menggantikan' => 'nama.lama'` — saat
+permission dibuat, centangnya DIWARISKAN dari hak lama (termasuk yang sudah diatur admin), jadi
+tak ada yang kehilangan/mendapat hak. Hak lama tersisa di bagian "Lainnya" Role Control.
+
+**Halaman gabungan bertab** (Antrian Apotek, Antrian Kasir): entri menu ber-`'gabungan' => [route
+halaman asal tiap tab]` — tak punya centang sendiri, menu tampil bila boleh salah satunya. Tiap tab
+disaring hak halaman asalnya lewat `App\Http\Traits\Concerns\WithTabHakAksesTrait`
+(`petaTabHalaman()`, `#[Locked] $activeTab`, `bolehTab()` di `setTab()` & tiap `<x-tab>`). Halaman
+bertab yang punya tab miliknya sendiri (Casemix: Rekap iDRG) tetap punya Lihat sendiri; tab
+RJ/UGD/RI-nya tetap ikut hak halaman asal.
 
 ## Menambah menu / halaman baru
 

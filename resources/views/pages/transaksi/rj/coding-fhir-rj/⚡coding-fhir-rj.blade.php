@@ -9,7 +9,7 @@
 //   perencanaan/coding-perencanaan-rj P — terapi, tindak lanjut, cara keluar (baca)
 //
 // Form EMR RJ cukup teks klinis (fokus pelayanan); kode SNOMED dkk diisi di sini SESUDAH
-// pelayanan oleh Dokter/Perawat/MR/manager (Gate emr.codingFhir) — keputusan user 2026-10-28.
+// pelayanan oleh Dokter/Perawat/MR/manager (Gate rj.emr.codingFhir) — keputusan user 2026-10-28.
 // Lokasi data TIDAK berubah (key yang sama di datadaftarpolirj_json), jadi sender SATUSEHAT
 // tidak berubah. Simpan = event 'save-coding-fhir-rj'; tiap kelompok yang punya kode menyimpan
 // bagiannya sendiri (pola save-rm-* EMR). Tetap bisa diisi walau EMR terkunci.
@@ -57,7 +57,7 @@ new class extends Component {
     {
         $this->registerAreas(['modal-coding-fhir-rj']);
         $this->embedded = $embedded;
-        if ($embedded && $rjNo && auth()->user()?->can('emr.codingFhir')) {
+        if ($embedded && $rjNo && auth()->user()?->can('rj.emr.codingFhir')) {
             $this->rjNo = $rjNo;
             $this->incrementVersion('modal-coding-fhir-rj');
         }
@@ -70,7 +70,7 @@ new class extends Component {
         if ($this->embedded) {
             return;
         }
-        if (!auth()->user()?->can('emr.codingFhir')) {
+        if (!auth()->user()?->can('rj.emr.codingFhir')) {
             $this->dispatch('toast', type: 'error', message: 'Anda tidak berhak membuka Coding SATUSEHAT.');
             return;
         }

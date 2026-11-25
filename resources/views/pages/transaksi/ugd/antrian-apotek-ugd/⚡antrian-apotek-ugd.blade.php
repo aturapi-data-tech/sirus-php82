@@ -601,7 +601,7 @@ new class extends Component {
                                             <div class="grid grid-cols-2 gap-2">
                                                 {{-- Group T6+T7 (sub-grid 2 kolom) --}}
                                                 <div class="grid grid-cols-2 gap-1">
-                                                    @hasanyrole('Apoteker|Admin')
+                                                    @can('ugd.antrian-apotek.taskIdApotek')
                                                     {{-- Tombol di sini; logika di komponen host task-id-apotek-actions (mount 1×).
                                                          wire:click="$dispatch(...)" = aksi Livewire (BUKAN Alpine) → host tangkap
                                                          via #[On]. Nol komponen Livewire per baris. Redup dari $row->task_id6/7. --}}
@@ -620,7 +620,7 @@ new class extends Component {
                                                         <x-ikon nama="kirim" />
                                                         TaskId7
                                                     </x-primary-button>
-                                                    @endhasanyrole
+                                                    @endcan
                                                 </div>
 
                                                 {{-- Telaah --}}

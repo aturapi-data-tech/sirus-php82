@@ -722,7 +722,7 @@ if ($this->checkOkPendingRJ($this->rjNo)) {       // ada rstxn_oks ok_status = '
 // L5 · KUNCI KLINIS:
 //   - erm_status: checkEmrRJStatus/checkEmrUGDStatus AKTIF (2026-09-16) — begitu
 //     dokter TTD-E, erm_status 'L' dan EMR RJ/UGD jadi baca-saja. Membukanya lewat
-//     Buka Kunci per stempel (Gate dokumen.bukaKunci), urutannya dari yang paling
+//     Buka Kunci per stempel (Gate {rj|ugd|ri}.dokumen.bukaKunci), urutannya dari yang paling
 //     akhir TTD: Dokter -> Perawat -> Screening. Semua terjejak appendAdminLog.
 //   - EMR RI MASIH longgar (checkEmrRIStatus selalu false) — sengaja, karena
 //     stempel RI belum punya tombol Buka Kunci; menyalakannya akan menjebak user.

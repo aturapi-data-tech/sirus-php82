@@ -4,7 +4,7 @@
 // Modal GABUNGAN EMR RJ + Coding SATUSEHAT RJ dalam tab (pola halaman Kasir: <x-tabs> + @if per tab,
 // komponen asli dipasang apa adanya) — keputusan user 2026-10-28, supaya tak buka-tutup dua modal.
 //   tab rekamMedis → emr-rj          :embedded="true"  (body + footer aksi EMR utuh)
-//   tab coding     → coding-fhir-rj  :embedded="true"  (hanya bila Gate emr.codingFhir)
+//   tab coding     → coding-fhir-rj  :embedded="true"  (hanya bila Gate rj.emr.codingFhir)
 // Modal, dirty guard, header & identitas pasien milik komponen ini. Dipasang di Pelayanan RJ menggantikan
 // emr-rj & coding-fhir-rj berdiri sendiri; mendengar event lamanya:
 //   'emr-rj.rekam-medis.open' (rjNo) → tab Rekam Medis   ·   'coding-fhir-rj.open' (rjNo) → tab Coding.
@@ -54,7 +54,7 @@ new class extends Component {
     #[On('coding-fhir-rj.open')]
     public function bukaCoding(string $rjNo): void
     {
-        if (!auth()->user()?->can('emr.codingFhir')) {
+        if (!auth()->user()?->can('rj.emr.codingFhir')) {
             $this->dispatch('toast', type: 'error', message: 'Anda tidak berhak membuka Coding SATUSEHAT.');
             return;
         }
@@ -63,7 +63,7 @@ new class extends Component {
 
     private function buka(int $rjNo, string $tab): void
     {
-        $this->bisaCoding = (bool) auth()->user()?->can('emr.codingFhir');
+        $this->bisaCoding = (bool) auth()->user()?->can('rj.emr.codingFhir');
         // Kunjungan & tab sama saat modal masih terbuka (mis. kembali dari E-Resep) → isi TIDAK di-mount
         // ulang; perilaku lama emr-rj (seksi Perencanaan dimuat ulang sendiri oleh E-Resep).
         if ($this->rjNo !== $rjNo || $this->tabAktif !== $tab) {

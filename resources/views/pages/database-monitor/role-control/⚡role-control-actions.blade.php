@@ -137,7 +137,8 @@ new class extends Component {
                 $halaman = [];
                 foreach ($definisi['menu'] ?? [] as $m) {
                     // Satu route bisa beberapa entri menu (mis. Casemix ber-tab) → satu baris saja.
-                    if (!Route::has($m['route']) || isset($sudah[$m['route']])) {
+                    // Halaman gabungan bertab (Antrian Apotek/Kasir) tak punya centang sendiri → tak tampil.
+                    if (!Route::has($m['route']) || isset($sudah[$m['route']]) || isset(AksesHalaman::gabungan()[$m['route']])) {
                         continue;
                     }
                     $sudah[$m['route']] = true;

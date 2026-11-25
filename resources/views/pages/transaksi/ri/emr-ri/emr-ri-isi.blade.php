@@ -440,7 +440,7 @@
                             </x-primary-button>
                         @endcan
 
-                        @can('emr.logAktivitas')
+                        @can('ri.emr.logAktivitas')
                             {{-- Log Aktivitas — slate solid (manager ke atas) --}}
                             <x-primary-button type="button" wire:click="openLogAktivitas('{{ $riHdrNo }}')"
                                 wire:loading.attr="disabled" wire:target="openLogAktivitas"
@@ -466,9 +466,9 @@
                             </x-primary-button>
                         @endcan
 
-                        {{-- Resume Medis — rose solid. Ikut Gate dokumen.ttdPerwakilan supaya
+                        {{-- Resume Medis — rose solid. Ikut Gate ri.dokumen.ttdPerwakilan supaya
                              Manager Umum/Medis bisa membuka modal untuk TTD atas nama DPJP. --}}
-                        @if (auth()->user()?->hasAnyRole(['Dokter', 'Admin', 'Perawat']) || auth()->user()?->can('dokumen.ttdPerwakilan'))
+                        @if (auth()->user()?->hasAnyRole(['Dokter', 'Admin', 'Perawat']) || auth()->user()?->can('ri.dokumen.ttdPerwakilan'))
                             <x-primary-button type="button"
                                 wire:click="$dispatch('resume-medis-ri.open', { riHdrNo: {{ $riHdrNo }} })"
                                 class="gap-1 !bg-rose-600 hover:!bg-rose-700 !text-white focus:!ring-rose-300 dark:!bg-rose-600 dark:!text-white dark:hover:!bg-rose-700 dark:focus:!ring-rose-900">

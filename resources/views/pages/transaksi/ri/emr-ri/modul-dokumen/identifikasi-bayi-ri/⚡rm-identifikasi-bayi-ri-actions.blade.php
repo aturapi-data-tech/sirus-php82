@@ -205,11 +205,11 @@ new class extends Component {
     }
 
     /* ===============================
-     | BUKA KUNCI (Gate dokumen.bukaKunci) — cabut TTD petugas pada entri tersimpan.
+     | BUKA KUNCI (Gate ri.dokumen.bukaKunci) — cabut TTD petugas pada entri tersimpan.
      =============================== */
     public function bukaKunci(string $createdAt): void
     {
-        if (!auth()->user()?->can('dokumen.bukaKunci')) {
+        if (!auth()->user()?->can('ri.dokumen.bukaKunci')) {
             $this->dispatch('toast', type: 'error', message: 'Anda tidak berwenang membuka kunci.');
             return;
         }
@@ -332,7 +332,7 @@ new class extends Component {
 
     public function hapus(string $createdAt): void
     {
-        if (!auth()->user()?->can('dokumen.hapus')) {
+        if (!auth()->user()?->can('ri.dokumen.hapus')) {
             $this->dispatch('toast', type: 'error', message: 'Anda tidak berwenang menghapus entri.');
             return;
         }
@@ -590,7 +590,7 @@ new class extends Component {
                                                 <x-modul-dokumen.status-entri :final="$rowFinal" labelDraft="Belum TTD" />
                                             </td>
                                             <td class="px-4 py-3 text-center align-middle whitespace-nowrap" @click.stop>
-                                                <x-modul-dokumen.aksi-entri kunci="{{ $rowKey }}" :final="$rowFinal" :terkunci="$isFormLocked"
+                                                <x-modul-dokumen.aksi-entri jalur="ri" kunci="{{ $rowKey }}" :final="$rowFinal" :terkunci="$isFormLocked"
                                                     lanjut=""
                                                     lihat=""
                                                     judulBukaKunci="Buka Kunci Identifikasi Bayi"

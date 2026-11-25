@@ -69,7 +69,7 @@ class AksesHalaman
      * jadi listener-nya dijaga dengan GABUNGAN: lolos bila punya SALAH SATU entri di bawah.
      *
      * Entri berupa:
-     *  - nama permission / Gate (`rj.pelayanan.bukaAdministrasi`, `satusehat.kirim`), atau
+     *  - nama permission / Gate (`rj.pelayanan.bukaAdministrasi`, `{rj|ugd|ri}.satusehat.kirim`), atau
      *  - `pintu:<event lain>` — rujukan: siapa pun yang lolos pintu itu (modal yang dibuka
      *    dari DALAM modal lain, mis. E-Resep RI dari dalam EMR RI).
      *
@@ -102,6 +102,14 @@ class AksesHalaman
     /** @var array<string, array<string, array{label: string, roles: array<int, string>}>> route → kunci → tombol khusus halaman */
     private static array $khususMenu = [];
 
+    /**
+     * Halaman GABUNGAN bertab (kunci 'gabungan' entri menu, mis. Antrian Apotek/Kasir): route =>
+     * route halaman asal tiap tabnya. Tak punya permission sendiri — boleh dibuka bila boleh
+     * membuka SALAH SATU halaman asal; tiap tab disaring dengan hak halaman asalnya
+     * (App\Http\Traits\Concerns\WithTabHakAksesTrait).
+     */
+    private static array $gabunganMenu = [];
+
     public static function namaPermission(string $route, string $aksi): string
     {
         return $route . '.' . $aksi;
@@ -124,6 +132,19 @@ class AksesHalaman
         if (isset(self::INDUK[$route])) {
             foreach (self::INDUK[$route] as $induk) {
                 if (self::boleh($user, $induk, $aksi)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // Halaman gabungan bertab: hanya Lihat, dan cukup boleh membuka salah satu halaman asal tabnya.
+        if (isset(self::gabungan()[$route])) {
+            if ($aksi !== 'lihat') {
+                return false;
+            }
+            foreach (self::gabungan()[$route] as $asal) {
+                if (self::boleh($user, $asal, 'lihat')) {
                     return true;
                 }
             }
@@ -200,9 +221,9 @@ class AksesHalaman
     }
 
     /**
-     * Aksi khusus (katalog AksiRole::khusus(), mis. `dokumen.hapus`, `ri.cppt.ubahSemua`).
+     * Aksi khusus (katalog AksiRole::khusus(), mis. `{rj|ugd|ri}.dokumen.hapus`, `ri.cppt.ubahSemua`).
      * Permission sudah dibuat → centang Role Control; belum → cadangan roles katalog.
-     * Dipanggil lewat Gate (AppServiceProvider), jadi pemakai cukup `@can('dokumen.hapus')`.
+     * Dipanggil lewat Gate (AppServiceProvider), jadi pemakai cukup `@can('{rj|ugd|ri}.dokumen.hapus')`.
      */
     public static function bolehKhusus(?User $user, string $nama): bool
     {
@@ -302,6 +323,7 @@ class AksesHalaman
 
         $peta = [];
         self::$aksiMenu = [];
+        self::$gabunganMenu = [];
         self::$rolesAksiMenu = [];
         self::$khususMenu = [];
         $kecil = fn (array $roles) => array_map(fn ($r) => trim(strtolower($r)), $roles);
@@ -310,6 +332,10 @@ class AksesHalaman
             $peta[$route] = array_values(array_unique([...($peta[$route] ?? []), ...$kecil($m['roles'])]));
             if (isset($m['aksi'])) {
                 self::$aksiMenu[$route] = array_values(array_intersect(self::AKSI, $m['aksi']));
+            }
+            if (isset($m['gabungan'])) {
+                self::$gabunganMenu[$route] = $m['gabungan'];
+                self::$aksiMenu[$route] = []; // tanpa permission sendiri
             }
             foreach ($m['rolesAksi'] ?? [] as $aksi => $roles) {
                 self::$rolesAksiMenu[$route][$aksi] = $kecil($roles);
@@ -337,6 +363,14 @@ class AksesHalaman
     }
 
     /** Dipanggil setelah permission dibuat/diubah dalam request yang sama (perintah sinkron, Role Control). */
+    /** @return array<string, array<int, string>> route halaman gabungan => route halaman asal tabnya */
+    public static function gabungan(): array
+    {
+        self::rolesMenu();
+
+        return self::$gabunganMenu;
+    }
+
     public static function lupakanCache(): void
     {
         self::$permissionAda = null;

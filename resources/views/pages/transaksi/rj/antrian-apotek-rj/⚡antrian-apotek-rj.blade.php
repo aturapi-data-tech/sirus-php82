@@ -688,7 +688,7 @@ new class extends Component {
                                             <div class="grid grid-cols-2 gap-2">
                                                 {{-- Group T6+T7 (sub-grid 2 kolom) --}}
                                                 <div class="grid grid-cols-2 gap-1">
-                                                    @hasanyrole('Apoteker|Admin')
+                                                    @can('rj.antrian-apotek.taskIdApotek')
                                                         {{-- Tombol di sini; logika di komponen host task-id-apotek-actions (mount 1×).
                                                              wire:click="$dispatch(...)" = aksi Livewire (BUKAN Alpine) → host tangkap
                                                              via #[On]. Nol komponen Livewire per baris. Redup dari $row->task_id6/7. --}}
@@ -707,7 +707,7 @@ new class extends Component {
                                                             <x-ikon nama="kirim" />
                                                             TaskId7
                                                         </x-primary-button>
-                                                    @endhasanyrole
+                                                    @endcan
                                                 </div>
 
                                                 {{-- Telaah --}}
@@ -786,10 +786,10 @@ new class extends Component {
 
         {{-- Host aksi Task ID apotek (berisi fungsi) — mount 1×. Tombol tiap baris
              dispatch 'task-id-apotek-proses-rj' ke sini via wire:click. --}}
-        @hasanyrole('Apoteker|Admin')
+        @can('rj.antrian-apotek.taskIdApotek')
             <livewire:pages::transaksi.rj.task-id-pelayanan.task-id-apotek-actions
                 wire:key="task-id-apotek-actions-rj-host" />
-        @endhasanyrole
+        @endcan
 
         <livewire:pages::transaksi.rj.antrian-apotek-rj.antrian-apotek-rj-actions
             wire:key="antrian-apotek-rj-actions" />

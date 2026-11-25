@@ -812,7 +812,7 @@ new class extends Component {
                                                                 </x-dropdown-link>
                                                             @endcan
 
-                                                            @can('rekonsiliasi.obat')
+                                                            @can('ugd.emr.rekonsiliasiObat')
                                                                 <x-dropdown-link href="#"
                                                                     wire:click.prevent="openRekonsiliasiObat('{{ $row->rj_no }}')"
                                                                     class="px-3 py-2 text-sm rounded-lg h-full bg-cyan-50 hover:bg-cyan-100 dark:bg-cyan-900/20">
@@ -875,7 +875,7 @@ new class extends Component {
                                                                 @endif
                                                             @endcan
 
-                                                            @can('emr.codingFhir')
+                                                            @can('ugd.emr.codingFhir')
                                                                 <x-dropdown-link href="#"
                                                                     wire:click.prevent="openCodingFhir('{{ $row->rj_no }}')"
                                                                     class="px-3 py-2 text-sm rounded-lg h-full bg-brand-green/5 hover:bg-brand-green/10 dark:bg-brand-green/10">

@@ -817,7 +817,7 @@ new class extends Component {
                                                                     </x-dropdown-link>
                                                                 @endcan
 
-                                                                @can('emr.codingFhir')
+                                                                @can('ugd.emr.codingFhir')
                                                                     <x-dropdown-link href="#"
                                                                         wire:click.prevent="openCodingFhir('{{ $row->rj_no }}')"
                                                                         class="px-3 py-2 text-sm rounded-lg h-full bg-brand-green/5 hover:bg-brand-green/10 dark:bg-brand-green/10">
@@ -833,7 +833,7 @@ new class extends Component {
                                                                     </x-dropdown-link>
                                                                 @endcan
 
-                                                                @can('satusehat.kirim')
+                                                                @can('ugd.satusehat.kirim')
                                                                     <x-dropdown-link href="#"
                                                                         x-on:click.prevent="$dispatch('daftar-ugd.satu-sehat.open', { rjNo: {{ $row->rj_no }} })"
                                                                         class="px-3 py-2 text-sm rounded-lg h-full bg-teal-50 hover:bg-teal-100 dark:bg-teal-900/30 dark:hover:bg-teal-900/40">
@@ -886,7 +886,7 @@ new class extends Component {
                                                 {{-- SATU SEHAT — status kirim PER-RESOURCE, di kanan tombol Etiket/titik-3.
                                                      Grid 3x3 seragam + hitungan terkirim; abu-abu = belum, hijau/brand = sudah.
                                                      Klik chip = buka modal Kirim Satu Sehat UGD. --}}
-                                                @can('satusehat.kirim')
+                                                @can('ugd.satusehat.kirim')
                                                     @php $satusehatTerkirim = collect($row->satusehat_items)->where('sent', true)->count(); @endphp
                                                     <div class="flex-1 min-w-0 max-w-[280px]">
                                                         <div class="flex items-center justify-between gap-2 mb-1">
@@ -955,7 +955,7 @@ new class extends Component {
 
             {{-- Kirim Satu Sehat UGD — modal 9 kartu (listen: daftar-ugd.satu-sehat.open) --}}
             <livewire:pages::transaksi.ugd.daftar-ugd.satu-sehat-ugd-actions wire:key="satu-sehat-ugd-actions" />
-            @can('emr.codingFhir')
+            @can('ugd.emr.codingFhir')
                 <livewire:pages::transaksi.ugd.coding-fhir-ugd.coding-fhir-ugd wire:key="coding-fhir-ugd" />
             @endcan
 

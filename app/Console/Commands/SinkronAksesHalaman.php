@@ -59,6 +59,7 @@ class SinkronAksesHalaman extends Command
             }
         }
         $diulang = 0;
+        $diwarisi = 0;
 
         foreach (AksesHalaman::rolesMenu() as $route => $roles) {
             if (in_array(AppMenu::SEMUA_ROLE, $roles, true)) {
@@ -123,6 +124,16 @@ class SinkronAksesHalaman extends Command
                 }
                 continue;
             }
+            // 'menggantikan' => nama hak lama yang dipecah/diganti (mis. dokumen.hapus → rj.dokumen.hapus):
+            // centangnya DIWARISKAN dari hak lama (termasuk yang sudah diatur admin di Role Control),
+            // bukan dari roles awal — pemecahan hak tidak boleh menambah/mengurangi hak siapa pun.
+            $sumberWaris = $aksi['menggantikan'] ?? null;
+            if ($sumberWaris !== null && isset($ada[$sumberWaris])) {
+                $targetRole = Permission::findByName($sumberWaris, 'web')->roles()->get()->all();
+                $diwarisi++;
+                $this->line("  waris {$nama} ← {$sumberWaris}: " . collect($targetRole)->pluck('name')->implode(', '));
+            }
+
             $baru++;
             $centang += count($targetRole);
             if ($dryRun) {
@@ -140,7 +151,7 @@ class SinkronAksesHalaman extends Command
             SinkronAksesOtomatis::tulisTanda(); // sinkron otomatis tak perlu mengulang
         }
 
-        $this->info(($dryRun ? '[dry-run] ' : '') . "Permission baru: {$baru}, centang role: {$centang}" . ($ulang ? ", diisi ulang: {$diulang}" : ''));
+        $this->info(($dryRun ? '[dry-run] ' : '') . "Permission baru: {$baru}, centang role: {$centang}" . ($ulang ? ", diisi ulang: {$diulang}" : '') . ($diwarisi ? ", mewarisi centang hak lama: {$diwarisi}" : ''));
         if ($roleTakDikenal) {
             $this->warn('Role di AppMenu tapi tidak ada di tabel roles: ' . implode(', ', array_keys($roleTakDikenal)));
         }

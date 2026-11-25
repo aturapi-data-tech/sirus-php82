@@ -492,7 +492,7 @@ new class extends Component {
 
                     {{-- KIRI: Log Aktivitas — slate solid, manager ke atas (pola footer EMR RI) --}}
                     <div class="flex items-center gap-2">
-                        @can('emr.logAktivitas')
+                        @can('ri.emr.logAktivitas')
                             <x-primary-button type="button" wire:click="openLogAktivitas('{{ $riHdrNo }}')"
                                 wire:loading.attr="disabled" wire:target="openLogAktivitas"
                                 class="gap-1 !bg-slate-600 hover:!bg-slate-700 !text-white focus:!ring-slate-300 dark:!bg-slate-600 dark:!text-white dark:hover:!bg-slate-700 dark:focus:!ring-slate-900">

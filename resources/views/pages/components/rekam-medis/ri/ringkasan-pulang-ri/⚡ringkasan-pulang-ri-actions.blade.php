@@ -10,7 +10,7 @@
 // `datadaftarri_json.ringkasanPulangTtd` — diserahkan (stempel perawat/bidan login),
 // penerima (signature-pad pasien/keluarga, gambar ke RSTXN_TTDS via TtdPasien), disetujui
 // (stempel Ka.Ru/PJ Shift/Ka.Tim login). Terkunci OTOMATIS begitu ketiganya lengkap.
-// Buka Kunci (Gate dokumen.bukaKunci) mencabut TTD PETUGAS saja; TTD penerima dipertahankan.
+// Buka Kunci (Gate ri.dokumen.bukaKunci) mencabut TTD PETUGAS saja; TTD penerima dipertahankan.
 
 use Livewire\Component;
 use Livewire\Attributes\Authorize;
@@ -445,7 +445,7 @@ new class extends Component {
     {
         $kodeSaya = (string) (auth()->user()->myuser_code ?? '');
         $pemilik = (string) data_get($this->ttd, "{$peran}.kode", '');
-        if (!($kodeSaya !== '' && $kodeSaya === $pemilik) && !Gate::allows('dokumen.bukaKunci')) {
+        if (!($kodeSaya !== '' && $kodeSaya === $pemilik) && !Gate::allows('ri.dokumen.bukaKunci')) {
             $this->dispatch('toast', type: 'error', message: "Hanya penanda tangan sendiri yang bisa menghapus TTD {$label}.");
             return;
         }
@@ -507,7 +507,7 @@ new class extends Component {
         if (empty($this->riHdrNo) || !$this->isFormLocked) {
             return;
         }
-        if (!Gate::allows('dokumen.bukaKunci')) {
+        if (!Gate::allows('ri.dokumen.bukaKunci')) {
             $this->dispatch('toast', type: 'error', message: 'Anda tidak berwenang membuka kunci.');
             return;
         }
@@ -764,7 +764,7 @@ new class extends Component {
             <div class="sticky bottom-0 z-10 flex items-center justify-between gap-2 px-6 py-3 border-t border-hairline bg-canvas dark:bg-gray-900 dark:border-gray-700 shrink-0">
                 {{-- Pojok kiri: Reset ke Default (draft) atau Buka Kunci (terkunci) — pola modul dokumen. --}}
                 @if ($isFormLocked)
-                    @can('dokumen.bukaKunci')
+                    @can('ri.dokumen.bukaKunci')
                         <x-confirm-button variant="warning-soft" action="bukaKunci()" title="Buka Kunci Ringkasan Pemulangan"
                             message="TTD petugas (menyerahkan & menyetujui) akan dicabut; TTD penerima tetap. Lanjutkan?"
                             confirmText="Ya, Buka Kunci" wire:key="buka-kunci-ringkasan-{{ $riHdrNo }}">

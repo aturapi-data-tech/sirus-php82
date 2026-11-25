@@ -1,6 +1,7 @@
 <?php
 
 use Livewire\Component;
+use Livewire\Attributes\Authorize;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
@@ -39,6 +40,7 @@ new class extends Component {
      | Detail event: { rjNo, aksi } dengan aksi ∈ {'6','7'}.
      =============================== */
     #[On('task-id-apotek-proses-rj')]
+    #[Authorize('rj.antrian-apotek.taskIdApotek')] // tombol khusus halaman (Role Control), dulu @hasanyrole('Apoteker|Admin') di tombol saja
     public function proses(int $rjNo, string $aksi): void
     {
         $this->rjNo = $rjNo;
@@ -64,6 +66,7 @@ new class extends Component {
      | ⚠️  noAntrianApotek dihitung DI DALAM transaksi + lock untuk mencegah
      |     race condition (dua pasien selesai bersamaan → nomor antrian dobel)
     =============================== */
+    #[Authorize('rj.antrian-apotek.taskIdApotek')] // tombol khusus halaman (Role Control), dulu @hasanyrole('Apoteker|Admin') di tombol saja
     public function prosesTaskId6(): void
     {
         // 1. Guard: rjNo belum di-set
@@ -228,6 +231,7 @@ new class extends Component {
      | 3. Push ke BPJS jika poli spesialis — DI LUAR transaksi (API call)
      | 4. lockRJRow + update waktu_selesai_pelayanan + patch taskIdPelayanan — ATOMIK
     =============================== */
+    #[Authorize('rj.antrian-apotek.taskIdApotek')] // tombol khusus halaman (Role Control), dulu @hasanyrole('Apoteker|Admin') di tombol saja
     public function prosesTaskId7(): void
     {
         // 1. Guard: rjNo belum di-set

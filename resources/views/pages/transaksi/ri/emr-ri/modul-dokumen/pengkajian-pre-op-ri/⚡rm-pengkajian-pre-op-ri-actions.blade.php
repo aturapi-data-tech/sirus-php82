@@ -449,7 +449,7 @@ new class extends Component {
      =============================== */
     public function bukaKunci(string $createdAt): void
     {
-        if (!auth()->user()?->can('dokumen.bukaKunci')) {
+        if (!auth()->user()?->can('ri.dokumen.bukaKunci')) {
             $this->dispatch('toast', type: 'error', message: 'Anda tidak berwenang membuka kunci.');
             return;
         }
@@ -677,7 +677,7 @@ new class extends Component {
      =============================== */
     public function hapus(string $createdAt): void
     {
-        if (!auth()->user()?->can('dokumen.hapus')) {
+        if (!auth()->user()?->can('ri.dokumen.hapus')) {
             $this->dispatch('toast', type: 'error', message: 'Anda tidak berwenang menghapus entri.');
             return;
         }

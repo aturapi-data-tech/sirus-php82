@@ -301,13 +301,13 @@ new class extends Component {
     }
 
     /* ===============================
-     | BUKA KUNCI TTD (Gate dokumen.bukaKunci) — cabut TTD petugas pengkaji.
+     | BUKA KUNCI TTD (Gate ri.dokumen.bukaKunci) — cabut TTD petugas pengkaji.
      | Hanya 3 key TTD yang dikosongkan di DB; isi pengkajian di layar yang belum
      | disimpan tidak ikut ditimpa.
      =============================== */
     public function bukaKunciTtd(): void
     {
-        if (!auth()->user()?->can('dokumen.bukaKunci')) {
+        if (!auth()->user()?->can('ri.dokumen.bukaKunci')) {
             $this->dispatch('toast', type: 'error', message: 'Anda tidak berwenang membuka kunci TTD.');
             return;
         }
@@ -1224,7 +1224,7 @@ new class extends Component {
                 nameLabel="Petugas Pengkaji" dateLabel="Jam Pengkajian" signLabel="TTD Saya" />
 
             @if (!$isFormLocked && filled($pengkajianAwal['bagian5CatatanDanTandaTangan']['petugasPengkaji'] ?? ''))
-                @can('dokumen.bukaKunci')
+                @can('ri.dokumen.bukaKunci')
                     <div class="pt-2">
                         <x-confirm-button variant="warning-soft" action="bukaKunciTtd()" title="Buka Kunci TTD"
                             message="TTD petugas pengkaji akan dicabut dan harus ditandatangani ulang. Lanjutkan?"

@@ -1170,7 +1170,7 @@ new class extends Component {
                                                                     </x-dropdown-link>
                                                                 @endcan
 
-                                                                @can('emr.codingFhir')
+                                                                @can('rj.emr.codingFhir')
                                                                     <x-dropdown-link href="#"
                                                                         wire:click.prevent="openCodingFhir('{{ $row->rj_no }}')"
                                                                         class="px-3 py-2 text-sm rounded-lg h-full bg-brand-green/5 hover:bg-brand-green/10 dark:bg-brand-green/10">

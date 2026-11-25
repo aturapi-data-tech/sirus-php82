@@ -219,7 +219,7 @@
                             </x-primary-button>
                         @endcan
 
-                        @can('emr.logAktivitas')
+                        @can('ugd.emr.logAktivitas')
                             {{-- Log Aktivitas — slate solid (manager ke atas) --}}
                             <x-primary-button type="button" wire:click="openLogAktivitas({{ $rjNo }})"
                                 wire:loading.attr="disabled" wire:target="openLogAktivitas"
@@ -279,7 +279,7 @@
                             </x-primary-button>
                         @endhasanyrole
 
-                        @can('emr.cetakEresep')
+                        @can('ugd.emr.cetakEresep')
                             @if ($this->hasEresep())
                                 <x-cetak-button wire:click="cetakEresep('{{ $rjNo }}')" label="Cetak E-Resep" />
                             @endif

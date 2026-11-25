@@ -1,6 +1,7 @@
 <?php
 
 use Livewire\Component;
+use Livewire\Attributes\Authorize;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
@@ -38,6 +39,7 @@ new class extends Component {
      | Detail event: { rjNo, aksi } dengan aksi ∈ {'6','7'}.
      =============================== */
     #[On('task-id-apotek-proses-ugd')]
+    #[Authorize('ugd.antrian-apotek.taskIdApotek')] // tombol khusus halaman (Role Control), dulu @hasanyrole('Apoteker|Admin') di tombol saja
     public function proses(int $rjNo, string $aksi): void
     {
         $this->rjNo = $rjNo;
@@ -58,6 +60,7 @@ new class extends Component {
      |      + noAntrianApotek (atomik, cegah race condition) → updateJsonUGD
      |   3. dispatch + isLoading = false DI LUAR transaksi
      =============================== */
+    #[Authorize('ugd.antrian-apotek.taskIdApotek')] // tombol khusus halaman (Role Control), dulu @hasanyrole('Apoteker|Admin') di tombol saja
     public function prosesTaskId6(): void
     {
         if (empty($this->rjNo)) {
@@ -160,6 +163,7 @@ new class extends Component {
      |      → update waktu_selesai_pelayanan + JSON atomik
      |   3. dispatch DI LUAR transaksi
      =============================== */
+    #[Authorize('ugd.antrian-apotek.taskIdApotek')] // tombol khusus halaman (Role Control), dulu @hasanyrole('Apoteker|Admin') di tombol saja
     public function prosesTaskId7(): void
     {
         if (empty($this->rjNo)) {

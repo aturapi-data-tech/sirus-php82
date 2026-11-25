@@ -190,7 +190,7 @@ new class extends Component {
     /** Guard SERVER — guard blade saja bisa ditembus karena wire:click memanggil method publik. */
     private function bolehAkses(): bool
     {
-        if (auth()->user()?->can('rekonsiliasi.obat')) {
+        if (auth()->user()?->can('ugd.emr.rekonsiliasiObat')) {
             return true;
         }
 

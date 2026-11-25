@@ -327,18 +327,18 @@ Aksi sensitif di **modul dokumen** (formulir bertanda tangan: consent, laporan,
 pengkajian, dll) — **Hapus** entri & **Buka Kunci** (cabut TTD) — WAJIB digate lewat
 **Gate terpusat**, bukan `@hasanyrole` literal. Daftar role ada di **satu file**
 `App\Support\AksiRole` (konstanta `DOKUMEN_HAPUS` & `DOKUMEN_BUKA_KUNCI`), didaftarkan
-sebagai Gate `dokumen.hapus` & `dokumen.bukaKunci` di `AppServiceProvider::boot()`.
+sebagai Gate `{rj|ugd|ri}.dokumen.hapus` & `{rj|ugd|ri}.dokumen.bukaKunci` di `AppServiceProvider::boot()`.
 
 ```blade
 {{-- Buka Kunci --}}
-@can('dokumen.bukaKunci')
+@can('{rj|ugd|ri}.dokumen.bukaKunci')
     <x-confirm-button action="bukaKunci('{{ $rowKey }}')" title="Buka Kunci ..."
         message="TTD petugas dicabut & entri kembali draft. Lanjutkan?"
         confirmText="Ya, Buka Kunci">Buka Kunci</x-confirm-button>
 @endcan
 
 {{-- Hapus --}}
-@can('dokumen.hapus')
+@can('{rj|ugd|ri}.dokumen.hapus')
     <x-outline-button type="button" wire:click.prevent="hapus('{{ $rowKey }}')"
         wire:confirm="Yakin hapus ... ini?" wire:loading.attr="disabled"
         class="!text-red-600 !bg-red-50 !border-red-200 ...">{{-- ikon tong sampah --}}</x-outline-button>
@@ -347,11 +347,11 @@ sebagai Gate `dokumen.hapus` & `dokumen.bukaKunci` di `AppServiceProvider::boot(
 
 ```php
 // Guard server (DUA lapis) — statement PERTAMA di method hapus/removeEntry/dll:
-if (!auth()->user()?->can('dokumen.hapus')) {
+if (!auth()->user()?->can('{rj|ugd|ri}.dokumen.hapus')) {
     $this->dispatch('toast', type: 'error', message: 'Anda tidak berwenang menghapus entri.');
     return;
 }
-// bolehBukaKunci(): return (bool) auth()->user()?->can('dokumen.bukaKunci');
+// bolehBukaKunci(): return (bool) auth()->user()?->can('{rj|ugd|ri}.dokumen.bukaKunci');
 ```
 
 > Menambah/mengurangi role yang boleh Hapus/Buka Kunci = ubah **1 baris** di

@@ -8,12 +8,12 @@ namespace App\Support;
  * Menggantikan penulisan literal berulang di tiap berkas:
  *
  *   SEBELUM  @hasanyrole('Admin|Manager Umum|Manager Medis')      (6 tempat, mudah melenceng)
- *   SESUDAH  @can('emr.logAktivitas')                             (1 sumber)
+ *   SESUDAH  @can('{rj|ugd|ri}.emr.logAktivitas')                             (1 sumber)
  *
  * Konstanta dikonsumsi lewat Gate yang didaftarkan di
  * App\Providers\AppServiceProvider::boot(). Pemakaian:
- *   - Blade  : @can('dokumen.hapus') ... @endcan
- *   - Server : auth()->user()?->can('dokumen.hapus')
+ *   - Blade  : @can('{rj|ugd|ri}.dokumen.hapus') ... @endcan
+ *   - Server : auth()->user()?->can('{rj|ugd|ri}.dokumen.hapus')
  *
  * ATURAN PENTING — SATU KONSTANTA PER MAKSUD, BUKAN PER DAFTAR ROLE.
  * Dua aksi yang kebetulan punya daftar sama TETAP dipisah konstantanya, supaya
@@ -311,6 +311,10 @@ class AksiRole
      */
     public const KASIR_RI_BATAL = self::PENGAWAS_KEUANGAN;
     public const KASIR_RI_BATAL_INAP = self::PENGAWAS_KEUANGAN;
+    /** Terima Angsuran Awal (titipan) RI = petugas kasir (sama dengan Proses Pulang) + atasannya. */
+    public const RI_ANGSURAN_AWAL_TERIMA = ['Admin', 'Tu', 'Supervisor Tu'];
+    /** Hapus Angsuran Awal RI — pengawas keuangan (uang sudah diterima), sama dengan Batal Pulang. */
+    public const RI_ANGSURAN_AWAL_HAPUS = self::PENGAWAS_KEUANGAN;
     public const KASIR_RESEP_RI_POSTING = ['Admin', 'Tu', 'Manager Umum', 'Supervisor Tu'];
     public const KASIR_RESEP_RI_BATAL = self::PENGAWAS_KEUANGAN;
     public const KASIR_RESEP_RI_UBAH_JASA = ['Admin', 'Tu', 'Manager Umum', 'Supervisor Tu'];

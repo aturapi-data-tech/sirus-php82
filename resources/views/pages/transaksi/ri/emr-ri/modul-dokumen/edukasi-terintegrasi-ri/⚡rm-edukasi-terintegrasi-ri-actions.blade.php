@@ -499,13 +499,13 @@ new class extends Component {
     }
 
     /* ===============================
-     | BUKA KUNCI (unlock) — Gate dokumen.bukaKunci.
+     | BUKA KUNCI (unlock) — Gate ri.dokumen.bukaKunci.
      | Mencabut kunci + TTD PETUGAS saja; TTD pasien/keluarga DIPERTAHANKAN,
      | entri kembali jadi draft untuk dikoreksi lalu dikunci ulang oleh petugas.
      =============================== */
     public function bukaKunci(string $edukasiId): void
     {
-        if (!auth()->user()?->can('dokumen.bukaKunci')) {
+        if (!auth()->user()?->can('ri.dokumen.bukaKunci')) {
             $this->dispatch('toast', type: 'error', message: 'Hanya Admin / Manager yang dapat membuka kunci.');
             return;
         }
@@ -631,7 +631,7 @@ new class extends Component {
 
     public function removeEdukasiTerintegrasiById(string $edukasiId): void
     {
-        if (!auth()->user()?->can('dokumen.hapus')) {
+        if (!auth()->user()?->can('ri.dokumen.hapus')) {
             $this->dispatch('toast', type: 'error', message: 'Anda tidak berwenang menghapus entri.');
             return;
         }
@@ -1499,7 +1499,7 @@ new class extends Component {
                                 </div>
                             </td>
                             <td class="px-4 py-3 text-center align-middle whitespace-nowrap" @click.stop>
-                                <x-modul-dokumen.aksi-entri kunci="{{ $edukasiId }}" :final="$isFinal" :terkunci="$isFormLocked"
+                                <x-modul-dokumen.aksi-entri jalur="ri" kunci="{{ $edukasiId }}" :final="$isFinal" :terkunci="$isFormLocked"
                                     :bisaDiubah="filled($edukasiId)"
                                     hapus="removeEdukasiTerintegrasiById"
                                     judulLihat="Lihat detail (read-only) di form atas"

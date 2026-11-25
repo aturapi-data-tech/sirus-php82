@@ -1304,7 +1304,7 @@ new class extends Component {
                                                                     </x-dropdown-link>
                                                                 @endcan
 
-                                                                @can('emr.codingFhir')
+                                                                @can('rj.emr.codingFhir')
                                                                     <x-dropdown-link href="#"
                                                                         wire:click.prevent="openCodingFhir('{{ $row->rj_no }}')"
                                                                         class="px-3 py-2 text-sm rounded-lg h-full bg-brand-green/5 hover:bg-brand-green/10 dark:bg-brand-green/10">
@@ -1320,7 +1320,7 @@ new class extends Component {
                                                                     </x-dropdown-link>
                                                                 @endcan
 
-                                                                @can('satusehat.kirim')
+                                                                @can('rj.satusehat.kirim')
                                                                     <x-dropdown-link href="#"
                                                                         wire:click.prevent="openSatuSehat('{{ $row->rj_no }}')"
                                                                         class="px-3 py-2 text-sm rounded-lg h-full bg-teal-50 hover:bg-teal-100 dark:bg-teal-900/20 dark:hover:bg-teal-900/40">
@@ -1367,7 +1367,7 @@ new class extends Component {
 
                                                 {{-- SATU SEHAT — status kirim PER-RESOURCE, di kanan tombol titik-3.
                                                      Abu-abu = belum dikirim, hijau/brand = sudah. Klik chip mana pun = buka modal Kirim Satu Sehat. --}}
-                                                @can('satusehat.kirim')
+                                                @can('rj.satusehat.kirim')
                                                     <div class="flex-1 min-w-0">
                                                         <x-input-label value="Satu Sehat" class="mb-1 text-[10px] uppercase tracking-wide text-muted" />
                                                     <div class="flex flex-wrap items-center gap-1">
@@ -1443,7 +1443,7 @@ new class extends Component {
 
             <livewire:pages::transaksi.rj.daftar-rj.daftar-rj-actions wire:key="daftar-rj-actions" />
             <livewire:pages::transaksi.rj.daftar-rj.satu-sehat-rj-actions wire:key="satu-sehat-rj-actions" />
-            @can('emr.codingFhir')
+            @can('rj.emr.codingFhir')
                 <livewire:pages::transaksi.rj.coding-fhir-rj.coding-fhir-rj wire:key="coding-fhir-rj" />
             @endcan
             <livewire:pages::components.rekam-medis.etiket.cetak-etiket wire:key="cetak-etiket-pasien" />

@@ -364,7 +364,7 @@ new class extends Component {
 
     public function hapusEntri(string $id): void
     {
-        if (!auth()->user()?->can('dokumen.hapus')) {
+        if (!auth()->user()?->can('ri.dokumen.hapus')) {
             $this->dispatch('toast', type: 'error', message: 'Anda tidak berwenang menghapus entri.');
             return;
         }
@@ -398,7 +398,7 @@ new class extends Component {
      =============================== */
     private function bolehBukaKunci(): bool
     {
-        return (bool) auth()->user()?->can('dokumen.bukaKunci');
+        return (bool) auth()->user()?->can('ri.dokumen.bukaKunci');
     }
 
     public function bukaKunci(string $id): void
@@ -827,7 +827,7 @@ new class extends Component {
                                         </td>
                                         <td class="px-3 py-2 align-middle border-b border-hairline dark:border-gray-700 text-muted dark:text-gray-300">{{ data_get($rf, 'ttd.dokterNama') ?: '-' }}</td>
                                         <td class="px-3 py-2 text-center align-middle border-b border-hairline dark:border-gray-700 whitespace-nowrap" @click.stop>
-                                            <x-modul-dokumen.aksi-entri kunci="{{ $rid }}" :final="$final" :terkunci="$isFormLocked"
+                                            <x-modul-dokumen.aksi-entri jalur="ri" kunci="{{ $rid }}" :final="$final" :terkunci="$isFormLocked"
                                                 :bisaDiubah="filled($rid)"
                                                 lanjut="editEntri"
                                                 lihat="editEntri"

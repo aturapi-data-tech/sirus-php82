@@ -30,9 +30,9 @@
 
             <x-input-error :messages="$errors->get('perencanaan.pengkajianMedis.drPemeriksa')" class="mt-1" />
 
-            {{-- Catatan perwakilan hanya untuk manager ke atas (Gate dokumen.ttdPerwakilan) —
+            {{-- Catatan perwakilan hanya untuk manager ke atas (Gate ugd.dokumen.ttdPerwakilan) —
                  user biasa cukup melihat stempel dokter, supaya tidak bingung. Jejaknya tetap di log. --}}
-            @can('dokumen.ttdPerwakilan')
+            @can('ugd.dokumen.ttdPerwakilan')
                 @if (!empty($perencanaan['pengkajianMedis']['diwakilkanOleh']['nama']))
                     <p class="text-xs text-amber-700 dark:text-amber-400">
                         Diwakilkan oleh {{ $perencanaan['pengkajianMedis']['diwakilkanOleh']['nama'] }}
@@ -43,7 +43,7 @@
                 @endif
             @endcan
 
-            {{-- TTD-E perwakilan (manager ke atas, Gate dokumen.ttdPerwakilan) — pola Resume Medis RI:
+            {{-- TTD-E perwakilan (manager ke atas, Gate ugd.dokumen.ttdPerwakilan) — pola Resume Medis RI:
                  stempel tetap atas nama dokter kunjungan, penekan tombol tercatat di stempel & log. --}}
             @if (!$isFormLocked && blank($perencanaan['pengkajianMedis']['drPemeriksa'] ?? '') && $this->bolehTtdPerwakilan())
                 <div>
@@ -63,12 +63,12 @@
             @endif
 
             {{-- Buka Kunci TTD-E — hanya muncul bila SUDAH ter-TTD, dan hanya untuk role
-                 berhak (Gate dokumen.bukaKunci, sama dengan Buka Kunci Screening & modul
+                 berhak (Gate ugd.dokumen.bukaKunci, sama dengan Buka Kunci Screening & modul
                  dokumen). Tombol TTD sendiri hilang begitu stempel
                  terisi, jadi tanpa ini salah TTD tak punya jalan pulang. Gaya mengikuti
                  Buka Kunci modul dokumen: x-confirm-button variant kuning. --}}
             @if (filled($perencanaan['pengkajianMedis']['drPemeriksa'] ?? ''))
-                @can('dokumen.bukaKunci')
+                @can('ugd.dokumen.bukaKunci')
                     <div class="flex justify-end">
                         <x-confirm-button variant="warning-soft" action="bukaKunciTtdPemeriksa()"
                             title="Buka Kunci TTD-E"
