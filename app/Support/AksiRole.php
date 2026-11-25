@@ -318,7 +318,7 @@ class AksiRole
     /** Hapus pembayaran piutang yang salah — dulu ROLE_HAPUS_BAYAR (aturan tanggal/keterangan tetap di kode). */
     public const PIUTANG_HAPUS_BAYAR = ['Admin', 'Supervisor Tu'];
 
-    /* ─────────────────────── CPPT & SBAR RAWAT INAP ─────────────────────── */
+    /* ─────────────────────── CPPT & SBAR (RI + UGD) ─────────────────────── */
     /**
      * Aturan PEMILIK entri (edit = penulisnya) dan DPJP (review = DPJP Utama) tetap di kode
      * modul — bukan role. Yang di sini hanya PENGECUALIAN-nya, dulu tertulis `hasRole('Admin')`.
@@ -339,6 +339,11 @@ class AksiRole
     public const RI_SBAR_COPY_SEMUA = ['Admin'];
     /** Review/TTD SBAR walau bukan DPJP Utama pasien. */
     public const RI_SBAR_REVIEW_SEMUA = ['Admin'];
+    /** SBAR UGD (T6) — pola sama dgn SBAR RI; "DPJP" di UGD = dokter kunjungan. */
+    public const UGD_SBAR_HAPUS = ['Admin', 'Manager Umum', 'Manager Medis', 'Supervisor Penunjang', 'Supervisor Tu', 'Mr', 'Casemix'];
+    public const UGD_SBAR_UBAH_SEMUA = ['Admin'];
+    public const UGD_SBAR_COPY_SEMUA = ['Admin'];
+    public const UGD_SBAR_REVIEW_SEMUA = ['Admin'];
 
     /**
      * KATALOG AKSI KHUSUS — nama Gate => [area, label, roles awal].
@@ -363,14 +368,19 @@ class AksiRole
         'rekonsiliasi.obat' => ['area' => 'EMR', 'label' => 'Rekonsiliasi obat (titik-3)', 'roles' => self::REKONSILIASI_OBAT],
         'penunjang.lihatHasil' => ['area' => 'EMR', 'label' => 'Lihat & cetak hasil penunjang', 'roles' => self::PENUNJANG_LIHAT_HASIL],
 
-        'ri.cppt.hapus' => ['area' => 'CPPT & SBAR RI', 'label' => 'CPPT: hapus entri', 'roles' => self::RI_CPPT_HAPUS],
-        'ri.cppt.ubahSemua' => ['area' => 'CPPT & SBAR RI', 'label' => 'CPPT: edit entri petugas lain', 'roles' => self::RI_CPPT_UBAH_SEMUA],
-        'ri.cppt.copySemua' => ['area' => 'CPPT & SBAR RI', 'label' => 'CPPT: copy dari profesi lain', 'roles' => self::RI_CPPT_COPY_SEMUA],
-        'ri.cppt.reviewSemua' => ['area' => 'CPPT & SBAR RI', 'label' => 'CPPT: review walau bukan DPJP', 'roles' => self::RI_CPPT_REVIEW_SEMUA],
-        'ri.sbar.hapus' => ['area' => 'CPPT & SBAR RI', 'label' => 'SBAR: hapus entri', 'roles' => self::RI_SBAR_HAPUS],
-        'ri.sbar.ubahSemua' => ['area' => 'CPPT & SBAR RI', 'label' => 'SBAR: edit entri petugas lain', 'roles' => self::RI_SBAR_UBAH_SEMUA],
-        'ri.sbar.copySemua' => ['area' => 'CPPT & SBAR RI', 'label' => 'SBAR: copy dari profesi lain', 'roles' => self::RI_SBAR_COPY_SEMUA],
-        'ri.sbar.reviewSemua' => ['area' => 'CPPT & SBAR RI', 'label' => 'SBAR: review walau bukan DPJP', 'roles' => self::RI_SBAR_REVIEW_SEMUA],
+        'ri.cppt.hapus' => ['area' => 'CPPT & SBAR', 'label' => 'CPPT: hapus entri', 'roles' => self::RI_CPPT_HAPUS],
+        'ri.cppt.ubahSemua' => ['area' => 'CPPT & SBAR', 'label' => 'CPPT: edit entri petugas lain', 'roles' => self::RI_CPPT_UBAH_SEMUA],
+        'ri.cppt.copySemua' => ['area' => 'CPPT & SBAR', 'label' => 'CPPT: copy dari profesi lain', 'roles' => self::RI_CPPT_COPY_SEMUA],
+        'ri.cppt.reviewSemua' => ['area' => 'CPPT & SBAR', 'label' => 'CPPT: review walau bukan DPJP', 'roles' => self::RI_CPPT_REVIEW_SEMUA],
+        'ri.sbar.hapus' => ['area' => 'CPPT & SBAR', 'label' => 'SBAR: hapus entri', 'roles' => self::RI_SBAR_HAPUS],
+        'ri.sbar.ubahSemua' => ['area' => 'CPPT & SBAR', 'label' => 'SBAR: edit entri petugas lain', 'roles' => self::RI_SBAR_UBAH_SEMUA],
+        'ri.sbar.copySemua' => ['area' => 'CPPT & SBAR', 'label' => 'SBAR: copy dari profesi lain', 'roles' => self::RI_SBAR_COPY_SEMUA],
+        'ri.sbar.reviewSemua' => ['area' => 'CPPT & SBAR', 'label' => 'SBAR: review walau bukan DPJP', 'roles' => self::RI_SBAR_REVIEW_SEMUA],
+
+        'ugd.sbar.hapus' => ['area' => 'CPPT & SBAR', 'label' => 'SBAR UGD: hapus entri', 'roles' => self::UGD_SBAR_HAPUS],
+        'ugd.sbar.ubahSemua' => ['area' => 'CPPT & SBAR', 'label' => 'SBAR UGD: edit entri petugas lain', 'roles' => self::UGD_SBAR_UBAH_SEMUA],
+        'ugd.sbar.copySemua' => ['area' => 'CPPT & SBAR', 'label' => 'SBAR UGD: copy dari profesi lain', 'roles' => self::UGD_SBAR_COPY_SEMUA],
+        'ugd.sbar.reviewSemua' => ['area' => 'CPPT & SBAR', 'label' => 'SBAR UGD: review walau bukan dokter UGD', 'roles' => self::UGD_SBAR_REVIEW_SEMUA],
 
         'idrg.kirim' => ['area' => 'Bridging', 'label' => 'Kirim iDRG / INA-CBG', 'roles' => self::IDRG_KIRIM],
         'satusehat.kirim' => ['area' => 'Bridging', 'label' => 'Kirim SATUSEHAT', 'roles' => self::SATUSEHAT_KIRIM],
