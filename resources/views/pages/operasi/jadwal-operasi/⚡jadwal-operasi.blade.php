@@ -111,10 +111,12 @@ new class extends Component {
                                 <option value="100">100</option>
                             </x-select-input>
                         </div>
+                        @can('operasi.jadwal-operasi.tambah')
                         <x-primary-button type="button" wire:click="openCreate">
                             <x-ikon nama="tambah" />
                             Tambah Jadwal Operasi Baru
                         </x-primary-button>
+                        @endcan
                     </div>
                 </div>
             </div>
@@ -178,7 +180,9 @@ new class extends Component {
                                                 <x-ikon nama="ubah" />
                                                 Edit
                                             </x-secondary-button>
+                                            @can('operasi.jadwal-operasi.hapus')
                                             <x-hapus-button :action="'requestDelete(\'' . $row->no_rawat . '\')'" title="Hapus Jadwal Operasi" message="Yakin hapus jadwal {{ $row->reg_no }} – {{ $row->nm_paket }}?" />
+                                            @endcan
                                         </div>
                                     </td>
                                 </tr>

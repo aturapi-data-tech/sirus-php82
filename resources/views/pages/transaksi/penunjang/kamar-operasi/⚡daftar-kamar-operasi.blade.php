@@ -312,8 +312,10 @@ new class extends Component {
 <div>
     @php
         // Dihitung sekali: transaksi OK (Tu/Perawat/...) vs hanya dokumen bedah (Dokter/Casemix/Mr/Gizi).
+        // Hak dari Role Control: Ubah = membuka modal transaksi, Tambah = membuat transaksi baru.
         $bolehTransaksiOk = $this->isAllowedRoleOk();
-        $pesanTanpaAksesOk = 'Hanya Perawat, Tu, Supervisor Penunjang, Manager Umum & Admin yang dapat mengentri transaksi operasi.';
+        $bolehTambahOk = (bool) auth()->user()?->can('penunjang.kamar-operasi.tambah');
+        $pesanTanpaAksesOk = 'Akun Anda belum diberi hak mengentri transaksi operasi.';
     @endphp
     <x-page-title
         title="Transaksi Tindakan Operasi"
@@ -415,8 +417,8 @@ new class extends Component {
                     <div class="flex items-center gap-2 ml-auto">
                         {{-- Layanan yang sedang difilter dibawa ke modal Tambah supaya
                              petugas tidak perlu memilihnya dua kali (pola daftar-laborat). --}}
-                        <x-primary-button type="button" :disabled="!$bolehTransaksiOk"
-                            :title="$bolehTransaksiOk ? null : $pesanTanpaAksesOk"
+                        <x-primary-button type="button" :disabled="!$bolehTambahOk"
+                            :title="$bolehTambahOk ? null : $pesanTanpaAksesOk"
                             wire:click="$dispatch('kamar-operasi-tambah.open', { sumber: '{{ $filterLayanan ?: 'RI' }}' })">
                             <span class="flex items-center gap-1.5">
                                 <x-ikon nama="tambah" />

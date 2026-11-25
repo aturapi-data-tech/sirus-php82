@@ -4,6 +4,7 @@ use Livewire\Component;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Reactive;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 
 new class extends Component {
 
@@ -79,6 +80,8 @@ new class extends Component {
      * ======================= */
     public function addObat(): void
     {
+        Gate::authorize('penunjang.laborat.ubah');
+
         if ($this->labStatus !== 'P') {
             $this->dispatch('toast', type: 'warning', message: 'Tidak bisa menambah obat, pemeriksaan sudah diproses.');
             return;
@@ -118,6 +121,8 @@ new class extends Component {
      * ======================= */
     public function deleteObatRow(int $id): void
     {
+        Gate::authorize('penunjang.laborat.ubah');
+
         if ($this->labStatus !== 'P') {
             $this->dispatch('toast', type: 'warning', message: 'Tidak bisa menghapus obat, pemeriksaan sudah diproses.');
             return;
@@ -159,7 +164,7 @@ new class extends Component {
         @endif
 
         {{-- FORM ADD OBAT --}}
-        @if ($labStatus === 'P')
+        @if ($labStatus === 'P' && auth()->user()->can('penunjang.laborat.ubah'))
         <div class="p-4 border rounded-lg bg-surface-soft dark:bg-gray-800 dark:border-gray-700">
             <h4 class="mb-3 text-sm font-semibold text-body dark:text-gray-200">Tambah Obat dan Bahan</h4>
             <div class="grid grid-cols-1 gap-3 sm:grid-cols-4">
@@ -234,7 +239,7 @@ new class extends Component {
                             <td class="px-3 py-2 text-right">{{ number_format($ob['price'] ?? 0) }}</td>
                             <td class="px-3 py-2 text-right font-medium">{{ number_format($subtotal) }}</td>
                             <td class="px-3 py-2 text-center">
-                                @if ($labStatus === 'P')
+                                @if ($labStatus === 'P' && auth()->user()->can('penunjang.laborat.ubah'))
                                     <button type="button"
                                         wire:click="deleteObatRow({{ $ob['id'] }})"
                                         wire:confirm="Yakin hapus obat ini?"

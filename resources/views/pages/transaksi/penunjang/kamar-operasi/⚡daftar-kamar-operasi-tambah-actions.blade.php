@@ -45,7 +45,8 @@ new class extends Component {
     #[On('kamar-operasi-tambah.open')]
     public function openTambah(string $sumber = 'RI'): void
     {
-        if (!$this->isAllowedRoleOk()) {
+        // Membuat transaksi baru = hak Tambah (Role Control), terpisah dari Ubah.
+        if (!auth()->user()?->can('penunjang.kamar-operasi.tambah')) {
             $this->dispatch('toast', type: 'error', message: 'Anda tidak memiliki akses ke modul Tindakan Operasi.');
             return;
         }
@@ -175,7 +176,7 @@ new class extends Component {
      */
     public function simpanOperasi(): void
     {
-        if (!$this->isAllowedRoleOk()) {
+        if (!auth()->user()?->can('penunjang.kamar-operasi.tambah')) {
             $this->dispatch('toast', type: 'error', message: 'Anda tidak memiliki akses.');
             return;
         }

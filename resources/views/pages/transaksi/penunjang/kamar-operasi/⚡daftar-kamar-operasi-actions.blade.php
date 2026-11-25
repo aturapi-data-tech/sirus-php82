@@ -578,7 +578,7 @@ new class extends Component {
 
                 <div class="flex flex-wrap items-center justify-between gap-3">
 
-                    {{-- KIRI: Batal (Admin / Supervisor Penunjang) --}}
+                    {{-- KIRI: Batal (hak penunjang.kamar-operasi.batal di Role Control) --}}
                     <div class="flex items-center gap-2">
                         @if ($statusOk === 'A')
                             @if ($this->isAllowedBatalOk())

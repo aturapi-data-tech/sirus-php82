@@ -2,7 +2,10 @@
 
 use Livewire\Component;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Locked;
+use Livewire\Attributes\Authorize;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Database\QueryException;
 use Carbon\Carbon;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
@@ -10,6 +13,8 @@ use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 new class extends Component {
     use WithRenderVersioningTrait;
 
+    /** Dikunci: menentukan hak yang dicek saat save (tambah vs ubah). */
+    #[Locked]
     public string $formMode = 'create';
     public array $renderVersions = [];
     protected array $renderAreas = ['modal'];
@@ -41,6 +46,7 @@ new class extends Component {
 
     /* ─── Open Create ─── */
     #[On('jadwal-operasi.openCreate')]
+    #[Authorize('operasi.jadwal-operasi.tambah')]
     public function openCreate(): void
     {
         $this->resetAll();
@@ -140,6 +146,7 @@ new class extends Component {
 
     /* ─── Delete ─── */
     #[On('jadwal-operasi.requestDelete')]
+    #[Authorize('operasi.jadwal-operasi.hapus')]
     public function deleteRow(string $noRawat): void
     {
         try {
@@ -216,6 +223,9 @@ new class extends Component {
     /* ─── Save ─── */
     public function save(): void
     {
+        // openEdit juga dipakai untuk melihat detail, jadi hak Ubah dicek di sini.
+        Gate::authorize($this->formMode === 'create' ? 'operasi.jadwal-operasi.tambah' : 'operasi.jadwal-operasi.ubah');
+
         $this->validate();
 
         /* Konversi tanggal dd/mm/yyyy → Y-m-d untuk disimpan */
@@ -430,10 +440,12 @@ new class extends Component {
                     </div>
                     <div class="flex justify-end gap-2">
                         <x-secondary-button type="button" wire:click="closeModal"><x-ikon nama="batal" /> Batal</x-secondary-button>
+                        @can($formMode === 'create' ? 'operasi.jadwal-operasi.tambah' : 'operasi.jadwal-operasi.ubah')
                         <x-primary-button type="button" wire:click="save" wire:loading.attr="disabled">
                             <span wire:loading.remove class="inline-flex items-center gap-2"><x-ikon nama="simpan" /> Simpan</span>
                             <span wire:loading>Saving...</span>
                         </x-primary-button>
+                        @endcan
                     </div>
                 </div>
             </div>

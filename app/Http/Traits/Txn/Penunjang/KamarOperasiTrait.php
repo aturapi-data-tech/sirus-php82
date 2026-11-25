@@ -41,14 +41,16 @@ trait KamarOperasiTrait
 
     /**
      * Petugas yang boleh membuka & mengubah transaksi OK (tindakan, tarif, transfer biaya).
-     * Tu ikut karena transaksinya menyangkut tagihan. Dokter/Casemix/Mr/Gizi TIDAK —
-     * mereka hanya membuka Dokumen Pelayanan Bedah dari menu titik-3 (ROLE_MENU_OK).
+     * Hak diatur di Role Control: `penunjang.kamar-operasi.ubah` (membuat transaksi
+     * baru dicek terpisah lewat `penunjang.kamar-operasi.tambah`).
+     * Isi awal disalin dari daftar lama: Admin, Manager Umum, Supervisor Penunjang,
+     * Supervisor Tu, Tu, Perawat. Tu ikut karena transaksinya menyangkut tagihan.
+     * Dokter/Casemix/Mr/Gizi TIDAK — mereka hanya membuka Dokumen Pelayanan Bedah
+     * dari menu titik-3 (ROLE_MENU_OK).
      */
     public function isAllowedRoleOk(): bool
     {
-        $user = auth()->user();
-
-        return $user ? $user->hasAnyRole(['Admin', 'Manager Umum', 'Supervisor Penunjang', 'Supervisor Tu', 'Tu', 'Perawat']) : false;
+        return (bool) auth()->user()?->can('penunjang.kamar-operasi.ubah');
     }
 
     /** Role yang melihat menu titik-3 di daftar OK = role transaksi + role dokumen bedah. */
@@ -56,14 +58,15 @@ trait KamarOperasiTrait
 
     /**
      * Batal transaksi = eskalasi ke atasan, sejalan dengan modul Laboratorium.
-     * Supervisor Tu = atasan Tu yang ikut mengentri; Tu sendiri TIDAK boleh batal.
+     * Hak diatur di Role Control: aksi khusus `penunjang.kamar-operasi.batal`
+     * (isi awal: Admin, Supervisor Penunjang, Supervisor Tu).
+     * Supervisor Tu = atasan Tu yang ikut mengentri; Tu sendiri TIDAK boleh batal —
+     * jangan centang Tu di Role Control, operator tidak membatalkan pekerjaannya sendiri.
      * Public: dipakai juga oleh view untuk menampilkan tombol batal.
      */
     public function isAllowedBatalOk(): bool
     {
-        $user = auth()->user();
-
-        return $user ? $user->hasAnyRole(['Admin', 'Supervisor Penunjang', 'Supervisor Tu']) : false;
+        return (bool) auth()->user()?->can('penunjang.kamar-operasi.batal');
     }
 
     /**

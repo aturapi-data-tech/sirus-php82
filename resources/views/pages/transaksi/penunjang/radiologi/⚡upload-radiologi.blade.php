@@ -5,6 +5,7 @@ use Livewire\WithPagination;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Carbon\Carbon;
 use App\Http\Traits\Txn\Rj\EmrRJTrait;
 use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
@@ -228,6 +229,8 @@ new class extends Component {
      =============================== */
     public function updateKeterangan(string $source, int $dtlNo, int $refNo, string $value): void
     {
+        Gate::authorize('penunjang.radiologi.upload.ubah');
+
         $this->updateRadColumn($source, $dtlNo, $refNo, 'keterangan', $value, 'Keterangan');
     }
 
@@ -237,6 +240,8 @@ new class extends Component {
      =============================== */
     public function updateTglBacaan(string $source, int $dtlNo, int $refNo, string $value): void
     {
+        Gate::authorize('penunjang.radiologi.upload.ubah');
+
         $value = trim($value);
         try {
             $payload = null;
@@ -266,6 +271,8 @@ new class extends Component {
     /* Tombol "Sekarang": set Tgl Bacaan ke SYSDATE (detik presisi) server-side. */
     public function setTglBacaanNow(string $source, int $dtlNo, int $refNo): void
     {
+        Gate::authorize('penunjang.radiologi.upload.ubah');
+
         try {
             $this->storeTglBacaan($source, $dtlNo, $refNo, DB::raw('SYSDATE'));
             $this->dispatch('toast', type: 'success', message: 'Tgl Bacaan diset ke sekarang.');
@@ -294,6 +301,8 @@ new class extends Component {
      =============================== */
     public function updateDrPengirim(string $source, int $dtlNo, int $refNo, string $value): void
     {
+        Gate::authorize('penunjang.radiologi.upload.ubah');
+
         $this->updateRadColumn($source, $dtlNo, $refNo, 'dr_pengirim', $value, 'Dokter Pengirim');
     }
 
@@ -344,6 +353,8 @@ new class extends Component {
      =============================== */
     public function startEditTarif(string $source, int $dtlNo, int $refNo, $price): void
     {
+        Gate::authorize('penunjang.radiologi.upload.ubah');
+
         if ($this->isRefLocked($source, $refNo)) {
             $this->dispatch('toast', type: 'error', message: 'Pasien sudah pulang — tarif terkunci.');
             unset($this->rows);
@@ -362,6 +373,8 @@ new class extends Component {
 
     public function saveTarif(): void
     {
+        Gate::authorize('penunjang.radiologi.upload.ubah');
+
         if ($this->editingKey === null) {
             return;
         }
@@ -419,12 +432,12 @@ new class extends Component {
         return $row && !empty($row->rj_status) && $row->rj_status !== 'A';
     }
 
-    /* Batal order hanya boleh ATASAN — Admin + Supervisor Penunjang (staff Radiologi
-       tidak boleh batal sendiri, harus eskalasi). Seragam dgn isAllowedBatal modul lab. */
+    /* Batal order hanya boleh ATASAN (staff Radiologi tidak boleh batal sendiri, harus
+       eskalasi). Daftar yang berhak diatur di Role Control (aksi khusus "batal").
+       Seragam dgn isAllowedBatal modul lab. */
     private function isAllowedBatal(): bool
     {
-        $user = auth()->user();
-        return $user && $user->hasAnyRole(['Admin', 'Supervisor Penunjang']);
+        return (bool) auth()->user()?->can('penunjang.radiologi.upload.batal');
     }
 
     /* Batalkan (hapus permanen) order radiologi di program penunjang. Hapus baris
@@ -433,7 +446,7 @@ new class extends Component {
     public function batalkanOrder(string $source, int $dtlNo, int $refNo): void
     {
         if (!$this->isAllowedBatal()) {
-            $this->dispatch('toast', type: 'error', message: 'Anda tidak berhak membatalkan order (hanya Admin / Supervisor Penunjang).');
+            $this->dispatch('toast', type: 'error', message: 'Anda tidak berhak membatalkan order radiologi.');
             return;
         }
         if ($this->isRefLocked($source, $refNo)) {
@@ -581,12 +594,14 @@ new class extends Component {
                     {{-- RIGHT ACTIONS --}}
                     <div class="flex items-center gap-2 ml-auto">
                         {{-- Tambah pemeriksaan radiologi utk pasien aktif hari ini (sumber aktif) --}}
+                        @can('penunjang.radiologi.upload.tambah')
                         <x-primary-button type="button"
                             wire:click="$dispatch('radiologi.tambah.open', { source: '{{ $filterSource === 'ALL' ? 'RJ' : $filterSource }}' })"
                             class="gap-1.5 whitespace-nowrap">
                             <x-ikon nama="tambah" />
                             Tambah Pemeriksaan
                         </x-primary-button>
+                        @endcan
 
                         {{-- Tombol standar Refresh + Reset (komponen; tanpa label kolom) --}}
                         <x-toolbar-refresh-reset :label="null" />
@@ -621,6 +636,8 @@ new class extends Component {
                         </thead>
 
                         <tbody>
+                            {{-- Hak ubah dari Role Control — tanpa hak, isian tampil terkunci & tombol unggah disembunyikan --}}
+                            @php $bolehUbahRad = (bool) auth()->user()?->can('penunjang.radiologi.upload.ubah'); @endphp
                             @forelse ($this->rows as $row)
                                 @php
                                     $isFotoOk = !empty($row->rad_upload_pdf_foto);
@@ -780,6 +797,7 @@ new class extends Component {
                                                     <span class="font-semibold text-ink dark:text-gray-200">
                                                         Rp {{ number_format((float) $row->rad_price) }}
                                                     </span>
+                                                    @if ($bolehUbahRad)
                                                     <x-secondary-button type="button"
                                                         wire:click="startEditTarif('{{ $row->src }}', {{ $row->dtl_no }}, {{ $row->ref_no }}, {{ (int) $row->rad_price }})"
                                                         class="px-3 py-1 text-xs">
@@ -788,6 +806,7 @@ new class extends Component {
                                                             Edit
                                                         </span>
                                                     </x-secondary-button>
+                                                    @endif
                                                 </div>
                                             @endif
                                         </div>
@@ -797,23 +816,23 @@ new class extends Component {
                                     <td class="px-6 py-6 align-top space-y-2">
                                         <div>
                                             <x-input-label value="Dokter Pengirim" class="text-xs" />
-                                            <x-text-input :value="$row->dr_pengirim"
+                                            <x-text-input :value="$row->dr_pengirim" :disabled="!$bolehUbahRad"
                                                 wire:change="updateDrPengirim('{{ $row->src }}', {{ $row->dtl_no }}, {{ $row->ref_no }}, $event.target.value)"
                                                 placeholder="Nama dokter pengirim" class="mt-1" />
                                         </div>
                                         <div>
                                             <x-input-label value="Keterangan" class="text-xs" />
-                                            <x-text-input :value="$row->keterangan"
+                                            <x-text-input :value="$row->keterangan" :disabled="!$bolehUbahRad"
                                                 wire:change="updateKeterangan('{{ $row->src }}', {{ $row->dtl_no }}, {{ $row->ref_no }}, $event.target.value)"
                                                 placeholder="contoh: AP/lateral, sebelum kontras" class="mt-1" />
                                         </div>
                                         <div>
                                             <x-input-label value="Tgl Bacaan" class="text-xs" />
                                             <div class="mt-1 flex items-center gap-1.5">
-                                                <x-text-input :value="$row->tgl_bacaan"
+                                                <x-text-input :value="$row->tgl_bacaan" :disabled="!$bolehUbahRad"
                                                     wire:change="updateTglBacaan('{{ $row->src }}', {{ $row->dtl_no }}, {{ $row->ref_no }}, $event.target.value)"
                                                     placeholder="dd/mm/yyyy HH:mm:ss" class="flex-1" />
-                                                <x-now-button
+                                                <x-now-button :disabled="!$bolehUbahRad"
                                                     wire:click="setTglBacaanNow('{{ $row->src }}', {{ $row->dtl_no }}, {{ $row->ref_no }})"
                                                     title="Set Tgl Bacaan ke sekarang" />
                                             </div>
@@ -840,6 +859,7 @@ new class extends Component {
                                                     </svg>
                                                     Lihat
                                                 </button>
+                                                @if ($bolehUbahRad)
                                                 <x-secondary-button type="button"
                                                     wire:click="$dispatch('radiologi.foto.open', { source: '{{ $row->src }}', dtlNo: {{ $row->dtl_no }}, refNo: {{ $row->ref_no }} })"
                                                     class="px-3 py-1.5 text-sm">
@@ -848,7 +868,8 @@ new class extends Component {
                                                         Replace
                                                     </span>
                                                 </x-secondary-button>
-                                            @else
+                                                @endif
+                                            @elseif ($bolehUbahRad)
                                                 <x-primary-button type="button"
                                                     wire:click="$dispatch('radiologi.foto.open', { source: '{{ $row->src }}', dtlNo: {{ $row->dtl_no }}, refNo: {{ $row->ref_no }} })"
                                                     class="px-3 py-1.5 text-sm">
@@ -880,7 +901,9 @@ new class extends Component {
                                                     Lihat
                                                 </button>
                                             @endif
-                                            @if ($isHasilOk || !empty($row->hasil_bacaan))
+                                            @if (!$bolehUbahRad)
+                                                {{-- Tanpa hak ubah: hanya tombol Lihat --}}
+                                            @elseif ($isHasilOk || !empty($row->hasil_bacaan))
                                                 {{-- Sudah ada hasil (PDF terupload / bacaan tergenerate) → secondary, pembeda dari yg belum (ala Replace di Foto) --}}
                                                 <x-secondary-button type="button"
                                                     wire:click="$dispatch('radiologi.bacaan.generate.open', { source: '{{ $row->src }}', dtlNo: {{ $row->dtl_no }}, refNo: {{ $row->ref_no }} })"
@@ -900,6 +923,7 @@ new class extends Component {
                                                     </span>
                                                 </x-primary-button>
                                             @endif
+                                            @if ($bolehUbahRad)
                                             <x-secondary-button type="button"
                                                 wire:click="$dispatch('radiologi.bacaan.upload.open', { source: '{{ $row->src }}', dtlNo: {{ $row->dtl_no }}, refNo: {{ $row->ref_no }} })"
                                                 class="px-3 py-1.5 text-sm">
@@ -908,12 +932,13 @@ new class extends Component {
                                                     Upload
                                                 </span>
                                             </x-secondary-button>
+                                            @endif
                                             </div>
                                         </div>
 
-                                        {{-- BATALKAN ORDER — hanya ATASAN (Admin + Supervisor Penunjang); staff Radiologi tak bisa.
+                                        {{-- BATALKAN ORDER — hanya ATASAN (hak "batal" dari Role Control); staff Radiologi tak bisa.
                                              Hapus record permanen; lock (pasien pulang) & audit log server-side. --}}
-                                        @hasanyrole(['Admin', 'Supervisor Penunjang'])
+                                        @can('penunjang.radiologi.upload.batal')
                                             <div class="pt-3 mt-3 border-t border-hairline dark:border-gray-700">
                                                 <x-confirm-button variant="danger" :disabled="$isTarifLocked"
                                                     action="batalkanOrder('{{ $row->src }}', {{ $row->dtl_no }}, {{ $row->ref_no }})"
@@ -924,7 +949,7 @@ new class extends Component {
                                                     Batalkan Order
                                                 </x-confirm-button>
                                             </div>
-                                        @endhasanyrole
+                                        @endcan
                                     </td>
                                 </tr>
                             @empty

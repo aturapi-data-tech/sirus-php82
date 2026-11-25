@@ -6,6 +6,7 @@ use Livewire\Attributes\On;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Reactive;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use App\Support\KategoriNilaiRujukanLab;
 
 new class extends Component {
@@ -117,6 +118,8 @@ new class extends Component {
      * ======================= */
     public function saveKesimpulan(string $value): void
     {
+        Gate::authorize('penunjang.laborat.ubah');
+
         if ($this->labStatus !== 'C') {
             $this->dispatch('toast', type: 'warning', message: 'Kesimpulan hanya bisa diisi saat input hasil.');
             return;
@@ -294,6 +297,8 @@ new class extends Component {
      * ======================= */
     public function tambahItemTerpilih(): void
     {
+        Gate::authorize('penunjang.laborat.ubah');
+
         if ($this->labStatus !== 'P') {
             $this->dispatch('toast', type: 'warning', message: 'Tidak bisa menambah item, pemeriksaan sudah diproses.');
             return;
@@ -365,6 +370,8 @@ new class extends Component {
      * ======================= */
     public function updateLabResult(int $checkupDtl, ?string $value): void
     {
+        Gate::authorize('penunjang.laborat.ubah');
+
         // Hanya bisa input hasil saat status C (proses)
         if ($this->labStatus !== 'C') {
             $this->dispatch('toast', type: 'warning', message: $this->labStatus === 'P' ? 'Proses administrasi dulu sebelum input hasil.' : 'Hasil LAB sudah disimpan, tidak bisa diubah.');
@@ -508,6 +515,8 @@ new class extends Component {
      * ======================= */
     public function importMindray(): void
     {
+        Gate::authorize('penunjang.laborat.ubah');
+
         if (empty($this->checkupNo)) {
             return;
         }
@@ -687,6 +696,8 @@ new class extends Component {
      * ======================= */
     public function deleteDtlRow(int $checkupDtl): void
     {
+        Gate::authorize('penunjang.laborat.ubah');
+
         if ($this->labStatus !== 'P') {
             $this->dispatch('toast', type: 'warning', message: 'Tidak bisa menghapus item, pemeriksaan sudah diproses.');
             return;
@@ -741,8 +752,8 @@ new class extends Component {
             </div>
         @endif
 
-        {{-- ITEM PICKER GRID (hanya tampil saat P) --}}
-        @if ($labStatus === 'P')
+        {{-- ITEM PICKER GRID (hanya tampil saat P, bagi yang berhak ubah) --}}
+        @if ($labStatus === 'P' && auth()->user()->can('penunjang.laborat.ubah'))
 
             {{-- Selected Items Chips --}}
             @if (!empty($selectedItems))
@@ -849,8 +860,8 @@ new class extends Component {
 
         @endif
 
-        {{-- TOMBOL MINDRAY (hanya saat status C) --}}
-        @if ($labStatus === 'C')
+        {{-- TOMBOL MINDRAY (hanya saat status C, bagi yang berhak ubah) --}}
+        @if ($labStatus === 'C' && auth()->user()->can('penunjang.laborat.ubah'))
         <div class="flex items-center gap-2">
             <x-secondary-button type="button" wire:click="importMindray" wire:loading.attr="disabled"
                 wire:target="importMindray">
@@ -910,6 +921,7 @@ new class extends Component {
                                     Rp {{ number_format($dtl['price'] ?? 0) }}
                                 </td>
                                 <td class="px-3 py-2 text-center">
+                                    @can('penunjang.laborat.ubah')
                                     <button type="button"
                                         wire:click="deleteDtlRow({{ $dtl['checkup_dtl'] }})"
                                         wire:confirm="Yakin hapus item ini?"
@@ -921,6 +933,7 @@ new class extends Component {
                                                 d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                         </svg>
                                     </button>
+                                    @endcan
                                 </td>
                             </tr>
                         @empty
@@ -990,7 +1003,8 @@ new class extends Component {
                                     <div class="text-xs text-muted-soft">{{ $dtl['clabitem_id'] }}</div>
                                 </td>
                                 <td class="px-3 py-2">
-                                    @if ($labStatus === 'C')
+                                    {{-- Tanpa hak ubah: hasil tampil sebagai teks (jalur @else) --}}
+                                    @if ($labStatus === 'C' && auth()->user()->can('penunjang.laborat.ubah'))
                                         @php
                                             // Pilihan baku dari mapping item: Semikuantitatif = pilihan pertama tiap baris Teks Hasil,
                                             // Kualitatif = nilai normal bila berupa kata (NEGATIF, NON-REACTIVE) — rentang seperti
@@ -1090,7 +1104,7 @@ new class extends Component {
         @if (in_array($labStatus, ['C', 'H'], true))
             <div class="mt-4">
                 <label class="block mb-1 text-sm font-medium text-body dark:text-gray-300">Kesimpulan</label>
-                @if ($labStatus === 'C')
+                @if ($labStatus === 'C' && auth()->user()->can('penunjang.laborat.ubah'))
                     <x-textarea rows="3" wire:change="saveKesimpulan($event.target.value)"
                         placeholder="Masukkan kesimpulan hasil pemeriksaan...">{{ $kesimpulan }}</x-textarea>
                     <p class="mt-1 text-xs text-muted-soft">Otomatis tersimpan saat pindah/klik keluar dari kolom.</p>
