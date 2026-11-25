@@ -368,89 +368,110 @@ class AksiRole
      * profesi (User::profesiKlinis, pemangkas tab EMR); tetap berbasis role.
      */
     public const KHUSUS = [
-        'dokumen.hapus' => ['area' => 'Modul Dokumen', 'label' => 'Hapus entri dokumen', 'roles' => self::DOKUMEN_HAPUS],
-        'dokumen.bukaKunci' => ['area' => 'Modul Dokumen', 'label' => 'Buka kunci (cabut TTD) dokumen', 'roles' => self::DOKUMEN_BUKA_KUNCI],
-        'dokumen.ttdPerwakilan' => ['area' => 'Modul Dokumen', 'label' => 'TTD atas nama pejabat (perwakilan)', 'roles' => self::DOKUMEN_TTD_PERWAKILAN],
+        // Kartu Role Control dikelompokkan PER JALUR (keputusan user 2026-11-25): semua aksi
+        // RJ di kartu Rawat Jalan, UGD di UGD, RI (termasuk resep RI) di Rawat Inap; aksi yang
+        // tak terikat jalur di kartu areanya. Urutan kartu = urutan pertama muncul di sini.
 
+        /* ── Rawat Jalan ── */
+        // Kunjungan
+        'rj.ubahDataKunjungan' => ['area' => 'Rawat Jalan', 'label' => 'Ubah data kunjungan (kasir)', 'roles' => self::RJ_UBAH_DATA_KUNJUNGAN],
+        'rj.kembalikanBatal' => ['area' => 'Rawat Jalan', 'label' => 'Kembalikan kunjungan batal', 'roles' => self::RJ_KEMBALIKAN_BATAL],
+        'rj.detailKunjungan' => ['area' => 'Rawat Jalan', 'label' => 'Lihat detail kunjungan', 'roles' => self::RJ_DETAIL_KUNJUNGAN],
+        // EMR — tombol di dalam EMR (komponen lintas halaman). Roles = salinan @hasanyrole lama (T2).
+        'rj.emr.bukaScreening' => ['area' => 'Rawat Jalan', 'label' => 'EMR: buka Screening', 'roles' => ['Admin', 'Dokter', 'Perawat']],
+        'rj.emr.bukaAdministrasi' => ['area' => 'Rawat Jalan', 'label' => 'EMR: buka Administrasi', 'roles' => ['Admin', 'Casemix', 'Perawat']],
+        'rj.emr.bukaModulDokumen' => ['area' => 'Rawat Jalan', 'label' => 'EMR: buka Modul Dokumen', 'roles' => ['Admin', 'Casemix', 'Dokter', 'Mr', 'Perawat']],
+        'rj.emr.bukaRekamMedisNasional' => ['area' => 'Rawat Jalan', 'label' => 'EMR: rekam Medis Nasional (SSRME)', 'roles' => ['Admin', 'Dokter', 'Perawat']],
+        // Kasir
+        'kasir.rj.posting' => ['area' => 'Rawat Jalan', 'label' => 'Kasir: posting pembayaran', 'roles' => self::KASIR_RJ_POSTING],
+        'kasir.rj.batal' => ['area' => 'Rawat Jalan', 'label' => 'Kasir: batal transaksi', 'roles' => self::KASIR_RJ_BATAL],
+        'kasir.rj.batalTransferUgd' => ['area' => 'Rawat Jalan', 'label' => 'Kasir: batal transfer ke UGD', 'roles' => self::KASIR_RJ_BATAL_TRANSFER_UGD],
+        'kasir.rj.batalKunjungan' => ['area' => 'Rawat Jalan', 'label' => 'Kasir: batal kunjungan', 'roles' => self::KASIR_RJ_BATAL_KUNJUNGAN],
+
+        /* ── UGD ── */
+        // Kunjungan
+        'ugd.ubahDataKunjungan' => ['area' => 'UGD', 'label' => 'Ubah data kunjungan (kasir)', 'roles' => self::UGD_UBAH_DATA_KUNJUNGAN],
+        // EMR
+        'ugd.emr.bukaAdministrasi' => ['area' => 'UGD', 'label' => 'EMR: buka Administrasi', 'roles' => ['Admin', 'Casemix', 'Perawat']],
+        'ugd.emr.bukaModulDokumen' => ['area' => 'UGD', 'label' => 'EMR: buka Modul Dokumen', 'roles' => ['Admin', 'Casemix', 'Dokter', 'Mr', 'Perawat']],
+        'ugd.emr.bukaRekamMedisNasional' => ['area' => 'UGD', 'label' => 'EMR: rekam Medis Nasional (SSRME)', 'roles' => ['Admin', 'Dokter', 'Perawat']],
+        // SBAR — aturan pemilik entri & dokter kunjungan tetap di kode; di sini pengecualiannya.
+        'ugd.sbar.hapus' => ['area' => 'UGD', 'label' => 'SBAR: hapus entri', 'roles' => self::UGD_SBAR_HAPUS],
+        'ugd.sbar.ubahSemua' => ['area' => 'UGD', 'label' => 'SBAR: edit entri petugas lain', 'roles' => self::UGD_SBAR_UBAH_SEMUA],
+        'ugd.sbar.copySemua' => ['area' => 'UGD', 'label' => 'SBAR: copy dari profesi lain', 'roles' => self::UGD_SBAR_COPY_SEMUA],
+        'ugd.sbar.reviewSemua' => ['area' => 'UGD', 'label' => 'SBAR: review walau bukan dokter UGD', 'roles' => self::UGD_SBAR_REVIEW_SEMUA],
+        // Kasir
+        'kasir.ugd.posting' => ['area' => 'UGD', 'label' => 'Kasir: posting pembayaran', 'roles' => self::KASIR_UGD_POSTING],
+        'kasir.ugd.batal' => ['area' => 'UGD', 'label' => 'Kasir: batal transaksi', 'roles' => self::KASIR_UGD_BATAL],
+        'kasir.ugd.batalTransferRi' => ['area' => 'UGD', 'label' => 'Kasir: batal transfer ke RI', 'roles' => self::KASIR_UGD_BATAL_TRANSFER_RI],
+        'kasir.ugd.batalKunjungan' => ['area' => 'UGD', 'label' => 'Kasir: batal kunjungan', 'roles' => self::KASIR_UGD_BATAL_KUNJUNGAN],
+
+        /* ── Rawat Inap ── */
+        // Kunjungan & administrasi
+        'ri.ubahDataKunjungan' => ['area' => 'Rawat Inap', 'label' => 'Ubah data kunjungan (klaim)', 'roles' => self::RI_UBAH_DATA_KUNJUNGAN],
+        'ri.pindahKamar' => ['area' => 'Rawat Inap', 'label' => 'Pindah kamar', 'roles' => self::RI_PINDAH_KAMAR],
+        'ri.resetAdministrasi' => ['area' => 'Rawat Inap', 'label' => 'Reset tab administrasi', 'roles' => self::RI_RESET_ADMINISTRASI],
+        'ri.caseManager' => ['area' => 'Rawat Inap', 'label' => 'Case Manager (MPP)', 'roles' => self::RI_CASE_MANAGER],
+        // EMR
+        'ri.emr.bukaModulDokumen' => ['area' => 'Rawat Inap', 'label' => 'EMR: buka Modul Dokumen', 'roles' => ['Admin', 'Apoteker', 'Casemix', 'Dokter', 'Gizi', 'Laboratorium', 'Perawat', 'Radiologi']],
+        'ri.emr.bukaAdministrasi' => ['area' => 'Rawat Inap', 'label' => 'EMR: buka Administrasi', 'roles' => ['Admin', 'Apoteker', 'Casemix', 'Gizi', 'Perawat']],
+        'ri.emr.bukaEresep' => ['area' => 'Rawat Inap', 'label' => 'EMR: buka E-Resep', 'roles' => ['Admin', 'Dokter', 'Perawat']],
+        'ri.emr.bukaRingkasanPulang' => ['area' => 'Rawat Inap', 'label' => 'EMR: ringkasan Pulang', 'roles' => ['Admin', 'Perawat']],
+        'ri.emr.bukaRekamMedisNasional' => ['area' => 'Rawat Inap', 'label' => 'EMR: rekam Medis Nasional (SSRME)', 'roles' => ['Admin', 'Dokter', 'Perawat']],
+        'ri.emr.bukaHasilPenunjang' => ['area' => 'Rawat Inap', 'label' => 'EMR: lihat Hasil Penunjang', 'roles' => ['Admin', 'Dokter', 'Perawat']],
+        // CPPT & SBAR — aturan pemilik entri & DPJP tetap di kode; di sini pengecualiannya.
+        'ri.cppt.hapus' => ['area' => 'Rawat Inap', 'label' => 'CPPT: hapus entri', 'roles' => self::RI_CPPT_HAPUS],
+        'ri.cppt.ubahSemua' => ['area' => 'Rawat Inap', 'label' => 'CPPT: edit entri petugas lain', 'roles' => self::RI_CPPT_UBAH_SEMUA],
+        'ri.cppt.copySemua' => ['area' => 'Rawat Inap', 'label' => 'CPPT: copy dari profesi lain', 'roles' => self::RI_CPPT_COPY_SEMUA],
+        'ri.cppt.reviewSemua' => ['area' => 'Rawat Inap', 'label' => 'CPPT: review walau bukan DPJP', 'roles' => self::RI_CPPT_REVIEW_SEMUA],
+        'ri.sbar.hapus' => ['area' => 'Rawat Inap', 'label' => 'SBAR: hapus entri', 'roles' => self::RI_SBAR_HAPUS],
+        'ri.sbar.ubahSemua' => ['area' => 'Rawat Inap', 'label' => 'SBAR: edit entri petugas lain', 'roles' => self::RI_SBAR_UBAH_SEMUA],
+        'ri.sbar.copySemua' => ['area' => 'Rawat Inap', 'label' => 'SBAR: copy dari profesi lain', 'roles' => self::RI_SBAR_COPY_SEMUA],
+        'ri.sbar.reviewSemua' => ['area' => 'Rawat Inap', 'label' => 'SBAR: review walau bukan DPJP', 'roles' => self::RI_SBAR_REVIEW_SEMUA],
+        // Kasir pulang
+        'kasir.ri.posting' => ['area' => 'Rawat Inap', 'label' => 'Kasir: posting pembayaran pulang', 'roles' => self::KASIR_RI_POSTING],
+        'kasir.ri.batal' => ['area' => 'Rawat Inap', 'label' => 'Kasir: batal transaksi pulang', 'roles' => self::KASIR_RI_BATAL],
+        'kasir.ri.batalInap' => ['area' => 'Rawat Inap', 'label' => 'Kasir: batal inap', 'roles' => self::KASIR_RI_BATAL_INAP],
+        // Resep RI — kasir & apotek
+        'ri.ubahDataResep' => ['area' => 'Rawat Inap', 'label' => 'Resep: ubah tanggal/shift', 'roles' => self::RI_UBAH_DATA_RESEP],
+        'kasir.resepRi.posting' => ['area' => 'Rawat Inap', 'label' => 'Kasir Resep: posting', 'roles' => self::KASIR_RESEP_RI_POSTING],
+        'kasir.resepRi.batal' => ['area' => 'Rawat Inap', 'label' => 'Kasir Resep: batal', 'roles' => self::KASIR_RESEP_RI_BATAL],
+        'kasir.resepRi.ubahJasa' => ['area' => 'Rawat Inap', 'label' => 'Kasir Resep: ubah jasa karyawan', 'roles' => self::KASIR_RESEP_RI_UBAH_JASA],
+        'apotek.resepRi.posting' => ['area' => 'Rawat Inap', 'label' => 'Apotek Resep: posting', 'roles' => self::APOTEK_RESEP_RI_POSTING],
+        'apotek.resepRi.batal' => ['area' => 'Rawat Inap', 'label' => 'Apotek Resep: batal', 'roles' => self::APOTEK_RESEP_RI_BATAL],
+        'apotek.resepRi.ubahJasa' => ['area' => 'Rawat Inap', 'label' => 'Apotek Resep: ubah jasa karyawan', 'roles' => self::APOTEK_RESEP_RI_UBAH_JASA],
+
+        /* ── EMR ── */
         'emr.logAktivitas' => ['area' => 'EMR', 'label' => 'Lihat log aktivitas EMR', 'roles' => self::EMR_LOG_AKTIVITAS],
         'emr.cetakEresep' => ['area' => 'EMR', 'label' => 'Cetak e-resep dari EMR', 'roles' => self::EMR_CETAK_ERESEP],
         'emr.codingFhir' => ['area' => 'EMR', 'label' => 'Coding SATUSEHAT', 'roles' => self::EMR_CODING_FHIR],
         'rekonsiliasi.obat' => ['area' => 'EMR', 'label' => 'Rekonsiliasi obat (titik-3)', 'roles' => self::REKONSILIASI_OBAT],
         'penunjang.lihatHasil' => ['area' => 'EMR', 'label' => 'Lihat & cetak hasil penunjang', 'roles' => self::PENUNJANG_LIHAT_HASIL],
 
-        'ri.cppt.hapus' => ['area' => 'CPPT & SBAR', 'label' => 'CPPT: hapus entri', 'roles' => self::RI_CPPT_HAPUS],
-        'ri.cppt.ubahSemua' => ['area' => 'CPPT & SBAR', 'label' => 'CPPT: edit entri petugas lain', 'roles' => self::RI_CPPT_UBAH_SEMUA],
-        'ri.cppt.copySemua' => ['area' => 'CPPT & SBAR', 'label' => 'CPPT: copy dari profesi lain', 'roles' => self::RI_CPPT_COPY_SEMUA],
-        'ri.cppt.reviewSemua' => ['area' => 'CPPT & SBAR', 'label' => 'CPPT: review walau bukan DPJP', 'roles' => self::RI_CPPT_REVIEW_SEMUA],
-        'ri.sbar.hapus' => ['area' => 'CPPT & SBAR', 'label' => 'SBAR: hapus entri', 'roles' => self::RI_SBAR_HAPUS],
-        'ri.sbar.ubahSemua' => ['area' => 'CPPT & SBAR', 'label' => 'SBAR: edit entri petugas lain', 'roles' => self::RI_SBAR_UBAH_SEMUA],
-        'ri.sbar.copySemua' => ['area' => 'CPPT & SBAR', 'label' => 'SBAR: copy dari profesi lain', 'roles' => self::RI_SBAR_COPY_SEMUA],
-        'ri.sbar.reviewSemua' => ['area' => 'CPPT & SBAR', 'label' => 'SBAR: review walau bukan DPJP', 'roles' => self::RI_SBAR_REVIEW_SEMUA],
+        /* ── Modul Dokumen ── */
+        'dokumen.hapus' => ['area' => 'Modul Dokumen', 'label' => 'Hapus entri dokumen', 'roles' => self::DOKUMEN_HAPUS],
+        'dokumen.bukaKunci' => ['area' => 'Modul Dokumen', 'label' => 'Buka kunci (cabut TTD) dokumen', 'roles' => self::DOKUMEN_BUKA_KUNCI],
+        'dokumen.ttdPerwakilan' => ['area' => 'Modul Dokumen', 'label' => 'TTD atas nama pejabat (perwakilan)', 'roles' => self::DOKUMEN_TTD_PERWAKILAN],
 
-        'ugd.sbar.hapus' => ['area' => 'CPPT & SBAR', 'label' => 'SBAR UGD: hapus entri', 'roles' => self::UGD_SBAR_HAPUS],
-        'ugd.sbar.ubahSemua' => ['area' => 'CPPT & SBAR', 'label' => 'SBAR UGD: edit entri petugas lain', 'roles' => self::UGD_SBAR_UBAH_SEMUA],
-        'ugd.sbar.copySemua' => ['area' => 'CPPT & SBAR', 'label' => 'SBAR UGD: copy dari profesi lain', 'roles' => self::UGD_SBAR_COPY_SEMUA],
-        'ugd.sbar.reviewSemua' => ['area' => 'CPPT & SBAR', 'label' => 'SBAR UGD: review walau bukan dokter UGD', 'roles' => self::UGD_SBAR_REVIEW_SEMUA],
-
+        /* ── Bridging ── */
         'idrg.kirim' => ['area' => 'Bridging', 'label' => 'Kirim iDRG / INA-CBG', 'roles' => self::IDRG_KIRIM],
         'satusehat.kirim' => ['area' => 'Bridging', 'label' => 'Kirim SATUSEHAT', 'roles' => self::SATUSEHAT_KIRIM],
         'bpjs.hapusSuratKontrol' => ['area' => 'Bridging', 'label' => 'Hapus surat kontrol BPJS', 'roles' => self::BPJS_HAPUS_SURAT_KONTROL],
 
-        'rj.ubahDataKunjungan' => ['area' => 'Transaksi RJ/UGD/RI', 'label' => 'RJ: ubah data kunjungan (kasir)', 'roles' => self::RJ_UBAH_DATA_KUNJUNGAN],
-        'rj.kembalikanBatal' => ['area' => 'Transaksi RJ/UGD/RI', 'label' => 'RJ: kembalikan kunjungan batal', 'roles' => self::RJ_KEMBALIKAN_BATAL],
-        'rj.detailKunjungan' => ['area' => 'Transaksi RJ/UGD/RI', 'label' => 'RJ: lihat detail kunjungan', 'roles' => self::RJ_DETAIL_KUNJUNGAN],
-        'ugd.ubahDataKunjungan' => ['area' => 'Transaksi RJ/UGD/RI', 'label' => 'UGD: ubah data kunjungan (kasir)', 'roles' => self::UGD_UBAH_DATA_KUNJUNGAN],
-        'ri.ubahDataKunjungan' => ['area' => 'Transaksi RJ/UGD/RI', 'label' => 'RI: ubah data kunjungan (klaim)', 'roles' => self::RI_UBAH_DATA_KUNJUNGAN],
-        'ri.ubahDataResep' => ['area' => 'Transaksi RJ/UGD/RI', 'label' => 'RI: ubah tanggal/shift resep', 'roles' => self::RI_UBAH_DATA_RESEP],
-        'ri.pindahKamar' => ['area' => 'Transaksi RJ/UGD/RI', 'label' => 'RI: pindah kamar', 'roles' => self::RI_PINDAH_KAMAR],
-        'ri.resetAdministrasi' => ['area' => 'Transaksi RJ/UGD/RI', 'label' => 'RI: reset tab administrasi', 'roles' => self::RI_RESET_ADMINISTRASI],
-        'ri.caseManager' => ['area' => 'Transaksi RJ/UGD/RI', 'label' => 'RI: Case Manager (MPP)', 'roles' => self::RI_CASE_MANAGER],
-        'transaksi.batalPenerimaan' => ['area' => 'Transaksi RJ/UGD/RI', 'label' => 'Batal penerimaan barang PBF', 'roles' => self::TRANSAKSI_BATAL_PENERIMAAN],
-
-        'kasir.rj.posting' => ['area' => 'Kasir & Apotek', 'label' => 'Kasir RJ: posting pembayaran', 'roles' => self::KASIR_RJ_POSTING],
-        'kasir.rj.batal' => ['area' => 'Kasir & Apotek', 'label' => 'Kasir RJ: batal transaksi', 'roles' => self::KASIR_RJ_BATAL],
-        'kasir.rj.batalTransferUgd' => ['area' => 'Kasir & Apotek', 'label' => 'Kasir RJ: batal transfer ke UGD', 'roles' => self::KASIR_RJ_BATAL_TRANSFER_UGD],
-        'kasir.rj.batalKunjungan' => ['area' => 'Kasir & Apotek', 'label' => 'Kasir RJ: batal kunjungan', 'roles' => self::KASIR_RJ_BATAL_KUNJUNGAN],
-        'kasir.ugd.posting' => ['area' => 'Kasir & Apotek', 'label' => 'Kasir UGD: posting pembayaran', 'roles' => self::KASIR_UGD_POSTING],
-        'kasir.ugd.batal' => ['area' => 'Kasir & Apotek', 'label' => 'Kasir UGD: batal transaksi', 'roles' => self::KASIR_UGD_BATAL],
-        'kasir.ugd.batalTransferRi' => ['area' => 'Kasir & Apotek', 'label' => 'Kasir UGD: batal transfer ke RI', 'roles' => self::KASIR_UGD_BATAL_TRANSFER_RI],
-        'kasir.ugd.batalKunjungan' => ['area' => 'Kasir & Apotek', 'label' => 'Kasir UGD: batal kunjungan', 'roles' => self::KASIR_UGD_BATAL_KUNJUNGAN],
-        'kasir.ri.posting' => ['area' => 'Kasir & Apotek', 'label' => 'Kasir RI: posting pembayaran pulang', 'roles' => self::KASIR_RI_POSTING],
-        'kasir.ri.batal' => ['area' => 'Kasir & Apotek', 'label' => 'Kasir RI: batal transaksi pulang', 'roles' => self::KASIR_RI_BATAL],
-        'kasir.ri.batalInap' => ['area' => 'Kasir & Apotek', 'label' => 'Kasir RI: batal inap', 'roles' => self::KASIR_RI_BATAL_INAP],
-        'kasir.resepRi.posting' => ['area' => 'Kasir & Apotek', 'label' => 'Kasir Resep Inap: posting', 'roles' => self::KASIR_RESEP_RI_POSTING],
-        'kasir.resepRi.batal' => ['area' => 'Kasir & Apotek', 'label' => 'Kasir Resep Inap: batal', 'roles' => self::KASIR_RESEP_RI_BATAL],
-        'kasir.resepRi.ubahJasa' => ['area' => 'Kasir & Apotek', 'label' => 'Kasir Resep Inap: ubah jasa karyawan', 'roles' => self::KASIR_RESEP_RI_UBAH_JASA],
-        'apotek.resepRi.posting' => ['area' => 'Kasir & Apotek', 'label' => 'Apotek Resep RI: posting', 'roles' => self::APOTEK_RESEP_RI_POSTING],
-        'apotek.resepRi.batal' => ['area' => 'Kasir & Apotek', 'label' => 'Apotek Resep RI: batal', 'roles' => self::APOTEK_RESEP_RI_BATAL],
-        'apotek.resepRi.ubahJasa' => ['area' => 'Kasir & Apotek', 'label' => 'Apotek Resep RI: ubah jasa karyawan', 'roles' => self::APOTEK_RESEP_RI_UBAH_JASA],
-
+        /* ── Keuangan ── */
         'piutang.bayar' => ['area' => 'Keuangan', 'label' => 'Piutang: catat pembayaran / pelunasan', 'roles' => self::PIUTANG_BAYAR],
         'piutang.hapusBayar' => ['area' => 'Keuangan', 'label' => 'Piutang: hapus pembayaran salah', 'roles' => self::PIUTANG_HAPUS_BAYAR],
         'kasTu.koreksi' => ['area' => 'Keuangan', 'label' => 'Kas TU: koreksi transaksi', 'roles' => self::KAS_TU_KOREKSI],
         'kasTu.hapus' => ['area' => 'Keuangan', 'label' => 'Kas TU: hapus transaksi', 'roles' => self::KAS_TU_HAPUS],
 
+        /* ── Gudang ── */
+        'transaksi.batalPenerimaan' => ['area' => 'Gudang', 'label' => 'Batal penerimaan barang PBF', 'roles' => self::TRANSAKSI_BATAL_PENERIMAAN],
         'gudang.opnameMedis' => ['area' => 'Gudang', 'label' => 'Stock opname medis', 'roles' => self::GUDANG_OPNAME_MEDIS],
         'gudang.opnameNonMedis' => ['area' => 'Gudang', 'label' => 'Stock opname non-medis', 'roles' => self::GUDANG_OPNAME_NONMEDIS],
         'gudang.transferBatalMedis' => ['area' => 'Gudang', 'label' => 'Batal transfer stok medis', 'roles' => self::GUDANG_TRANSFER_BATAL_MEDIS],
         'gudang.transferBatalNonMedis' => ['area' => 'Gudang', 'label' => 'Batal transfer stok non-medis', 'roles' => self::GUDANG_TRANSFER_BATAL_NONMEDIS],
 
-        // Tombol pembuka modul DI DALAM EMR (komponen dipakai lintas halaman, jadi tidak
-        // terikat route). Roles = salinan persis @hasanyrole lama di emr-*-isi (T2, 2026-11-25).
-        'rj.emr.bukaScreening' => ['area' => 'EMR RJ', 'label' => 'Buka Screening', 'roles' => ['Admin', 'Dokter', 'Perawat']],
-        'rj.emr.bukaAdministrasi' => ['area' => 'EMR RJ', 'label' => 'Buka Administrasi', 'roles' => ['Admin', 'Casemix', 'Perawat']],
-        'rj.emr.bukaModulDokumen' => ['area' => 'EMR RJ', 'label' => 'Buka Modul Dokumen', 'roles' => ['Admin', 'Casemix', 'Dokter', 'Mr', 'Perawat']],
-        'rj.emr.bukaRekamMedisNasional' => ['area' => 'EMR RJ', 'label' => 'Rekam Medis Nasional (SSRME)', 'roles' => ['Admin', 'Dokter', 'Perawat']],
-        'ugd.emr.bukaAdministrasi' => ['area' => 'EMR UGD', 'label' => 'Buka Administrasi', 'roles' => ['Admin', 'Casemix', 'Perawat']],
-        'ugd.emr.bukaModulDokumen' => ['area' => 'EMR UGD', 'label' => 'Buka Modul Dokumen', 'roles' => ['Admin', 'Casemix', 'Dokter', 'Mr', 'Perawat']],
-        'ugd.emr.bukaRekamMedisNasional' => ['area' => 'EMR UGD', 'label' => 'Rekam Medis Nasional (SSRME)', 'roles' => ['Admin', 'Dokter', 'Perawat']],
-        'ri.emr.bukaModulDokumen' => ['area' => 'EMR RI', 'label' => 'Buka Modul Dokumen', 'roles' => ['Admin', 'Apoteker', 'Casemix', 'Dokter', 'Gizi', 'Laboratorium', 'Perawat', 'Radiologi']],
-        'ri.emr.bukaAdministrasi' => ['area' => 'EMR RI', 'label' => 'Buka Administrasi', 'roles' => ['Admin', 'Apoteker', 'Casemix', 'Gizi', 'Perawat']],
-        'ri.emr.bukaEresep' => ['area' => 'EMR RI', 'label' => 'Buka E-Resep', 'roles' => ['Admin', 'Dokter', 'Perawat']],
-        'ri.emr.bukaRingkasanPulang' => ['area' => 'EMR RI', 'label' => 'Ringkasan Pulang', 'roles' => ['Admin', 'Perawat']],
-        'ri.emr.bukaRekamMedisNasional' => ['area' => 'EMR RI', 'label' => 'Rekam Medis Nasional (SSRME)', 'roles' => ['Admin', 'Dokter', 'Perawat']],
-        'ri.emr.bukaHasilPenunjang' => ['area' => 'EMR RI', 'label' => 'Lihat Hasil Penunjang', 'roles' => ['Admin', 'Dokter', 'Perawat']],
-
+        /* ── Sistem ── */
         'downtime.pelaporanHapus' => ['area' => 'Sistem', 'label' => 'Hapus pelaporan down time', 'roles' => self::DOWNTIME_PELAPORAN_HAPUS],
         'sistem.pemantauanRuangServer.hapus' => ['area' => 'Sistem', 'label' => 'Hapus lembar pemantauan ruang server', 'roles' => self::SISTEM_PEMANTAUAN_RUANG_SERVER_HAPUS],
         'sistem.pemantauanRuangServer.bukaKunci' => ['area' => 'Sistem', 'label' => 'Buka kunci pemantauan ruang server', 'roles' => self::SISTEM_PEMANTAUAN_RUANG_SERVER_BUKA_KUNCI],

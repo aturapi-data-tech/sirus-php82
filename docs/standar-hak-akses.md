@@ -152,7 +152,13 @@ tidak bisa memakai `{route}.{kunci}`. Pakai aksi khusus jalur di `AksiRole::KHUS
 ## Menambah aksi khusus
 
 1. Konstanta role awal di `AksiRole` + entri di `AksiRole::KHUSUS` (area, label, roles).
-2. Gate terdaftar otomatis (loop di `AppServiceProvider`) dan muncul di kolom Khusus Role Control.
+   **`area` = kartu di Role Control, dikelompokkan PER JALUR:** aksi milik RJ (termasuk kasir
+   RJ, EMR RJ) → `'Rawat Jalan'`; UGD → `'UGD'`; RI (termasuk kasir pulang, resep RI, CPPT/SBAR
+   RI) → `'Rawat Inap'`. Hanya aksi yang tak terikat jalur memakai area tematik: `EMR`,
+   `Modul Dokumen`, `Bridging`, `Keuangan`, `Gudang`, `Sistem`. Taruh entri di blok areanya
+   (urutan kartu = urutan pertama muncul) dan tulis label TANPA prefix jalur — kartunya sudah
+   menyebut jalur (`'Kasir: batal transaksi'`, bukan `'Kasir RJ: batal transaksi'`).
+2. Gate terdaftar otomatis (loop di `AppServiceProvider`) dan muncul di kartu Aksi Khusus Role Control.
 3. `@can('nama')` di blade + `#[Authorize('nama')]` / `->can()` di server.
 4. `php artisan akses:sinkron`.
 
