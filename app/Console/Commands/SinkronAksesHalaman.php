@@ -13,7 +13,7 @@ use Spatie\Permission\PermissionRegistrar;
 
 /**
  * Membuat permission `{route}.{lihat|tambah|ubah|hapus}` untuk setiap menu di AppMenu,
- * ditambah aksi khusus dari AksiRole::KHUSUS (kolom "Khusus" Role Control).
+ * ditambah aksi khusus (AksiRole::khusus(), dari blok program app/Akses/Program).
  *
  * Centang awal disalin dari kolom 'roles' AppMenu HANYA untuk permission yang baru
  * dibuat pada run ini. Permission yang sudah ada tidak disentuh — jadi menjalankan
@@ -53,8 +53,8 @@ class SinkronAksesHalaman extends Command
 
         $ulang = array_filter(array_map('trim', explode(',', (string) $this->option('ulang'))));
         foreach ($ulang as $r) {
-            if (!isset(AksesHalaman::rolesMenu()[$r]) && !isset(AksiRole::KHUSUS[$r])) {
-                $this->error("--ulang: '{$r}' bukan route AppMenu maupun aksi khusus AksiRole::KHUSUS");
+            if (!isset(AksesHalaman::rolesMenu()[$r]) && !isset(AksiRole::khusus()[$r])) {
+                $this->error("--ulang: '{$r}' bukan route AppMenu maupun aksi khusus (blok program 'aksiKhusus')");
                 return self::FAILURE;
             }
         }
@@ -103,7 +103,7 @@ class SinkronAksesHalaman extends Command
         }
 
         // Aksi khusus (kolom "Khusus" Role Control) — sama: hanya yang baru disalin centangnya.
-        foreach (AksiRole::KHUSUS as $nama => $aksi) {
+        foreach (AksiRole::khusus() as $nama => $aksi) {
             $targetRole = [];
             foreach ($aksi['roles'] as $r) {
                 $kunci = trim(strtolower($r));

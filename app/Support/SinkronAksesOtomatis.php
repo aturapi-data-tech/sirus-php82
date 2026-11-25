@@ -9,7 +9,8 @@ use Throwable;
 /**
  * Menjalankan `php artisan akses:sinkron` OTOMATIS sesudah deploy — tidak perlu diingat manual.
  *
- * Cara kerja: tanda = waktu-ubah + ukuran berkas definisi hak akses (AppMenu, AksiRole).
+ * Cara kerja: tanda = waktu-ubah + ukuran berkas definisi hak akses (blok program di
+ * app/Akses/Program/*.php, AppMenu, AksiRole — termasuk berkas program baru/terhapus).
  * Tanda yang terakhir berhasil disinkron disimpan di storage/framework/akses-sinkron.tanda
  * (berkas, bukan cache — tak ikut hilang/berbeda per driver cache). Request pertama yang
  * melihat tandanya berubah (habis git pull) menjalankan sinkron sekali; request lain yang
@@ -27,7 +28,11 @@ class SinkronAksesOtomatis
     private const BERKAS_DEFINISI = [
         'app/Services/AppMenu.php',
         'app/Support/AksiRole.php',
+        'app/Support/ProgramAkses.php',
     ];
+
+    /** Blok program per kelompok — dipantau satu per satu (berkas baru/terhapus ikut mengubah tanda). */
+    private const POLA_BERKAS_PROGRAM = 'app/Akses/Program/*.php';
 
     private const JEDA_GAGAL = 600;
 
@@ -84,11 +89,15 @@ class SinkronAksesOtomatis
 
     private static function tandaSekarang(): string
     {
+        $daftarPath = array_map('base_path', self::BERKAS_DEFINISI);
+        $berkasProgram = glob(base_path(self::POLA_BERKAS_PROGRAM)) ?: [];
+        sort($berkasProgram);
+        $daftarPath = [...$daftarPath, ...$berkasProgram];
+
         $bagian = [];
-        foreach (self::BERKAS_DEFINISI as $relatif) {
-            $path = base_path($relatif);
+        foreach ($daftarPath as $path) {
             clearstatcache(true, $path);
-            $bagian[] = @filemtime($path) . '-' . @filesize($path);
+            $bagian[] = basename($path) . ':' . @filemtime($path) . '-' . @filesize($path);
         }
 
         return implode('|', $bagian);

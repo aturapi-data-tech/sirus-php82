@@ -78,6 +78,7 @@ new class extends Component {
     public function rows()
     {
         $roles = $this->baseQuery()->paginate($this->itemsPerPage);
+        $katalogKhusus = AksiRole::khusus();
 
         foreach ($roles as $role) {
             // Ringkasan, bukan daftar nama: satu role bisa memegang ratusan permission
@@ -85,7 +86,7 @@ new class extends Component {
             $namaPermission = DB::table('role_has_permissions')->join('permissions', 'permissions.id', '=', 'role_has_permissions.permission_id')->where('role_has_permissions.role_id', $role->id)->pluck('permissions.name');
             $role->jumlah_halaman = $namaPermission->filter(fn ($n) => str_ends_with($n, '.lihat'))->count();
             // Khusus = katalog AksiRole + tombol khusus halaman (`{route}.{kunci}` selain 4 aksi baku).
-            $role->jumlah_khusus = $namaPermission->filter(fn ($n) => isset(AksiRole::KHUSUS[$n]) || !preg_match('/\.(lihat|tambah|ubah|hapus)$/', $n))->count();
+            $role->jumlah_khusus = $namaPermission->filter(fn ($n) => isset($katalogKhusus[$n]) || !preg_match('/\.(lihat|tambah|ubah|hapus)$/', $n))->count();
             $role->jumlah_permission = $namaPermission->count();
 
             $role->user_count = DB::table('model_has_roles')->where('role_id', $role->id)->where('model_type', \App\Models\User::class)->count();

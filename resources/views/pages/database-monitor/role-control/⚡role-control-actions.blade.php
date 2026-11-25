@@ -10,7 +10,8 @@ use Spatie\Permission\Models\Permission;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 use App\Services\AppMenu;
 use App\Support\AksesHalaman;
-use App\Support\AksiRole;
+use App\Support\ProgramAkses;
+use Illuminate\Support\Facades\Route;
 
 new class extends Component {
     use WithRenderVersioningTrait;
@@ -117,53 +118,63 @@ new class extends Component {
     }
 
     /**
-     * Matriks centang: halaman (dari AppMenu, per grup) × lihat/tambah/ubah/hapus,
-     * aksi khusus (AksiRole::KHUSUS, per area), dan sisa permission di luar katalog.
-     * Nilai sel = id permission (string), null bila belum dibuat `akses:sinkron`,
-     * atau false bila aksi itu tidak berlaku di halaman tsb.
+     * Matriks centang PER KELOMPOK → PROGRAM (App\Support\ProgramAkses, urutan berkas definisi):
+     * tiap program memuat baris halamannya (Lihat/Tambah/Ubah/Hapus + tombol khusus halaman)
+     * dan baris aksi khususnya — semua hak satu program tampil berdampingan.
+     * Nilai sel = id permission (string), null bila belum dibuat, atau false bila aksi itu
+     * tidak berlaku di halaman tsb. 'lainnya' = permission di luar katalog.
      */
     #[Computed]
     public function matriks(): array
     {
         $idPerNama = $this->allPermissions->pluck('id', 'name')->map(fn ($v) => (string) $v)->all();
         $terpakai = [];
-
-        $halaman = [];
         $sudah = [];
-        $menu = collect(AppMenu::all())->sortBy([['groupOrder', 'asc'], ['order', 'asc']]);
-        foreach ($menu as $m) {
-            if (isset($sudah[$m['route']])) {
-                continue; // satu route bisa beberapa entri menu (mis. Casemix ber-tab)
-            }
-            $sudah[$m['route']] = true;
+        $program = [];
 
-            // false = aksi tak berlaku di halaman ini ('aksi' AppMenu); null = belum disinkron.
-            $sel = [];
-            $berlaku = AksesHalaman::aksiBerlaku($m['route']);
-            foreach (AksesHalaman::AKSI as $aksi) {
-                $nama = AksesHalaman::namaPermission($m['route'], $aksi);
-                $sel[$aksi] = in_array($aksi, $berlaku, true) ? ($idPerNama[$nama] ?? null) : false;
-                $terpakai[$nama] = true;
-            }
-            $halaman[$m['group']][] = [
-                'route' => $m['route'],
-                'title' => $m['title'],
-                'terbuka' => in_array(AppMenu::SEMUA_ROLE, $m['roles'], true),
-                'sel' => $sel,
-                // Tombol khusus halaman ('khusus' AppMenu) → kolom Khusus baris ini.
-                'khusus' => collect(AksesHalaman::khususHalaman($m['route']))
-                    ->map(function ($k, $kunci) use ($m, $idPerNama, &$terpakai) {
-                        $nama = AksesHalaman::namaPermission($m['route'], $kunci);
+        foreach (ProgramAkses::kelompok() as $kelompok) {
+            foreach ($kelompok['program'] as $namaProgram => $definisi) {
+                $halaman = [];
+                foreach ($definisi['menu'] ?? [] as $m) {
+                    // Satu route bisa beberapa entri menu (mis. Casemix ber-tab) → satu baris saja.
+                    if (!Route::has($m['route']) || isset($sudah[$m['route']])) {
+                        continue;
+                    }
+                    $sudah[$m['route']] = true;
+
+                    // false = aksi tak berlaku di halaman ini ('aksi' menu); null = belum disinkron.
+                    $sel = [];
+                    $berlaku = AksesHalaman::aksiBerlaku($m['route']);
+                    foreach (AksesHalaman::AKSI as $aksi) {
+                        $nama = AksesHalaman::namaPermission($m['route'], $aksi);
+                        $sel[$aksi] = in_array($aksi, $berlaku, true) ? ($idPerNama[$nama] ?? null) : false;
                         $terpakai[$nama] = true;
-                        return ['nama' => $nama, 'label' => $k['label'], 'id' => $idPerNama[$nama] ?? null];
-                    })->values()->all(),
-            ];
-        }
+                    }
+                    $halaman[] = [
+                        'route' => $m['route'],
+                        'title' => $m['title'],
+                        'terbuka' => in_array(AppMenu::SEMUA_ROLE, $m['roles'], true),
+                        'sel' => $sel,
+                        // Tombol khusus halaman ('khusus' menu) → kolom Khusus baris ini.
+                        'khusus' => collect(AksesHalaman::khususHalaman($m['route']))
+                            ->map(function ($k, $kunci) use ($m, $idPerNama, &$terpakai) {
+                                $nama = AksesHalaman::namaPermission($m['route'], $kunci);
+                                $terpakai[$nama] = true;
+                                return ['nama' => $nama, 'label' => $k['label'], 'id' => $idPerNama[$nama] ?? null];
+                            })->values()->all(),
+                    ];
+                }
 
-        $khusus = [];
-        foreach (AksiRole::KHUSUS as $nama => $a) {
-            $khusus[$a['area']][] = ['nama' => $nama, 'label' => $a['label'], 'id' => $idPerNama[$nama] ?? null];
-            $terpakai[$nama] = true;
+                $khusus = [];
+                foreach ($definisi['aksiKhusus'] ?? [] as $nama => $aksi) {
+                    $khusus[] = ['nama' => $nama, 'label' => $aksi['label'], 'id' => $idPerNama[$nama] ?? null];
+                    $terpakai[$nama] = true;
+                }
+
+                if ($halaman || $khusus) {
+                    $program[$kelompok['judul']][$namaProgram] = ['halaman' => $halaman, 'khusus' => $khusus];
+                }
+            }
         }
 
         $lainnya = $this->allPermissions
@@ -172,10 +183,21 @@ new class extends Component {
             ->values()
             ->all();
 
-        $belumSinkron = collect($halaman)->flatten(1)->contains(fn ($r) => !$r['terbuka'] && (in_array(null, $r['sel'], true) || in_array(null, array_column($r['khusus'], 'id'), true)))
-            || collect($khusus)->flatten(1)->contains(fn ($r) => $r['id'] === null);
+        $belumSinkron = false;
+        foreach ($program as $daftarProgram) {
+            foreach ($daftarProgram as $isi) {
+                foreach ($isi['halaman'] as $r) {
+                    if (!$r['terbuka'] && (in_array(null, $r['sel'], true) || in_array(null, array_column($r['khusus'], 'id'), true))) {
+                        $belumSinkron = true;
+                    }
+                }
+                if (in_array(null, array_column($isi['khusus'], 'id'), true)) {
+                    $belumSinkron = true;
+                }
+            }
+        }
 
-        return compact('halaman', 'khusus', 'lainnya', 'belumSinkron');
+        return compact('program', 'lainnya', 'belumSinkron');
     }
 
     protected function rules(): array
@@ -371,116 +393,134 @@ new class extends Component {
                                                 <th class="w-16 px-2 py-2 text-center">Baris</th>
                                             </tr>
                                         </thead>
-                                        @foreach ($matriks['halaman'] as $grup => $baris)
+                                        {{-- Per KELOMPOK (Rawat Jalan, UGD, ...) → per PROGRAM: baris judul program
+                                             (tombol "semua" per kolom), baris halamannya, lalu baris aksi khususnya. --}}
+                                        @foreach ($matriks['program'] as $judulKelompok => $daftarProgram)
                                             @php
-                                                $teksGrup = mb_strtolower($grup . ' ' . collect($baris)->map(fn ($r) => $r['title'] . ' ' . $r['route'] . ' ' . implode(' ', array_column($r['khusus'], 'label')))->implode(' '));
+                                                $teksKelompok = mb_strtolower($judulKelompok . ' ' . collect($daftarProgram)->map(fn ($isi, $namaProgram) => $namaProgram . ' '
+                                                    . collect($isi['halaman'])->map(fn ($r) => $r['title'] . ' ' . $r['route'] . ' ' . implode(' ', array_column($r['khusus'], 'label')))->implode(' ') . ' '
+                                                    . collect($isi['khusus'])->map(fn ($r) => $r['label'] . ' ' . $r['nama'])->implode(' '))->implode(' '));
                                             @endphp
-                                            <tbody wire:key="grup-{{ md5($grup) }}" x-show="cocok(@js($teksGrup))">
-                                                <tr class="border-t bg-brand-green/5 border-hairline dark:bg-gray-800/60 dark:border-gray-700">
-                                                    <td class="px-3 py-2 font-semibold text-ink dark:text-gray-200">{{ $grup }}</td>
-                                                    @foreach (AksesHalaman::AKSI as $aksi)
-                                                        @php $ids = collect($baris)->pluck('sel.' . $aksi)->filter()->values()->all(); @endphp
-                                                        <td class="px-2 py-2 text-center">
-                                                            @if ($ids)
-                                                                <button type="button" x-on:click="atur(@js($ids))"
-                                                                    class="text-xs font-medium hover:underline"
-                                                                    x-bind:class="semuaNyala(@js($ids)) ? 'text-brand-green dark:text-brand-lime' : 'text-muted'"
-                                                                    title="Centang / lepas semua {{ $aksi }} di grup ini">semua</button>
-                                                            @endif
-                                                        </td>
-                                                    @endforeach
-                                                    <td></td>
-                                                    <td></td>
+                                            <tbody wire:key="kelompok-{{ md5($judulKelompok) }}" x-show="cocok(@js($teksKelompok))">
+                                                <tr class="border-t-2 border-brand-green/40 bg-brand-green/10 dark:bg-gray-700/60 dark:border-gray-600">
+                                                    <td colspan="{{ count(AksesHalaman::AKSI) + 3 }}" class="px-3 py-2 text-sm font-bold tracking-wide uppercase text-ink dark:text-gray-100">{{ $judulKelompok }}</td>
                                                 </tr>
-                                                @foreach ($baris as $r)
-                                                    @php $idsBaris = array_values(array_filter([...array_values($r['sel']), ...array_column($r['khusus'], 'id')])); @endphp
-                                                    <tr wire:key="hal-{{ $r['route'] }}"
-                                                        x-show="cocok(@js(mb_strtolower($grup . ' ' . $r['title'] . ' ' . $r['route'] . ' ' . implode(' ', array_column($r['khusus'], 'label')))))"
-                                                        class="border-t border-hairline dark:border-gray-700 hover:bg-surface-soft dark:hover:bg-gray-800/40">
-                                                        <td class="px-3 py-1.5">
-                                                            <div class="text-ink dark:text-gray-200">{{ $r['title'] }}</div>
-                                                            <div class="font-mono text-xs text-muted-soft">{{ $r['route'] }}</div>
-                                                        </td>
-                                                        @if ($r['terbuka'])
-                                                            <td colspan="6" class="px-2 py-1.5 text-center">
-                                                                <x-badge variant="alternative">Terbuka untuk semua user</x-badge>
-                                                            </td>
-                                                        @else
-                                                            @foreach (AksesHalaman::AKSI as $aksi)
-                                                                <td class="px-2 py-1.5 text-center">
-                                                                    @if ($r['sel'][$aksi])
-                                                                        <x-toggle-alpine x-model="pilih" :value="$r['sel'][$aksi]" :aria-label="ucfirst($aksi) . ' ' . $r['title']" />
-                                                                    @elseif ($r['sel'][$aksi] === false)
-                                                                        <span class="text-muted-soft" title="Tidak berlaku di halaman ini">·</span>
-                                                                    @else
-                                                                        <span class="text-muted-soft" title="Belum dibuat — jalankan akses:sinkron">—</span>
-                                                                    @endif
-                                                                </td>
-                                                            @endforeach
-                                                            <td class="px-2 py-1.5">
-                                                                <div class="flex flex-col gap-1">
-                                                                    @foreach ($r['khusus'] as $k)
-                                                                        @if ($k['id'])
-                                                                            <x-toggle-alpine x-model="pilih" :value="$k['id']" :label="$k['label']" :title="$k['nama']" />
-                                                                        @else
-                                                                            <span class="text-sm text-muted-soft" title="Belum dibuat — jalankan akses:sinkron">— {{ $k['label'] }}</span>
-                                                                        @endif
-                                                                    @endforeach
-                                                                </div>
-                                                            </td>
-                                                            <td class="px-2 py-1.5 text-center">
-                                                                @if ($idsBaris)
-                                                                    <button type="button" x-on:click="atur(@js($idsBaris))"
-                                                                        class="text-xs font-medium text-muted hover:underline">semua</button>
+                                            </tbody>
+                                            @foreach ($daftarProgram as $namaProgram => $isi)
+                                                @php
+                                                    $awalan = mb_strtolower($judulKelompok . ' ' . $namaProgram . ' ');
+                                                    $teksProgram = $awalan
+                                                        . mb_strtolower(collect($isi['halaman'])->map(fn ($r) => $r['title'] . ' ' . $r['route'] . ' ' . implode(' ', array_column($r['khusus'], 'label')))->implode(' ') . ' '
+                                                        . collect($isi['khusus'])->map(fn ($r) => $r['label'] . ' ' . $r['nama'])->implode(' '));
+                                                    $idsKhususProgram = array_values(array_filter([
+                                                        ...collect($isi['halaman'])->flatMap(fn ($r) => array_column($r['khusus'], 'id'))->all(),
+                                                        ...array_column($isi['khusus'], 'id'),
+                                                    ]));
+                                                    $idsProgram = array_values(array_filter([
+                                                        ...collect($isi['halaman'])->flatMap(fn ($r) => array_values($r['sel']))->all(),
+                                                        ...$idsKhususProgram,
+                                                    ]));
+                                                @endphp
+                                                <tbody wire:key="program-{{ md5($judulKelompok . '|' . $namaProgram) }}" x-show="cocok(@js($teksProgram))">
+                                                    <tr class="border-t bg-brand-green/5 border-hairline dark:bg-gray-800/60 dark:border-gray-700">
+                                                        <td class="px-3 py-2 font-semibold text-ink dark:text-gray-200">{{ $namaProgram }}</td>
+                                                        @foreach (AksesHalaman::AKSI as $aksi)
+                                                            @php $ids = collect($isi['halaman'])->pluck('sel.' . $aksi)->filter()->values()->all(); @endphp
+                                                            <td class="px-2 py-2 text-center">
+                                                                @if ($ids)
+                                                                    <button type="button" x-on:click="atur(@js($ids))"
+                                                                        class="text-xs font-medium hover:underline"
+                                                                        x-bind:class="semuaNyala(@js($ids)) ? 'text-brand-green dark:text-brand-lime' : 'text-muted'"
+                                                                        title="Centang / lepas semua {{ $aksi }} di {{ $namaProgram }}">semua</button>
                                                                 @endif
                                                             </td>
-                                                        @endif
-                                                    </tr>
-                                                @endforeach
-                                            </tbody>
-                                        @endforeach
-
-                                        {{-- Aksi khusus per area — satu tabel dengan menu di atas: baris grup
-                                             "Aksi Khusus — <area>" + satu baris per aksi, toggle di kolom Khusus. --}}
-                                        @foreach ($matriks['khusus'] as $area => $baris)
-                                            @php
-                                                $idsArea = collect($baris)->pluck('id')->filter()->values()->all();
-                                                $teksArea = mb_strtolower('aksi khusus ' . $area . ' ' . collect($baris)->map(fn ($r) => $r['label'] . ' ' . $r['nama'])->implode(' '));
-                                            @endphp
-                                            <tbody wire:key="area-{{ md5($area) }}" x-show="cocok(@js($teksArea))">
-                                                <tr class="border-t bg-brand-green/5 border-hairline dark:bg-gray-800/60 dark:border-gray-700">
-                                                    <td class="px-3 py-2 font-semibold text-ink dark:text-gray-200">Aksi Khusus — {{ $area }}</td>
-                                                    <td colspan="{{ count(AksesHalaman::AKSI) }}"></td>
-                                                    <td class="px-2 py-2">
-                                                        @if ($idsArea)
-                                                            <button type="button" x-on:click="atur(@js($idsArea))"
-                                                                class="text-xs font-medium hover:underline"
-                                                                x-bind:class="semuaNyala(@js($idsArea)) ? 'text-brand-green dark:text-brand-lime' : 'text-muted'"
-                                                                title="Centang / lepas semua aksi khusus {{ $area }}">semua</button>
-                                                        @endif
-                                                    </td>
-                                                    <td></td>
-                                                </tr>
-                                                @foreach ($baris as $r)
-                                                    <tr wire:key="khusus-{{ $r['nama'] }}"
-                                                        x-show="cocok(@js(mb_strtolower('aksi khusus ' . $area . ' ' . $r['label'] . ' ' . $r['nama'])))"
-                                                        class="border-t border-hairline dark:border-gray-700 hover:bg-surface-soft dark:hover:bg-gray-800/40">
-                                                        <td class="px-3 py-1.5">
-                                                            <div class="text-ink dark:text-gray-200">{{ $r['label'] }}</div>
-                                                            <div class="font-mono text-xs text-muted-soft">{{ $r['nama'] }}</div>
-                                                        </td>
-                                                        <td colspan="{{ count(AksesHalaman::AKSI) }}"></td>
-                                                        <td class="px-2 py-1.5">
-                                                            @if ($r['id'])
-                                                                <x-toggle-alpine x-model="pilih" :value="$r['id']" :aria-label="$r['label']" />
-                                                            @else
-                                                                <span class="text-sm text-muted-soft" title="Belum dibuat — jalankan akses:sinkron">—</span>
+                                                        @endforeach
+                                                        <td class="px-2 py-2">
+                                                            @if ($idsKhususProgram)
+                                                                <button type="button" x-on:click="atur(@js($idsKhususProgram))"
+                                                                    class="text-xs font-medium hover:underline"
+                                                                    x-bind:class="semuaNyala(@js($idsKhususProgram)) ? 'text-brand-green dark:text-brand-lime' : 'text-muted'"
+                                                                    title="Centang / lepas semua aksi khusus {{ $namaProgram }}">semua</button>
                                                             @endif
                                                         </td>
-                                                        <td></td>
+                                                        <td class="px-2 py-2 text-center">
+                                                            @if ($idsProgram)
+                                                                <button type="button" x-on:click="atur(@js($idsProgram))"
+                                                                    class="text-xs font-medium text-muted hover:underline"
+                                                                    title="Centang / lepas SEMUA hak {{ $namaProgram }}">semua</button>
+                                                            @endif
+                                                        </td>
                                                     </tr>
-                                                @endforeach
-                                            </tbody>
+
+                                                    {{-- Halaman program ini --}}
+                                                    @foreach ($isi['halaman'] as $r)
+                                                        @php $idsBaris = array_values(array_filter([...array_values($r['sel']), ...array_column($r['khusus'], 'id')])); @endphp
+                                                        <tr wire:key="hal-{{ $r['route'] }}"
+                                                            x-show="cocok(@js($awalan . mb_strtolower($r['title'] . ' ' . $r['route'] . ' ' . implode(' ', array_column($r['khusus'], 'label')))))"
+                                                            class="border-t border-hairline dark:border-gray-700 hover:bg-surface-soft dark:hover:bg-gray-800/40">
+                                                            <td class="px-3 py-1.5 pl-6">
+                                                                <div class="text-ink dark:text-gray-200">{{ $r['title'] }}</div>
+                                                                <div class="font-mono text-xs text-muted-soft">{{ $r['route'] }}</div>
+                                                            </td>
+                                                            @if ($r['terbuka'])
+                                                                <td colspan="6" class="px-2 py-1.5 text-center">
+                                                                    <x-badge variant="alternative">Terbuka untuk semua user</x-badge>
+                                                                </td>
+                                                            @else
+                                                                @foreach (AksesHalaman::AKSI as $aksi)
+                                                                    <td class="px-2 py-1.5 text-center">
+                                                                        @if ($r['sel'][$aksi])
+                                                                            <x-toggle-alpine x-model="pilih" :value="$r['sel'][$aksi]" :aria-label="ucfirst($aksi) . ' ' . $r['title']" />
+                                                                        @elseif ($r['sel'][$aksi] === false)
+                                                                            <span class="text-muted-soft" title="Tidak berlaku di halaman ini">·</span>
+                                                                        @else
+                                                                            <span class="text-muted-soft" title="Belum dibuat — jalankan akses:sinkron">—</span>
+                                                                        @endif
+                                                                    </td>
+                                                                @endforeach
+                                                                <td class="px-2 py-1.5">
+                                                                    <div class="flex flex-col gap-1">
+                                                                        @foreach ($r['khusus'] as $k)
+                                                                            @if ($k['id'])
+                                                                                <x-toggle-alpine x-model="pilih" :value="$k['id']" :label="$k['label']" :title="$k['nama']" />
+                                                                            @else
+                                                                                <span class="text-sm text-muted-soft" title="Belum dibuat — jalankan akses:sinkron">— {{ $k['label'] }}</span>
+                                                                            @endif
+                                                                        @endforeach
+                                                                    </div>
+                                                                </td>
+                                                                <td class="px-2 py-1.5 text-center">
+                                                                    @if ($idsBaris)
+                                                                        <button type="button" x-on:click="atur(@js($idsBaris))"
+                                                                            class="text-xs font-medium text-muted hover:underline">semua</button>
+                                                                    @endif
+                                                                </td>
+                                                            @endif
+                                                        </tr>
+                                                    @endforeach
+
+                                                    {{-- Aksi khusus program ini (tombol di modal/EMR, posting/batal, ...) --}}
+                                                    @foreach ($isi['khusus'] as $r)
+                                                        <tr wire:key="khusus-{{ $r['nama'] }}"
+                                                            x-show="cocok(@js($awalan . mb_strtolower($r['label'] . ' ' . $r['nama'])))"
+                                                            class="border-t border-hairline dark:border-gray-700 hover:bg-surface-soft dark:hover:bg-gray-800/40">
+                                                            <td class="px-3 py-1.5 pl-6">
+                                                                <div class="text-ink dark:text-gray-200">{{ $r['label'] }}</div>
+                                                                <div class="font-mono text-xs text-muted-soft">{{ $r['nama'] }}</div>
+                                                            </td>
+                                                            <td colspan="{{ count(AksesHalaman::AKSI) }}" class="px-2 py-1.5 text-xs text-center text-muted-soft">aksi khusus</td>
+                                                            <td class="px-2 py-1.5">
+                                                                @if ($r['id'])
+                                                                    <x-toggle-alpine x-model="pilih" :value="$r['id']" :aria-label="$r['label']" />
+                                                                @else
+                                                                    <span class="text-sm text-muted-soft" title="Belum dibuat — jalankan akses:sinkron">—</span>
+                                                                @endif
+                                                            </td>
+                                                            <td></td>
+                                                        </tr>
+                                                    @endforeach
+                                                </tbody>
+                                            @endforeach
                                         @endforeach
                                     </table>
                                 </div>

@@ -7,13 +7,17 @@ User ──(model_has_roles)──> Role ──(role_has_permissions)──> Per
 ```
 
 - **Menu terhubung ke ROLE, bukan ke user.** User mendapat gabungan hak dari semua role-nya.
-- Centang diatur per role di **Role Control** (`/database-monitor/role-control`), bentuk matriks.
+- Centang diatur per role di **Role Control** (`/database-monitor/role-control`), bentuk matriks
+  per **kelompok → program** (sama dengan berkas definisi di bawah).
+- **Siapa boleh apa** tersimpan di DB (tabel Spatie, diatur lewat Role Control). **Daftar hak yang
+  ada** (menu, aksi, tombol, pintu modal) ditulis di kode, karena penjaganya (`@can`,
+  `#[Authorize]`) memang di kode program.
 - Dua jenis permission:
 
-| Jenis | Nama | Contoh | Sumber katalog |
-|---|---|---|---|
-| Halaman | `{nama-route}.{lihat\|tambah\|ubah\|hapus}` | `master.poli.hapus` | `App\Services\AppMenu` (setiap menu) |
-| Aksi khusus | nama Gate bebas | `dokumen.bukaKunci`, `ri.cppt.ubahSemua` | `App\Support\AksiRole::KHUSUS` |
+| Jenis | Nama | Contoh |
+|---|---|---|
+| Halaman | `{nama-route}.{lihat\|tambah\|ubah\|hapus}` + tombol khusus `{route}.{kunci}` | `master.poli.hapus`, `rj.pelayanan.bukaAdministrasi` |
+| Aksi khusus | nama Gate bebas | `rj.detailKunjungan`, `kasir.rj.batal`, `ri.cppt.ubahSemua` |
 
 - **Lihat** = menu tampil **dan** URL boleh dibuka. Dijaga middleware `akses.halaman`
   (`App\Http\Middleware\CekAksesHalaman`), juga untuk setiap aksi Livewire (persistent middleware).
@@ -22,40 +26,76 @@ User ──(model_has_roles)──> Role ──(role_has_permissions)──> Per
 - Mode penjaga URL: `AKSES_HALAMAN_MODE=log` (izinkan + catat ke `storage/logs/akses-halaman-*.log`)
   atau `tolak` (403). Role Control & User Control selalu 403 di kedua mode.
 
+## SATU PROGRAM = SATU BLOK (sumber tunggal definisi)
+
+Semua hak satu program ditulis di **satu blok**, berkas per kelompok di `app/Akses/Program/`:
+
+| Berkas | Kelompok |
+|---|---|
+| `LaporanManajemen.php` | Laporan Pelayanan / Penunjang / SIRS Online / Keuangan |
+| `Master.php` | Master Pelayanan / Laboratorium / Apotek / Akuntansi |
+| `RawatJalan.php`, `Ugd.php`, `RawatInap.php` | semua program milik jalur itu (pendaftaran, pelayanan, EMR, apotek, administrasi & kasir, daftar bulanan, …) |
+| `Casemix.php`, `Penunjang.php`, `Gudang.php`, `Keuangan.php`, `Sistem.php` | programnya masing-masing |
+| `LintasJalur.php` | yang dipakai SEMUA jalur: antrian apotek/kasir gabungan, EMR lintas jalur, Modul Dokumen, Bridging |
+
+```php
+'Pelayanan Rawat Jalan' => [
+    'menu' => [                                   // → sidebar + baris halaman Role Control
+        ['group' => 'Rawat Jalan', 'groupOrder' => 5, 'order' => 2, 'route' => 'rj.pelayanan',
+         'aksi' => ['lihat'],
+         'khusus' => ['bukaRekamMedis' => ['Buka Rekam Medis', ['admin', 'dokter', 'perawat']]],
+         'title' => 'Pelayanan Rawat Jalan', 'desc' => '…', 'roles' => [...], 'badge' => 'RJ'],
+    ],
+    'aksiKhusus' => [                             // → Gate; tombol di modal/EMR, posting/batal, dll.
+        'rj.detailKunjungan' => ['label' => 'Lihat detail kunjungan', 'roles' => AksiRole::RJ_DETAIL_KUNJUNGAN],
+    ],
+    'pintu' => [                                  // → listener modal #[Authorize('pintu.…')]
+        'emr-rj.rekam-medis.open' => ['rj.pelayanan.bukaRekamMedis'],
+    ],
+],
+```
+
+`App\Support\ProgramAkses` membaca semua berkas itu; `AppMenu::all()`, `AksiRole::khusus()`,
+`AksesHalaman::pintu()` dan matriks Role Control semuanya bersumber dari sini. Urutan kelompok
+= `ProgramAkses::BERKAS`; urutan program & aksi = urutan tulis di berkas.
+
+**Menaruh sesuatu:** milik satu jalur → berkas jalurnya (RJ/UGD/RI), di program yang memakainya
+(tombol batal kasir RJ → "Administrasi & Kasir Rawat Jalan"). Dipakai lintas jalur → `LintasJalur.php`.
+
 ## Menambah menu / halaman baru
 
 1. Route di dalam grup `Route::middleware(['auth', 'akses.halaman'])` di `routes/web.php`.
-2. Entri di `AppMenu::definitions()` — kolom `roles` = **centang awal** saja. Opsional:
-   - `'aksi' => ['lihat', 'tambah', 'ubah']` — aksi yang berlaku; sisanya tampil `·` di Role
-     Control dan tidak dibuat permission-nya (mis. halaman tanpa Hapus).
+2. Entri di `'menu'` blok programnya (program baru = blok baru) — `roles` = **centang awal** saja:
+   - `'group'` / `'groupOrder'` / `'order'` = letak di **sidebar** (tak harus sama dengan kelompok
+     berkas; mis. Antrian Apotek RJ di sidebar grup "Apotek", definisinya di `RawatJalan.php`).
+   - `'aksi' => ['lihat', 'tambah', 'ubah']` — aksi yang berlaku; sisanya `·` di Role Control
+     dan tidak dibuat permission-nya. **Tulis eksplisit.**
    - `'rolesAksi' => ['tambah' => [...], 'ubah' => [...]]` — centang awal per aksi bila beda
-     dari `roles` (contoh: Daftar RJ/UGD/RI — banyak role boleh Lihat, hanya
-     `AppMenu::ROLES_PENDAFTARAN` yang boleh Tambah/Ubah).
+     dari `roles` (contoh: Daftar RJ/UGD/RI → `AppMenu::ROLES_PENDAFTARAN`).
    - `'khusus' => ['bukaAdministrasi' => ['Buka Administrasi', [roles]]]` — tombol khusus
-     halaman (pembuka modul lain, dll.). Permission `{route}.{kunci}`, tampil di kolom
-     **Khusus** baris halaman itu di Role Control. Pakai `@can('rj.pelayanan.bukaAdministrasi')`
+     halaman. Permission `{route}.{kunci}`. Pakai `@can('rj.pelayanan.bukaAdministrasi')`
      + `#[Authorize(...)]` di method pembukanya.
 3. Guard di komponen (lihat pola di bawah).
-4. Deploy. Permission baru + centang awalnya dibuat **OTOMATIS** pada request pertama
-   sesudah `AppMenu.php` / `AksiRole.php` berubah (`App\Support\SinkronAksesOtomatis`, dipanggil
-   middleware `akses.halaman`; tanda di `storage/framework/akses-sinkron.tanda`, hasil di
-   `laravel.log`, gagal di log `akses-halaman`). Aman diulang: centang yang dicabut admin tidak
-   kembali. `php artisan akses:sinkron` manual tetap bisa (mis. `--dry-run`).
+4. Deploy. Permission baru + centang awalnya dibuat **OTOMATIS** pada request pertama sesudah
+   berkas definisi berubah (`App\Support\SinkronAksesOtomatis`, dipanggil middleware
+   `akses.halaman`; memantau `app/Akses/Program/*.php`, `AppMenu.php`, `AksiRole.php`,
+   `ProgramAkses.php`; tanda di `storage/framework/akses-sinkron.tanda`, hasil di `laravel.log`,
+   gagal di log `akses-halaman`). Aman diulang: centang yang dicabut admin tidak kembali.
+   `php artisan akses:sinkron` manual tetap bisa (mis. `--dry-run`).
 5. Admin menyesuaikan centang di Role Control.
 
-Mengoreksi centang awal route yang permission-nya **sudah** ada:
-`php artisan akses:sinkron --ulang=rj.daftar,ugd.daftar` — mengisi ulang centang route itu
-dari definisi (menimpa Role Control untuk route itu saja; coba `--dry-run` dulu).
+Mengoreksi centang awal route/aksi yang permission-nya **sudah** ada:
+`php artisan akses:sinkron --ulang=rj.daftar,kasir.rj.batal` — mengisi ulang centangnya dari
+definisi (menimpa Role Control untuk itu saja; coba `--dry-run` dulu).
 
-**Aturan seragam kolom aksi (2026-11-25)** — tulis `'aksi'` EKSPLISIT di tiap entri, jangan
-mengandalkan default empat kolom (centang yang tak menjaga apa pun menyesatkan admin):
+**Aturan seragam kolom aksi (2026-11-25)** — centang yang tak menjaga apa pun menyesatkan admin:
 
-| Tombol di halaman | Masuk ke |
+| Tombol | Masuk ke |
 |---|---|
-| Membuat / mengubah / menghapus data **di halaman itu sendiri** | kolom Tambah / Ubah / Hapus |
-| Membuka modul lain (EMR, Administrasi, Modul Dokumen, Telaah) | `'khusus'` → `buka*` |
-| Kirim ke pihak luar (Aplicares/SIRS, DINKESTA, …) | `'khusus'` → `kirim` |
-| Posting / batal transaksi, aksi dari modal lintas halaman | Aksi Khusus `AksiRole::KHUSUS` |
+| Membuat / mengubah / menghapus data **di halaman itu sendiri** | `'aksi'` Tambah / Ubah / Hapus |
+| Membuka modul lain dari halaman (EMR, Administrasi, Modul Dokumen, Telaah) | `'khusus'` → `buka*` |
+| Kirim ke pihak luar dari halaman (Aplicares/SIRS, DINKESTA, …) | `'khusus'` → `kirim` |
+| Tombol di modal/EMR lintas halaman, posting / batal transaksi | `'aksiKhusus'` blok programnya |
 | Identitas profesi (TTD dokter, telaah apoteker) | tetap di kode, bukan centang |
 
 Halaman daftar/antrian yang hanya membuka modul = `'aksi' => ['lihat']` + `'khusus'`. Modal yang
@@ -63,16 +103,26 @@ dipakai banyak halaman (Berkas BPJS, Administrasi) dijaga **pintu modal**, bukan
 Modal Tambah/Edit yang juga dipakai untuk melihat/mencetak: jaga `openCreate` + `save()` (baru =
 tambah, lama = ubah), JANGAN jaga `openEdit` (contoh: Pelaporan Down Time, penerimaan gudang).
 
-Laporan manajemen = **menu sendiri** di AppMenu (grup Laporan Pelayanan/Penunjang/SIRS
-Online/Keuangan, `'aksi' => ['lihat']`); halaman hub berisi kartu tautan sudah dihapus
-(2026-11-25) — jangan membuat hub tautan baru (menu kembar dengan sidebar).
+Laporan manajemen = **menu sendiri** (`LaporanManajemen.php`, `'aksi' => ['lihat']`); halaman hub
+berisi kartu tautan sudah dihapus (2026-11-25) — jangan membuat hub tautan baru (menu kembar).
 
 `AksesHalaman::INDUK` hanya untuk halaman turunan yang memang tak layak jadi menu (mis. Tutup
 Buku Supplier dari Tutup Buku). Lupa didaftarkan = halaman tertutup (di mode `log`: tercatat
 `"dikenal": false`).
 
-Sebelum `akses:sinkron` dijalankan, semua cek memakai cadangan `roles` AppMenu / konstanta
-AksiRole — deploy tanpa sinkron tidak mengunci siapa pun.
+Sebelum permission dibuat, semua cek memakai cadangan `roles` definisi — deploy tidak mengunci siapa pun.
+
+## Menambah aksi khusus
+
+1. Konstanta role awal di `App\Support\AksiRole` (satu konstanta per maksud, walau isinya
+   kebetulan sama dengan aksi lain).
+2. Entri di `'aksiKhusus'` blok program yang memakainya:
+   `'rj.detailKunjunganKronis' => ['label' => 'Lihat detail kunjungan kronis', 'roles' => AksiRole::RJ_DETAIL_KUNJUNGAN_KRONIS],`
+   Label TANPA prefix jalur — baris program di Role Control sudah menyebutnya.
+3. `@can('nama')` di blade + `#[Authorize('nama')]` / `->can()` di server (wajib dua lapis).
+4. Deploy — Gate terdaftar otomatis (`AppServiceProvider`), permission dibuat otomatis.
+
+Pengecualian: `AksiRole::EMR_PENUNJANG_LIHAT` tetap berbasis role (penanda profesi, bukan hak).
 
 ## Pola guard di komponen (acuan: `master-poli`)
 
@@ -115,7 +165,7 @@ Selalu tulis nama route secara eksplisit di string permission.
 ## Pintu modal (listener `#[On]`)
 
 Tombol pembuka dijaga di halaman, tapi modal tujuannya mendengar event yang bisa dipicu dari
-console browser. Listener modal dijaga dengan **pintu**: katalog `AksesHalaman::PINTU`
+console browser. Listener modal dijaga dengan **pintu**: kunci `'pintu'` di blok program
 memetakan event → semua hak sah pembukanya (lolos bila punya salah satu).
 
 ```php
@@ -130,10 +180,10 @@ public function openAdministrasiPasien(…)
 ```
 
 - **Menambah pembuka baru** ke modal yang sudah punya pintu → tambahkan hak pembukanya ke
-  entri katalog (kalau lupa: mode `log` mencatat "Pintu modal di luar hak", mode `tolak` 403).
-- **Modal baru** yang pembukanya menuntut hak lebih dari Lihat halaman → tambah entri katalog +
-  `#[Authorize('pintu.…')]` di listener. Modal yang hanya dibuka dari halamannya sendiri tak perlu
-  pintu: persistent middleware sudah menjaga dengan hak Lihat halaman itu.
+  entri pintunya (kalau lupa: mode `log` mencatat "Pintu modal di luar hak", mode `tolak` 403).
+- **Modal baru** yang pembukanya menuntut hak lebih dari Lihat halaman → entri `'pintu'` di blok
+  programnya + `#[Authorize('pintu.…')]` di listener. Modal yang hanya dibuka dari halamannya
+  sendiri tak perlu pintu: persistent middleware sudah menjaga dengan hak Lihat halaman itu.
 - Pemicu dengan nama event dinamis (`$this->dispatch($event)`) tidak terdeteksi pemindai —
   periksa manual (contoh: Dokumen Bedah di Kamar Operasi → `penunjang.kamar-operasi.bukaDokumenBedah`).
 
@@ -145,24 +195,3 @@ role, jadi bukan centang. Yang jadi centang hanya **pengecualiannya**:
 ```php
 $canEdit = (auth()->user()->can('ri.cppt.ubahSemua') || $isOwner) && !$isFormLocked;
 ```
-
-## Tombol di komponen yang dipakai lintas halaman
-
-Tombol di dalam EMR (`emr-rj-isi`, `emr-ri-isi`, …) tampil di beberapa halaman, jadi
-tidak bisa memakai `{route}.{kunci}`. Pakai aksi khusus jalur di `AksiRole::KHUSUS`:
-`rj.emr.bukaAdministrasi`, `ri.emr.bukaEresep`, dst. (area "EMR RJ/UGD/RI").
-
-## Menambah aksi khusus
-
-1. Konstanta role awal di `AksiRole` + entri di `AksiRole::KHUSUS` (area, label, roles).
-   **`area` = kartu di Role Control, dikelompokkan PER JALUR:** aksi milik RJ (termasuk kasir
-   RJ, EMR RJ) → `'Rawat Jalan'`; UGD → `'UGD'`; RI (termasuk kasir pulang, resep RI, CPPT/SBAR
-   RI) → `'Rawat Inap'`. Hanya aksi yang tak terikat jalur memakai area tematik: `EMR`,
-   `Modul Dokumen`, `Bridging`, `Keuangan`, `Gudang`, `Sistem`. Taruh entri di blok areanya
-   (urutan kartu = urutan pertama muncul) dan tulis label TANPA prefix jalur — kartunya sudah
-   menyebut jalur (`'Kasir: batal transaksi'`, bukan `'Kasir RJ: batal transaksi'`).
-2. Gate terdaftar otomatis (loop di `AppServiceProvider`) dan muncul di kartu Aksi Khusus Role Control.
-3. `@can('nama')` di blade + `#[Authorize('nama')]` / `->can()` di server.
-4. Tidak perlu apa-apa lagi — sinkron otomatis sesudah deploy (lihat langkah 4 "Menambah menu").
-
-Pengecualian: `AksiRole::EMR_PENUNJANG_LIHAT` tetap berbasis role (penanda profesi, bukan hak).
