@@ -131,6 +131,29 @@ new class extends Component {
         ];
     }
 
+
+    /**
+     * Celah ID record: kunci record tak boleh diubah dari klien — `save()` memakainya sebagai
+     * WHERE update, jadi mengubahnya = menulis ke record LAIN. Array publik bisa diubah klien
+     * di path mana pun walau tak ada inputnya, jadi dijaga di sini.
+     *  - kunci saat edit ('poliId'): ditolak bila bukan mode create (inputnya disabled saat edit)
+     *  - kunci isian server (—): selalu ditolak
+     */
+    public function updatingFormPoli($value, ?string $key = null): void
+    {
+        $kunciEdit = ['poliId'];
+        $kunciServer = [];
+        $dijaga = $this->formMode === 'create' ? $kunciServer : [...$kunciEdit, ...$kunciServer];
+        if ($key === null) {
+            // seluruh array diganti dari klien: tolak bila nilai kunci berubah
+            foreach ($dijaga as $k) {
+                abort_if((string) (($value[$k] ?? '')) !== (string) ($this->formPoli[$k] ?? ''), 403, 'Kunci record tidak boleh diubah.');
+            }
+            return;
+        }
+        abort_if(in_array(explode('.', $key)[0], $dijaga, true), 403, 'Kunci record tidak boleh diubah.');
+    }
+
     public function save(): void
     {
         Gate::authorize($this->formMode === 'create' ? 'master.poli.tambah' : 'master.poli.ubah');

@@ -1,6 +1,7 @@
 <?php
 
 use Livewire\Component;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Reactive;
 use Illuminate\Support\Facades\DB;
@@ -13,6 +14,7 @@ new class extends Component {
     public array $renderVersions = [];
     protected array $renderAreas = ['form-tambah-luar'];
 
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public string $checkupNo = '';
     #[Reactive]
     public string $labStatus = 'P';

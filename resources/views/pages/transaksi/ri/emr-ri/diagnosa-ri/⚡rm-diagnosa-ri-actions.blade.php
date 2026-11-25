@@ -2,6 +2,7 @@
 // resources/views/pages/transaksi/ri/emr-ri/diagnosa/rm-diagnosa-ri-actions.blade.php
 
 use Livewire\Component;
+use Livewire\Attributes\Locked;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 use Illuminate\Support\Facades\DB;
@@ -11,6 +12,7 @@ new class extends Component {
     use EmrRITrait, WithRenderVersioningTrait;
 
     public bool $isFormLocked = false;
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public ?string $riHdrNo = null;
     /**
      * IRISAN dokumen: empat cabang yang dikelola komponen ini. Dua terakhir sekaligus

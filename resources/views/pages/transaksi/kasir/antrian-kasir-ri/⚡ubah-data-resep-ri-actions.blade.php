@@ -12,6 +12,7 @@
 // Log dicatat di Log Aktivitas kunjungan RI (AdministrasiRI.userLogs), memuat No SLS.
 
 use Livewire\Component;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Authorize;
 use Livewire\Attributes\On;
 use Carbon\Carbon;
@@ -22,6 +23,7 @@ use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 new class extends Component {
     use EmrRITrait, WithRenderVersioningTrait;
 
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public ?int $slsNo = null;
     public ?int $riHdrNo = null;
 

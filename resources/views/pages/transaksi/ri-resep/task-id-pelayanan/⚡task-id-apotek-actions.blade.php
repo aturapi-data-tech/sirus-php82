@@ -1,6 +1,7 @@
 <?php
 
 use Livewire\Component;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -27,6 +28,7 @@ use App\Support\TaskIdAntrean;
  *    rstxn_rihdrs.datadaftarri_json apotekHdr[].taskId6/7) IDENTIK versi lama.
  */
 new class extends Component {
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public ?int $slsNo = null;
 
     /* ===============================

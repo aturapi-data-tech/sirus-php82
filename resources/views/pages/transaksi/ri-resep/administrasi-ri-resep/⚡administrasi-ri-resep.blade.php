@@ -1,6 +1,7 @@
 <?php
 
 use Livewire\Component;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Authorize;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Computed;
@@ -17,6 +18,7 @@ new class extends Component {
     /* ── State umum ── */
     public bool $isLoaded = false;
     public string $activeTab = 'obat';   // obat | kasir
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public ?int $slsNo = null;
     public ?int $rihdrNo = null;
 
@@ -30,6 +32,7 @@ new class extends Component {
     public array $items = [];
 
     /* ── Inline edit obat ── */
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public ?int $editingDtl = null;
     public array $editRow = [];
 

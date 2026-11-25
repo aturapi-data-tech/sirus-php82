@@ -1,6 +1,7 @@
 <?php
 
 use Livewire\Component;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -30,6 +31,7 @@ use App\Support\TaskIdAntrean;
 new class extends Component {
     use EmrRJTrait, AntrianTrait;
 
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public ?int $rjNo = null;
 
     /* ===============================

@@ -1,6 +1,7 @@
 <?php
 
 use Livewire\Component;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -20,6 +21,7 @@ new class extends Component {
     /* =======================
      | State
      * ======================= */
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public string $checkupNo = '';
     public string $activeTab = 'PemeriksaanLab'; // PemeriksaanLab | PemeriksaanLuar | Obat
     public array $headerData = [];

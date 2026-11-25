@@ -1,6 +1,7 @@
 <?php
 
 use Livewire\Component;
+use Livewire\Attributes\Locked;
 use Livewire\WithPagination;
 use Livewire\Attributes\Computed;
 use Illuminate\Support\Facades\DB;
@@ -75,6 +76,7 @@ new class extends Component {
  | Properties tambahan untuk Copy Resep
  * ======================= */
 
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public string $rjNoRefCopyTo = ''; // No. transaksi RJ yang sedang aktif (tujuan copy)
 
     /**

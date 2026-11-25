@@ -2,6 +2,7 @@
 // resources/views/pages/transaksi/ri/daftar-ri/vclaim-ri-actions.blade.php
 
 use Livewire\Component;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -15,6 +16,7 @@ new class extends Component {
     public array $renderVersions = [];
     protected array $renderAreas = ['modal', 'form-sep', 'form-spri', 'info-pasien'];
 
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public ?string $riHdrNo = null;
     public ?string $regNo = null;
     // Guard @if isi modal. BUKAN $riHdrNo: mode 'create' (SEP/SPRI baru dari pendaftaran) dibuka tanpa riHdrNo.

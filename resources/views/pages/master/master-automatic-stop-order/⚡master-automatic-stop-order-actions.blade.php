@@ -21,6 +21,7 @@ new class extends Component {
 
     #[Locked]
     public string $formMode   = 'create';
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public int    $originalId = 0;
     public array  $renderVersions = [];
     protected array $renderAreas  = ['modal'];

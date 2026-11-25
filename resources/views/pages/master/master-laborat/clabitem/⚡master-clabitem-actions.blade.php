@@ -85,8 +85,11 @@ new class extends Component {
     /* --- Composite PK lama (untuk edit) — wajib public agar persist antar Livewire request.
          Saat klik Simpan, server butuh nilai PK ASLI untuk WHERE clause UPDATE.
          Private properties di-reset tiap request, sehingga UPDATE kena 0 row. --- */
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public string $oldClabitemId = '';
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public string $oldClabId = '';
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public string $oldProductId = '';
 
     public function mount(): void

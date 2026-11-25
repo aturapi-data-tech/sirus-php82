@@ -6,6 +6,7 @@
 // 'open-transfer-ugd-ke-ri' → komponen ini membuka modal 'transfer-ugd-ke-ri'.
 
 use Livewire\Component;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Authorize;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
@@ -21,6 +22,7 @@ new class extends Component {
     // bertabrakan dengan EmrUGDTrait.
     use EmrUGDTrait, EmrRITrait, WithRenderVersioningTrait;
 
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public ?int $rjNo = null;
     public ?string $regName = null;
 

@@ -276,6 +276,17 @@ new class extends Component {
     /* ===============================
      | SAVE — header + paket (delete-then-insert)
      =============================== */
+
+    /**
+     * Celah ID record: kunci record yang sedang diedit tak boleh diubah dari klien — `save()`
+     * memakainya sebagai WHERE update, jadi mengubahnya = menulis ke record LAIN. Inputnya
+     * sudah disabled saat edit, jadi user biasa tak pernah mengirim perubahan ini.
+     */
+    public function updatingAccdocId(): void
+    {
+        abort_if($this->formMode !== 'create', 403, 'Kunci record tidak boleh diubah.');
+    }
+
     public function save(): void
     {
         Gate::authorize($this->formMode === 'create' ? 'master.jasa-dokter.tambah' : 'master.jasa-dokter.ubah');

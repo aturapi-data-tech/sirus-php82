@@ -1,6 +1,7 @@
 <?php
 
 use Livewire\Component;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Computed;
 use Carbon\Carbon;
@@ -21,6 +22,7 @@ new class extends Component {
     public bool $isFormLocked = false;
     public bool $isBpjsPatient = false; // hanya pasien BPJS yang bisa pakai split kronis
     public bool $isIterEnabledByDokter = false; // toggle iter per-obat hanya tersedia setelah dokter klik Status Iter di e-resep
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public ?int $rjNo = null;
     public array $rjObat = [];
 
@@ -29,6 +31,7 @@ new class extends Component {
     public ?float $stokTersedia = null;
 
     // State inline editing
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public ?int $editingDtl = null;
     public array $editRow = [];
 

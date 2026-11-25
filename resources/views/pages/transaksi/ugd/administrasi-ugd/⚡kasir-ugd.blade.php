@@ -1,6 +1,7 @@
 <?php
 
 use Livewire\Component;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -15,6 +16,7 @@ new class extends Component {
     protected array $renderAreas = ['kasir-ugd'];
 
     public bool $isFormLocked = false;
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public ?int $rjNo = null;
     /** Penanda kunjungan sudah dimuat. Dokumennya sendiri tidak pernah dibaca di sini. */
     public bool $dokumenTermuat = false;

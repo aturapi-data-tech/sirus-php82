@@ -1,6 +1,7 @@
 <?php
 
 use Livewire\Component;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
@@ -9,6 +10,7 @@ use App\Support\Keuangan\SaldoKas;
 new class extends Component {
     use WithRenderVersioningTrait;
 
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public string $accId        = '';
     public string $accDesc      = '';
     public string $accDkStatus  = 'D';

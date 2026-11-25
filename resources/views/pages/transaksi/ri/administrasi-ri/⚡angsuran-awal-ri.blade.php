@@ -1,6 +1,7 @@
 <?php
 
 use Livewire\Component;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -32,6 +33,7 @@ new class extends Component {
     protected array $renderAreas = ['angsuran-awal-ri'];
 
     public bool $isFormLocked = false;
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public ?int $riHdrNo = null;
 
     /** Baris rstxn_ripaymentdtls kunjungan ini (hasil query, bukan dokumen EMR). */

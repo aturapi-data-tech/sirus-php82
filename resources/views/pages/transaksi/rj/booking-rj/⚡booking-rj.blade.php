@@ -1,6 +1,7 @@
 <?php
 
 use Livewire\Component;
+use Livewire\Attributes\Locked;
 use Livewire\WithPagination;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
@@ -33,6 +34,7 @@ new class extends Component {
     public array $statusOptions = [['id' => '', 'label' => 'Semua'], ['id' => 'Belum', 'label' => 'Belum'], ['id' => 'Checkin', 'label' => 'Checkin'], ['id' => 'Batal', 'label' => 'Batal']];
 
     /* ─── Batal modal ─── */
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public string $batalNobooking = '';
     public string $batalKeterangan = '';
 

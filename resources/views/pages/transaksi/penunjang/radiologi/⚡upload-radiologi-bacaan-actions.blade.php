@@ -13,6 +13,7 @@
 // Setelah save sukses, dispatch 'radiologi-refresh' ke parent.
 
 use Livewire\Component;
+use Livewire\Attributes\Locked;
 use Livewire\WithFileUploads;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Computed;
@@ -27,7 +28,9 @@ new class extends Component {
     use WithFileUploads, WithValidationToastTrait;
 
     public string $selectedSource = '';
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public ?int $selectedDtl = null;
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public ?int $selectedRefNo = null;
 
     public $pdfFile = null;

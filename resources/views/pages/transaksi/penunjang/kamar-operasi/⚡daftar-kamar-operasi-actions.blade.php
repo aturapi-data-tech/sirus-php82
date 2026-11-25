@@ -1,6 +1,7 @@
 <?php
 
 use Livewire\Component;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
@@ -29,6 +30,7 @@ new class extends Component {
     public array $renderVersions = [];
     protected array $renderAreas = ['kamar-operasi-actions-modal'];
 
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public string $okReg = '';
     public string $activeTab = 'Tindakan'; // Tindakan | BahanAlat
     public array $headerData = [];

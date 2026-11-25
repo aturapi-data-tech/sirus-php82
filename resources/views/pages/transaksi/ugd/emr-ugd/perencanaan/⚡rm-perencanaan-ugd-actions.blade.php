@@ -2,6 +2,7 @@
 // resources/views/pages/transaksi/ugd/emr-ugd/perencanaan/rm-perencanaan-ugd-actions.blade.php
 
 use Livewire\Component;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -16,6 +17,7 @@ new class extends Component {
     use EmrUGDTrait, WithRenderVersioningTrait, WithValidationToastTrait;
 
     public bool $isFormLocked = false;
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public ?int $rjNo = null;
     /**
      * IRISAN dokumen: cabang `perencanaan` — sekaligus model form

@@ -1,6 +1,7 @@
 <?php
 
 use Livewire\Component;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Reactive;
 use Illuminate\Support\Facades\DB;
@@ -8,6 +9,7 @@ use Illuminate\Support\Facades\Gate;
 
 new class extends Component {
 
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public string $checkupNo = '';
     #[Reactive]
     public string $labStatus = 'P';

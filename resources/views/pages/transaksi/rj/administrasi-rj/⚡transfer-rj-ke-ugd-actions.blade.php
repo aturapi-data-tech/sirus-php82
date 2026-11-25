@@ -8,6 +8,7 @@
 // TIDAK ada pemilihan ruangan/bed (UGD tak punya kamar seperti RI).
 
 use Livewire\Component;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Authorize;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
@@ -24,6 +25,7 @@ new class extends Component {
     // bertabrakan dengan EmrRJTrait.
     use EmrRJTrait, EmrUGDTrait, WithRenderVersioningTrait;
 
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public ?int $rjNo = null;
     public ?string $regName = null;
 

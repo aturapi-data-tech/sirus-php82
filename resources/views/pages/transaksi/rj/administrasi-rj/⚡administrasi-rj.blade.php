@@ -1,6 +1,7 @@
 <?php
 
 use Livewire\Component;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Authorize;
 use Livewire\Attributes\On;
 use Carbon\Carbon;
@@ -12,6 +13,7 @@ new class extends Component {
     use EmrRJTrait, WithRenderVersioningTrait;
 
     public bool $isFormLocked = false;
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public ?int $rjNo = null;
     /**
      * Jejak petugas administrasi terakhir + penanda termuat — bukan dokumennya.

@@ -1,6 +1,7 @@
 <?php
 
 use Livewire\Component;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Authorize;
 use Livewire\Attributes\On;
 use Carbon\Carbon;
@@ -15,9 +16,11 @@ new class extends Component {
     protected array $renderAreas = ['modal-pindah-kamar-ri'];
 
     public bool   $isOpen   = false;
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public ?int   $riHdrNo  = null;
     public bool   $isFormLocked = false;
 
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public ?array $activeRoom = null;   // kamar sekarang (end_date null)
     public array $availableBeds = [];   // list bed master + occupancy status
     public bool $forceOccupiedBed = false;  // toggle paksa pilih bed terpakai

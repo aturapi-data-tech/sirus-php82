@@ -30,6 +30,7 @@ new class extends Component {
     public string $formMode = 'create';
 
     // ── Header ──
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public ?int $trfNo = null;
     public ?string $trfDateDisplay = null;
     public ?string $slCodeFrom = null;

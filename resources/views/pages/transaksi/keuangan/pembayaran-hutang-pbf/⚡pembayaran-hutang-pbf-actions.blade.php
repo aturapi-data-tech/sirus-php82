@@ -28,6 +28,7 @@
  */
 
 use Livewire\Component;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -41,6 +42,7 @@ use App\Support\Keuangan\SaldoDpSupplier;
 new class extends Component {
     use WithRenderVersioningTrait;
 
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public ?string $suppId   = null;
     public ?string $suppName = null;
     public int     $sisaChecked = 0;

@@ -11,6 +11,7 @@
 // sini: bila klaim diganti ke BPJS, SEP dibuat lewat Pendaftaran Ubah (Mr/Admin).
 
 use Livewire\Component;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Authorize;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
@@ -20,6 +21,7 @@ use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 new class extends Component {
     use EmrRITrait, WithRenderVersioningTrait;
 
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public ?int $riHdrNo = null;
 
     public string $klaimId = 'UM';

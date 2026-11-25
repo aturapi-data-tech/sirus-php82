@@ -23,6 +23,7 @@ new class extends Component {
     public string $formMode = 'create';
 
     // ── Header ──
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public ?int $rcvNo = null;
     public ?string $rcvDate = null;
     public ?string $suppId = null;

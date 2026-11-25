@@ -1,6 +1,7 @@
 <?php
 
 use Livewire\Component;
+use Livewire\Attributes\Locked;
 use Livewire\WithPagination;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Computed;
@@ -12,6 +13,7 @@ use App\Support\KategoriNilaiRujukanLab;
 new class extends Component {
     use WithPagination;
 
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public string $checkupNo = '';
     public string $sex = '';
     #[Reactive]

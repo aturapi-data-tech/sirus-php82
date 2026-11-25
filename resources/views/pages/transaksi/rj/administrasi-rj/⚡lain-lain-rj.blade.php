@@ -1,6 +1,7 @@
 <?php
 
 use Livewire\Component;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Rj\EmrRJTrait;
@@ -17,6 +18,7 @@ new class extends Component {
     public array $rjLainLain = [];
 
     // Inline editing (tarif saja yang bisa diedit)
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public ?int $editingDtl = null;
     public array $editRow = [];
 

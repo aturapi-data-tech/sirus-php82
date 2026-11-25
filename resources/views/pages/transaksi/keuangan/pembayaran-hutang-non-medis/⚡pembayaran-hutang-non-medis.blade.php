@@ -16,6 +16,7 @@
  */
 
 use Livewire\Component;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Authorize;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
@@ -23,6 +24,7 @@ use Illuminate\Support\Facades\DB;
 use App\Support\Keuangan\SaldoDpSupplier;
 
 new class extends Component {
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public ?string $suppId = null;
     public ?array $supplier = null;
 
