@@ -72,6 +72,8 @@ return [
                 'emr-ri.eresep.open' => ['ri.emr.bukaEresep', 'pintu:emr-ri.rekam-medis.open', 'ri.gizi.lihat'],
                 'ringkasan-pulang-ri.open' => ['ri.emr.bukaRingkasanPulang'],
                 'resume-medis-ri.open' => ['ri.emr.bukaResumeMedis', 'ri.dokumen.ttdPerwakilan'],
+                'surat-kematian-riwayat-ri.lihat' => ['ri.emr.bukaRiwayatRekamMedis'],
+                'surat-kematian-riwayat-ri.cetak' => ['ri.emr.bukaRiwayatRekamMedis'],
             ],
         ],
 

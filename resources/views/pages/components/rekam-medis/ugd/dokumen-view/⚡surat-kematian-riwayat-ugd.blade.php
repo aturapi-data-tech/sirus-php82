@@ -7,6 +7,7 @@
 //     emr-ugd → rekam-medis-display DAN modul-dokumen-ugd → rm-surat-kematian-actions),
 //     jadi event yang sama akan ditangkap dua instance → PDF ter-download dobel.
 
+use Livewire\Attributes\Authorize;
 use Livewire\Component;
 use Livewire\Attributes\On;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -26,6 +27,7 @@ new class extends Component {
     private string $printView = 'pages.components.modul-dokumen.ugd.surat-kematian.cetak-surat-kematian-print';
 
     #[On('surat-kematian-riwayat.lihat')]
+    #[Authorize('pintu.surat-kematian-riwayat.lihat')]
     public function lihatRiwayat(int $rjNo): void
     {
         $this->rjNo = $rjNo;
@@ -42,6 +44,7 @@ new class extends Component {
     }
 
     #[On('surat-kematian-riwayat.cetak')]
+    #[Authorize('pintu.surat-kematian-riwayat.cetak')]
     public function cetakRiwayat(int $rjNo): mixed
     {
         $this->rjNo = $rjNo;

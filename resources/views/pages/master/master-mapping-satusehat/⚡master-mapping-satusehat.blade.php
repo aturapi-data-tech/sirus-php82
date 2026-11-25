@@ -13,16 +13,17 @@ use Livewire\Component;
 new class extends Component {
     /**
      * Satu baris = satu jenis mapping master ke SATUSEHAT. Rumus angkanya ada di App\Support\Cakupan*,
-     * halaman ini hanya menampilkan. 'roles' = siapa yang boleh melihat baris itu.
+     * halaman ini hanya menampilkan. 'hak' = tombol khusus halaman ini di Role Control
+     * (master.mapping-satusehat.<hak>) = siapa yang boleh melihat baris itu.
      */
     private const DAFTAR_MAPPING = [
-        ['kelas' => CakupanKfa::class, 'nama' => 'Obat', 'kode' => 'KFA', 'satuanMaster' => 'obat aktif', 'satuanPakai' => 'baris resep', 'route' => 'master.obat', 'filter' => ['kfa' => 'belum'], 'roles' => ['Admin', 'Apoteker']],
-        ['kelas' => CakupanLoincLab::class, 'nama' => 'Item Laboratorium', 'kode' => 'LOINC', 'satuanMaster' => 'item lab', 'satuanPakai' => 'hasil lab', 'route' => 'master.laborat', 'filter' => ['loinc' => 'belum'], 'roles' => ['Admin', 'Laboratorium']],
-        ['kelas' => CakupanLoincRadiologi::class, 'nama' => 'Tindakan Radiologi', 'kode' => 'LOINC', 'satuanMaster' => 'tindakan', 'satuanPakai' => 'permintaan', 'route' => 'master.radiologis', 'filter' => ['loinc' => 'belum'], 'roles' => ['Admin', 'Radiologi']],
-        ['kelas' => CakupanIhsDokter::class, 'nama' => 'Dokter', 'kode' => 'IHS', 'satuanMaster' => 'dokter aktif', 'satuanPakai' => 'kunjungan', 'route' => 'master.dokter', 'filter' => ['ihs' => 'belum'], 'roles' => ['Admin']],
-        ['kelas' => CakupanLocationPoli::class, 'nama' => 'Poli', 'kode' => 'Location', 'satuanMaster' => 'poli', 'satuanPakai' => 'kunjungan RJ', 'route' => 'master.poli', 'filter' => ['location' => 'belum'], 'roles' => ['Admin']],
-        ['kelas' => CakupanLocationKamar::class, 'nama' => 'Kamar Rawat Inap', 'kode' => 'Location', 'satuanMaster' => 'kamar aktif', 'satuanPakai' => 'masuk rawat', 'route' => 'master.kamar', 'filter' => ['location' => 'belum'], 'roles' => ['Admin']],
-        ['kelas' => CakupanIhsPasien::class, 'nama' => 'Pasien Berkunjung', 'kode' => 'IHS', 'satuanMaster' => 'pasien', 'satuanPakai' => 'kunjungan', 'route' => 'master.pasien', 'filter' => ['ihs' => 'belum'], 'roles' => ['Admin', 'Mr']],
+        ['kelas' => CakupanKfa::class, 'nama' => 'Obat', 'kode' => 'KFA', 'satuanMaster' => 'obat aktif', 'satuanPakai' => 'baris resep', 'route' => 'master.obat', 'filter' => ['kfa' => 'belum'], 'hak' => 'lihatObat'],
+        ['kelas' => CakupanLoincLab::class, 'nama' => 'Item Laboratorium', 'kode' => 'LOINC', 'satuanMaster' => 'item lab', 'satuanPakai' => 'hasil lab', 'route' => 'master.laborat', 'filter' => ['loinc' => 'belum'], 'hak' => 'lihatLaborat'],
+        ['kelas' => CakupanLoincRadiologi::class, 'nama' => 'Tindakan Radiologi', 'kode' => 'LOINC', 'satuanMaster' => 'tindakan', 'satuanPakai' => 'permintaan', 'route' => 'master.radiologis', 'filter' => ['loinc' => 'belum'], 'hak' => 'lihatRadiologi'],
+        ['kelas' => CakupanIhsDokter::class, 'nama' => 'Dokter', 'kode' => 'IHS', 'satuanMaster' => 'dokter aktif', 'satuanPakai' => 'kunjungan', 'route' => 'master.dokter', 'filter' => ['ihs' => 'belum'], 'hak' => 'lihatDokter'],
+        ['kelas' => CakupanLocationPoli::class, 'nama' => 'Poli', 'kode' => 'Location', 'satuanMaster' => 'poli', 'satuanPakai' => 'kunjungan RJ', 'route' => 'master.poli', 'filter' => ['location' => 'belum'], 'hak' => 'lihatPoli'],
+        ['kelas' => CakupanLocationKamar::class, 'nama' => 'Kamar Rawat Inap', 'kode' => 'Location', 'satuanMaster' => 'kamar aktif', 'satuanPakai' => 'masuk rawat', 'route' => 'master.kamar', 'filter' => ['location' => 'belum'], 'hak' => 'lihatKamar'],
+        ['kelas' => CakupanIhsPasien::class, 'nama' => 'Pasien Berkunjung', 'kode' => 'IHS', 'satuanMaster' => 'pasien', 'satuanPakai' => 'kunjungan', 'route' => 'master.pasien', 'filter' => ['ihs' => 'belum'], 'hak' => 'lihatPasien'],
     ];
 
     #[Computed]
@@ -32,7 +33,8 @@ new class extends Component {
         $rows = [];
 
         foreach (self::DAFTAR_MAPPING as $mapping) {
-            if (!$user->hasAnyRole($mapping['roles'])) {
+            // Tiap baris = tombol khusus halaman ini di Role Control (master.mapping-satusehat.<hak>).
+            if (!$user->can('master.mapping-satusehat.' . $mapping['hak'])) {
                 continue;
             }
 

@@ -64,6 +64,9 @@ return [
                 'emr-ugd.modul-dokumen.open' => ['ugd.daftar.bukaModulDokumen', 'ugd.pelayanan.bukaModulDokumen', 'ugd.emr.bukaModulDokumen', 'penunjang.kamar-operasi.bukaDokumenBedah'],
                 'emr-ugd.eresep.open' => ['ugd.emr.bukaEresep'],
                 'open-rm-screening-ugd' => ['ugd.emr.bukaScreening'],
+                // Lihat/cetak surat kematian dari tampilan Rekam Medis (riwayat).
+                'surat-kematian-riwayat.lihat' => ['ugd.emr.bukaRiwayatRekamMedis'],
+                'surat-kematian-riwayat.cetak' => ['ugd.emr.bukaRiwayatRekamMedis'],
             ],
         ],
 

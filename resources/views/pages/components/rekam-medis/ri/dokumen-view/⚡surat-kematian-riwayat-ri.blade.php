@@ -5,6 +5,7 @@
 // ⚠️  Nama event ber-suffix "-riwayat-ri", beda dari viewer kartu di RM display RI
 //     (surat-kematian-view-ri) supaya dua instance tak menangkap event yang sama.
 
+use Livewire\Attributes\Authorize;
 use Livewire\Component;
 use Livewire\Attributes\On;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -24,6 +25,7 @@ new class extends Component {
     private string $printView = 'pages.components.modul-dokumen.ri.surat-kematian-ri.cetak-surat-kematian-ri-print';
 
     #[On('surat-kematian-riwayat-ri.lihat')]
+    #[Authorize('pintu.surat-kematian-riwayat-ri.lihat')]
     public function lihatRiwayat(string $riHdrNo): void
     {
         $this->riHdrNo = $riHdrNo;
@@ -40,6 +42,7 @@ new class extends Component {
     }
 
     #[On('surat-kematian-riwayat-ri.cetak')]
+    #[Authorize('pintu.surat-kematian-riwayat-ri.cetak')]
     public function cetakRiwayat(string $riHdrNo): mixed
     {
         $this->riHdrNo = $riHdrNo;
