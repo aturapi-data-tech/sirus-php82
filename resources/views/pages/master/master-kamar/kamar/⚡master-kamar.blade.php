@@ -4,8 +4,10 @@ use Livewire\Component;
 use Livewire\WithPagination;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
 use Livewire\Attributes\Url;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Schema;
 use App\Support\CakupanLocationKamar;
 
@@ -145,6 +147,7 @@ new class extends Component {
     }
 
     /* --- Dispatch ke actions --- */
+    #[Authorize('master.kamar.tambah')]
     public function openCreateKamar(): void
     {
         if (!$this->selectedBangsalId) {
@@ -153,26 +156,31 @@ new class extends Component {
         $this->dispatch('master.kamar.openCreateKamar', bangsalId: $this->selectedBangsalId);
     }
 
+    #[Authorize('master.kamar.ubah')]
     public function openEditKamar(string $id): void
     {
         $this->dispatch('master.kamar.openEditKamar', roomId: $id);
     }
 
+    #[Authorize('master.kamar.hapus')]
     public function requestDeleteKamar(string $id): void
     {
         $this->dispatch('master.kamar.deleteKamar', roomId: $id);
     }
 
+    #[Authorize('master.kamar.tambah')]
     public function openCreateBed(string $roomId): void
     {
         $this->dispatch('master.kamar.openCreateBed', roomId: $roomId);
     }
 
+    #[Authorize('master.kamar.ubah')]
     public function openEditBed(string $bedNo, string $roomId): void
     {
         $this->dispatch('master.kamar.openEditBed', bedNo: $bedNo, roomId: $roomId);
     }
 
+    #[Authorize('master.kamar.hapus')]
     public function requestDeleteBed(string $bedNo, string $roomId): void
     {
         $this->dispatch('master.kamar.deleteBed', bedNo: $bedNo, roomId: $roomId);
@@ -289,6 +297,8 @@ new class extends Component {
      */
     public function updatedHargaDasar($value, string $key): void
     {
+        Gate::authorize('master.kamar.ubah');
+
         $segments = explode('.', $key);
         $field = array_pop($segments);
         $roomId = implode('.', $segments);
@@ -307,6 +317,7 @@ new class extends Component {
     }
 
     /* --- Toggle Status Aktif kamar (delegate ke actions) --- */
+    #[Authorize('master.kamar.ubah')]
     public function toggleActiveRoom(string $roomId): void
     {
         $this->dispatch('master.kamar.toggleActiveRoom', roomId: $roomId);
@@ -341,10 +352,12 @@ new class extends Component {
                             </x-select-input>
                         </div>
                         @if ($selectedBangsalId)
+                            @can('master.kamar.tambah')
                             <x-primary-button type="button" wire:click="openCreateKamar">
                                 <x-ikon nama="tambah" />
                                 Tambah Data Kamar Baru
                             </x-primary-button>
+                            @endcan
                         @endif
                         <x-toolbar-refresh-reset :label="null" />
                     </div>
@@ -457,10 +470,14 @@ new class extends Component {
                                         {{-- STATUS --}}
                                         <td class="ds-c" wire:click.stop>
                                             <div class="flex flex-col items-center gap-1.5">
+                                                @can('master.kamar.ubah')
                                                 <x-toggle :current="(string) $room->active_status" trueValue="1" falseValue="0"
                                                     wireClick="toggleActiveRoom('{{ $room->room_id }}')">
                                                     {{ $isActive ? 'Aktif' : 'Non Aktif' }}
                                                 </x-toggle>
+                                                @else
+                                                    <x-badge :variant="$isActive ? 'success' : 'gray'">{{ $isActive ? 'Aktif' : 'Non Aktif' }}</x-badge>
+                                                @endcan
                                                 <x-badge variant="info">{{ $room->jumlah_bed }} Bed</x-badge>
                                             </div>
                                         </td>
@@ -497,9 +514,13 @@ new class extends Component {
                                 </div>
                             </div>
                             <div class="flex gap-2 shrink-0">
+                                @can('master.kamar.ubah')
                                 <x-action-edit wire:click="openEditKamar('{{ $sr->room_id }}')" />
+                                @endcan
+                                @can('master.kamar.hapus')
                                 <x-action-delete :action="'requestDeleteKamar(\'' . $sr->room_id . '\')'"
                                     title="Hapus Kamar" message="Yakin hapus kamar {{ $sr->room_name }}?" />
+                                @endcan
                             </div>
                         </div>
 
@@ -510,17 +531,20 @@ new class extends Component {
                                 <div>
                                     <div class="text-xs text-muted dark:text-gray-500 mb-0.5">Kamar</div>
                                     <x-text-input-number wire:model="hargaDasar.{{ $sr->room_id }}.room_price"
-                                        wire:key="hd-kamar-{{ $sr->room_id }}" x-on:keydown.enter.prevent="$el.blur()" class="w-full" />
+                                        wire:key="hd-kamar-{{ $sr->room_id }}" x-on:keydown.enter.prevent="$el.blur()" class="w-full"
+                                        :disabled="auth()->user()->cannot('master.kamar.ubah')" />
                                 </div>
                                 <div>
                                     <div class="text-xs text-muted dark:text-gray-500 mb-0.5">Perawatan</div>
                                     <x-text-input-number wire:model="hargaDasar.{{ $sr->room_id }}.perawatan_price"
-                                        wire:key="hd-perawatan-{{ $sr->room_id }}" x-on:keydown.enter.prevent="$el.blur()" class="w-full" />
+                                        wire:key="hd-perawatan-{{ $sr->room_id }}" x-on:keydown.enter.prevent="$el.blur()" class="w-full"
+                                        :disabled="auth()->user()->cannot('master.kamar.ubah')" />
                                 </div>
                                 <div>
                                     <div class="text-xs text-muted dark:text-gray-500 mb-0.5">Pelayanan Umum</div>
                                     <x-text-input-number wire:model="hargaDasar.{{ $sr->room_id }}.common_service"
-                                        wire:key="hd-pelumum-{{ $sr->room_id }}" x-on:keydown.enter.prevent="$el.blur()" class="w-full" />
+                                        wire:key="hd-pelumum-{{ $sr->room_id }}" x-on:keydown.enter.prevent="$el.blur()" class="w-full"
+                                        :disabled="auth()->user()->cannot('master.kamar.ubah')" />
                                 </div>
                             </div>
                         </div>
@@ -529,11 +553,13 @@ new class extends Component {
                         <div class="flex-1 px-5 py-4">
                             <div class="flex items-center justify-between mb-3">
                                 <div class="ds-caption-up">Tempat Tidur ({{ count($beds) }})</div>
+                                @can('master.kamar.tambah')
                                 <x-ghost-button wire:click="openCreateBed('{{ $sr->room_id }}')"
                                     class="!text-brand-green dark:!text-brand-lime !px-3 !py-1.5 !text-xs border border-dashed border-brand-green/40 dark:border-brand-lime/40">
                                     <x-ikon nama="tambah" ukuran="w-3.5 h-3.5" />
                                     Tambah Bed
                                 </x-ghost-button>
+                                @endcan
                             </div>
 
                             @if (empty($beds))
@@ -550,12 +576,15 @@ new class extends Component {
                                                 <span class="text-muted dark:text-gray-500">{{ $bed['bed_desc'] }}</span>
                                             @endif
                                             <span class="items-center hidden gap-1 ml-1 group-hover:inline-flex">
+                                                @can('master.kamar.ubah')
                                                 <x-ghost-button wire:click="openEditBed('{{ $bed['bed_no'] }}', '{{ $sr->room_id }}')"
                                                     class="!text-brand-green dark:!text-brand-lime !p-1 !rounded">
                                                     <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 112.828 2.828L11.828 15.828A2 2 0 019 16H7v-2a2 2 0 01.586-1.414z" />
                                                     </svg>
                                                 </x-ghost-button>
+                                                @endcan
+                                                @can('master.kamar.hapus')
                                                 <x-confirm-button variant="danger"
                                                     :action="'requestDeleteBed(\'' . $bed['bed_no'] . '\', \'' . $sr->room_id . '\')'"
                                                     title="Hapus Bed" :message="'Hapus bed ' . $bed['bed_no'] . '?'"
@@ -564,6 +593,7 @@ new class extends Component {
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                                                     </svg>
                                                 </x-confirm-button>
+                                                @endcan
                                             </span>
                                         </div>
                                     @endforeach

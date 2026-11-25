@@ -275,10 +275,10 @@ new class extends Component {
         $this->dispatch('toast', type: 'info', message: 'Mode edit CPPT — ubah lalu klik Perbarui CPPT.');
     }
 
-    /* ── Pemilik entri (petugasCPPTCode === myuser_code) atau Admin ── */
+    /* ── Pemilik entri (petugasCPPTCode === myuser_code), atau role bercentang ri.cppt.ubahSemua ── */
     private function canEditCppt(array $cppt): bool
     {
-        if (auth()->user()->hasRole('Admin')) {
+        if (auth()->user()->can('ri.cppt.ubahSemua')) {
             return true;
         }
         $ownerCode = (string) ($cppt['petugasCPPTCode'] ?? '');
@@ -376,8 +376,8 @@ new class extends Component {
         }
 
         // Hapus CPPT: hanya level Manager ke atas — fungsional & Supervisor (Dokter/Perawat/Casemix/Mr dll) tidak bisa walau pemilik entri
-        if (!auth()->user()->hasAnyRole(['Admin', 'Manager Umum', 'Manager Medis'])) {
-            $this->dispatch('toast', type: 'error', message: 'Hanya Manager ke atas yang dapat menghapus CPPT.');
+        if (!auth()->user()->can('ri.cppt.hapus')) {
+            $this->dispatch('toast', type: 'error', message: 'Anda tidak berhak menghapus CPPT.');
             return;
         }
 
@@ -444,8 +444,8 @@ new class extends Component {
 
         $dpjp = $this->dpjpUtamaRow;
         $dpjpId = (string) ($dpjp['drId'] ?? '');
-        $isAdmin = auth()->user()->hasRole('Admin');
-        if (!$isAdmin && $dpjpId !== auth()->user()->myuser_code) {
+        $bolehReviewSemua = auth()->user()->can('ri.cppt.reviewSemua');
+        if (!$bolehReviewSemua && $dpjpId !== auth()->user()->myuser_code) {
             $this->dispatch('toast', type: 'error', message: 'Hanya DPJP Utama / Admin yang dapat me-review CPPT.');
             return;
         }
@@ -498,8 +498,8 @@ new class extends Component {
 
         $dpjp = $this->dpjpUtamaRow;
         $dpjpId = (string) ($dpjp['drId'] ?? '');
-        $isAdmin = auth()->user()->hasRole('Admin');
-        if (!$isAdmin && $dpjpId !== auth()->user()->myuser_code) {
+        $bolehReviewSemua = auth()->user()->can('ri.cppt.reviewSemua');
+        if (!$bolehReviewSemua && $dpjpId !== auth()->user()->myuser_code) {
             $this->dispatch('toast', type: 'error', message: 'Hanya DPJP Utama / Admin yang dapat membatalkan review.');
             return;
         }
@@ -590,7 +590,7 @@ new class extends Component {
         }
 
         // Copy hanya bisa dilakukan oleh role yang sama, kecuali Admin
-        if (!auth()->user()->hasRole('Admin')) {
+        if (!auth()->user()->can('ri.cppt.copySemua')) {
             $myRole = auth()->user()->profesiKlinis();
             $cpptRole = $cppt['profession'] ?? '';
             if ($myRole !== $cpptRole) {
@@ -857,7 +857,7 @@ new class extends Component {
                         $dpjpUtamaId = (string) ($dpjpUtamaRow['drId'] ?? '');
                         $isDpjpUtama = $dpjpUtamaId !== '' && $dpjpUtamaId === auth()->user()->myuser_code;
                         // DPJP Utama atau Admin boleh review; tetap perlu DPJP Utama terdefinisi (atribusi atas nama DPJP).
-                        $canReviewDpjp = $dpjpUtamaId !== '' && ($isDpjpUtama || auth()->user()->hasRole('Admin'));
+                        $canReviewDpjp = $dpjpUtamaId !== '' && ($isDpjpUtama || auth()->user()->can('ri.cppt.reviewSemua'));
                     @endphp
 
                     @if ($activeProfession === 'MPP')
@@ -1014,17 +1014,16 @@ new class extends Component {
 
                                     @if (!$isFormLocked)
                                         @php
-                                            $isAdmin = auth()->user()->hasRole('Admin');
                                             $myRole = auth()->user()->profesiKlinis();
                                             $cpptRole = $cppt['profession'] ?? '';
                                             // Hapus CPPT: hanya level Manager ke atas — fungsional & Supervisor (Dokter/Perawat/Casemix/Mr dll) tidak bisa, walau pemilik entri
-                                            $canDelete = auth()->user()->hasAnyRole(['Admin', 'Manager Umum', 'Manager Medis']);
-                                            $canCopy = $isAdmin || $myRole === $cpptRole;
-                                            // Edit CPPT: HANYA pemilik entri (petugasCPPTCode === myuser_code) atau Admin (super user).
+                                            $canDelete = auth()->user()->can('ri.cppt.hapus');
+                                            $canCopy = auth()->user()->can('ri.cppt.copySemua') || $myRole === $cpptRole;
+                                            // Edit CPPT: HANYA pemilik entri (petugasCPPTCode === myuser_code), atau role bercentang ri.cppt.ubahSemua.
                                             // Entri sinkron Asuhan Keperawatan diedit dari menu Askep, bukan di sini.
                                             $ownerCode = (string) ($cppt['petugasCPPTCode'] ?? '');
                                             $isOwner = $ownerCode !== '' && $ownerCode === auth()->user()->myuser_code;
-                                            $canEdit = ($isAdmin || $isOwner) && empty($cppt['askepDiagKepId']);
+                                            $canEdit = (auth()->user()->can('ri.cppt.ubahSemua') || $isOwner) && empty($cppt['askepDiagKepId']);
                                         @endphp
                                         <div class="flex gap-1.5">
                                             @if ($canEdit)

@@ -6,6 +6,8 @@ use Livewire\WithPagination;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
+use Livewire\Attributes\Authorize;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\DB;
 use App\Support\CakupanIhsDokter;
 
@@ -57,17 +59,20 @@ new class extends Component {
     /* ===============================
      | Child modal triggers
      =============================== */
+    #[Authorize('master.dokter.tambah')]
     public function openCreate(): void
     {
         $this->dispatch('master.dokter.openCreate');
     }
 
+    #[Authorize('master.dokter.ubah')]
     public function openEdit(string $drId): void
     {
         $this->dispatch('master.dokter.openEdit', drId: $drId);
     }
 
 
+    #[Authorize('master.dokter.hapus')]
     public function requestDelete(string $drId): void
     {
         $this->dispatch('master.dokter.requestDelete', drId: $drId);
@@ -155,6 +160,8 @@ new class extends Component {
     /** Auto-save saat blur/Enter di input panel (x-text-input-number sync via $wire.set). */
     public function updatedTarifKelas($value, string $key): void
     {
+        Gate::authorize('master.dokter.ubah');
+
         $segments = explode('.', $key); // "{idx}.{field}"
         if (count($segments) !== 2) {
             return;
@@ -179,6 +186,7 @@ new class extends Component {
         }
     }
 
+    #[Authorize('master.dokter.ubah')]
     public function copyTarifKelasDariBaris(int $idxSource): void
     {
         if (!isset($this->tarifKelas[$idxSource])) {
@@ -207,6 +215,7 @@ new class extends Component {
         }
     }
 
+    #[Authorize('master.dokter.ubah')]
     public function saveTarifKelas(): void
     {
         if (!$this->selectedDrId) {
@@ -248,6 +257,8 @@ new class extends Component {
      */
     public function updatedHargaDasar($value, string $key): void
     {
+        Gate::authorize('master.dokter.ubah');
+
         $segments = explode('.', $key);
         $field = array_pop($segments);
         $drId = implode('.', $segments);
@@ -269,6 +280,7 @@ new class extends Component {
     /* ===============================
      | Toggle Aktif / Non-aktif langsung dari table
      =============================== */
+    #[Authorize('master.dokter.ubah')]
     public function toggleActive(string $drId): void
     {
         $current = (string) DB::table('rsmst_doctors')->where('dr_id', $drId)->value('active_status');
@@ -424,10 +436,12 @@ new class extends Component {
                             </x-select-input>
                         </div>
 
+                        @can('master.dokter.tambah')
                         <x-primary-button type="button" wire:click="openCreate">
                             <x-ikon nama="tambah" />
                             Tambah Data Dokter Baru
                         </x-primary-button>
+                        @endcan
                         <x-toolbar-refresh-reset :label="null" />
                     </div>
                 </div>
@@ -469,6 +483,7 @@ new class extends Component {
                                         @php $isActive = (string) $row->active_status === '1'; @endphp
                                         <div class="flex items-center gap-3">
                                             <div class="text-base font-mono font-bold text-brand dark:text-brand-lime whitespace-nowrap">{{ $row->dr_id }}</div>
+                                            @can('master.dokter.ubah')
                                             <span wire:click.stop>
                                                 <x-toggle wire:key="dokter-toggle-{{ $row->dr_id }}-{{ $isActive ? 1 : 0 }}"
                                                     :current="$isActive ? '1' : '0'" trueValue="1" falseValue="0"
@@ -476,6 +491,9 @@ new class extends Component {
                                                     {{ $isActive ? 'Aktif' : 'Nonaktif' }}
                                                 </x-toggle>
                                             </span>
+                                            @else
+                                            <x-badge :variant="$isActive ? 'success' : 'danger'">{{ $isActive ? 'Aktif' : 'Nonaktif' }}</x-badge>
+                                            @endcan
                                         </div>
 
                                         <div class="mt-1 text-sm text-muted dark:text-gray-300">Nama Dokter</div>
@@ -535,10 +553,14 @@ new class extends Component {
                                     <td class="px-6 py-4 align-top">
                                         {{-- Aksi (Edit/Hapus) di atas sendiri — kolom Tarif & Aksi digabung 1 --}}
                                         <div class="flex flex-wrap justify-end gap-2 mb-3" wire:click.stop>
+                                            @can('master.dokter.ubah')
                                             <x-action-edit wire:click="openEdit('{{ $row->dr_id }}')" />
+                                            @endcan
+                                            @can('master.dokter.hapus')
                                             <x-action-delete :action="'requestDelete(\'' . $row->dr_id . '\')'"
                                                 title="Hapus Dokter"
                                                 :message="'Yakin hapus dokter ' . $row->dr_name . '?'" />
+                                            @endcan
                                         </div>
 
                                         {{-- Gaji & Administrasi RS — garis tipis antar baris --}}
@@ -547,13 +569,13 @@ new class extends Component {
                                             <span class="hidden text-muted dark:text-gray-300 whitespace-nowrap">Gaji Pokok</span>
                                             <span class="hidden" wire:click.stop>
                                                 <x-text-input-number wire:model="hargaDasar.{{ $row->dr_id }}.basic_salary"
-                                                    wire:key="hd-gaji-{{ $row->dr_id }}" x-on:keydown.enter.prevent="$el.blur()" />
+                                                    wire:key="hd-gaji-{{ $row->dr_id }}" x-on:keydown.enter.prevent="$el.blur()" :disabled="auth()->user()->cannot('master.dokter.ubah')" />
                                             </span>
 
                                             <span class="text-muted dark:text-gray-300 whitespace-nowrap">Admin RS</span>
                                             <span class="block" wire:click.stop>
                                                 <x-text-input-number wire:model="hargaDasar.{{ $row->dr_id }}.rs_admin"
-                                                    wire:key="hd-admin-{{ $row->dr_id }}" x-on:keydown.enter.prevent="$el.blur()" />
+                                                    wire:key="hd-admin-{{ $row->dr_id }}" x-on:keydown.enter.prevent="$el.blur()" :disabled="auth()->user()->cannot('master.dokter.ubah')" />
                                             </span>
                                         </div>
 
@@ -572,22 +594,22 @@ new class extends Component {
                                                         <td class="px-2 py-1.5 whitespace-nowrap text-muted dark:text-gray-300">Tarif Poli</td>
                                                         <td class="px-1.5 py-1.5 border-l border-hairline-soft dark:border-gray-800" wire:click.stop>
                                                             <x-text-input-number wire:model="hargaDasar.{{ $row->dr_id }}.poli_price"
-                                                                wire:key="hd-poli-{{ $row->dr_id }}" x-on:keydown.enter.prevent="$el.blur()" />
+                                                                wire:key="hd-poli-{{ $row->dr_id }}" x-on:keydown.enter.prevent="$el.blur()" :disabled="auth()->user()->cannot('master.dokter.ubah')" />
                                                         </td>
                                                         <td class="px-1.5 py-1.5 border-l border-hairline-soft dark:border-gray-800" wire:click.stop>
                                                             <x-text-input-number wire:model="hargaDasar.{{ $row->dr_id }}.poli_price_bpjs"
-                                                                wire:key="hd-polib-{{ $row->dr_id }}" x-on:keydown.enter.prevent="$el.blur()" />
+                                                                wire:key="hd-polib-{{ $row->dr_id }}" x-on:keydown.enter.prevent="$el.blur()" :disabled="auth()->user()->cannot('master.dokter.ubah')" />
                                                         </td>
                                                     </tr>
                                                     <tr>
                                                         <td class="px-2 py-1.5 whitespace-nowrap text-muted dark:text-gray-300">Tarif UGD</td>
                                                         <td class="px-1.5 py-1.5 border-l border-hairline-soft dark:border-gray-800" wire:click.stop>
                                                             <x-text-input-number wire:model="hargaDasar.{{ $row->dr_id }}.ugd_price"
-                                                                wire:key="hd-ugd-{{ $row->dr_id }}" x-on:keydown.enter.prevent="$el.blur()" />
+                                                                wire:key="hd-ugd-{{ $row->dr_id }}" x-on:keydown.enter.prevent="$el.blur()" :disabled="auth()->user()->cannot('master.dokter.ubah')" />
                                                         </td>
                                                         <td class="px-1.5 py-1.5 border-l border-hairline-soft dark:border-gray-800" wire:click.stop>
                                                             <x-text-input-number wire:model="hargaDasar.{{ $row->dr_id }}.ugd_price_bpjs"
-                                                                wire:key="hd-ugdb-{{ $row->dr_id }}" x-on:keydown.enter.prevent="$el.blur()" />
+                                                                wire:key="hd-ugdb-{{ $row->dr_id }}" x-on:keydown.enter.prevent="$el.blur()" :disabled="auth()->user()->cannot('master.dokter.ubah')" />
                                                         </td>
                                                     </tr>
                                                 </tbody>
@@ -669,18 +691,19 @@ new class extends Component {
                                                 <div class="text-xs text-muted font-mono">ID: {{ $rowKelas['class_id'] }}</div>
                                             </td>
                                             <td class="px-1.5 py-2 border-l border-hairline-soft dark:border-gray-800">
-                                                <x-text-input-number wire:model="tarifKelas.{{ $idx }}.visit_price" x-on:keydown.enter.prevent="$el.blur()" />
+                                                <x-text-input-number wire:model="tarifKelas.{{ $idx }}.visit_price" x-on:keydown.enter.prevent="$el.blur()" :disabled="auth()->user()->cannot('master.dokter.ubah')" />
                                             </td>
                                             <td class="px-1.5 py-2">
-                                                <x-text-input-number wire:model="tarifKelas.{{ $idx }}.visit_price_bpjs" x-on:keydown.enter.prevent="$el.blur()" />
+                                                <x-text-input-number wire:model="tarifKelas.{{ $idx }}.visit_price_bpjs" x-on:keydown.enter.prevent="$el.blur()" :disabled="auth()->user()->cannot('master.dokter.ubah')" />
                                             </td>
                                             <td class="px-1.5 py-2 border-l border-hairline-soft dark:border-gray-800">
-                                                <x-text-input-number wire:model="tarifKelas.{{ $idx }}.konsul_price" x-on:keydown.enter.prevent="$el.blur()" />
+                                                <x-text-input-number wire:model="tarifKelas.{{ $idx }}.konsul_price" x-on:keydown.enter.prevent="$el.blur()" :disabled="auth()->user()->cannot('master.dokter.ubah')" />
                                             </td>
                                             <td class="px-1.5 py-2">
-                                                <x-text-input-number wire:model="tarifKelas.{{ $idx }}.konsul_price_bpjs" x-on:keydown.enter.prevent="$el.blur()" />
+                                                <x-text-input-number wire:model="tarifKelas.{{ $idx }}.konsul_price_bpjs" x-on:keydown.enter.prevent="$el.blur()" :disabled="auth()->user()->cannot('master.dokter.ubah')" />
                                             </td>
                                             <td class="px-1.5 py-2 text-center">
+                                                @can('master.dokter.ubah')
                                                 <button type="button" wire:click="copyTarifKelasDariBaris({{ $idx }})"
                                                     wire:confirm="Salin tarif baris ini ke semua kelas lainnya?"
                                                     class="inline-flex items-center justify-center w-7 h-7 text-muted dark:text-gray-300 rounded-lg hover:bg-surface-soft dark:hover:bg-gray-700 transition"
@@ -690,6 +713,7 @@ new class extends Component {
                                                             d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                                                     </svg>
                                                 </button>
+                                                @endcan
                                             </td>
                                         </tr>
                                     @empty
@@ -705,11 +729,13 @@ new class extends Component {
                     </div>
 
                     <div class="sticky bottom-0 z-10 px-4 py-3 bg-canvas border-t border-hairline rounded-b-2xl dark:bg-gray-900 dark:border-gray-700 flex justify-end">
+                        @can('master.dokter.ubah')
                         <x-primary-button type="button" wire:click="saveTarifKelas"
                             wire:loading.attr="disabled" wire:target="saveTarifKelas">
                             <span wire:loading.remove wire:target="saveTarifKelas" class="inline-flex items-center gap-2"><x-ikon nama="simpan" /> Simpan Tarif</span>
                             <span wire:loading wire:target="saveTarifKelas"><x-loading class="w-4 h-4" /> Menyimpan...</span>
                         </x-primary-button>
+                        @endcan
                     </div>
                 @endif
             </div>

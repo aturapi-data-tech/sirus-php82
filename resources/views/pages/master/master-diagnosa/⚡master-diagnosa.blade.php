@@ -4,6 +4,7 @@ use Livewire\Component;
 use Livewire\WithPagination;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
 use Illuminate\Support\Facades\DB;
 
 new class extends Component {
@@ -35,11 +36,13 @@ new class extends Component {
     /* -------------------------
      | Child modal triggers
      * ------------------------- */
+    #[Authorize('master.diagnosa.tambah')]
     public function openCreate(): void
     {
         $this->dispatch('master.diagnosa.openCreate');
     }
 
+    #[Authorize('master.diagnosa.ubah')]
     public function openEdit(string $diagId): void
     {
         $this->dispatch('master.diagnosa.openEdit', diagId: $diagId);
@@ -48,6 +51,7 @@ new class extends Component {
     /* -------------------------
     | Request Delete (delegate ke actions)
     * ------------------------- */
+    #[Authorize('master.diagnosa.hapus')]
     public function requestDelete(string $diagId): void
     {
         $this->dispatch('master.diagnosa.requestDelete', diagId: $diagId);
@@ -131,10 +135,12 @@ new class extends Component {
                             </x-select-input>
                         </div>
 
+                        @can('master.diagnosa.tambah')
                         <x-primary-button type="button" wire:click="openCreate">
                             <x-ikon nama="tambah" />
                             Tambah Data Diagnosa Baru
                         </x-primary-button>
+                        @endcan
                         <x-toolbar-refresh-reset :label="null" />
                     </div>
                 </div>
@@ -198,10 +204,14 @@ new class extends Component {
                                     </td>
                                     <td class="ds-c px-6 py-4">
                                         <div class="flex justify-center gap-2">
+                                            @can('master.diagnosa.ubah')
                                             <x-action-edit wire:click="openEdit('{{ $row->diag_id }}')" />
+                                            @endcan
 
+                                            @can('master.diagnosa.hapus')
                                             <x-action-delete :action="'requestDelete(\'' . $row->diag_id . '\')'"
                                                 title="Hapus Diagnosa" message="Yakin hapus data diagnosa {{ $row->diag_desc }}?" />
+                                            @endcan
                                         </div>
                                     </td>
                                 </tr>

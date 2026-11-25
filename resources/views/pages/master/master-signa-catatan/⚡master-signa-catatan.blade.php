@@ -4,6 +4,7 @@ use Livewire\Component;
 use Livewire\WithPagination;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
 use Illuminate\Support\Facades\DB;
 
 new class extends Component {
@@ -24,21 +25,25 @@ new class extends Component {
         $this->resetPage();
     }
 
+    #[Authorize('master.signa-catatan.tambah')]
     public function openCreate(): void
     {
         $this->dispatch('master.signa-catatan.openCreate');
     }
 
+    #[Authorize('master.signa-catatan.ubah')]
     public function openEdit(string $catatan): void
     {
         $this->dispatch('master.signa-catatan.openEdit', catatan: $catatan);
     }
 
+    #[Authorize('master.signa-catatan.hapus')]
     public function requestDelete(string $catatan): void
     {
         $this->dispatch('master.signa-catatan.requestDelete', catatan: $catatan);
     }
 
+    #[Authorize('master.signa-catatan.ubah')]
     public function toggleActive(string $catatan): void
     {
         $row = DB::table('rsmst_signa_catatans')->where('catatan', $catatan)->first();
@@ -118,10 +123,12 @@ new class extends Component {
                                 <option value="100">100</option>
                             </x-select-input>
                         </div>
+                        @can('master.signa-catatan.tambah')
                         <x-primary-button type="button" wire:click="openCreate">
                             <x-ikon nama="tambah" />
                             Tambah Catatan
                         </x-primary-button>
+                        @endcan
                         <x-toolbar-refresh-reset :label="null" />
                     </div>
                 </div>
@@ -142,18 +149,28 @@ new class extends Component {
                                 <tr wire:key="signa-catatan-{{ md5($row->catatan) }}">
                                     <td class="ds-td-strong">{{ $row->catatan }}</td>
                                     <td class="px-6 py-4">
+                                        @can('master.signa-catatan.ubah')
                                         <x-toggle
                                             :current="(string) $row->active_status"
                                             trueValue="1" falseValue="0"
                                             :wireClick="'toggleActive(' . json_encode($row->catatan) . ')'">
                                             {{ (string) $row->active_status === '1' ? 'Aktif' : 'Nonaktif' }}
                                         </x-toggle>
+                                        @else
+                                        <x-badge :variant="(string) $row->active_status === '1' ? 'success' : 'danger'">
+                                            {{ (string) $row->active_status === '1' ? 'Aktif' : 'Nonaktif' }}
+                                        </x-badge>
+                                        @endcan
                                     </td>
                                     <td class="ds-c px-6 py-4">
                                         <div class="flex justify-center gap-2">
+                                            @can('master.signa-catatan.ubah')
                                             <x-action-edit wire:click="openEdit({{ json_encode($row->catatan) }})" />
+                                            @endcan
+                                            @can('master.signa-catatan.hapus')
                                             <x-action-delete :action="'requestDelete(' . json_encode($row->catatan) . ')'"
                                                 title="Hapus Catatan" message="Yakin hapus catatan ini?" />
+                                            @endcan
                                         </div>
                                     </td>
                                 </tr>

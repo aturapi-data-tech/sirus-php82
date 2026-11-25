@@ -4,6 +4,7 @@ use Livewire\Component;
 use Livewire\WithPagination;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
 use Illuminate\Support\Facades\DB;
 
 new class extends Component {
@@ -22,16 +23,19 @@ new class extends Component {
         $this->resetPage();
     }
 
+    #[Authorize('master.konf-akun-trans.tambah')]
     public function openCreate(): void
     {
         $this->dispatch('master.konf-akun-trans.openCreate');
     }
 
+    #[Authorize('master.konf-akun-trans.ubah')]
     public function openEdit(string $confId): void
     {
         $this->dispatch('master.konf-akun-trans.openEdit', confId: $confId);
     }
 
+    #[Authorize('master.konf-akun-trans.hapus')]
     public function requestDelete(string $confId): void
     {
         $this->dispatch('master.konf-akun-trans.requestDelete', confId: $confId);
@@ -88,10 +92,12 @@ new class extends Component {
                                 <option value="100">100</option>
                             </x-select-input>
                         </div>
+                        @can('master.konf-akun-trans.tambah')
                         <x-primary-button type="button" wire:click="openCreate">
                             <x-ikon nama="tambah" />
                             Tambah Konfigurasi
                         </x-primary-button>
+                        @endcan
                         <x-toolbar-refresh-reset :label="null" />
                     </div>
                 </div>
@@ -120,10 +126,14 @@ new class extends Component {
                                     </td>
                                     <td class="ds-c px-6 py-4">
                                         <div class="flex justify-center gap-2">
+                                            @can('master.konf-akun-trans.ubah')
                                             <x-action-edit wire:click="openEdit('{{ $row->conf_id }}')" />
+                                            @endcan
+                                            @can('master.konf-akun-trans.hapus')
                                             <x-action-delete :action="'requestDelete(\'' . $row->conf_id . '\')'"
                                                 title="Hapus Konfigurasi"
                                                 message="Yakin hapus konfigurasi {{ $row->conf_id }}?" />
+                                            @endcan
                                         </div>
                                     </td>
                                 </tr>

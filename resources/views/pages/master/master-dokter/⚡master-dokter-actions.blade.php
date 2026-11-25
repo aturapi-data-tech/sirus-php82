@@ -3,6 +3,9 @@
 
 use Livewire\Component;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
+use Livewire\Attributes\Locked;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\QueryException;
 use App\Support\CakupanIhsDokter;
@@ -12,6 +15,7 @@ use App\Http\Traits\SATUSEHAT\PractitionerTrait;
 new class extends Component {
     use WithRenderVersioningTrait, PractitionerTrait;
 
+    #[Locked]
     public string $formMode = 'create'; // create | edit
 
     // ── Form fields ──
@@ -73,6 +77,7 @@ new class extends Component {
      | OPEN CREATE
      =============================== */
     #[On('master.dokter.openCreate')]
+    #[Authorize('master.dokter.tambah')]
     public function openCreate(): void
     {
         $this->resetFormFields();
@@ -87,6 +92,7 @@ new class extends Component {
      | OPEN EDIT
      =============================== */
     #[On('master.dokter.openEdit')]
+    #[Authorize('master.dokter.ubah')]
     public function openEdit(string $drId): void
     {
         $row = DB::table('rsmst_doctors')->where('dr_id', $drId)->first();
@@ -233,6 +239,8 @@ new class extends Component {
 
     public function save(): void
     {
+        Gate::authorize($this->formMode === 'create' ? 'master.dokter.tambah' : 'master.dokter.ubah');
+
         $data = $this->validate();
 
         $payload = [
@@ -273,6 +281,7 @@ new class extends Component {
      | DELETE (delegate dari grid)
      =============================== */
     #[On('master.dokter.requestDelete')]
+    #[Authorize('master.dokter.hapus')]
     public function deleteFromGrid(string $drId): void
     {
         try {

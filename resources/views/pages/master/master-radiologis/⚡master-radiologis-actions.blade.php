@@ -2,6 +2,9 @@
 
 use Livewire\Component;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
+use Livewire\Attributes\Locked;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Database\QueryException;
@@ -11,6 +14,7 @@ use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 new class extends Component {
     use WithRenderVersioningTrait;
 
+    #[Locked]
     public string $formMode = 'create'; // create|edit
     public array $renderVersions = [];
     protected array $renderAreas = ['modal'];
@@ -39,6 +43,7 @@ new class extends Component {
 
     // ==================== OPEN CREATE MODAL ====================
     #[On('master.radiologis.openCreate')]
+    #[Authorize('master.radiologis.tambah')]
     public function openCreate(): void
     {
         $this->resetFormFields();
@@ -51,6 +56,7 @@ new class extends Component {
 
     // ==================== OPEN EDIT MODAL ====================
     #[On('master.radiologis.openEdit')]
+    #[Authorize('master.radiologis.ubah')]
     public function openEdit(string $radId): void
     {
         $row = DB::table('rsmst_radiologis')->where('rad_id', $radId)->first();
@@ -161,6 +167,8 @@ new class extends Component {
     // ==================== SAVE DATA ====================
     public function save(): void
     {
+        Gate::authorize($this->formMode === 'create' ? 'master.radiologis.tambah' : 'master.radiologis.ubah');
+
         $data = $this->validate();
 
         $payload = [
@@ -247,6 +255,7 @@ new class extends Component {
 
     // ==================== TOGGLE STATUS AKTIF ====================
     #[On('master.radiologis.toggleActive')]
+    #[Authorize('master.radiologis.ubah')]
     public function toggleActive(string $radId): void
     {
         $cur = (string) DB::table('rsmst_radiologis')->where('rad_id', $radId)->value('active_status');
@@ -260,6 +269,7 @@ new class extends Component {
 
     // ==================== DELETE DATA ====================
     #[On('master.radiologis.requestDelete')]
+    #[Authorize('master.radiologis.hapus')]
     public function deleteFromGrid(string $radId): void
     {
         try {

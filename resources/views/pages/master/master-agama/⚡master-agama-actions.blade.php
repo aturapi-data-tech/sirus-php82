@@ -2,6 +2,9 @@
 
 use Livewire\Component;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
+use Livewire\Attributes\Locked;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\QueryException;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
@@ -9,6 +12,7 @@ use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 new class extends Component {
     use WithRenderVersioningTrait;
 
+    #[Locked]
     public string $formMode   = 'create';
     public int    $originalId = 0;
     public array  $renderVersions = [];
@@ -26,6 +30,7 @@ new class extends Component {
 
     // ─── Open Create ──────────────────────────────────────────────────────────
     #[On('master.agama.openCreate')]
+    #[Authorize('master.agama.tambah')]
     public function openCreate(): void
     {
         $this->resetForm();
@@ -38,6 +43,7 @@ new class extends Component {
 
     // ─── Open Edit ────────────────────────────────────────────────────────────
     #[On('master.agama.openEdit')]
+    #[Authorize('master.agama.ubah')]
     public function openEdit(int $relId): void
     {
         $row = DB::table('rsmst_religions')->where('rel_id', $relId)->first();
@@ -58,6 +64,7 @@ new class extends Component {
 
     // ─── Delete ───────────────────────────────────────────────────────────────
     #[On('master.agama.requestDelete')]
+    #[Authorize('master.agama.hapus')]
     public function deleteAgama(int $relId): void
     {
         try {
@@ -81,6 +88,8 @@ new class extends Component {
     // ─── Save ─────────────────────────────────────────────────────────────────
     public function save(): void
     {
+        Gate::authorize($this->formMode === 'create' ? 'master.agama.tambah' : 'master.agama.ubah');
+
         $rules = [
             'form.rel_id'   => $this->formMode === 'create'
                 ? 'required|integer|min:1|max:99|unique:rsmst_religions,rel_id'

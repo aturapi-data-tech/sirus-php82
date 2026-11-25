@@ -4,6 +4,7 @@ use Livewire\Component;
 use Livewire\WithPagination;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
 use Illuminate\Support\Facades\DB;
 
 new class extends Component {
@@ -22,16 +23,19 @@ new class extends Component {
         $this->resetPage();
     }
 
+    #[Authorize('master.obat-kronis.tambah')]
     public function openCreate(): void
     {
         $this->dispatch('master.obat-kronis.openCreate');
     }
 
+    #[Authorize('master.obat-kronis.ubah')]
     public function openEdit(string $productId): void
     {
         $this->dispatch('master.obat-kronis.openEdit', productId: $productId);
     }
 
+    #[Authorize('master.obat-kronis.hapus')]
     public function requestDelete(string $productId): void
     {
         $this->dispatch('master.obat-kronis.requestDelete', productId: $productId);
@@ -98,10 +102,12 @@ new class extends Component {
                                 <option value="100">100</option>
                             </x-select-input>
                         </div>
+                        @can('master.obat-kronis.tambah')
                         <x-primary-button type="button" wire:click="openCreate">
                             <x-ikon nama="tambah" />
                             Tambah Obat Kronis
                         </x-primary-button>
+                        @endcan
                         <x-toolbar-refresh-reset :label="null" />
                     </div>
                 </div>
@@ -134,10 +140,14 @@ new class extends Component {
                                     </td>
                                     <td class="ds-c px-6 py-4">
                                         <div class="flex justify-center gap-2">
+                                            @can('master.obat-kronis.ubah')
                                             <x-action-edit wire:click="openEdit('{{ $row->product_id }}')" />
+                                            @endcan
+                                            @can('master.obat-kronis.hapus')
                                             <x-action-delete :action="'requestDelete(\'' . $row->product_id . '\')'"
                                                 title="Hapus Obat Kronis"
                                                 message="Yakin hapus {{ $row->product_id }} ({{ $row->product_name }})?" />
+                                            @endcan
                                         </div>
                                     </td>
                                 </tr>

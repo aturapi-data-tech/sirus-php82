@@ -2,6 +2,9 @@
 
 use Livewire\Component;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
+use Livewire\Attributes\Locked;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\QueryException;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
@@ -9,6 +12,7 @@ use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 new class extends Component {
     use WithRenderVersioningTrait;
 
+    #[Locked]
     public string $formMode   = 'create';
     public int    $originalId = 0;
     public array  $renderVersions = [];
@@ -26,6 +30,7 @@ new class extends Component {
 
     // ─── Open Create ──────────────────────────────────────────
     #[On('master.class.openCreate')]
+    #[Authorize('master.kelas.tambah')]
     public function openCreate(): void
     {
         $this->resetForm();
@@ -38,6 +43,7 @@ new class extends Component {
 
     // ─── Open Edit ────────────────────────────────────────────
     #[On('master.class.openEdit')]
+    #[Authorize('master.kelas.ubah')]
     public function openEdit(int $classId): void
     {
         $row = DB::table('rsmst_class')->where('class_id', $classId)->first();
@@ -58,6 +64,7 @@ new class extends Component {
 
     // ─── Delete ───────────────────────────────────────────────
     #[On('master.class.requestDelete')]
+    #[Authorize('master.kelas.hapus')]
     public function deleteClass(int $classId): void
     {
         try {
@@ -87,6 +94,8 @@ new class extends Component {
     // ─── Save ─────────────────────────────────────────────────
     public function save(): void
     {
+        Gate::authorize($this->formMode === 'create' ? 'master.kelas.tambah' : 'master.kelas.ubah');
+
         $this->validate([
             'form.class_id'   => $this->formMode === 'create'
                 ? 'required|integer|unique:rsmst_class,class_id'

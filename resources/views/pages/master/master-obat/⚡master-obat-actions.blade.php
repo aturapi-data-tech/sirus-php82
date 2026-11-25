@@ -2,6 +2,8 @@
 
 use Livewire\Component;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Database\QueryException;
@@ -113,6 +115,7 @@ new class extends Component {
      | Open Create Modal
      * ------------------------- */
     #[On('master.obat.openCreate')]
+    #[Authorize('master.obat.tambah')]
     public function openCreate(): void
     {
         $this->resetFormFields();
@@ -129,6 +132,7 @@ new class extends Component {
      | Open Edit Modal
      * ------------------------- */
     #[On('master.obat.openEdit')]
+    #[Authorize('master.obat.ubah')]
     public function openEdit(string $productId): void
     {
         $row = DB::table('immst_products')->where('product_id', $productId)->first();
@@ -394,6 +398,8 @@ new class extends Component {
      * ------------------------- */
     public function save(): void
     {
+        Gate::authorize($this->formMode === 'create' ? 'master.obat.tambah' : 'master.obat.ubah');
+
         $data = $this->validateWithToast();
 
         // Prepare payload untuk insert/update
@@ -463,6 +469,7 @@ new class extends Component {
      | Delete Data
      * ------------------------- */
     #[On('master.obat.requestDelete')]
+    #[Authorize('master.obat.hapus')]
     public function deleteFromGrid(string $productId): void
     {
         try {

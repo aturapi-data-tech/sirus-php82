@@ -4,6 +4,7 @@ use Livewire\Component;
 use Livewire\WithPagination;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
 use Illuminate\Support\Facades\DB;
 
 new class extends Component {
@@ -22,16 +23,19 @@ new class extends Component {
         $this->resetPage();
     }
 
+    #[Authorize('master.group-akun.tambah')]
     public function openCreate(): void
     {
         $this->dispatch('master.group-akun.openCreate');
     }
 
+    #[Authorize('master.group-akun.ubah')]
     public function openEdit(string $graId): void
     {
         $this->dispatch('master.group-akun.openEdit', graId: $graId);
     }
 
+    #[Authorize('master.group-akun.hapus')]
     public function requestDelete(string $graId): void
     {
         $this->dispatch('master.group-akun.requestDelete', graId: $graId);
@@ -90,10 +94,12 @@ new class extends Component {
                                 <option value="100">100</option>
                             </x-select-input>
                         </div>
+                        @can('master.group-akun.tambah')
                         <x-primary-button type="button" wire:click="openCreate">
                             <x-ikon nama="tambah" />
                             Tambah Group Akun
                         </x-primary-button>
+                        @endcan
                         <x-toolbar-refresh-reset :label="null" />
                     </div>
                 </div>
@@ -136,10 +142,14 @@ new class extends Component {
                                     </td>
                                     <td class="ds-c px-6 py-4">
                                         <div class="flex justify-center gap-2">
+                                            @can('master.group-akun.ubah')
                                             <x-action-edit wire:click="openEdit('{{ $row->gra_id }}')" />
+                                            @endcan
+                                            @can('master.group-akun.hapus')
                                             <x-action-delete :action="'requestDelete(\'' . $row->gra_id . '\')'"
                                                 title="Hapus Group Akun"
                                                 message="Yakin hapus group {{ $row->gra_desc }}?" />
+                                            @endcan
                                         </div>
                                     </td>
                                 </tr>

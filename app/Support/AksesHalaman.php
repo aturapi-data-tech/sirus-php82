@@ -165,6 +165,43 @@ class AksesHalaman
         return in_array($role, self::rolesUser($user), true);
     }
 
+    /**
+     * Aksi khusus (katalog AksiRole::KHUSUS, mis. `dokumen.hapus`, `ri.cppt.ubahSemua`).
+     * Permission sudah dibuat → centang Role Control; belum → cadangan roles katalog.
+     * Dipanggil lewat Gate (AppServiceProvider), jadi pemakai cukup `@can('dokumen.hapus')`.
+     */
+    public static function bolehKhusus(?User $user, string $nama): bool
+    {
+        if (!$user || !isset(AksiRole::KHUSUS[$nama])) {
+            return false;
+        }
+
+        if (self::permissionAda($nama)) {
+            return $user->checkPermissionTo($nama);
+        }
+
+        return $user->hasAnyRole(AksiRole::KHUSUS[$nama]['roles']);
+    }
+
+    /**
+     * Untuk Gate::before: ability berbentuk `{route}.{aksi}` dengan route dikenal → bool;
+     * selain itu null supaya Gate lain (aksi khusus, Gate lama) yang memutuskan.
+     */
+    public static function aturAbility(?User $user, string $ability): ?bool
+    {
+        $titik = strrpos($ability, '.');
+        if ($titik === false) {
+            return null;
+        }
+        $aksi = substr($ability, $titik + 1);
+        $route = substr($ability, 0, $titik);
+        if (!in_array($aksi, self::AKSI, true) || !self::dikenal($route)) {
+            return null;
+        }
+
+        return self::boleh($user, $route, $aksi);
+    }
+
     /** Route dikenal oleh aturan akses (ada di menu, induk, atau terbuka)? */
     public static function dikenal(string $route): bool
     {

@@ -2,6 +2,7 @@
 
 use Livewire\Component;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
 use Livewire\Attributes\Computed;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\QueryException;
@@ -26,6 +27,7 @@ new class extends Component {
     // =========================================================
 
     #[On('master.interaksi.openAddProduk')]
+    #[Authorize('master.interaksi-obat.tambah')]
     public function openAddProduk(string $intDesc): void
     {
         $this->intDesc = $intDesc;
@@ -117,6 +119,7 @@ new class extends Component {
     }
 
     /* --- Tambah satu produk ke interaksi --- */
+    #[Authorize('master.interaksi-obat.tambah')]
     public function addProduk(string $productId): void
     {
         if (! $this->intDesc) {
@@ -148,6 +151,7 @@ new class extends Component {
     // =========================================================
 
     #[On('master.interaksi.deleteProduk')]
+    #[Authorize('master.interaksi-obat.hapus')]
     public function deleteProduk(string $intDesc, string $productId): void
     {
         try {

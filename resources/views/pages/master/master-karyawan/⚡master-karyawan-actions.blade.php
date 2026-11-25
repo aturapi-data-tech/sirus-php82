@@ -2,6 +2,9 @@
 
 use Livewire\Component;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
+use Livewire\Attributes\Locked;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\QueryException;
 
@@ -10,6 +13,7 @@ use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 new class extends Component {
     use WithRenderVersioningTrait;
 
+    #[Locked]
     public string $formMode = 'create'; // create|edit
     public string $originalEmpId = '';
     public array $renderVersions = [];
@@ -24,6 +28,7 @@ new class extends Component {
     ];
 
     #[On('master.karyawan.openCreate')]
+    #[Authorize('master.karyawan.tambah')]
     public function openCreate(): void
     {
         $this->resetFormFields();
@@ -36,6 +41,7 @@ new class extends Component {
     }
 
     #[On('master.karyawan.openEdit')]
+    #[Authorize('master.karyawan.ubah')]
     public function openEdit(string $empId): void
     {
         $row = DB::table('immst_employers')->where('emp_id', $empId)->first();
@@ -127,6 +133,8 @@ new class extends Component {
 
     public function save(): void
     {
+        Gate::authorize($this->formMode === 'create' ? 'master.karyawan.tambah' : 'master.karyawan.ubah');
+
         $this->validate();
 
         $payload = [
@@ -159,6 +167,7 @@ new class extends Component {
     }
 
     #[On('master.karyawan.requestDelete')]
+    #[Authorize('master.karyawan.hapus')]
     public function deleteFromGrid(string $empId): void
     {
         try {

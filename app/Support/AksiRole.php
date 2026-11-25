@@ -22,12 +22,15 @@ namespace App\Support;
  * aksi destruktif dan yang kedua hanya melihat audit log — menggabungkannya
  * berarti menaikkan hak lihat log setiap kali kebijakan hapus dilonggarkan.
  *
- * MENAMBAH KLASTER BARU:
- *   1. tambah konstanta di sini (beri prefix area),
- *   2. daftarkan Gate-nya di AppServiceProvider,
- *   3. ganti @hasanyrole literal di blade dengan @can, DAN
- *   4. pastikan guard SERVER di method-nya ikut memakai ->can() — guard blade
- *      saja bisa ditembus karena wire:click memanggil method publik.
+ * MENAMBAH AKSI KHUSUS BARU (lihat docs/standar-hak-akses.md):
+ *   1. tambah konstanta di sini (beri prefix area) = role CENTANG AWAL,
+ *   2. daftarkan di KHUSUS (nama Gate, area, label) — Gate terdaftar otomatis
+ *      di AppServiceProvider dan muncul di kolom "Khusus" Role Control,
+ *   3. pakai @can('nama') di blade, DAN guard SERVER #[Authorize('nama')] /
+ *      ->can() di method-nya — guard blade saja bisa ditembus karena wire:click
+ *      memanggil method publik,
+ *   4. jalankan `php artisan akses:sinkron` (lokal & produksi).
+ * Setelah sinkron, hak sebenarnya = centang di Role Control; konstanta tinggal cadangan.
  *
  * BELUM diklaster (sengaja): aksi yang daftar role-nya BERBEDA antar jalur/modul
  * — openAdministrasiPasien (6 varian), openModulDokumen (4), openAdministrasi (3),
@@ -275,4 +278,86 @@ class AksiRole
      * membatalkan pekerjaannya sendiri. Jangan disamakan dengan daftar akses
      * modulnya (yang memuat Laboratorium/Perawat) — itu justru melonggarkan.
      */
+
+    /* ─────────────────────── CPPT & SBAR RAWAT INAP ─────────────────────── */
+    /**
+     * Aturan PEMILIK entri (edit = penulisnya) dan DPJP (review = DPJP Utama) tetap di kode
+     * modul — bukan role. Yang di sini hanya PENGECUALIAN-nya, dulu tertulis `hasRole('Admin')`.
+     */
+    /** Hapus entri CPPT — manager ke atas, walau bukan pemilik entri. */
+    public const RI_CPPT_HAPUS = ['Admin', 'Manager Umum', 'Manager Medis'];
+    /** Edit entri CPPT milik petugas lain. */
+    public const RI_CPPT_UBAH_SEMUA = ['Admin'];
+    /** Copy entri CPPT dari profesi lain. */
+    public const RI_CPPT_COPY_SEMUA = ['Admin'];
+    /** Review/TTD CPPT walau bukan DPJP Utama pasien. */
+    public const RI_CPPT_REVIEW_SEMUA = ['Admin'];
+    /** Hapus entri SBAR. */
+    public const RI_SBAR_HAPUS = ['Admin', 'Manager Umum', 'Manager Medis', 'Supervisor Penunjang', 'Supervisor Tu', 'Mr', 'Casemix'];
+    /** Edit entri SBAR milik petugas lain. */
+    public const RI_SBAR_UBAH_SEMUA = ['Admin'];
+    /** Copy entri SBAR dari profesi lain. */
+    public const RI_SBAR_COPY_SEMUA = ['Admin'];
+    /** Review/TTD SBAR walau bukan DPJP Utama pasien. */
+    public const RI_SBAR_REVIEW_SEMUA = ['Admin'];
+
+    /**
+     * KATALOG AKSI KHUSUS — nama Gate => [area, label, roles awal].
+     *
+     * Tiap entri jadi (1) Gate dengan nama yang sama (AppServiceProvider) dan
+     * (2) permission yang dicentang per role di kolom "Khusus" Role Control
+     * (dibuat oleh `php artisan akses:sinkron`; roles di sini = centang awalnya).
+     * Setelah permission ada, centang Role Control yang menentukan; konstanta di atas
+     * tinggal cadangan bila sinkron belum dijalankan.
+     *
+     * Sengaja TIDAK di sini: EMR_PENUNJANG_LIHAT — bukan hak aksi melainkan penanda
+     * profesi (User::profesiKlinis, pemangkas tab EMR); tetap berbasis role.
+     */
+    public const KHUSUS = [
+        'dokumen.hapus' => ['area' => 'Modul Dokumen', 'label' => 'Hapus entri dokumen', 'roles' => self::DOKUMEN_HAPUS],
+        'dokumen.bukaKunci' => ['area' => 'Modul Dokumen', 'label' => 'Buka kunci (cabut TTD) dokumen', 'roles' => self::DOKUMEN_BUKA_KUNCI],
+        'dokumen.ttdPerwakilan' => ['area' => 'Modul Dokumen', 'label' => 'TTD atas nama pejabat (perwakilan)', 'roles' => self::DOKUMEN_TTD_PERWAKILAN],
+
+        'emr.logAktivitas' => ['area' => 'EMR', 'label' => 'Lihat log aktivitas EMR', 'roles' => self::EMR_LOG_AKTIVITAS],
+        'emr.cetakEresep' => ['area' => 'EMR', 'label' => 'Cetak e-resep dari EMR', 'roles' => self::EMR_CETAK_ERESEP],
+        'emr.codingFhir' => ['area' => 'EMR', 'label' => 'Coding SATUSEHAT', 'roles' => self::EMR_CODING_FHIR],
+        'rekonsiliasi.obat' => ['area' => 'EMR', 'label' => 'Rekonsiliasi obat (titik-3)', 'roles' => self::REKONSILIASI_OBAT],
+        'penunjang.lihatHasil' => ['area' => 'EMR', 'label' => 'Lihat & cetak hasil penunjang', 'roles' => self::PENUNJANG_LIHAT_HASIL],
+
+        'ri.cppt.hapus' => ['area' => 'CPPT & SBAR RI', 'label' => 'CPPT: hapus entri', 'roles' => self::RI_CPPT_HAPUS],
+        'ri.cppt.ubahSemua' => ['area' => 'CPPT & SBAR RI', 'label' => 'CPPT: edit entri petugas lain', 'roles' => self::RI_CPPT_UBAH_SEMUA],
+        'ri.cppt.copySemua' => ['area' => 'CPPT & SBAR RI', 'label' => 'CPPT: copy dari profesi lain', 'roles' => self::RI_CPPT_COPY_SEMUA],
+        'ri.cppt.reviewSemua' => ['area' => 'CPPT & SBAR RI', 'label' => 'CPPT: review walau bukan DPJP', 'roles' => self::RI_CPPT_REVIEW_SEMUA],
+        'ri.sbar.hapus' => ['area' => 'CPPT & SBAR RI', 'label' => 'SBAR: hapus entri', 'roles' => self::RI_SBAR_HAPUS],
+        'ri.sbar.ubahSemua' => ['area' => 'CPPT & SBAR RI', 'label' => 'SBAR: edit entri petugas lain', 'roles' => self::RI_SBAR_UBAH_SEMUA],
+        'ri.sbar.copySemua' => ['area' => 'CPPT & SBAR RI', 'label' => 'SBAR: copy dari profesi lain', 'roles' => self::RI_SBAR_COPY_SEMUA],
+        'ri.sbar.reviewSemua' => ['area' => 'CPPT & SBAR RI', 'label' => 'SBAR: review walau bukan DPJP', 'roles' => self::RI_SBAR_REVIEW_SEMUA],
+
+        'idrg.kirim' => ['area' => 'Bridging', 'label' => 'Kirim iDRG / INA-CBG', 'roles' => self::IDRG_KIRIM],
+        'satusehat.kirim' => ['area' => 'Bridging', 'label' => 'Kirim SATUSEHAT', 'roles' => self::SATUSEHAT_KIRIM],
+        'bpjs.hapusSuratKontrol' => ['area' => 'Bridging', 'label' => 'Hapus surat kontrol BPJS', 'roles' => self::BPJS_HAPUS_SURAT_KONTROL],
+
+        'rj.ubahDataKunjungan' => ['area' => 'Transaksi RJ/UGD/RI', 'label' => 'RJ: ubah data kunjungan (kasir)', 'roles' => self::RJ_UBAH_DATA_KUNJUNGAN],
+        'rj.kembalikanBatal' => ['area' => 'Transaksi RJ/UGD/RI', 'label' => 'RJ: kembalikan kunjungan batal', 'roles' => self::RJ_KEMBALIKAN_BATAL],
+        'rj.detailKunjungan' => ['area' => 'Transaksi RJ/UGD/RI', 'label' => 'RJ: lihat detail kunjungan', 'roles' => self::RJ_DETAIL_KUNJUNGAN],
+        'ugd.ubahDataKunjungan' => ['area' => 'Transaksi RJ/UGD/RI', 'label' => 'UGD: ubah data kunjungan (kasir)', 'roles' => self::UGD_UBAH_DATA_KUNJUNGAN],
+        'ri.ubahDataKunjungan' => ['area' => 'Transaksi RJ/UGD/RI', 'label' => 'RI: ubah data kunjungan (klaim)', 'roles' => self::RI_UBAH_DATA_KUNJUNGAN],
+        'ri.ubahDataResep' => ['area' => 'Transaksi RJ/UGD/RI', 'label' => 'RI: ubah tanggal/shift resep', 'roles' => self::RI_UBAH_DATA_RESEP],
+        'ri.pindahKamar' => ['area' => 'Transaksi RJ/UGD/RI', 'label' => 'RI: pindah kamar', 'roles' => self::RI_PINDAH_KAMAR],
+        'ri.resetAdministrasi' => ['area' => 'Transaksi RJ/UGD/RI', 'label' => 'RI: reset tab administrasi', 'roles' => self::RI_RESET_ADMINISTRASI],
+        'ri.caseManager' => ['area' => 'Transaksi RJ/UGD/RI', 'label' => 'RI: Case Manager (MPP)', 'roles' => self::RI_CASE_MANAGER],
+        'transaksi.batalPenerimaan' => ['area' => 'Transaksi RJ/UGD/RI', 'label' => 'Batal penerimaan barang PBF', 'roles' => self::TRANSAKSI_BATAL_PENERIMAAN],
+
+        'kasTu.koreksi' => ['area' => 'Keuangan', 'label' => 'Kas TU: koreksi transaksi', 'roles' => self::KAS_TU_KOREKSI],
+        'kasTu.hapus' => ['area' => 'Keuangan', 'label' => 'Kas TU: hapus transaksi', 'roles' => self::KAS_TU_HAPUS],
+
+        'gudang.opnameMedis' => ['area' => 'Gudang', 'label' => 'Stock opname medis', 'roles' => self::GUDANG_OPNAME_MEDIS],
+        'gudang.opnameNonMedis' => ['area' => 'Gudang', 'label' => 'Stock opname non-medis', 'roles' => self::GUDANG_OPNAME_NONMEDIS],
+        'gudang.transferBatalMedis' => ['area' => 'Gudang', 'label' => 'Batal transfer stok medis', 'roles' => self::GUDANG_TRANSFER_BATAL_MEDIS],
+        'gudang.transferBatalNonMedis' => ['area' => 'Gudang', 'label' => 'Batal transfer stok non-medis', 'roles' => self::GUDANG_TRANSFER_BATAL_NONMEDIS],
+
+        'downtime.pelaporanHapus' => ['area' => 'Sistem', 'label' => 'Hapus pelaporan down time', 'roles' => self::DOWNTIME_PELAPORAN_HAPUS],
+        'sistem.pemantauanRuangServer.hapus' => ['area' => 'Sistem', 'label' => 'Hapus lembar pemantauan ruang server', 'roles' => self::SISTEM_PEMANTAUAN_RUANG_SERVER_HAPUS],
+        'sistem.pemantauanRuangServer.bukaKunci' => ['area' => 'Sistem', 'label' => 'Buka kunci pemantauan ruang server', 'roles' => self::SISTEM_PEMANTAUAN_RUANG_SERVER_BUKA_KUNCI],
+    ];
 }

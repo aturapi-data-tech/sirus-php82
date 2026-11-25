@@ -4,6 +4,7 @@ use Livewire\Component;
 use Livewire\WithPagination;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
 use Illuminate\Support\Facades\DB;
 
 new class extends Component {
@@ -35,11 +36,13 @@ new class extends Component {
     /* -------------------------
      | Child modal triggers
      * ------------------------- */
+    #[Authorize('master.karyawan.tambah')]
     public function openCreate(): void
     {
         $this->dispatch('master.karyawan.openCreate');
     }
 
+    #[Authorize('master.karyawan.ubah')]
     public function openEdit(string $empId): void
     {
         $this->dispatch('master.karyawan.openEdit', empId: $empId);
@@ -48,6 +51,7 @@ new class extends Component {
     /* -------------------------
     | Request Delete (delegate ke actions)
     * ------------------------- */
+    #[Authorize('master.karyawan.hapus')]
     public function requestDelete(string $empId): void
     {
         $this->dispatch('master.karyawan.requestDelete', empId: $empId);
@@ -56,6 +60,7 @@ new class extends Component {
     /* -------------------------
      | Toggle Aktif / Non-aktif langsung dari table
      * ------------------------- */
+    #[Authorize('master.karyawan.ubah')]
     public function toggleActive(string $empId): void
     {
         $current = (string) DB::table('immst_employers')->where('emp_id', $empId)->value('active_record');
@@ -149,10 +154,12 @@ new class extends Component {
                             </x-select-input>
                         </div>
 
+                        @can('master.karyawan.tambah')
                         <x-primary-button type="button" wire:click="openCreate">
                             <x-ikon nama="tambah" />
                             Tambah Karyawan Baru
                         </x-primary-button>
+                        @endcan
                         <x-toolbar-refresh-reset :label="null" />
                     </div>
                 </div>
@@ -185,19 +192,27 @@ new class extends Component {
                                     <td class="px-6 py-4">
                                         @php $isActive = (string) $row->active_record === '1'; @endphp
                                         {{-- wire:key sertakan nilai active supaya Alpine re-init saat status berubah --}}
+                                        @can('master.karyawan.ubah')
                                         <x-toggle wire:key="toggle-active-{{ $row->emp_id }}-{{ $isActive ? 1 : 0 }}"
                                             :current="$isActive ? '1' : '0'" trueValue="1" falseValue="0"
                                             wireClick="toggleActive('{{ $row->emp_id }}')">
                                             {{ $isActive ? 'Aktif' : 'Non-aktif' }}
                                         </x-toggle>
+                                        @else
+                                            <x-badge :variant="$isActive ? 'success' : 'gray'">{{ $isActive ? 'Aktif' : 'Non-aktif' }}</x-badge>
+                                        @endcan
                                     </td>
 
                                     <td class="ds-c px-6 py-4">
                                         <div class="flex justify-center gap-2">
+                                            @can('master.karyawan.ubah')
                                             <x-action-edit wire:click="openEdit('{{ $row->emp_id }}')" />
+                                            @endcan
 
+                                            @can('master.karyawan.hapus')
                                             <x-action-delete :action="'requestDelete(\'' . $row->emp_id . '\')'" title="Hapus Karyawan"
                                                 message="Yakin hapus karyawan {{ $row->emp_name }} ({{ $row->emp_id }})?" />
+                                            @endcan
                                         </div>
                                     </td>
                                 </tr>

@@ -13,6 +13,7 @@ Sebelum membuat komponen baru, cek apakah polanya sudah ada di `docs/`. Ikuti po
 |---|---|
 | **Di mana file baru harus ditaruh & dinamai** (pohon `app/` + `resources/views/`, aturan `⚡`, suffix peran/jalur, batas `components/` vs `livewire/` vs `pages/`, batas Trait vs Support, prefix URL, 7 pemeriksa rename) | `docs/standar-struktur-folder.md` — versi web: route `/panduan-dev/koding-struktur` |
 | **Modul master baru / CRUD list+form** (struktur file, event, `ds-table`, `x-action-*`, ORA-02292) | `docs/standar-master-module.md` (acuan kanonik: `master-agama`) |
+| **Hak akses: menu baru, tombol Tambah/Ubah/Hapus, aksi khusus** (`{route}.{aksi}`, `#[Authorize]`, `akses:sinkron`, Role Control) | `docs/standar-hak-akses.md` (acuan: `master-poli`) |
 | Standar tombol (varian, ukuran, warna, ikon) | `docs/standar-komponen-tombol.md` |
 | **Ikon tombol berteks** (Simpan=disket, Batal=✕, Tambah=＋, … 31 aksi; `<x-ikon nama="…">`) | `docs/standar-komponen-tombol.md` § Ikon Tombol — peta di `App\Support\IkonTombol::PETA`, katalog visual `/panduan-dev#ikon-tombol` |
 | **Kasir, transfer & model batal** (alur kasir→pulang, transfer RJ→UGD→RI, Batal Transaksi/Transfer/Inap, matriks & guard) | halaman `/panduan-dev/koding-administrasi` |

@@ -4,6 +4,7 @@ use Livewire\Component;
 use Livewire\WithPagination;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
 use Illuminate\Support\Facades\DB;
 
 new class extends Component {
@@ -24,16 +25,19 @@ new class extends Component {
         $this->resetPage();
     }
 
+    #[Authorize('master.loinc.tambah')]
     public function openCreate(): void
     {
         $this->dispatch('master.loinc.openCreate');
     }
 
+    #[Authorize('master.loinc.ubah')]
     public function openEdit(string $loincCode): void
     {
         $this->dispatch('master.loinc.openEdit', loincCode: $loincCode);
     }
 
+    #[Authorize('master.loinc.hapus')]
     public function requestDelete(string $loincCode): void
     {
         $this->dispatch('master.loinc.requestDelete', loincCode: $loincCode);
@@ -128,10 +132,12 @@ new class extends Component {
                                 <option value="100">100</option>
                             </x-select-input>
                         </div>
+                        @can('master.loinc.tambah')
                         <x-primary-button type="button" wire:click="openCreate">
                             <x-ikon nama="tambah" />
                             Tambah Kode LOINC
                         </x-primary-button>
+                        @endcan
                         <x-toolbar-refresh-reset :label="null" />
                     </div>
                 </div>
@@ -168,10 +174,14 @@ new class extends Component {
                                     </td>
                                     <td class="ds-c">
                                         <div class="flex justify-center gap-2">
+                                            @can('master.loinc.ubah')
                                             <x-action-edit wire:click="openEdit('{{ $row->loinc_code }}')" />
+                                            @endcan
+                                            @can('master.loinc.hapus')
                                             <x-action-delete :action="'requestDelete(\'' . $row->loinc_code . '\')'"
                                                 title="Hapus Kode LOINC"
                                                 message="Yakin hapus kode {{ $row->loinc_code }} ({{ $row->display }})?" />
+                                            @endcan
                                         </div>
                                     </td>
                                 </tr>

@@ -4,6 +4,9 @@ namespace App\Http\Livewire\Pages\Master\MasterPasien;
 
 use Livewire\Component;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
+use Livewire\Attributes\Locked;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -19,6 +22,7 @@ use Carbon\Carbon;
 new class extends Component {
     use MasterPasienTrait, WithRenderVersioningTrait, WithValidationToastTrait, VclaimTrait;
 
+    #[Locked]
     public string $formMode = 'create'; // create|edit
     public string $regNo = '';
     public array $renderVersions = [];
@@ -85,6 +89,7 @@ new class extends Component {
     }
 
     #[On('master.pasien.openCreate')]
+    #[Authorize('master.pasien.tambah')]
     public function openCreate(): void
     {
         $this->resetFormFields();
@@ -108,6 +113,7 @@ new class extends Component {
     }
 
     #[On('master.pasien.openEdit')]
+    #[Authorize('master.pasien.ubah')]
     public function openEdit(string $regNo): void
     {
         $this->resetFormFields();
@@ -129,6 +135,7 @@ new class extends Component {
      * Dipakai saat pasien "nyangkut" terkunci di satu jalur padahal tak ada kunjungan aktif,
      * sehingga tak bisa didaftarkan lagi. Hanya mode edit.
      */
+    #[Authorize('master.pasien.ubah')]
     public function resetLockStatus(): void
     {
         if ($this->formMode !== 'edit' || empty($this->regNo)) {
@@ -287,6 +294,8 @@ new class extends Component {
     // Save Data - SUDAH DIPERBAIKI
     public function save(): void
     {
+        Gate::authorize($this->formMode === 'create' ? 'master.pasien.tambah' : 'master.pasien.ubah');
+
         $this->validateWithToast();
 
         // update regDateStore -- akhir admisi
@@ -402,6 +411,7 @@ new class extends Component {
 
     // Delete Handler
     #[On('master.pasien.requestDelete')]
+    #[Authorize('master.pasien.hapus')]
     public function deleteFromGrid(string $regNo): void
     {
         try {
@@ -636,6 +646,9 @@ new class extends Component {
      */
     public function UpdatepatientUuid(string $nik = ''): void
     {
+        // Bisa mendaftarkan pasien baru ke SATUSEHAT → ikut hak form yang sedang dibuka.
+        Gate::authorize($this->formMode === 'create' ? 'master.pasien.tambah' : 'master.pasien.ubah');
+
         $pasien = $this->dataPasien['pasien'] ?? [];
         $identitas = $pasien['identitas'] ?? [];
         $uuidLama = trim((string) ($identitas['patientUuid'] ?? ''));

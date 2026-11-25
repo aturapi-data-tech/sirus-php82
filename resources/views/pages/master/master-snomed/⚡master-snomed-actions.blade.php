@@ -2,6 +2,9 @@
 
 use Livewire\Component;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
+use Livewire\Attributes\Locked;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\QueryException;
@@ -13,6 +16,7 @@ new class extends Component {
     /** Value set yang dipakai aplikasi (LOV keluhan, prosedur, alergi). */
     public const VALUE_SETS = ['condition-code', 'procedure-code', 'substance-code'];
 
+    #[Locked]
     public string $formMode = 'create';
     public string $originalId = '';
     public array $renderVersions = [];
@@ -38,6 +42,7 @@ new class extends Component {
 
     // ─── Open Create ──────────────────────────────────────────────────────────
     #[On('master.snomed.openCreate')]
+    #[Authorize('master.snomed.tambah')]
     public function openCreate(): void
     {
         $this->resetForm();
@@ -50,6 +55,7 @@ new class extends Component {
 
     // ─── Open Edit ────────────────────────────────────────────────────────────
     #[On('master.snomed.openEdit')]
+    #[Authorize('master.snomed.ubah')]
     public function openEdit(string $snomedCode): void
     {
         $row = DB::table('rsmst_snomed_codes')->where('snomed_code', $snomedCode)->first();
@@ -75,6 +81,7 @@ new class extends Component {
 
     // ─── Delete ───────────────────────────────────────────────────────────────
     #[On('master.snomed.requestDelete')]
+    #[Authorize('master.snomed.hapus')]
     public function deleteSnomed(string $snomedCode): void
     {
         try {
@@ -98,6 +105,8 @@ new class extends Component {
     // ─── Save ─────────────────────────────────────────────────────────────────
     public function save(): void
     {
+        Gate::authorize($this->formMode === 'create' ? 'master.snomed.tambah' : 'master.snomed.ubah');
+
         $rules = [
             'form.snomed_code' => $this->formMode === 'create'
                 ? 'required|string|max:20|unique:rsmst_snomed_codes,snomed_code'

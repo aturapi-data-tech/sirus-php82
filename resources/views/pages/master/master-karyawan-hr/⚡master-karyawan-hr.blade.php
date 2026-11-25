@@ -4,6 +4,7 @@ use Livewire\Component;
 use Livewire\WithPagination;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -55,16 +56,19 @@ new class extends Component {
     /* -------------------------
      | Child modal triggers
      * ------------------------- */
+    #[Authorize('master.karyawan-hr.tambah')]
     public function openCreate(): void
     {
         $this->dispatch('master.karyawan-hr.openCreate');
     }
 
+    #[Authorize('master.karyawan-hr.ubah')]
     public function openEdit(string $empId): void
     {
         $this->dispatch('master.karyawan-hr.openEdit', empId: $empId);
     }
 
+    #[Authorize('master.karyawan-hr.hapus')]
     public function requestDelete(string $empId): void
     {
         $this->dispatch('master.karyawan-hr.requestDelete', empId: $empId);
@@ -73,6 +77,7 @@ new class extends Component {
     /* -------------------------
      | Toggle langsung dari table
      * ------------------------- */
+    #[Authorize('master.karyawan-hr.ubah')]
     public function toggleActive(string $empId): void
     {
         $current = (string) DB::table('hrmst_employees')->where('emp_id', $empId)->value('status_ed');
@@ -83,6 +88,7 @@ new class extends Component {
         $this->dispatch('toast', type: 'success', message: $newValue === 'E' ? 'Karyawan diaktifkan.' : 'Karyawan dinon-aktifkan.');
     }
 
+    #[Authorize('master.karyawan-hr.ubah')]
     public function togglePetugasOk(string $empId): void
     {
         $current = (string) DB::table('hrmst_employees')->where('emp_id', $empId)->value('omlop_status');
@@ -197,10 +203,12 @@ new class extends Component {
                             </x-select-input>
                         </div>
 
+                        @can('master.karyawan-hr.tambah')
                         <x-primary-button type="button" wire:click="openCreate" class="whitespace-nowrap">
                             <x-ikon nama="tambah" />
                             Tambah Karyawan
                         </x-primary-button>
+                        @endcan
                         <x-toolbar-refresh-reset :label="null" />
                     </div>
                 </div>
@@ -251,29 +259,41 @@ new class extends Component {
 
                                     <td class="px-6 py-4">
                                         @php $isPetugasOk = (string) $row->omlop_status === 'Y'; @endphp
+                                        @can('master.karyawan-hr.ubah')
                                         <x-toggle wire:key="toggle-ok-{{ $row->emp_id }}-{{ $isPetugasOk ? 1 : 0 }}"
                                             :current="$isPetugasOk ? 'Y' : 'N'" trueValue="Y" falseValue="N"
                                             wireClick="togglePetugasOk('{{ $row->emp_id }}')">
                                             {{ $isPetugasOk ? 'Ya' : 'Tidak' }}
                                         </x-toggle>
+                                        @else
+                                            <x-badge :variant="$isPetugasOk ? 'success' : 'gray'">{{ $isPetugasOk ? 'Ya' : 'Tidak' }}</x-badge>
+                                        @endcan
                                     </td>
 
                                     <td class="px-6 py-4">
                                         @php $isActive = (string) $row->status_ed === 'E'; @endphp
                                         {{-- wire:key sertakan nilai supaya toggle re-init saat status berubah --}}
+                                        @can('master.karyawan-hr.ubah')
                                         <x-toggle wire:key="toggle-active-{{ $row->emp_id }}-{{ $isActive ? 1 : 0 }}"
                                             :current="$isActive ? 'E' : 'D'" trueValue="E" falseValue="D"
                                             wireClick="toggleActive('{{ $row->emp_id }}')">
                                             {{ $isActive ? 'Aktif' : 'Non-aktif' }}
                                         </x-toggle>
+                                        @else
+                                            <x-badge :variant="$isActive ? 'success' : 'gray'">{{ $isActive ? 'Aktif' : 'Non-aktif' }}</x-badge>
+                                        @endcan
                                     </td>
 
                                     <td class="ds-c px-6 py-4">
                                         <div class="flex justify-center gap-2">
+                                            @can('master.karyawan-hr.ubah')
                                             <x-action-edit wire:click="openEdit('{{ $row->emp_id }}')" />
+                                            @endcan
 
+                                            @can('master.karyawan-hr.hapus')
                                             <x-action-delete :action="'requestDelete(\'' . $row->emp_id . '\')'" title="Hapus Karyawan"
                                                 message="Yakin hapus karyawan {{ $row->name }} ({{ $row->emp_id }})?" />
+                                            @endcan
                                         </div>
                                     </td>
                                 </tr>

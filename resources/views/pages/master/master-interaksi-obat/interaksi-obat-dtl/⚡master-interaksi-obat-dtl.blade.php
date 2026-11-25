@@ -4,6 +4,7 @@ use Livewire\Component;
 use Livewire\WithPagination;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
 use Illuminate\Support\Facades\DB;
 
 new class extends Component {
@@ -49,6 +50,7 @@ new class extends Component {
     }
 
     /* --- Dispatch ke actions --- */
+    #[Authorize('master.interaksi-obat.tambah')]
     public function openAddProduk(): void
     {
         if (! $this->selectedIntDesc) {
@@ -57,6 +59,7 @@ new class extends Component {
         $this->dispatch('master.interaksi.openAddProduk', intDesc: $this->selectedIntDesc);
     }
 
+    #[Authorize('master.interaksi-obat.hapus')]
     public function requestDeleteProduk(string $productId): void
     {
         $this->dispatch('master.interaksi.deleteProduk', intDesc: $this->selectedIntDesc, productId: $productId);
@@ -154,10 +157,12 @@ new class extends Component {
                                 <option value="20">20</option>
                             </x-select-input>
                         </div>
+                        @can('master.interaksi-obat.tambah')
                         <x-primary-button type="button" wire:click="openAddProduk">
                             <x-ikon nama="tambah" />
                             Tambah Produk
                         </x-primary-button>
+                        @endcan
                         <x-toolbar-refresh-reset :label="null" />
                     </div>
                 </div>
@@ -212,10 +217,12 @@ new class extends Component {
                                     {{-- AKSI --}}
                                     <td class="ds-c px-6 py-4 align-middle">
                                         <div class="flex justify-center gap-2">
+                                            @can('master.interaksi-obat.hapus')
                                             <x-action-delete
                                                 :action="'requestDeleteProduk(' . \Illuminate\Support\Js::from($produk->product_id) . ')'"
                                                 title="Hapus Produk"
                                                 message="Keluarkan '{{ $produk->product_name ?? $produk->product_id }}' dari interaksi ini?" />
+                                            @endcan
                                         </div>
                                     </td>
                                 </tr>

@@ -96,7 +96,7 @@ class AppMenu
             // ── Master Pelayanan ────────────────────────────────────────
             $entry(['group' => 'Master Pelayanan', 'groupOrder' => 1, 'order' => 1, 'route' => 'master.poli', 'title' => 'Master Poli', 'desc' => 'Kelola data poli & ruangan', 'roles' => $masterRoles, 'badge' => 'Pelayanan']),
             $entry(['group' => 'Master Pelayanan', 'groupOrder' => 1, 'order' => 2, 'route' => 'master.dokter', 'title' => 'Master Dokter', 'desc' => 'Kelola data dokter, spesialis, tarif poli/UGD/visit/konsul per kelas', 'roles' => $masterRoles, 'badge' => 'Pelayanan']),
-            $entry(['group' => 'Master Pelayanan', 'groupOrder' => 1, 'order' => 3, 'route' => 'master.pasien', 'title' => 'Master Pasien', 'desc' => 'Kelola data pasien & rekam medis', 'roles' => $masterRoles, 'badge' => 'Pelayanan']),
+            $entry(['group' => 'Master Pelayanan', 'groupOrder' => 1, 'order' => 3, 'route' => 'master.pasien', 'title' => 'Master Pasien', 'desc' => 'Kelola data pasien & rekam medis', 'roles' => [...$masterRoles, 'mr'], 'badge' => 'Pelayanan']),
             $entry(['group' => 'Master Pelayanan', 'groupOrder' => 1, 'order' => 4, 'route' => 'master.diagnosa', 'title' => 'Master Diagnosa', 'desc' => 'Kelola data diagnosa ICD-10', 'roles' => $masterRoles, 'badge' => 'Pelayanan']),
             $entry(['group' => 'Master Pelayanan', 'groupOrder' => 1, 'order' => 5, 'route' => 'master.radiologis', 'title' => 'Master Radiologi', 'desc' => 'Kelola data radiologi', 'roles' => $masterRoles, 'badge' => 'Pelayanan']),
             $entry(['group' => 'Master Pelayanan', 'groupOrder' => 1, 'order' => 6, 'route' => 'master.others', 'title' => 'Master Lain-lain', 'desc' => 'Kelola data lain-lain', 'roles' => $masterRoles, 'badge' => 'Pelayanan']),

@@ -47,6 +47,7 @@ use Livewire\Component;
 use Livewire\WithPagination;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
 use Illuminate\Support\Facades\DB;
 
 new class extends Component {
@@ -77,16 +78,19 @@ new class extends Component {
     }
 
     /* --- Dispatch ke actions --- */
+    #[Authorize('master.interaksi-obat.tambah')]
     public function openCreateInteraksi(): void
     {
         $this->dispatch('master.interaksi.openCreate');
     }
 
+    #[Authorize('master.interaksi-obat.ubah')]
     public function openEditInteraksi(string $intDesc): void
     {
         $this->dispatch('master.interaksi.openEdit', intDesc: $intDesc);
     }
 
+    #[Authorize('master.interaksi-obat.hapus')]
     public function requestDeleteInteraksi(string $intDesc): void
     {
         $this->dispatch('master.interaksi.delete', intDesc: $intDesc);
@@ -186,10 +190,12 @@ new class extends Component {
                                         <option value="20">20</option>
                                     </x-select-input>
                                 </div>
+                                @can('master.interaksi-obat.tambah')
                                 <x-primary-button type="button" wire:click="openCreateInteraksi">
                                     <x-ikon nama="tambah" />
                                     Tambah Interaksi Baru
                                 </x-primary-button>
+                                @endcan
                                 <x-toolbar-refresh-reset :label="null" />
                             </div>
                         </div>
@@ -255,11 +261,15 @@ new class extends Component {
                                             {{-- AKSI --}}
                                             <td class="ds-c px-6 py-4 align-middle" wire:click.stop>
                                                 <div class="flex justify-center gap-2">
+                                                    @can('master.interaksi-obat.ubah')
                                                     <x-action-edit wire:click="openEditInteraksi(@js($row->int_desc))" />
+                                                    @endcan
+                                                    @can('master.interaksi-obat.hapus')
                                                     <x-action-delete
                                                         :action="'requestDeleteInteraksi(' . \Illuminate\Support\Js::from($row->int_desc) . ')'"
                                                         title="Hapus Interaksi"
                                                         message="Yakin hapus interaksi '{{ $row->int_desc }}' beserta {{ $row->jumlah_produk }} produk di dalamnya?" />
+                                                    @endcan
                                                 </div>
                                             </td>
                                         </tr>

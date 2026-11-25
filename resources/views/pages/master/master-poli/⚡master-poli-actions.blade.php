@@ -2,6 +2,9 @@
 
 use Livewire\Component;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
+use Livewire\Attributes\Locked;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\QueryException;
 use App\Support\CakupanLocationPoli;
@@ -13,6 +16,7 @@ use App\Http\Traits\SATUSEHAT\LocationTrait;
 
 new class extends Component {
     use WithRenderVersioningTrait, LocationTrait;
+    #[Locked]
     public string $formMode = 'create'; // create|edit
     public string $originalPoliId = '';
     public array $renderVersions = [];
@@ -28,6 +32,7 @@ new class extends Component {
     ];
 
     #[On('master.poli.openCreate')]
+    #[Authorize('master.poli.tambah')]
     public function openCreate(): void
     {
         $this->resetFormFields();
@@ -40,6 +45,7 @@ new class extends Component {
     }
 
     #[On('master.poli.openEdit')]
+    #[Authorize('master.poli.ubah')]
     public function openEdit(string $poliId): void
     {
         $row = DB::table('rsmst_polis')->where('poli_id', $poliId)->first();
@@ -127,6 +133,8 @@ new class extends Component {
 
     public function save(): void
     {
+        Gate::authorize($this->formMode === 'create' ? 'master.poli.tambah' : 'master.poli.ubah');
+
         $this->validate();
 
         $payload = [
@@ -157,6 +165,7 @@ new class extends Component {
      * Idempoten: cari dulu by identifier (poli_id); kalau belum ada baru createLocation.
      * Untuk poli UGD/IGD, poli_uuid ini dipakai sebagai lokasi Encounter UGD.
      */
+    #[Authorize('master.poli.ubah')]
     public function daftarkanUuidPoli(): void
     {
         $poliId = trim((string) ($this->formPoli['poliId'] ?? ''));
@@ -215,6 +224,7 @@ new class extends Component {
     }
 
     #[On('master.poli.requestDelete')]
+    #[Authorize('master.poli.hapus')]
     public function deleteFromGrid(string $poliId): void
     {
         try {

@@ -74,6 +74,7 @@ use Livewire\Component;
 use Livewire\WithPagination;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
 use Illuminate\Support\Facades\DB;
 
 new class extends Component {
@@ -105,16 +106,19 @@ new class extends Component {
     }
 
     /* --- Dispatch ke actions --- */
+    #[Authorize('master.laborat.tambah')]
     public function openCreateClab(): void
     {
         $this->dispatch('master.laborat.openCreateClab');
     }
 
+    #[Authorize('master.laborat.ubah')]
     public function openEditClab(string $id): void
     {
         $this->dispatch('master.laborat.openEditClab', clabId: $id);
     }
 
+    #[Authorize('master.laborat.hapus')]
     public function requestDeleteClab(string $id): void
     {
         $this->dispatch('master.laborat.deleteClab', clabId: $id);
@@ -202,10 +206,12 @@ new class extends Component {
                                         <option value="50">50</option>
                                     </x-select-input>
                                 </div>
+                                @can('master.laborat.tambah')
                                 <x-primary-button type="button" wire:click="openCreateClab" class="whitespace-nowrap">
                                     <x-ikon nama="tambah" />
                                     Tambah Kategori
                                 </x-primary-button>
+                                @endcan
                                 <x-toolbar-refresh-reset :label="null" />
                             </div>
                         </div>
@@ -262,10 +268,14 @@ new class extends Component {
                                             {{-- AKSI --}}
                                             <td class="ds-c px-6 py-4 align-top" wire:click.stop>
                                                 <div class="flex justify-center gap-2">
+                                                    @can('master.laborat.ubah')
                                                     <x-action-edit wire:click="openEditClab('{{ $clab->clab_id }}')" />
+                                                    @endcan
+                                                    @can('master.laborat.hapus')
                                                     <x-action-delete :action="'requestDeleteClab(\'' . $clab->clab_id . '\')'"
                                                         title="Hapus Kategori Lab"
                                                         message="Yakin hapus kategori {{ $clab->clab_desc }}?" />
+                                                    @endcan
                                                 </div>
                                             </td>
                                         </tr>

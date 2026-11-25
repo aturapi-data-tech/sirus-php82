@@ -2,6 +2,9 @@
 
 use Livewire\Component;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
+use Livewire\Attributes\Locked;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\QueryException;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
@@ -9,6 +12,7 @@ use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 new class extends Component {
     use WithRenderVersioningTrait;
 
+    #[Locked]
     public string $formMode      = 'create';
     public array  $renderVersions = [];
     protected array $renderAreas = ['modal'];
@@ -29,6 +33,7 @@ new class extends Component {
     // =========================================================
 
     #[On('master.kamar.openCreateBed')]
+    #[Authorize('master.kamar.tambah')]
     public function openCreateBed(string $roomId): void
     {
         $this->resetAll();
@@ -40,6 +45,7 @@ new class extends Component {
     }
 
     #[On('master.kamar.openEditBed')]
+    #[Authorize('master.kamar.ubah')]
     public function openEditBed(string $bedNo, string $roomId): void
     {
         $row = DB::table('rsmst_beds')->where('bed_no', $bedNo)->where('room_id', $roomId)->first();
@@ -61,6 +67,7 @@ new class extends Component {
     }
 
     #[On('master.kamar.deleteBed')]
+    #[Authorize('master.kamar.hapus')]
     public function deleteBed(string $bedNo, string $roomId): void
     {
         try {
@@ -84,6 +91,8 @@ new class extends Component {
 
     public function save(): void
     {
+        Gate::authorize($this->formMode === 'create' ? 'master.kamar.tambah' : 'master.kamar.ubah');
+
         $this->validate(
             [
                 'formBed.bed_no'   => 'required|string|max:5',

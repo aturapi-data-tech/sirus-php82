@@ -2,6 +2,9 @@
 
 use Livewire\Component;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
+use Livewire\Attributes\Locked;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\QueryException;
 use Illuminate\Validation\ValidationException;
@@ -13,6 +16,7 @@ use App\Http\Traits\SATUSEHAT\LoincTrait;
 new class extends Component {
     use WithRenderVersioningTrait, LoincTrait;
 
+    #[Locked]
     public string $formMode = 'create';
     public ?array $hasilCekLoinc = null;
 
@@ -95,6 +99,7 @@ new class extends Component {
     // =========================================================
 
     #[On('master.laborat.openCreateClabitem')]
+    #[Authorize('master.laborat.tambah')]
     public function openCreateClabitem(string $clabId): void
     {
         $this->resetAll();
@@ -108,6 +113,7 @@ new class extends Component {
     }
 
     #[On('master.laborat.openEditClabitem')]
+    #[Authorize('master.laborat.ubah')]
     public function openEditClabitem(string $clabitemId, string $clabId, string $productId): void
     {
         $row = DB::table('lbmst_clabitems')->where('clabitem_id', $clabitemId)->where('clab_id', $clabId)->where('product_id', $productId)->first();
@@ -352,6 +358,7 @@ new class extends Component {
     }
 
     #[On('master.laborat.deleteClabitem')]
+    #[Authorize('master.laborat.hapus')]
     public function deleteClabitem(string $clabitemId, string $clabId, string $productId): void
     {
         try {
@@ -403,6 +410,8 @@ new class extends Component {
 
     public function save(): void
     {
+        Gate::authorize($this->formMode === 'create' ? 'master.laborat.tambah' : 'master.laborat.ubah');
+
         try {
         $this->validate(
             [

@@ -2,6 +2,9 @@
 
 use Livewire\Component;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
+use Livewire\Attributes\Locked;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\QueryException;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
@@ -9,6 +12,7 @@ use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 new class extends Component {
     use WithRenderVersioningTrait;
 
+    #[Locked]
     public string $formMode      = 'create';
     public array  $renderVersions = [];
     protected array $renderAreas = ['modal'];
@@ -25,6 +29,7 @@ new class extends Component {
     }
 
     #[On('master.interaksi.openCreate')]
+    #[Authorize('master.interaksi-obat.tambah')]
     public function openCreate(): void
     {
         $this->resetAll();
@@ -35,6 +40,7 @@ new class extends Component {
     }
 
     #[On('master.interaksi.openEdit')]
+    #[Authorize('master.interaksi-obat.ubah')]
     public function openEdit(string $intDesc): void
     {
         $row = DB::table('immst_interaksi_prodhdrs')->where('int_desc', $intDesc)->first();
@@ -56,6 +62,7 @@ new class extends Component {
     }
 
     #[On('master.interaksi.delete')]
+    #[Authorize('master.interaksi-obat.hapus')]
     public function delete(string $intDesc): void
     {
         try {
@@ -77,6 +84,8 @@ new class extends Component {
 
     public function save(): void
     {
+        Gate::authorize($this->formMode === 'create' ? 'master.interaksi-obat.tambah' : 'master.interaksi-obat.ubah');
+
         $this->validate(
             [
                 'formInteraksi.int_desc' => 'required|string|max:100',

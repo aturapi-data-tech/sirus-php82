@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Services\AppMenu;
+use App\Support\AksesHalaman;
 use App\Support\AksiRole;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -55,47 +56,29 @@ class AppServiceProvider extends ServiceProvider
         // Gate aksi yang dibatasi — daftar role dari SATU sumber berklaster
         // (App\Support\AksiRole). Ubah role cukup di file itu; nama Gate di bawah
         // yang dipakai blade (@can) & server (->can()) tidak perlu ikut berubah.
-        Gate::define('dokumen.hapus', fn ($user) => $user->hasAnyRole(AksiRole::DOKUMEN_HAPUS));
-        Gate::define('dokumen.bukaKunci', fn ($user) => $user->hasAnyRole(AksiRole::DOKUMEN_BUKA_KUNCI));
-        Gate::define('dokumen.ttdPerwakilan', fn ($user) => $user->hasAnyRole(AksiRole::DOKUMEN_TTD_PERWAKILAN));
+        // Permission halaman `{route}.{lihat|tambah|ubah|hapus}` (mis. @can('master.poli.hapus'),
+        // #[Authorize('master.poli.hapus')]) lewat aturan yang sama dengan penjaga URL —
+        // termasuk cadangan roles AppMenu bila `akses:sinkron` belum dijalankan.
+        // Ability lain → null (diteruskan ke Gate biasa).
+        Gate::before(fn ($user, string $ability) => AksesHalaman::aturAbility($user, $ability));
 
-        Gate::define('emr.logAktivitas', fn ($user) => $user->hasAnyRole(AksiRole::EMR_LOG_AKTIVITAS));
-        Gate::define('emr.cetakEresep', fn ($user) => $user->hasAnyRole(AksiRole::EMR_CETAK_ERESEP));
+        // Aksi khusus: Gate = permission bernama sama, dicentang per role di Role Control
+        // (kolom Khusus). Katalog & role awal di AksiRole::KHUSUS; cadangan role bila
+        // permission belum dibuat `akses:sinkron`. Lihat AksesHalaman::bolehKhusus().
+        foreach (array_keys(AksiRole::KHUSUS) as $namaAksi) {
+            Gate::define($namaAksi, fn ($user) => AksesHalaman::bolehKhusus($user, $namaAksi));
+        }
+
         Gate::define('emr.penunjangLihat', fn ($user) => $user->hasAnyRole(AksiRole::EMR_PENUNJANG_LIHAT));
 
-        Gate::define('penunjang.lihatHasil', fn ($user) => $user->hasAnyRole(AksiRole::PENUNJANG_LIHAT_HASIL));
 
-        Gate::define('rekonsiliasi.obat', fn ($user) => $user->hasAnyRole(AksiRole::REKONSILIASI_OBAT));
 
-        Gate::define('idrg.kirim', fn ($user) => $user->hasAnyRole(AksiRole::IDRG_KIRIM));
-        Gate::define('satusehat.kirim', fn ($user) => $user->hasAnyRole(AksiRole::SATUSEHAT_KIRIM));
-        Gate::define('emr.codingFhir', fn ($user) => $user->hasAnyRole(AksiRole::EMR_CODING_FHIR));
 
-        Gate::define('transaksi.batalPenerimaan', fn ($user) => $user->hasAnyRole(AksiRole::TRANSAKSI_BATAL_PENERIMAAN));
-        Gate::define('rj.ubahDataKunjungan', fn ($user) => $user->hasAnyRole(AksiRole::RJ_UBAH_DATA_KUNJUNGAN));
-        Gate::define('rj.kembalikanBatal', fn ($user) => $user->hasAnyRole(AksiRole::RJ_KEMBALIKAN_BATAL));
-        Gate::define('rj.detailKunjungan', fn ($user) => $user->hasAnyRole(AksiRole::RJ_DETAIL_KUNJUNGAN));
-        Gate::define('bpjs.hapusSuratKontrol', fn ($user) => $user->hasAnyRole(AksiRole::BPJS_HAPUS_SURAT_KONTROL));
-        Gate::define('ugd.ubahDataKunjungan', fn ($user) => $user->hasAnyRole(AksiRole::UGD_UBAH_DATA_KUNJUNGAN));
-        Gate::define('ri.ubahDataKunjungan', fn ($user) => $user->hasAnyRole(AksiRole::RI_UBAH_DATA_KUNJUNGAN));
-        Gate::define('ri.ubahDataResep', fn ($user) => $user->hasAnyRole(AksiRole::RI_UBAH_DATA_RESEP));
-        Gate::define('ri.pindahKamar', fn ($user) => $user->hasAnyRole(AksiRole::RI_PINDAH_KAMAR));
-        Gate::define('ri.resetAdministrasi', fn ($user) => $user->hasAnyRole(AksiRole::RI_RESET_ADMINISTRASI));
 
-        Gate::define('ri.caseManager', fn ($user) => $user->hasAnyRole(AksiRole::RI_CASE_MANAGER));
 
-        Gate::define('kasTu.koreksi', fn ($user) => $user->hasAnyRole(AksiRole::KAS_TU_KOREKSI));
-        Gate::define('kasTu.hapus', fn ($user) => $user->hasAnyRole(AksiRole::KAS_TU_HAPUS));
 
-        Gate::define('gudang.opnameMedis', fn ($user) => $user->hasAnyRole(AksiRole::GUDANG_OPNAME_MEDIS));
-        Gate::define('gudang.opnameNonMedis', fn ($user) => $user->hasAnyRole(AksiRole::GUDANG_OPNAME_NONMEDIS));
-        Gate::define('gudang.transferBatalMedis', fn ($user) => $user->hasAnyRole(AksiRole::GUDANG_TRANSFER_BATAL_MEDIS));
-        Gate::define('gudang.transferBatalNonMedis', fn ($user) => $user->hasAnyRole(AksiRole::GUDANG_TRANSFER_BATAL_NONMEDIS));
 
-        Gate::define('downtime.pelaporanHapus', fn ($user) => $user->hasAnyRole(AksiRole::DOWNTIME_PELAPORAN_HAPUS));
 
-        Gate::define('sistem.pemantauanRuangServer.hapus', fn ($user) => $user->hasAnyRole(AksiRole::SISTEM_PEMANTAUAN_RUANG_SERVER_HAPUS));
-        Gate::define('sistem.pemantauanRuangServer.bukaKunci', fn ($user) => $user->hasAnyRole(AksiRole::SISTEM_PEMANTAUAN_RUANG_SERVER_BUKA_KUNCI));
 
         // Blade directive untuk render path TTD user (dua format kolom
         // myuser_ttd_image: filename saja vs legacy 'UserTtd/abc.png') —

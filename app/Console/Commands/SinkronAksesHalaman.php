@@ -4,13 +4,15 @@ namespace App\Console\Commands;
 
 use App\Services\AppMenu;
 use App\Support\AksesHalaman;
+use App\Support\AksiRole;
 use Illuminate\Console\Command;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 
 /**
- * Membuat permission `{route}.{lihat|tambah|ubah|hapus}` untuk setiap menu di AppMenu.
+ * Membuat permission `{route}.{lihat|tambah|ubah|hapus}` untuk setiap menu di AppMenu,
+ * ditambah aksi khusus dari AksiRole::KHUSUS (kolom "Khusus" Role Control).
  *
  * Centang awal disalin dari kolom 'roles' AppMenu HANYA untuk permission yang baru
  * dibuat pada run ini. Permission yang sudah ada tidak disentuh — jadi menjalankan
@@ -66,6 +68,31 @@ class SinkronAksesHalaman extends Command
                 foreach ($targetRole as $role) {
                     $role->givePermissionTo($permission);
                 }
+            }
+        }
+
+        // Aksi khusus (kolom "Khusus" Role Control) — sama: hanya yang baru disalin centangnya.
+        foreach (AksiRole::KHUSUS as $nama => $aksi) {
+            if (isset($ada[$nama])) {
+                continue;
+            }
+            $targetRole = [];
+            foreach ($aksi['roles'] as $r) {
+                $kunci = trim(strtolower($r));
+                if (isset($roleDb[$kunci])) {
+                    $targetRole[] = $roleDb[$kunci];
+                } else {
+                    $roleTakDikenal[$kunci] = true;
+                }
+            }
+            $baru++;
+            $centang += count($targetRole);
+            if ($dryRun) {
+                continue;
+            }
+            $permission = Permission::create(['name' => $nama, 'guard_name' => 'web']);
+            foreach ($targetRole as $role) {
+                $role->givePermissionTo($permission);
             }
         }
 

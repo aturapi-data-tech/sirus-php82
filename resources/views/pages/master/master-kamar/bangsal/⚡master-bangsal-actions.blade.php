@@ -2,6 +2,9 @@
 
 use Livewire\Component;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
+use Livewire\Attributes\Locked;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\QueryException;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
@@ -9,6 +12,7 @@ use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 new class extends Component {
     use WithRenderVersioningTrait;
 
+    #[Locked]
     public string $formMode      = 'create';
     public array  $renderVersions = [];
     protected array $renderAreas = ['modal'];
@@ -31,6 +35,7 @@ new class extends Component {
     // =========================================================
 
     #[On('master.kamar.openCreateBangsal')]
+    #[Authorize('master.kamar.tambah')]
     public function openCreateBangsal(): void
     {
         $this->resetAll();
@@ -41,6 +46,7 @@ new class extends Component {
     }
 
     #[On('master.kamar.openEditBangsal')]
+    #[Authorize('master.kamar.ubah')]
     public function openEditBangsal(string $bangsalId): void
     {
         $row = DB::table('rsmst_bangsals')->where('bangsal_id', $bangsalId)->first();
@@ -64,6 +70,7 @@ new class extends Component {
     }
 
     #[On('master.kamar.deleteBangsal')]
+    #[Authorize('master.kamar.hapus')]
     public function deleteBangsal(string $bangsalId): void
     {
         try {
@@ -92,6 +99,8 @@ new class extends Component {
 
     public function save(): void
     {
+        Gate::authorize($this->formMode === 'create' ? 'master.kamar.tambah' : 'master.kamar.ubah');
+
         $this->validate(
             [
                 'formBangsal.bangsal_id'   => $this->formMode === 'create' ? 'required|string|max:5|unique:rsmst_bangsals,bangsal_id' : 'required|string|max:5',

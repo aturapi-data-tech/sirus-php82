@@ -4,6 +4,7 @@ use Livewire\Component;
 use Livewire\WithPagination;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
 use Illuminate\Support\Facades\DB;
 
 new class extends Component {
@@ -22,16 +23,19 @@ new class extends Component {
         $this->resetPage();
     }
 
+    #[Authorize('master.agama.tambah')]
     public function openCreate(): void
     {
         $this->dispatch('master.agama.openCreate');
     }
 
+    #[Authorize('master.agama.ubah')]
     public function openEdit(int $relId): void
     {
         $this->dispatch('master.agama.openEdit', relId: $relId);
     }
 
+    #[Authorize('master.agama.hapus')]
     public function requestDelete(int $relId): void
     {
         $this->dispatch('master.agama.requestDelete', relId: $relId);
@@ -94,10 +98,12 @@ new class extends Component {
                                 <option value="100">100</option>
                             </x-select-input>
                         </div>
+                        @can('master.agama.tambah')
                         <x-primary-button type="button" wire:click="openCreate">
                             <x-ikon nama="tambah" />
                             Tambah Data Agama Baru
                         </x-primary-button>
+                        @endcan
                         <x-toolbar-refresh-reset :label="null" />
                     </div>
                 </div>
@@ -122,9 +128,13 @@ new class extends Component {
                                     <td class="ds-td-strong">{{ $row->rel_desc }}</td>
                                     <td class="ds-c">
                                         <div class="flex justify-center gap-2">
+                                            @can('master.agama.ubah')
                                             <x-action-edit wire:click="openEdit({{ $row->rel_id }})" />
+                                            @endcan
+                                            @can('master.agama.hapus')
                                             <x-action-delete :action="'requestDelete(' . $row->rel_id . ')'"
                                                 title="Hapus Agama" message="Yakin hapus agama {{ $row->rel_desc }}?" />
+                                            @endcan
                                         </div>
                                     </td>
                                 </tr>

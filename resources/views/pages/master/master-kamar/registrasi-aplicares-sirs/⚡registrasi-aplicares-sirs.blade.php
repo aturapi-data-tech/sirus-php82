@@ -75,6 +75,7 @@
 
 use Livewire\Component;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
 use Livewire\Attributes\Computed;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\BPJS\AplicaresTrait;
@@ -276,6 +277,7 @@ new class extends Component {
         $this->loadingAplicares    = false;
     }
 
+    #[Authorize('master.kamar.ubah')]
     public function hapusKamarDariAplicares(string $kodekelas, string $koderuang): void
     {
         try {
@@ -295,6 +297,7 @@ new class extends Component {
     }
 
     /** Hapus SEMUA ruangan dari Aplicares BPJS — loop toleran, tidak stop saat ada yang gagal */
+    #[Authorize('master.kamar.ubah')]
     public function hapusSemuaDariAplicares(): void
     {
         if (empty($this->aplicaresData)) {
@@ -327,6 +330,7 @@ new class extends Component {
     }
 
     /** Samakan kapasitas online Aplicares dengan bed count lokal (rsmst_beds = source of truth) */
+    #[Authorize('master.kamar.ubah')]
     public function samakanKapasitasAplicares(string $kodekelas, string $koderuang): void
     {
         $bedLokal = (int) ($this->bedCountLokal[$koderuang] ?? 0);
@@ -401,6 +405,7 @@ new class extends Component {
         $this->loadingSirs    = false;
     }
 
+    #[Authorize('master.kamar.ubah')]
     public function hapusTempatTidurDariSirs(string $idTTt): void
     {
         try {
@@ -431,6 +436,7 @@ new class extends Component {
     }
 
     /** Hapus SEMUA tempat tidur dari SIRS Kemenkes — loop toleran; clear sirs_id_t_tt lokal per sukses */
+    #[Authorize('master.kamar.ubah')]
     public function hapusSemuaDariSirs(): void
     {
         if (empty($this->sirsData)) {
@@ -492,6 +498,7 @@ new class extends Component {
             ->get();
     }
 
+    #[Authorize('master.kamar.ubah')]
     public function sinkronBulkKamarKeAplicares(): void
     {
         $rooms   = $this->ambilKamarAktifUntukSinkronBulk('r.aplic_kodekelas');
@@ -542,6 +549,7 @@ new class extends Component {
         $this->aplBulkResults = $results;
     }
 
+    #[Authorize('master.kamar.ubah')]
     public function sinkronBulkKamarKeSirs(): void
     {
         $rooms = $this->ambilKamarAktifUntukSinkronBulk('r.sirs_id_tt, r.sirs_id_t_tt');
@@ -864,12 +872,14 @@ new class extends Component {
                             @else
                                 <span class="text-xs text-muted-soft dark:text-gray-500 italic">Belum diproses</span>
                             @endif
+                            @can('master.kamar.ubah')
                             <x-info-button wire:click="sinkronBulkKamarKeAplicares" wire:loading.attr="disabled" wire:target="sinkronBulkKamarKeAplicares" class="shrink-0 gap-2">
                                 <x-loading size="xs" wire:loading wire:target="sinkronBulkKamarKeAplicares" />
                                 <x-ikon nama="setujui" wire:loading.remove wire:target="sinkronBulkKamarKeAplicares" />
                                 <span wire:loading.remove wire:target="sinkronBulkKamarKeAplicares">Daftarkan ke Aplicares</span>
                                 <span wire:loading wire:target="sinkronBulkKamarKeAplicares">Memproses&hellip;</span>
                             </x-info-button>
+                            @endcan
                         </div>
 
                         {{-- Loading proses bulk --}}
@@ -903,7 +913,7 @@ new class extends Component {
                     <div class="flex items-center justify-between px-5 py-3 border-b border-hairline-soft dark:border-gray-800 shrink-0">
                         <span class="text-sm font-semibold text-body dark:text-gray-200">Data Kamar Terdaftar di Aplicares BPJS</span>
                         <div class="flex items-center gap-2">
-                            @if (!empty($aplicaresData))
+                            @if (!empty($aplicaresData) && auth()->user()->can('master.kamar.ubah'))
                                 <x-confirm-button variant="danger"
                                     action="hapusSemuaDariAplicares()"
                                     title="Hapus Semua dari Aplicares"
@@ -1056,6 +1066,7 @@ new class extends Component {
                                             <td class="px-5 py-3 text-center font-mono text-muted dark:text-gray-400">{{ $aplic['tersediapriawanita'] ?? '-' }}</td>
                                             <td class="px-5 py-3 text-center">
                                                 <div class="flex items-center justify-center gap-1.5">
+                                                    @can('master.kamar.ubah')
                                                     @if ($isMismatch)
                                                         <x-confirm-button variant="secondary"
                                                             :action="'samakanKapasitasAplicares(\'' . $kodekelas . '\', \'' . $koderuang . '\')'"
@@ -1075,6 +1086,7 @@ new class extends Component {
                                                         <x-ikon nama="hapus" ukuran="w-3 h-3" />
                                                         Hapus
                                                     </x-confirm-button>
+                                                    @endcan
                                                 </div>
                                             </td>
                                         </tr>
@@ -1278,12 +1290,14 @@ new class extends Component {
                             @else
                                 <span class="text-xs text-muted-soft dark:text-gray-500 italic">Belum diproses</span>
                             @endif
+                            @can('master.kamar.ubah')
                             <x-primary-button wire:click="sinkronBulkKamarKeSirs" wire:loading.attr="disabled" wire:target="sinkronBulkKamarKeSirs" class="shrink-0 gap-2">
                                 <x-loading size="xs" wire:loading wire:target="sinkronBulkKamarKeSirs" />
                                 <x-ikon nama="setujui" wire:loading.remove wire:target="sinkronBulkKamarKeSirs" />
                                 <span wire:loading.remove wire:target="sinkronBulkKamarKeSirs">Daftarkan ke SIRS</span>
                                 <span wire:loading wire:target="sinkronBulkKamarKeSirs">Memproses&hellip;</span>
                             </x-primary-button>
+                            @endcan
                         </div>
 
                         {{-- Loading proses bulk --}}
@@ -1317,7 +1331,7 @@ new class extends Component {
                     <div class="flex items-center justify-between px-5 py-3 border-b border-hairline-soft dark:border-gray-800 shrink-0">
                         <span class="text-sm font-semibold text-body dark:text-gray-200">Data Tempat Tidur Terdaftar di SIRS Kemenkes</span>
                         <div class="flex items-center gap-2">
-                            @if (!empty($sirsData))
+                            @if (!empty($sirsData) && auth()->user()->can('master.kamar.ubah'))
                                 <x-confirm-button variant="danger"
                                     action="hapusSemuaDariSirs()"
                                     title="Hapus Semua dari SIRS"
@@ -1435,7 +1449,9 @@ new class extends Component {
                                             <td class="px-4 py-3 text-xs text-muted-soft dark:text-gray-500 whitespace-nowrap">{{ $sirs['tglupdate'] ?? '-' }}</td>
                                             <td class="px-4 py-3 text-center">
                                                 @if ($idTTt !== '')
+                                                    @can('master.kamar.ubah')
                                                     <x-hapus-button :action="'hapusTempatTidurDariSirs(\'' . $idTTt . '\')'" title="Hapus Data SIRS" :message="'Hapus data TT ' . $idTTt . ' dari SIRS Kemenkes?'" />
+                                                    @endcan
                                                 @else
                                                     <span class="text-[10px] text-muted-soft dark:text-gray-500 italic">Belum terdaftar</span>
                                                 @endif

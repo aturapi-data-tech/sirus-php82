@@ -2,6 +2,9 @@
 
 use Livewire\Component;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
+use Livewire\Attributes\Locked;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
@@ -9,6 +12,7 @@ use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 new class extends Component {
     use WithRenderVersioningTrait;
 
+    #[Locked]
     public string $formMode      = 'create';
     public string $originalCatatan = '';
     public array  $renderVersions = [];
@@ -25,6 +29,7 @@ new class extends Component {
     }
 
     #[On('master.signa-catatan.openCreate')]
+    #[Authorize('master.signa-catatan.tambah')]
     public function openCreate(): void
     {
         $this->resetForm();
@@ -35,6 +40,7 @@ new class extends Component {
     }
 
     #[On('master.signa-catatan.openEdit')]
+    #[Authorize('master.signa-catatan.ubah')]
     public function openEdit(string $catatan): void
     {
         $row = DB::table('rsmst_signa_catatans')
@@ -58,6 +64,7 @@ new class extends Component {
     }
 
     #[On('master.signa-catatan.requestDelete')]
+    #[Authorize('master.signa-catatan.hapus')]
     public function deleteCatatan(string $catatan): void
     {
         $deleted = DB::table('rsmst_signa_catatans')->where('catatan', $catatan)->delete();
@@ -71,6 +78,8 @@ new class extends Component {
 
     public function save(): void
     {
+        Gate::authorize($this->formMode === 'create' ? 'master.signa-catatan.tambah' : 'master.signa-catatan.ubah');
+
         $rules = [
             'form.catatan' => [
                 'required', 'string', 'max:255',

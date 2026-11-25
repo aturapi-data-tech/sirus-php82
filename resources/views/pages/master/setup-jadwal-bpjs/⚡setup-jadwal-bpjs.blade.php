@@ -2,6 +2,7 @@
 
 use Livewire\Component;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Authorize;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use App\Http\Traits\BPJS\AntrianTrait;
@@ -174,6 +175,7 @@ new class extends Component {
     }
 
     /* ─── Sync satu baris jadwal ke scmst_scpolis ─── */
+    #[Authorize('master.setup-jadwal-bpjs.ubah')]
     public function syncJadwal(string $kdPoliBpjs, string $kdDrBpjs, string $namaDokter, int $dayId, string $jamPraktek, int $kuota): void
     {
         // day_id 8 = hari libur nasional BPJS, tidak ada di scmst_scdays → skip
@@ -206,6 +208,7 @@ new class extends Component {
     }
 
     /* ─── Sync semua jadwal yang tampil ─── */
+    #[Authorize('master.setup-jadwal-bpjs.ubah')]
     public function syncSemua(): void
     {
         if (empty($this->jadwalBpjs)) {
@@ -248,6 +251,7 @@ new class extends Component {
     private const NAMA_HARI = [1 => 'Senin', 2 => 'Selasa', 3 => 'Rabu', 4 => 'Kamis', 5 => 'Jumat', 6 => 'Sabtu', 7 => 'Minggu'];
 
     /* ─── Susun antrean: SEMUA poli ter-mapping × 7 hari ke depan ─── */
+    #[Authorize('master.setup-jadwal-bpjs.ubah')]
     public function syncAllPoli(): void
     {
         try {
@@ -296,6 +300,7 @@ new class extends Component {
     }
 
     /* ─── Gilir satu langkah antrean (1 poli × 1 hari) ─── */
+    #[Authorize('master.setup-jadwal-bpjs.ubah')]
     public function syncAllStep(): void
     {
         if (!$this->syncingAll) {
@@ -344,6 +349,7 @@ new class extends Component {
     }
 
     /* ─── Hentikan proses di tengah jalan ─── */
+    #[Authorize('master.setup-jadwal-bpjs.ubah')]
     public function batalSyncAll(): void
     {
         if (!$this->syncingAll) {
@@ -418,6 +424,7 @@ new class extends Component {
     }
 
     /* ─── Ubah shift satu baris jadwal (koreksi manual) ─── */
+    #[Authorize('master.setup-jadwal-bpjs.ubah')]
     public function ubahShift(int $indeksHari, int $indeksBaris, string $shift): void
     {
         $barisJadwal = $this->jadwalRS[$indeksHari]['jadwal'][$indeksBaris] ?? null;
@@ -451,6 +458,7 @@ new class extends Component {
     }
 
     /* ─── Hapus satu baris jadwal ─── */
+    #[Authorize('master.setup-jadwal-bpjs.hapus')]
     public function hapusJadwal(int $indeksHari, int $indeksBaris): void
     {
         $barisJadwal = $this->jadwalRS[$indeksHari]['jadwal'][$indeksBaris] ?? null;
@@ -474,6 +482,7 @@ new class extends Component {
     }
 
     /* ─── Hapus seluruh jadwal pada satu hari ─── */
+    #[Authorize('master.setup-jadwal-bpjs.hapus')]
     public function hapusJadwalHari(int $indeksHari): void
     {
         $hari = $this->jadwalRS[$indeksHari] ?? null;
@@ -500,6 +509,7 @@ new class extends Component {
     }
 
     /* ─── Hapus SELURUH jadwal RS (7 hari) ─── */
+    #[Authorize('master.setup-jadwal-bpjs.hapus')]
     public function hapusSemuaJadwal(): void
     {
         try {
@@ -741,11 +751,13 @@ new class extends Component {
                                             Hari Libur
                                         </span>
                                     @else
+                                        @can('master.setup-jadwal-bpjs.ubah')
                                         <x-primary-button type="button"
                                             wire:click="syncJadwal('{{ $entriJadwal['kodepoli'] }}','{{ $entriJadwal['kodedokter'] }}','{{ addslashes($entriJadwal['namadokter']) }}',{{ (int)$entriJadwal['hari'] }},'{{ $entriJadwal['jadwal'] }}',{{ (int)$entriJadwal['kapasitaspasien'] }})">
                                             <x-ikon nama="setujui" />
                                             Terapkan
                                         </x-primary-button>
+                                        @endcan
                                     @endif
                                 </div>
                             </td>
@@ -775,11 +787,13 @@ new class extends Component {
                     </x-secondary-button>
 
                     @if(count($jadwalBpjs))
+                    @can('master.setup-jadwal-bpjs.ubah')
                     <x-primary-button wire:click="syncSemua" wire:loading.attr="disabled" wire:target="syncSemua"
                         wire:confirm="Terapkan semua {{ count($jadwalBpjs) }} jadwal poli ini ke database RS?">
                         <div wire:loading wire:target="syncSemua" class="mr-1"><x-loading /></div>
                         <span wire:loading.remove wire:target="syncSemua" class="inline-flex items-center gap-2"><x-ikon nama="setujui" /> Terapkan Semua ({{ count($jadwalBpjs) }})</span>
                     </x-primary-button>
+                    @endcan
                     @endif
                 </div>
 
@@ -816,6 +830,7 @@ new class extends Component {
                     </span>
 
                     @unless($syncingAll)
+                    @can('master.setup-jadwal-bpjs.hapus')
                     <x-confirm-button variant="danger"
                         action="hapusSemuaJadwal()"
                         title="Hapus Seluruh Jadwal RS"
@@ -824,8 +839,10 @@ new class extends Component {
                         <x-ikon nama="hapus" />
                         Hapus Semua Jadwal
                     </x-confirm-button>
+                    @endcan
                     @endunless
 
+                    @can('master.setup-jadwal-bpjs.ubah')
                     @if($syncingAll)
                     <x-danger-button type="button" wire:click="batalSyncAll">
                         <x-ikon nama="hentikan" />
@@ -843,6 +860,7 @@ new class extends Component {
                         <span wire:loading wire:target="syncAllPoli">Menyiapkan...</span>
                     </x-primary-button>
                     @endif
+                    @endcan
                 </div>
 
                 {{-- Progress bar Terapkan Semua Poli.
@@ -916,6 +934,7 @@ new class extends Component {
                                         <th class="px-4 py-3">Kuota</th>
                                         <th class="px-4 py-3 text-right">
                                             @if(count($hari['jadwal']))
+                                            @can('master.setup-jadwal-bpjs.hapus')
                                             <x-confirm-button variant="danger-soft"
                                                 wire:key="hapus-hari-{{ $hari['day_id'] }}"
                                                 :action="'hapusJadwalHari(' . $loop->index . ')'"
@@ -925,6 +944,7 @@ new class extends Component {
                                                 <x-ikon nama="hapus" ukuran="w-3.5 h-3.5" />
                                                 <span class="sr-only">Hapus jadwal {{ $hari['day_desc'] }}</span>
                                             </x-confirm-button>
+                                            @endcan
                                             @endif
                                         </th>
                                     </tr>
@@ -942,6 +962,7 @@ new class extends Component {
                                         </td>
                                         <td class="px-4 py-3 whitespace-nowrap">
                                             <span class="font-semibold text-gray-700 dark:text-white">{{ substr($barisJadwal->mulai_praktek, 0, 5) }}&ndash;{{ substr($barisJadwal->selesai_praktek, 0, 5) }}</span><br>
+                                            @can('master.setup-jadwal-bpjs.ubah')
                                             <x-select-input class="px-2 py-1 mt-1 text-xs"
                                                 wire:key="shift-{{ $hari['day_id'] }}-{{ $key }}"
                                                 wire:change="ubahShift({{ $loop->parent->index }}, {{ $key }}, $event.target.value)">
@@ -949,16 +970,21 @@ new class extends Component {
                                                 <option value="{{ $nomorShift }}" @selected((int) $barisJadwal->shift === $nomorShift)>Shift {{ $nomorShift }}</option>
                                                 @endforeach
                                             </x-select-input>
+                                            @else
+                                            <span class="text-xs text-gray-600 dark:text-gray-300">Shift {{ (int) $barisJadwal->shift }}</span>
+                                            @endcan
                                         </td>
                                         <td class="px-4 py-3 whitespace-nowrap text-gray-600 dark:text-gray-300">
                                             {{ $barisJadwal->kuota }}
                                         </td>
                                         <td class="px-4 py-3 text-right whitespace-nowrap">
+                                            @can('master.setup-jadwal-bpjs.hapus')
                                             <x-action-delete
                                                 wire:key="hapus-jadwal-{{ $hari['day_id'] }}-{{ $key }}"
                                                 :action="'hapusJadwal(' . $loop->parent->index . ', ' . $key . ')'"
                                                 title="Hapus Jadwal Dokter"
                                                 :message="'Hapus jadwal ' . $barisJadwal->dr_name . ' — ' . $barisJadwal->poli_desc . ' (' . $hari['day_desc'] . ' ' . substr($barisJadwal->mulai_praktek, 0, 5) . ') dari data RS?'" />
+                                            @endcan
                                         </td>
                                     </tr>
                                     @empty

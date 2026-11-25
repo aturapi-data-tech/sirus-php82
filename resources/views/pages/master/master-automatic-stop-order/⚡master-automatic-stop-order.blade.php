@@ -9,6 +9,7 @@
 
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Illuminate\Support\Facades\DB;
@@ -50,15 +51,23 @@ new class extends Component {
     }
 
     // ── Golongan ──
+    #[Authorize('master.automatic-stop-order.tambah')]
     public function openCreate(): void                { $this->dispatch('master.automatic-stop-order.openCreate'); }
+    #[Authorize('master.automatic-stop-order.ubah')]
     public function openEdit(int $golonganId): void        { $this->dispatch('master.automatic-stop-order.openEdit', golonganId: $golonganId); }
+    #[Authorize('master.automatic-stop-order.hapus')]
     public function requestDelete(int $golonganId): void   { $this->dispatch('master.automatic-stop-order.requestDelete', golonganId: $golonganId); }
+    #[Authorize('master.automatic-stop-order.ubah')]
     public function toggleActive(int $golonganId): void    { $this->dispatch('master.automatic-stop-order.toggleActive', golonganId: $golonganId); }
 
     // ── Pemetaan obat ──
+    #[Authorize('master.automatic-stop-order.tambah')]
     public function openCreateProduk(): void                    { $this->dispatch('master.automatic-stop-order.openCreateProduk', golonganId: $this->filterGolonganId); }
+    #[Authorize('master.automatic-stop-order.ubah')]
     public function openEditProduk(string $productId): void     { $this->dispatch('master.automatic-stop-order.openEditProduk', productId: $productId); }
+    #[Authorize('master.automatic-stop-order.hapus')]
     public function requestDeleteProduk(string $productId): void { $this->dispatch('master.automatic-stop-order.requestDeleteProduk', productId: $productId); }
+    #[Authorize('master.automatic-stop-order.ubah')]
     public function toggleActiveProduk(string $productId): void { $this->dispatch('master.automatic-stop-order.toggleActiveProduk', productId: $productId); }
 
     #[On('master.automatic-stop-order.saved')]
@@ -183,11 +192,13 @@ new class extends Component {
                                 <option value="100">100</option>
                             </x-select-input>
                         </div>
+                        @can('master.automatic-stop-order.tambah')
                         @if ($tampilan === 'produk')
                             <x-primary-button type="button" wire:click="openCreateProduk"><x-ikon nama="tambah" /> Petakan Obat</x-primary-button>
                         @else
                             <x-primary-button type="button" wire:click="openCreate"><x-ikon nama="tambah" /> Tambah Golongan</x-primary-button>
                         @endif
+                        @endcan
                         <x-toolbar-refresh-reset :label="null" />
                     </div>
                 </div>
@@ -275,14 +286,24 @@ new class extends Component {
                                         <td class="ds-c ds-td-token">{{ $row->batas_hari }}</td>
                                         <td class="max-w-md"><div class="text-sm line-clamp-2" title="{{ $row->catatan }}">{{ $row->catatan ?: '-' }}</div></td>
                                         <td class="ds-c">
+                                            @can('master.automatic-stop-order.ubah')
                                             <x-toggle :current="$row->active_status" trueValue="1" falseValue="0"
                                                 wireClick="toggleActiveProduk('{{ $row->product_id }}')" />
+                                            @else
+                                            <x-badge :variant="(string) $row->active_status === '1' ? 'success' : 'danger'">
+                                                {{ (string) $row->active_status === '1' ? 'Aktif' : 'Tidak Aktif' }}
+                                            </x-badge>
+                                            @endcan
                                         </td>
                                         <td class="ds-c">
                                             <div class="flex justify-center gap-2">
+                                                @can('master.automatic-stop-order.ubah')
                                                 <x-action-edit wire:click="openEditProduk('{{ $row->product_id }}')" />
+                                                @endcan
+                                                @can('master.automatic-stop-order.hapus')
                                                 <x-action-delete :action="'requestDeleteProduk(\'' . $row->product_id . '\')'"
                                                     title="Hapus Pemetaan Obat" message="Yakin hapus {{ $row->product_name ?: $row->product_id }} dari golongan {{ $row->golongan_nama }}?" />
+                                                @endcan
                                             </div>
                                         </td>
                                     </tr>
@@ -328,14 +349,24 @@ new class extends Component {
                                                 title="Lihat obat di golongan ini">{{ $row->jumlah_obat }}</button>
                                         </td>
                                         <td class="ds-c">
+                                            @can('master.automatic-stop-order.ubah')
                                             <x-toggle :current="$row->active_status" trueValue="1" falseValue="0"
                                                 wireClick="toggleActive({{ $row->golongan_id }})" />
+                                            @else
+                                            <x-badge :variant="(string) $row->active_status === '1' ? 'success' : 'danger'">
+                                                {{ (string) $row->active_status === '1' ? 'Aktif' : 'Tidak Aktif' }}
+                                            </x-badge>
+                                            @endcan
                                         </td>
                                         <td class="ds-c">
                                             <div class="flex justify-center gap-2">
+                                                @can('master.automatic-stop-order.ubah')
                                                 <x-action-edit wire:click="openEdit({{ $row->golongan_id }})" />
+                                                @endcan
+                                                @can('master.automatic-stop-order.hapus')
                                                 <x-action-delete :action="'requestDelete(' . $row->golongan_id . ')'"
                                                     title="Hapus Golongan Automatic Stop Order" message="Yakin hapus golongan {{ $row->golongan_nama }}? Hanya bisa bila belum ada obat yang dipetakan." />
+                                                @endcan
                                             </div>
                                         </td>
                                     </tr>
