@@ -308,6 +308,16 @@ class AksiRole
     public const APOTEK_RESEP_RI_BATAL = ['Apoteker', 'Admin', 'Tu'];
     public const APOTEK_RESEP_RI_UBAH_JASA = ['Admin', 'Tu'];
 
+    /* ─────────────────────────── PIUTANG (T4) ─────────────────────────── */
+    /*
+     * Komponen pembayaran-piutang-actions dipakai DUA halaman (Pelunasan Klaim BPJS & Piutang
+     * Per Pasien), jadi haknya aksi khusus, bukan `{route}.{aksi}`.
+     */
+    /** Mencatat pembayaran/pelunasan piutang — dulu cukup bisa membuka halaman (role menu). */
+    public const PIUTANG_BAYAR = ['Admin', 'Manager Umum', 'Supervisor Tu', 'Tu'];
+    /** Hapus pembayaran piutang yang salah — dulu ROLE_HAPUS_BAYAR (aturan tanggal/keterangan tetap di kode). */
+    public const PIUTANG_HAPUS_BAYAR = ['Admin', 'Supervisor Tu'];
+
     /* ─────────────────────── CPPT & SBAR RAWAT INAP ─────────────────────── */
     /**
      * Aturan PEMILIK entri (edit = penulisnya) dan DPJP (review = DPJP Utama) tetap di kode
@@ -395,6 +405,8 @@ class AksiRole
         'apotek.resepRi.batal' => ['area' => 'Kasir & Apotek', 'label' => 'Apotek Resep RI: batal', 'roles' => self::APOTEK_RESEP_RI_BATAL],
         'apotek.resepRi.ubahJasa' => ['area' => 'Kasir & Apotek', 'label' => 'Apotek Resep RI: ubah jasa karyawan', 'roles' => self::APOTEK_RESEP_RI_UBAH_JASA],
 
+        'piutang.bayar' => ['area' => 'Keuangan', 'label' => 'Piutang: catat pembayaran / pelunasan', 'roles' => self::PIUTANG_BAYAR],
+        'piutang.hapusBayar' => ['area' => 'Keuangan', 'label' => 'Piutang: hapus pembayaran salah', 'roles' => self::PIUTANG_HAPUS_BAYAR],
         'kasTu.koreksi' => ['area' => 'Keuangan', 'label' => 'Kas TU: koreksi transaksi', 'roles' => self::KAS_TU_KOREKSI],
         'kasTu.hapus' => ['area' => 'Keuangan', 'label' => 'Kas TU: hapus transaksi', 'roles' => self::KAS_TU_HAPUS],
 

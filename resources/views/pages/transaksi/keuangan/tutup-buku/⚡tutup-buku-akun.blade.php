@@ -15,8 +15,6 @@ use Illuminate\Database\QueryException;
 use App\Support\Keuangan\TutupBukuAkun;
 
 new class extends Component {
-    private const ROLE_TUTUP_BUKU = ['Admin'];
-
     public int $tahun = 0;
     /** Hasil Hitung — kosong = belum dihitung untuk tahun ini. */
     public array $baris = [];
@@ -27,7 +25,7 @@ new class extends Component {
 
     public function mount(): void
     {
-        abort_unless(auth()->user()?->hasAnyRole(self::ROLE_TUTUP_BUKU), 403, 'Tutup buku khusus Admin.');
+        abort_unless(auth()->user()?->can('keuangan.tutup-buku.lihat'), 403, 'Anda tidak memiliki akses ke Tutup Buku.');
         $this->tahun = (int) Carbon::now()->year - 1;
     }
 
@@ -65,8 +63,8 @@ new class extends Component {
 
     public function siapkanProses(): void
     {
-        if (!auth()->user()?->hasAnyRole(self::ROLE_TUTUP_BUKU)) {
-            $this->dispatch('toast', type: 'error', message: 'Tutup buku khusus Admin.');
+        if (!auth()->user()?->can('keuangan.tutup-buku.ubah')) {
+            $this->dispatch('toast', type: 'error', message: 'Anda tidak memiliki akses untuk memproses tutup buku.');
             return;
         }
         if ($this->tahunDihitung !== $this->tahun) {
@@ -89,8 +87,8 @@ new class extends Component {
     public function proses(): void
     {
         $this->konfirmasi = false;
-        if (!auth()->user()?->hasAnyRole(self::ROLE_TUTUP_BUKU) || $this->tahunDihitung !== $this->tahun) {
-            $this->dispatch('toast', type: 'error', message: 'Tutup buku khusus Admin / hitung ulang dulu.');
+        if (!auth()->user()?->can('keuangan.tutup-buku.ubah') || $this->tahunDihitung !== $this->tahun) {
+            $this->dispatch('toast', type: 'error', message: 'Anda tidak memiliki akses tutup buku / hitung ulang dulu.');
             return;
         }
 
@@ -133,9 +131,11 @@ new class extends Component {
                 title="Mati (default) = baris tahun depan yang sudah ada tidak diubah (bisa berisi koreksi manual). Nyala = hitung ulang & timpa." />
         </div>
         <div class="ml-auto">
+            @can('keuangan.tutup-buku.ubah')
             <x-primary-button type="button" wire:click="siapkanProses" class="h-11" :disabled="$tahunDihitung !== $tahun">
                 <x-ikon nama="proses" /> Proses Tutup Buku {{ $tahun }}
             </x-primary-button>
+            @endcan
         </div>
     </div>
 

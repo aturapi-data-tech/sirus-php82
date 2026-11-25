@@ -12,7 +12,7 @@
  * Pemakaian DP ada di menu Pembayaran Hutang Non-Medis (pola Forms: DP dipakai sendirian, tak
  * dicampur tunai). Hapus salah setor ditolak bila saldo DP jadi minus (DP sudah terpakai).
  *
- * Opname saldo DP ada di menu Kartu DP Supplier (keuangan/kartu-dp-supplier, khusus Admin);
+ * Opname saldo DP ada di menu Kartu DP Supplier (keuangan/kartu-dp-supplier, hak di Role Control);
  * di sini barisnya hanya tampil di riwayat & rekap.
  */
 
@@ -21,6 +21,7 @@ use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Database\QueryException;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
@@ -29,8 +30,6 @@ use App\Support\Keuangan\SaldoDpSupplier;
 new class extends Component {
     use WithRenderVersioningTrait;
 
-    /** Hapus salah setor — sama dengan hapus salah bayar hutang/piutang. */
-    private const ROLE_HAPUS_SETOR = ['Admin', 'Supervisor Tu'];
     private const JENIS = SaldoDpSupplier::JENIS_NON_MEDIS;
 
     public ?string $suppId   = null;
@@ -312,6 +311,8 @@ new class extends Component {
 
     public function simpan(): void
     {
+        Gate::authorize('keuangan.topup-supplier-non-medis.tambah');
+
         $this->validate();
         $this->pratinjau = [];
 
@@ -360,7 +361,8 @@ new class extends Component {
 
     protected function bolehHapusSetor(string $tanggal): bool
     {
-        if (!auth()->user()?->hasAnyRole(self::ROLE_HAPUS_SETOR)) {
+        // Hak hapus salah setor dari Role Control (keuangan.topup-supplier-non-medis.hapus).
+        if (!auth()->user()?->can('keuangan.topup-supplier-non-medis.hapus')) {
             return false;
         }
         try {
@@ -487,8 +489,8 @@ new class extends Component {
                                 <li>Sebelum memilih supplier, kanan menampilkan <strong>Rekap Saldo DP per tahun</strong> (seperti saldo kas): saldo awal 1 Jan → disetor, terpakai, opname → saldo akhir; transaksi terakhir paling atas. Saldo akhir sebuah tahun = saldo awal tahun berikutnya. Klik baris untuk membuka supplier.</li>
                                 <li>Saldo DP = saldo awal tahun (tutup buku) + disetor − terpakai ± opname. Riwayat di kanan menampilkan setor (+) dan pemakaian (−).</li>
                                 <li>Shift terisi otomatis dari jam Tanggal; periksa dialog konfirmasi sebelum menyimpan.</li>
-                                <li>Selisih saldo DP dengan kartu supplier dibetulkan lewat menu <strong>Kartu DP Supplier</strong> → Opname (khusus Admin); barisnya tampil di riwayat sebagai <em>Opname</em>.</li>
-                                <li><strong>Hapus salah setor</strong> (Admin / Supervisor Tu, tahun berjalan) ditolak bila DP-nya sudah terpakai — hapus dulu pelunasannya di menu Pembayaran Hutang Non-Medis.</li>
+                                <li>Selisih saldo DP dengan kartu supplier dibetulkan lewat menu <strong>Kartu DP Supplier</strong> → Opname (hak di Role Control); barisnya tampil di riwayat sebagai <em>Opname</em>.</li>
+                                <li><strong>Hapus salah setor</strong> (sesuai hak di Role Control, tahun berjalan) ditolak bila DP-nya sudah terpakai — hapus dulu pelunasannya di menu Pembayaran Hutang Non-Medis.</li>
                             </ul>
                         </div>
                     </div>
@@ -569,11 +571,13 @@ new class extends Component {
                                     placeholder="Misal: DP order ATK batch 2026-05" class="w-full mt-1" />
                             </div>
 
+                            @can('keuangan.topup-supplier-non-medis.tambah')
                             <x-primary-button type="button" wire:click="siapkanKonfirmasi" class="justify-center w-full h-11"
                                 wire:loading.attr="disabled" wire:target="siapkanKonfirmasi">
                                 <span wire:loading.remove wire:target="siapkanKonfirmasi" class="inline-flex items-center gap-2"><x-ikon nama="simpan" /> Simpan Setoran</span>
                                 <span wire:loading wire:target="siapkanKonfirmasi"><x-loading /> Memeriksa...</span>
                             </x-primary-button>
+                            @endcan
                         </div>
 
                     @endif
@@ -789,11 +793,13 @@ new class extends Component {
                 </dl>
                 <div class="flex justify-end gap-2 px-5 py-4 border-t border-hairline bg-surface-soft dark:bg-gray-800/50 dark:border-gray-700">
                     <x-secondary-button type="button" wire:click="batalKonfirmasi"><x-ikon nama="batal" /> Batal</x-secondary-button>
+                    @can('keuangan.topup-supplier-non-medis.tambah')
                     <x-primary-button type="button" wire:click="simpan" x-ref="btnYaSetor"
                         wire:loading.attr="disabled" wire:target="simpan">
                         <span wire:loading.remove wire:target="simpan" class="inline-flex items-center gap-2"><x-ikon nama="simpan" /> Ya, simpan</span>
                         <span wire:loading wire:target="simpan"><x-loading /> Menyimpan...</span>
                     </x-primary-button>
+                    @endcan
                 </div>
             </div>
         </div>

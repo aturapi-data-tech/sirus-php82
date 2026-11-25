@@ -91,7 +91,7 @@ new class extends Component {
     public function openEdit(string $accId): void
     {
         if (!$this->canEditSaldo()) {
-            $this->dispatch('toast', type: 'error', message: 'Hanya Manager ke atas yang bisa mengedit saldo.');
+            $this->dispatch('toast', type: 'error', message: 'Anda tidak memiliki akses untuk mengedit saldo.');
             return;
         }
         $this->dispatch('keuangan.saldo-kas.openEdit', accId: $accId, tanggal: $this->tanggal, shift: $this->shiftEfektif());
@@ -107,7 +107,7 @@ new class extends Component {
 
     public function canEditSaldo(): bool
     {
-        return (bool) auth()->user()?->hasAnyRole(['Admin', 'Manager Umum', 'Manager Medis']);
+        return (bool) auth()->user()?->can('keuangan.saldo-kas.ubah');
     }
 
     /**

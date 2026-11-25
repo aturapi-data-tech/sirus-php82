@@ -15,7 +15,6 @@ use Illuminate\Database\QueryException;
 use App\Support\Keuangan\TutupBukuStok;
 
 new class extends Component {
-    private const ROLE_TUTUP_BUKU = ['Admin'];
     private const MAKS_BARIS = 500;
 
     public string $jenis = TutupBukuStok::JENIS_MEDIS;
@@ -27,7 +26,7 @@ new class extends Component {
 
     public function mount(): void
     {
-        abort_unless(auth()->user()?->hasAnyRole(self::ROLE_TUTUP_BUKU), 403, 'Tutup buku khusus Admin.');
+        abort_unless(auth()->user()?->can('keuangan.tutup-buku.lihat'), 403, 'Anda tidak memiliki akses ke Tutup Buku.');
         $this->tahun = (int) Carbon::now()->year - 1;
     }
 
@@ -81,8 +80,8 @@ new class extends Component {
 
     public function siapkanProses(): void
     {
-        if (!auth()->user()?->hasAnyRole(self::ROLE_TUTUP_BUKU)) {
-            $this->dispatch('toast', type: 'error', message: 'Tutup buku khusus Admin.');
+        if (!auth()->user()?->can('keuangan.tutup-buku.ubah')) {
+            $this->dispatch('toast', type: 'error', message: 'Anda tidak memiliki akses untuk memproses tutup buku.');
             return;
         }
         $rk = $this->ringkasan;
@@ -101,8 +100,8 @@ new class extends Component {
     public function proses(): void
     {
         $this->konfirmasi = false;
-        if (!auth()->user()?->hasAnyRole(self::ROLE_TUTUP_BUKU)) {
-            $this->dispatch('toast', type: 'error', message: 'Tutup buku khusus Admin.');
+        if (!auth()->user()?->can('keuangan.tutup-buku.ubah')) {
+            $this->dispatch('toast', type: 'error', message: 'Anda tidak memiliki akses untuk memproses tutup buku.');
             return;
         }
 
@@ -148,9 +147,11 @@ new class extends Component {
                 title="Mati (default) = baris tahun depan yang sudah ada tidak diubah. Nyala = qty dihitung ulang & ditimpa (HPP tetap)." />
         </div>
         <div class="ml-auto">
+            @can('keuangan.tutup-buku.ubah')
             <x-primary-button type="button" wire:click="siapkanProses" class="h-11">
                 <x-ikon nama="proses" /> Proses Tutup Buku {{ $tahun }}
             </x-primary-button>
+            @endcan
         </div>
     </div>
 

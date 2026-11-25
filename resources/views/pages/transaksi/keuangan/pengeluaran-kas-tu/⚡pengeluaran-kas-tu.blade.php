@@ -180,10 +180,12 @@ new class extends Component {
                         </span>
                     </div>
 
+                    @can('keuangan.pengeluaran-kas-tu.tambah')
                     <x-primary-button type="button" wire:click="openCreate">
                         <x-ikon nama="tambah" />
                         Tambah Pengeluaran Kas
                     </x-primary-button>
+                    @endcan
                 </div>
 
                 {{-- Timestamp refresh --}}

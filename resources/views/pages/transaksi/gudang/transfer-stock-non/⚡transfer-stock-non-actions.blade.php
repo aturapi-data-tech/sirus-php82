@@ -2,6 +2,9 @@
 
 use Livewire\Component;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
+use Livewire\Attributes\Locked;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -23,6 +26,7 @@ new class extends Component {
     private const KATEGORI = 'nonmedis';
 
     public array $renderVersions = [];
+    #[Locked]
     public string $formMode = 'create';
 
     // ── Header ──
@@ -53,6 +57,7 @@ new class extends Component {
     }
 
     #[On('transfer-stock-non.openCreate')]
+    #[Authorize('gudang.transfer-stock-non.tambah')]
     public function openCreate(string $slCodeFrom = self::WAREHOUSE_SL_CODE): void
     {
         $this->resetForm();
@@ -281,6 +286,8 @@ new class extends Component {
 
     public function saveDraft(): void
     {
+        Gate::authorize(($this->formMode === 'create' || !$this->trfNo) ? 'gudang.transfer-stock-non.tambah' : 'gudang.transfer-stock-non.ubah');
+
         try {
             $this->validateBeforeSave();
             $empId = auth()->user()->emp_id ?? 'SYSTEM';
@@ -334,6 +341,8 @@ new class extends Component {
 
     public function postTransfer(): void
     {
+        Gate::authorize('gudang.transfer-stock-non.posting');
+
         try {
             $this->validateBeforeSave();
 
@@ -717,16 +726,20 @@ new class extends Component {
                         @endif
 
                         @unless ($this->isReadonly)
+                            @can(($formMode === 'create' || !$trfNo) ? 'gudang.transfer-stock-non.tambah' : 'gudang.transfer-stock-non.ubah')
                             <x-secondary-button type="button" wire:click="saveDraft" wire:loading.attr="disabled">
                                 <span wire:loading.remove wire:target="saveDraft" class="inline-flex items-center gap-2"><x-ikon nama="simpan" /> Simpan Sementara</span>
                                 <span wire:loading wire:target="saveDraft">Menyimpan...</span>
                             </x-secondary-button>
+                            @endcan
+                            @can('gudang.transfer-stock-non.posting')
                             <x-confirm-button variant="primary" action="postTransfer()" title="Proses Transfer Stok"
                                 message="Yakin proses transfer ini? Stok di lokasi asal & tujuan akan langsung tercatat di Kartu Stock."
                                 confirmText="Ya, proses" cancelText="Batal">
                                 <x-ikon nama="proses" />
                                 Proses Stok
                             </x-confirm-button>
+                            @endcan
                         @endunless
 
                         <x-secondary-button type="button" wire:click="closeModal"><x-ikon nama="batal" /> Tutup</x-secondary-button>

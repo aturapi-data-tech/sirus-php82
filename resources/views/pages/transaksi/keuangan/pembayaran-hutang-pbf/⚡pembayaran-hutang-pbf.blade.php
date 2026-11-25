@@ -16,6 +16,7 @@
  */
 
 use Livewire\Component;
+use Livewire\Attributes\Authorize;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
@@ -164,6 +165,8 @@ new class extends Component {
      *                      OFF → check_boxstatus='0' + vcount=NULL
      * vcount = urutan klik user, jadi user bisa pilih NOTA MANA YG DILUNASI DULUAN.
      */
+    // Pilihan nota disimpan ke DB (check_boxstatus/vcount) = bagian alur bayar → hak Tambah.
+    #[Authorize('keuangan.pembayaran-hutang-pbf.tambah')]
     public function toggleCheckBox(int $rcvNo): void
     {
         $row = DB::table('imtxn_receivehdrs')
@@ -205,6 +208,8 @@ new class extends Component {
      * Kalau ada yg belum → set semua sesuai urutan tanggal beli (FIFO default),
      * vcount auto-increment 1..N, supaya alokasi tetap jalan saat user nggak peduli urutan.
      */
+    // Pilihan nota disimpan ke DB (check_boxstatus/vcount) = bagian alur bayar → hak Tambah.
+    #[Authorize('keuangan.pembayaran-hutang-pbf.tambah')]
     public function toggleCheckBoxAll(): void
     {
         if (!$this->suppId) return;
@@ -397,7 +402,7 @@ new class extends Component {
                                     <li>Nominal boleh lebih kecil dari sisa (angsuran); nota terakhir menjadi cicilan. Nominal melebihi sisa / saldo DP langsung merah.</li>
                                     <li>Shift terisi otomatis dari jam Tanggal Pembayaran — periksa sebelum proses. Dialog konfirmasi menampilkan nota mana yang LUNAS.</li>
                                     <li>Di modal, klik baris nota untuk melihat <strong>riwayat pembayarannya</strong>.</li>
-                                    <li><strong>Hapus salah bayar</strong> (Admin / Supervisor Tu, tahun berjalan): menghapus satu pembayaran UTUH, termasuk nota lain yang ikut dibayar di transaksi itu. Kas (atau saldo DP) kembali, nota kembali menjadi hutang. Angsuran awal tidak dihapus di sini — batalkan posting di menu Obat dari PBF.</li>
+                                    <li><strong>Hapus salah bayar</strong> (sesuai hak di Role Control, tahun berjalan): menghapus satu pembayaran UTUH, termasuk nota lain yang ikut dibayar di transaksi itu. Kas (atau saldo DP) kembali, nota kembali menjadi hutang. Angsuran awal tidak dihapus di sini — batalkan posting di menu Obat dari PBF.</li>
                                 </ul>
                             </div>
                         </div>

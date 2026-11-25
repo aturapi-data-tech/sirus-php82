@@ -4,6 +4,7 @@ use Livewire\Component;
 use Livewire\WithPagination;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -45,6 +46,7 @@ new class extends Component {
         $this->resetPage();
     }
 
+    #[Authorize('gudang.transfer-stock.tambah')]
     public function openCreate(): void
     {
         // Transfer dari ruangan dibuat oleh modul asalnya (tab Return Obat RI), bukan dari sini.
@@ -180,7 +182,7 @@ new class extends Component {
                                 <option value="100">100</option>
                             </x-select-input>
                         </div>
-                        @if ($filterFromSource !== self::TAB_MASUK_DARI_RUANGAN)
+                        @if ($filterFromSource !== self::TAB_MASUK_DARI_RUANGAN && auth()->user()->can('gudang.transfer-stock.tambah'))
                             <x-primary-button type="button" wire:click="openCreate" class="whitespace-nowrap"
                                 title="Buat transfer stok baru">
                                 <x-ikon nama="tambah" class="mr-1" />
@@ -282,11 +284,19 @@ new class extends Component {
                                     <td class="px-4 py-3">
                                         <div class="flex flex-wrap gap-2">
                                             @if ($editable)
+                                                @can('gudang.transfer-stock.ubah')
                                                 <x-secondary-button type="button"
                                                     wire:click="openEdit({{ $row->trf_no }})">
                                                     <x-ikon nama="ubah" />
                                                     Edit / Proses
                                                 </x-secondary-button>
+                                                @else
+                                                <x-outline-button type="button"
+                                                    wire:click="openEdit({{ $row->trf_no }})">
+                                                    <x-ikon nama="lihat" />
+                                                    Lihat
+                                                </x-outline-button>
+                                                @endcan
                                                 <x-confirm-button variant="danger-soft"
                                                     :action="'requestBatal(' . $row->trf_no . ')'"
                                                     title="Hapus Transfer"

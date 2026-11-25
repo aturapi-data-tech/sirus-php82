@@ -4,6 +4,7 @@ use Livewire\Component;
 use Livewire\WithPagination;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -38,6 +39,7 @@ new class extends Component {
     }
 
     /* ── Child modal triggers ── */
+    #[Authorize('gudang.penerimaan-medis.tambah')]
     public function openCreate(): void
     {
         $this->dispatch('penerimaan-medis.openCreate');
@@ -48,11 +50,13 @@ new class extends Component {
         $this->dispatch('penerimaan-medis.openEdit', rcvNo: $rcvNo);
     }
 
+    #[Authorize('gudang.penerimaan-medis.hapus')]
     public function requestDelete(string $rcvNo): void
     {
         $this->dispatch('penerimaan-medis.requestDelete', rcvNo: $rcvNo);
     }
 
+    #[Authorize('transaksi.batalPenerimaan')]
     public function requestBatal(string $rcvNo): void
     {
         $this->dispatch('penerimaan-medis.requestBatal', rcvNo: $rcvNo);
@@ -186,11 +190,13 @@ new class extends Component {
                                 <option value="100">100</option>
                             </x-select-input>
                         </div>
+                        @can('gudang.penerimaan-medis.tambah')
                         <x-primary-button type="button" wire:click="openCreate" class="whitespace-nowrap"
                             title="Catat penerimaan obat baru dari PBF / Supplier">
                             <x-ikon nama="tambah" class="mr-1" />
                             Tambah Obat dari PBF
                         </x-primary-button>
+                        @endcan
                     </div>
                 </div>
             </div>
@@ -260,7 +266,7 @@ new class extends Component {
                                             $canDelete = in_array($st, ['A', 'F'], true);
                                         @endphp
                                         <div class="flex flex-wrap gap-2">
-                                            @if ($editable)
+                                            @if ($editable && auth()->user()->can('gudang.penerimaan-medis.ubah'))
                                                 <x-secondary-button type="button"
                                                     wire:click="openEdit('{{ $row->rcv_no }}')">
                                                     <x-ikon nama="ubah" />
