@@ -36,8 +36,11 @@ User ──(model_has_roles)──> Role ──(role_has_permissions)──> Per
      **Khusus** baris halaman itu di Role Control. Pakai `@can('rj.pelayanan.bukaAdministrasi')`
      + `#[Authorize(...)]` di method pembukanya.
 3. Guard di komponen (lihat pola di bawah).
-4. Deploy, lalu **`php artisan akses:sinkron`** (lokal & produksi). Membuat 4 permission
-   halaman baru + menyalin centang awal. Aman diulang: centang yang dicabut admin tidak kembali.
+4. Deploy. Permission baru + centang awalnya dibuat **OTOMATIS** pada request pertama
+   sesudah `AppMenu.php` / `AksiRole.php` berubah (`App\Support\SinkronAksesOtomatis`, dipanggil
+   middleware `akses.halaman`; tanda di `storage/framework/akses-sinkron.tanda`, hasil di
+   `laravel.log`, gagal di log `akses-halaman`). Aman diulang: centang yang dicabut admin tidak
+   kembali. `php artisan akses:sinkron` manual tetap bisa (mis. `--dry-run`).
 5. Admin menyesuaikan centang di Role Control.
 
 Mengoreksi centang awal route yang permission-nya **sudah** ada:
@@ -160,6 +163,6 @@ tidak bisa memakai `{route}.{kunci}`. Pakai aksi khusus jalur di `AksiRole::KHUS
    menyebut jalur (`'Kasir: batal transaksi'`, bukan `'Kasir RJ: batal transaksi'`).
 2. Gate terdaftar otomatis (loop di `AppServiceProvider`) dan muncul di kartu Aksi Khusus Role Control.
 3. `@can('nama')` di blade + `#[Authorize('nama')]` / `->can()` di server.
-4. `php artisan akses:sinkron`.
+4. Tidak perlu apa-apa lagi — sinkron otomatis sesudah deploy (lihat langkah 4 "Menambah menu").
 
 Pengecualian: `AksiRole::EMR_PENUNJANG_LIHAT` tetap berbasis role (penanda profesi, bukan hak).

@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Services\AppMenu;
 use App\Support\AksesHalaman;
 use App\Support\AksiRole;
+use App\Support\SinkronAksesOtomatis;
 use Illuminate\Console\Command;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -21,6 +22,10 @@ use Spatie\Permission\PermissionRegistrar;
  *
  * Centang awal per aksi = 'rolesAksi' entri AppMenu bila diisi, selain itu 'roles'.
  * Hanya aksi yang berlaku ('aksi' entri AppMenu) yang dibuat permission-nya.
+ *
+ * Biasanya TIDAK perlu dijalankan manual: App\Support\SinkronAksesOtomatis menjalankannya
+ * sendiri pada request pertama sesudah AppMenu.php / AksiRole.php berubah (habis deploy).
+ * Manual tetap dipakai untuk --dry-run dan --ulang.
  *
  * `--ulang=rj.daftar,ugd.daftar` : isi ulang centang route itu dari definisi (menimpa
  * Role Control untuk route itu saja) — dipakai saat definisi awal sebuah route dikoreksi.
@@ -132,6 +137,7 @@ class SinkronAksesHalaman extends Command
         if (!$dryRun) {
             app(PermissionRegistrar::class)->forgetCachedPermissions();
             AksesHalaman::lupakanCache();
+            SinkronAksesOtomatis::tulisTanda(); // sinkron otomatis tak perlu mengulang
         }
 
         $this->info(($dryRun ? '[dry-run] ' : '') . "Permission baru: {$baru}, centang role: {$centang}" . ($ulang ? ", diisi ulang: {$diulang}" : ''));

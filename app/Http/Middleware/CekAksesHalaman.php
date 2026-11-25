@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Models\User;
 use App\Support\AksesHalaman;
+use App\Support\SinkronAksesOtomatis;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -29,6 +30,10 @@ class CekAksesHalaman
 {
     public function handle(Request $request, Closure $next): Response
     {
+        // Sesudah deploy yang mengubah AppMenu/AksiRole, permission baru dibuat otomatis
+        // (sekali, request pertama) — tak perlu menjalankan akses:sinkron manual.
+        SinkronAksesOtomatis::pastikan();
+
         $user = Auth::user();
         if (!$user) {
             return $next($request);
