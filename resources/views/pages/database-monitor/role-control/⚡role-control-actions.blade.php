@@ -406,8 +406,7 @@ new class extends Component {
                                                             @foreach (AksesHalaman::AKSI as $aksi)
                                                                 <td class="px-2 py-1.5 text-center">
                                                                     @if ($r['sel'][$aksi])
-                                                                        <input type="checkbox" x-model="pilih" value="{{ $r['sel'][$aksi] }}" aria-label="{{ ucfirst($aksi) }} {{ $r['title'] }}"
-                                                                            class="w-4 h-4 bg-gray-100 border-gray-300 rounded cursor-pointer text-brand-green focus:ring-brand-green/50 focus:ring-2 dark:bg-gray-700 dark:border-gray-600">
+                                                                        <x-toggle-alpine x-model="pilih" :value="$r['sel'][$aksi]" :aria-label="ucfirst($aksi) . ' ' . $r['title']" />
                                                                     @elseif ($r['sel'][$aksi] === false)
                                                                         <span class="text-muted-soft" title="Tidak berlaku di halaman ini">·</span>
                                                                     @else
@@ -418,15 +417,11 @@ new class extends Component {
                                                             <td class="px-2 py-1.5">
                                                                 <div class="flex flex-col gap-1">
                                                                     @foreach ($r['khusus'] as $k)
-                                                                        <label class="inline-flex items-center gap-1.5 text-xs cursor-pointer text-ink dark:text-gray-300" title="{{ $k['nama'] }}">
-                                                                            @if ($k['id'])
-                                                                                <input type="checkbox" x-model="pilih" value="{{ $k['id'] }}"
-                                                                                    class="w-4 h-4 bg-gray-100 border-gray-300 rounded cursor-pointer text-brand-green focus:ring-brand-green/50 focus:ring-2 dark:bg-gray-700 dark:border-gray-600">
-                                                                            @else
-                                                                                <span class="text-muted-soft" title="Belum dibuat — jalankan akses:sinkron">—</span>
-                                                                            @endif
-                                                                            {{ $k['label'] }}
-                                                                        </label>
+                                                                        @if ($k['id'])
+                                                                            <x-toggle-alpine x-model="pilih" :value="$k['id']" :label="$k['label']" :title="$k['nama']" />
+                                                                        @else
+                                                                            <span class="text-sm text-muted-soft" title="Belum dibuat — jalankan akses:sinkron">— {{ $k['label'] }}</span>
+                                                                        @endif
                                                                     @endforeach
                                                                 </div>
                                                             </td>
@@ -463,16 +458,15 @@ new class extends Component {
                                             </div>
                                             <div class="p-3 space-y-2">
                                                 @foreach ($baris as $r)
-                                                    <div wire:key="khusus-{{ $r['nama'] }}" class="flex items-start gap-2">
+                                                    <div wire:key="khusus-{{ $r['nama'] }}">
                                                         @if ($r['id'])
-                                                            <x-check-box x-model="pilih" :value="$r['id']" :id="'khusus-' . md5($r['nama'])" class="pt-0.5" />
+                                                            <x-toggle-alpine x-model="pilih" :value="$r['id']" class="items-start">
+                                                                <span class="text-sm text-ink dark:text-gray-200">{{ $r['label'] }}</span>
+                                                                <span class="block font-mono text-xs font-normal text-muted-soft">{{ $r['nama'] }}</span>
+                                                            </x-toggle-alpine>
                                                         @else
-                                                            <span class="w-4 text-muted-soft">—</span>
+                                                            <span class="text-sm text-muted-soft" title="Belum dibuat — jalankan akses:sinkron">— {{ $r['label'] }}</span>
                                                         @endif
-                                                        <label for="khusus-{{ md5($r['nama']) }}" class="cursor-pointer">
-                                                            <span class="text-sm text-ink dark:text-gray-200">{{ $r['label'] }}</span>
-                                                            <span class="block font-mono text-xs text-muted-soft">{{ $r['nama'] }}</span>
-                                                        </label>
                                                     </div>
                                                 @endforeach
                                             </div>
@@ -488,7 +482,7 @@ new class extends Component {
                                         </div>
                                         <div class="flex flex-wrap gap-4 p-3">
                                             @foreach ($matriks['lainnya'] as $r)
-                                                <x-check-box wire:key="lain-{{ $r['id'] }}" x-model="pilih" :value="$r['id']" :label="$r['nama']" />
+                                                <x-toggle-alpine wire:key="lain-{{ $r['id'] }}" x-model="pilih" :value="$r['id']" :label="$r['nama']" />
                                             @endforeach
                                         </div>
                                     </div>
