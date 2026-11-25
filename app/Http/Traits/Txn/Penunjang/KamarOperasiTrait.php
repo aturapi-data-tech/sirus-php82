@@ -46,15 +46,13 @@ trait KamarOperasiTrait
      * Isi awal disalin dari daftar lama: Admin, Manager Umum, Supervisor Penunjang,
      * Supervisor Tu, Tu, Perawat. Tu ikut karena transaksinya menyangkut tagihan.
      * Dokter/Casemix/Mr/Gizi TIDAK — mereka hanya membuka Dokumen Pelayanan Bedah
-     * dari menu titik-3 (ROLE_MENU_OK).
+     * dari menu titik-3 (hak penunjang.kamar-operasi.bukaDokumenBedah di Role Control).
      */
     public function isAllowedRoleOk(): bool
     {
         return (bool) auth()->user()?->can('penunjang.kamar-operasi.ubah');
     }
 
-    /** Role yang melihat menu titik-3 di daftar OK = role transaksi + role dokumen bedah. */
-    public const ROLE_MENU_OK = ['Admin', 'Manager Umum', 'Supervisor Penunjang', 'Supervisor Tu', 'Tu', 'Perawat', 'Dokter', 'Casemix', 'Mr', 'Gizi'];
 
     /**
      * Batal transaksi = eskalasi ke atasan, sejalan dengan modul Laboratorium.

@@ -1,6 +1,7 @@
 <?php
 
 use Livewire\Component;
+use Livewire\Attributes\Authorize;
 use Livewire\Attributes\On;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -49,6 +50,7 @@ new class extends Component {
      | OPEN — dipanggil dari EMR RI & Daftar RI
      =============================== */
     #[On('emr-ri.pindah-kamar.open')]
+    #[Authorize('pintu.emr-ri.pindah-kamar.open')]
     public function openModal(int|string $riHdrNo): void
     {
         $this->riHdrNo  = (int) $riHdrNo;

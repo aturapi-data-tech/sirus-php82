@@ -4,6 +4,8 @@ namespace App\Support;
 
 use App\Models\User;
 use App\Services\AppMenu;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Spatie\Permission\PermissionRegistrar;
 
 /**
@@ -102,6 +104,67 @@ class AksesHalaman
 
         'keuangan.tutup-buku-supplier' => ['keuangan.tutup-buku'],
         'panduan-dev.koding-formulir-rm' => ['panduan-dev'],
+    ];
+
+    /**
+     * PINTU MODAL — siapa yang sah membuka sebuah modal lewat event-nya.
+     *
+     * Masalahnya: tombol pembuka sudah dijaga (`@can` + `#[Authorize]` di method `open*`), tapi
+     * komponen modal mendengar event (`#[On('emr-rj.administrasi.open')]`) yang bisa dipicu
+     * langsung dari console browser. Satu modal dibuka dari BANYAK halaman dengan hak berbeda,
+     * jadi listener-nya dijaga dengan GABUNGAN: lolos bila punya SALAH SATU entri di bawah.
+     *
+     * Entri berupa:
+     *  - nama permission / Gate (`rj.pelayanan.bukaAdministrasi`, `satusehat.kirim`), atau
+     *  - `pintu:<event lain>` — rujukan: siapa pun yang lolos pintu itu (modal yang dibuka
+     *    dari DALAM modal lain, mis. E-Resep RI dari dalam EMR RI).
+     *
+     * Listener: `#[Authorize('pintu.<event>')]` (Gate didaftarkan otomatis dari katalog ini).
+     * Mode `log` (config akses.mode): pembuka di luar daftar tetap diizinkan tapi dicatat ke
+     * storage/logs/akses-halaman-*.log — supaya pembuka sah yang belum terpetakan ketahuan
+     * sebelum mode `tolak`. Menambah pembuka baru = tambah entrinya di sini.
+     *
+     * Peta awal dibangkitkan dari kode (2026-11-25): semua situs pemicu tiap event + penjaganya.
+     *
+     * @var array<string, array<int, string>>
+     */
+    public const PINTU = [
+        'emr-rj.administrasi.open' => ['rj.pelayanan.bukaAdministrasi', 'rj.antrian-kasir.bukaAdministrasi', 'rj.antrian-apotek.bukaAdministrasi', 'rj.daftar-bulanan.bukaAdministrasi', 'rj.emr.bukaAdministrasi', 'manajemen.rs.tu.piutang-pasien.lihat'],
+        'emr-ugd.administrasi.open' => ['ugd.pelayanan.bukaAdministrasi', 'ugd.antrian-kasir.bukaAdministrasi', 'ugd.antrian-apotek.bukaAdministrasi', 'ugd.daftar-bulanan.bukaAdministrasi', 'ugd.emr.bukaAdministrasi', 'manajemen.rs.tu.piutang-pasien.lihat'],
+        'emr-ri.administrasi.open' => ['ri.daftar.bukaAdministrasi', 'ri.daftar-bulanan.bukaAdministrasi', 'ri.gizi.bukaAdministrasi', 'ri.gizi.bukaAdministrasiEntri', 'kasir.daftar-ri.bukaAdministrasi', 'ri.emr.bukaAdministrasi', 'manajemen.rs.tu.piutang-pasien.lihat'],
+        'administrasi-kasir-ri.open' => ['kasir.antrian-ri.bukaAdministrasi'],
+        'ri-resep-administrasi.open' => ['ri-resep.antrian.bukaAdministrasi'],
+        'cetak-kwitansi-ri-obat.open' => ['pintu:administrasi-kasir-ri.open', 'pintu:ri-resep-administrasi.open'],
+
+        'emr-rj.modul-dokumen.open' => ['rj.daftar.bukaModulDokumen', 'rj.pelayanan.bukaModulDokumen', 'rj.emr.bukaModulDokumen', 'penunjang.kamar-operasi.bukaDokumenBedah'],
+        'emr-ugd.modul-dokumen.open' => ['ugd.daftar.bukaModulDokumen', 'ugd.pelayanan.bukaModulDokumen', 'ugd.emr.bukaModulDokumen', 'penunjang.kamar-operasi.bukaDokumenBedah'],
+        'emr-ri.modul-dokumen.open' => ['ri.daftar.bukaModulDokumen', 'ri.gizi.bukaModulDokumen', 'ri.gizi.bukaModulDokumenEntri', 'ri.emr.bukaModulDokumen', 'penunjang.kamar-operasi.bukaDokumenBedah'],
+
+        'emr-rj.rekam-medis.open' => ['rj.pelayanan.bukaRekamMedis'],
+        'emr-ugd.rekam-medis.open' => ['ugd.pelayanan.bukaRekamMedis'],
+        'emr-ri.rekam-medis.open' => ['ri.daftar.bukaRekamMedis'],
+        'emr-ri.eresep.open' => ['ri.emr.bukaEresep', 'pintu:emr-ri.rekam-medis.open', 'ri.gizi.lihat'],
+        'emr-ri.pindah-kamar.open' => ['ri.pindahKamar'],
+        'open-rm-screening-rj' => ['rj.emr.bukaScreening'],
+        'rekam-medis-nasional.open' => ['rj.emr.bukaRekamMedisNasional', 'ugd.emr.bukaRekamMedisNasional', 'ri.emr.bukaRekamMedisNasional'],
+        'ringkasan-pulang-ri.open' => ['ri.emr.bukaRingkasanPulang'],
+        'pelayanan-rj.pengkajian-medis.open' => ['rj.pelayanan.bukaPengkajianMedis'],
+        'pelayanan-rj.prmrj.open' => ['rj.pelayanan.bukaPrmrj'],
+
+        'berkas-bpjs.open' => ['ri.daftar.bukaBerkasBpjs', 'ri.daftar-bulanan.bukaBerkasBpjs', 'rj.daftar-bulanan.bukaBerkasBpjs', 'ugd.daftar.bukaBerkasBpjs', 'ugd.daftar-bulanan.bukaBerkasBpjs'],
+        'cek-peserta-bpjs.open' => ['ugd.pelayanan.bukaCekPesertaBpjs'],
+        'daftar-rj.diagnosa.open' => ['rj.daftar.bukaDiagnosa'],
+        'daftar-ugd.diagnosa.open' => ['ugd.daftar.bukaDiagnosa'],
+        'daftar-ugd.satu-sehat.open' => ['satusehat.kirim'],
+        'daftar-surat-kontrol-bpjs.open' => ['bpjs.hapusSuratKontrol'],
+        'riwayat-kontrol.open' => ['rj.daftar.bukaRiwayatKontrol', 'kontrol.jadwal-kontrol.lihat'],
+
+        'open-transfer-rj-ke-ugd' => ['rj.pelayanan.bukaTransferUgd', 'rj.antrian-kasir.bukaTransferUgd'],
+        'open-transfer-ugd-ke-ri' => ['ugd.pelayanan.bukaTransferRi', 'ugd.antrian-kasir.bukaTransferRi'],
+        'open-ubah-data-kunjungan-rj' => ['rj.ubahDataKunjungan'],
+        'open-ubah-data-kunjungan-ugd' => ['ugd.ubahDataKunjungan'],
+        'open-ubah-data-kunjungan-ri' => ['ri.ubahDataKunjungan'],
+        'open-ubah-data-resep-ri' => ['ri.ubahDataResep'],
     ];
 
     /** @var array<string, true>|null nama permission yang ada di DB (cache per request) */
@@ -254,6 +317,47 @@ class AksesHalaman
         }
 
         return self::boleh($user, $route, $aksi);
+    }
+
+    /** Lolos pintu modal `$event` (katalog PINTU)? Rujukan `pintu:` ditelusuri, aman dari putaran. */
+    public static function lolosPintu(?User $user, string $event, array $sudah = []): bool
+    {
+        if (!$user || !isset(self::PINTU[$event]) || in_array($event, $sudah, true)) {
+            return false;
+        }
+        $sudah[] = $event;
+        foreach (self::PINTU[$event] as $entri) {
+            $lolos = str_starts_with($entri, 'pintu:')
+                ? self::lolosPintu($user, substr($entri, 6), $sudah)
+                : $user->can($entri);
+            if ($lolos) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Untuk Gate `pintu.<event>`: di mode `log` pembuka tak terdaftar tetap boleh tapi dicatat
+     * (pembuka sah yang belum terpetakan ketahuan dari log); di mode `tolak` ditolak.
+     */
+    public static function gatePintu(?User $user, string $event): bool
+    {
+        if (self::lolosPintu($user, $event)) {
+            return true;
+        }
+
+        $kunci = 'akses-pintu:' . ($user?->id ?? '-') . ':' . $event . ':' . now()->format('Ymd');
+        if (Cache::add($kunci, 1, now()->endOfDay())) Log::channel('akses')->warning('Pintu modal di luar hak', [
+            'mode' => config('akses.mode'),
+            'user_id' => $user?->id,
+            'roles' => $user?->getRoleNames()->implode(', '),
+            'pintu' => $event,
+            'url' => request()->header('referer') ?: request()->fullUrl(),
+        ]);
+
+        return config('akses.mode') !== 'tolak';
     }
 
     /** Route dikenal oleh aturan akses (ada di menu, induk, atau terbuka)? */

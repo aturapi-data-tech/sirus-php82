@@ -11,6 +11,7 @@
 // ⚡pelayanan-ugd.blade.php yang dispatch event 'cek-peserta-bpjs.open'.
 
 use Livewire\Component;
+use Livewire\Attributes\Authorize;
 use Livewire\Attributes\On;
 use Carbon\Carbon;
 use App\Http\Traits\BPJS\VclaimTrait;
@@ -22,6 +23,7 @@ new class extends Component {
     public array $pesertaBPJS = [];
 
     #[On('cek-peserta-bpjs.open')]
+    #[Authorize('pintu.cek-peserta-bpjs.open')]
     public function open(): void
     {
         $this->reset(['noKartuBPJS', 'pesertaBPJS']);

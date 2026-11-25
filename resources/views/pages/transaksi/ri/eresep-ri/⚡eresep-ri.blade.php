@@ -1,6 +1,7 @@
 <?php
 
 use Livewire\Component;
+use Livewire\Attributes\Authorize;
 use Livewire\Attributes\On;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
@@ -48,6 +49,7 @@ new class extends Component {
      | OPEN ERESEP RI
      =============================== */
     #[On('emr-ri.eresep.open')]
+    #[Authorize('pintu.emr-ri.eresep.open')]
     public function openEresep(int $riHdrNo): void
     {
         $this->resetForm();

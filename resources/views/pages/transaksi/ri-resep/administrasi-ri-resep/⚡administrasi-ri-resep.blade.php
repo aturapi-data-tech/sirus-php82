@@ -1,6 +1,7 @@
 <?php
 
 use Livewire\Component;
+use Livewire\Attributes\Authorize;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Computed;
 use Carbon\Carbon;
@@ -61,6 +62,7 @@ new class extends Component {
      | OPEN MODAL
      =============================== */
     #[On('ri-resep-administrasi.open')]
+    #[Authorize('pintu.ri-resep-administrasi.open')]
     public function open(int $slsNo, ?string $tab = null): void
     {
         $this->resetForm();

@@ -2,6 +2,7 @@
 // resources/views/pages/transaksi/ugd/administrasi-ugd/administrasi-ugd.blade.php
 
 use Livewire\Component;
+use Livewire\Attributes\Authorize;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -72,6 +73,7 @@ new class extends Component {
      | OPEN MODAL
      =============================== */
     #[On('emr-ugd.administrasi.open')]
+    #[Authorize('pintu.emr-ugd.administrasi.open')]
     public function openAdministrasiPasien(int $rjNo, bool $readOnly = false): void
     {
         $this->resetForm();

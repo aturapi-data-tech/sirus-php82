@@ -16,6 +16,7 @@
 // BELUM ADA: cetak & viewer rekam medis.
 
 use Livewire\Component;
+use Livewire\Attributes\Authorize;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
@@ -96,6 +97,7 @@ new class extends Component {
     public string $layar = 'daftar';
 
     #[On('pelayanan-rj.pengkajian-medis.open')]
+    #[Authorize('pintu.pelayanan-rj.pengkajian-medis.open')]
     public function open(int $rjNo): void
     {
         $this->reset(['regNo', 'tglKunjungan', 'sebelumnya', 'riwayat']);

@@ -10,6 +10,7 @@
 //   - insert/update rstxn_ugduploadbpjses (rj_no, seq_file, uploadbpjs, jenis_file).
 
 use Livewire\Component;
+use Livewire\Attributes\Authorize;
 use Livewire\WithFileUploads;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
@@ -47,6 +48,7 @@ new class extends Component {
     private const SLOT_RAD_OFFSET = 200;
 
     #[On('berkas-bpjs.open')]
+    #[Authorize('pintu.berkas-bpjs.open')]
     public function open(int $rjNo): void
     {
         $this->berkasRjNo = $rjNo;

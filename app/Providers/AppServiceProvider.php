@@ -69,6 +69,12 @@ class AppServiceProvider extends ServiceProvider
             Gate::define($namaAksi, fn ($user) => AksesHalaman::bolehKhusus($user, $namaAksi));
         }
 
+        // Pintu modal: listener #[On] modal bersama dijaga #[Authorize('pintu.<event>')] —
+        // lolos bila punya salah satu hak pembukanya (katalog AksesHalaman::PINTU).
+        foreach (array_keys(AksesHalaman::PINTU) as $eventPintu) {
+            Gate::define('pintu.' . $eventPintu, fn ($user) => AksesHalaman::gatePintu($user, $eventPintu));
+        }
+
         Gate::define('emr.penunjangLihat', fn ($user) => $user->hasAnyRole(AksiRole::EMR_PENUNJANG_LIHAT));
 
 

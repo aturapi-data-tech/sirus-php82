@@ -89,6 +89,31 @@ yang benar-benar menolak (403).
 **Jebakan:** di dalam aksi Livewire `request()->route()` = `/livewire/update`, bukan halaman.
 Selalu tulis nama route secara eksplisit di string permission.
 
+## Pintu modal (listener `#[On]`)
+
+Tombol pembuka dijaga di halaman, tapi modal tujuannya mendengar event yang bisa dipicu dari
+console browser. Listener modal dijaga dengan **pintu**: katalog `AksesHalaman::PINTU`
+memetakan event → semua hak sah pembukanya (lolos bila punya salah satu).
+
+```php
+'emr-rj.administrasi.open' => ['rj.pelayanan.bukaAdministrasi', 'rj.antrian-kasir.bukaAdministrasi', …],
+'emr-ri.eresep.open'       => ['ri.emr.bukaEresep', 'pintu:emr-ri.rekam-medis.open'],   // rujukan: dari DALAM EMR RI
+```
+
+```php
+#[On('emr-rj.administrasi.open')]
+#[Authorize('pintu.emr-rj.administrasi.open')]   // Gate terdaftar otomatis dari katalog
+public function openAdministrasiPasien(…)
+```
+
+- **Menambah pembuka baru** ke modal yang sudah punya pintu → tambahkan hak pembukanya ke
+  entri katalog (kalau lupa: mode `log` mencatat "Pintu modal di luar hak", mode `tolak` 403).
+- **Modal baru** yang pembukanya menuntut hak lebih dari Lihat halaman → tambah entri katalog +
+  `#[Authorize('pintu.…')]` di listener. Modal yang hanya dibuka dari halamannya sendiri tak perlu
+  pintu: persistent middleware sudah menjaga dengan hak Lihat halaman itu.
+- Pemicu dengan nama event dinamis (`$this->dispatch($event)`) tidak terdeteksi pemindai —
+  periksa manual (contoh: Dokumen Bedah di Kamar Operasi → `penunjang.kamar-operasi.bukaDokumenBedah`).
+
 ## Aturan khusus berbasis DATA tetap di kode
 
 Contoh CPPT/SBAR RI: edit hanya **pemilik entri**, review hanya **DPJP Utama**. Itu bukan

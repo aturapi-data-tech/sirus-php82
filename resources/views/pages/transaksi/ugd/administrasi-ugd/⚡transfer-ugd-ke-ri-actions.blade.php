@@ -6,6 +6,7 @@
 // 'open-transfer-ugd-ke-ri' → komponen ini membuka modal 'transfer-ugd-ke-ri'.
 
 use Livewire\Component;
+use Livewire\Attributes\Authorize;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -73,6 +74,7 @@ new class extends Component {
      | OPEN — dipicu dari kasir UGD
      =============================== */
     #[On('open-transfer-ugd-ke-ri')]
+    #[Authorize('pintu.open-transfer-ugd-ke-ri')]
     public function openTransfer(int $rjNo): void
     {
         if (empty($rjNo)) {
@@ -109,6 +111,10 @@ new class extends Component {
             ->where('h.rj_no', $rjNo)
             ->select('p.reg_name', 'h.klaim_id', 'h.dr_id', 'd.dr_name')
             ->first();
+        if (!$hdr) {
+            $this->dispatch('toast', type: 'error', message: 'Kunjungan UGD tidak ditemukan.');
+            return;
+        }
         $this->regName = $hdr->reg_name ?? null;
         $this->transferKlaimId = $hdr->klaim_id ?: 'UM';
 

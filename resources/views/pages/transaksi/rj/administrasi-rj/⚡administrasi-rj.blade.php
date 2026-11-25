@@ -1,6 +1,7 @@
 <?php
 
 use Livewire\Component;
+use Livewire\Attributes\Authorize;
 use Livewire\Attributes\On;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -71,6 +72,7 @@ new class extends Component {
      | OPEN MODAL
      =============================== */
     #[On('emr-rj.administrasi.open')]
+    #[Authorize('pintu.emr-rj.administrasi.open')]
     public function openAdministrasiPasien(int $rjNo, bool $readOnly = false): void
     {
         $this->resetForm();

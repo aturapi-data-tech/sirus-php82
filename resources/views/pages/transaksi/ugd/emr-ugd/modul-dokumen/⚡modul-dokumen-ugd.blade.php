@@ -2,6 +2,7 @@
 // resources/views/pages/transaksi/ugd/emr-ugd/modul-dokumen/modul-dokumen-ugd.blade.php
 
 use Livewire\Component;
+use Livewire\Attributes\Authorize;
 use Livewire\Attributes\On;
 use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
@@ -87,6 +88,7 @@ new class extends Component {
     private const TAB_BOLEH = ['suket', 'permintaan-rawat-inap', 'trf-ri', 'general-consent', 'inform-consent', 'form-penjaminan', 'penundaan-pelayanan', 'akhir-hayat', 'surat-kematian', 'pelayanan-bedah', 'vk-kebidanan', 'berkas-luar'];
 
     #[On('emr-ugd.modul-dokumen.open')]
+    #[Authorize('pintu.emr-ugd.modul-dokumen.open')]
     public function openModulDokumen(int $rjNo, string $tab = 'suket'): void
     {
         $this->resetForm();

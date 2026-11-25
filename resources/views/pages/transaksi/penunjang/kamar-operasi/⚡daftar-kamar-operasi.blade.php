@@ -1,6 +1,7 @@
 <?php
 
 use Livewire\Component;
+use Livewire\Attributes\Authorize;
 use Livewire\WithPagination;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
@@ -113,6 +114,7 @@ new class extends Component {
         'RI' => ['emr-ri.modul-dokumen.open', 'pelayananBedah'],
     ];
 
+    #[Authorize('penunjang.kamar-operasi.bukaDokumenBedah')]
     public function openDokumenBedah(string $sumber, $indukNo): void
     {
         if (!isset(self::DOKUMEN_BEDAH[$sumber]) || empty($indukNo)) {
@@ -634,7 +636,7 @@ new class extends Component {
                                                  termasuk di baris RJ/UGD — menyembunyikannya bikin petugas
                                                  mengira fiturnya rusak. Untuk RJ/UGD isinya dinonaktifkan
                                                  berikut alasannya. --}}
-                                            @hasanyrole($this::ROLE_MENU_OK)
+                                            @can('penunjang.kamar-operasi.bukaDokumenBedah')
                                                 <x-dropdown align="right" width="w-72" :melayang="true">
                                                 <x-slot name="trigger">
                                                     <x-secondary-button type="button" class="p-2.5">
@@ -710,7 +712,7 @@ new class extends Component {
                                                     </div>
                                                 </x-slot>
                                             </x-dropdown>
-                                        @endhasanyrole
+                                        @endcan
                                         @endif
                                         </div>
                                     </td>

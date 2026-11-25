@@ -71,6 +71,7 @@ new class extends Component {
 
     /* ── Open ── */
     #[On('emr-ri.rekam-medis.open')]
+    #[Authorize('pintu.emr-ri.rekam-medis.open')]
     public function openRekamMedis(string $riHdrNo): void
     {
         // Mode embedded dibuka oleh pembungkus (emr-coding-ri), bukan event ini.
@@ -108,6 +109,7 @@ new class extends Component {
     {
         $this->dispatch('emr-ri.administrasi.open', riHdrNo: $riHdrNo);
     }
+    #[Authorize('ri.pindahKamar')]
     public function openPindahKamar(string $riHdrNo): void
     {
         $this->dispatch('emr-ri.pindah-kamar.open', riHdrNo: $riHdrNo);

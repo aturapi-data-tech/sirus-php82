@@ -12,6 +12,7 @@
  */
 
 use Livewire\Component;
+use Livewire\Attributes\Authorize;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -66,6 +67,7 @@ new class extends Component {
     ];
 
     #[On('pelayanan-rj.prmrj.open')]
+    #[Authorize('pintu.pelayanan-rj.prmrj.open')]
     public function open(int $rjNo): void
     {
         $this->reset(['regNo', 'namaPasien', 'otomatis', 'riwayat', 'riwayatTotal']);

@@ -8,6 +8,7 @@
 // TIDAK ada pemilihan ruangan/bed (UGD tak punya kamar seperti RI).
 
 use Livewire\Component;
+use Livewire\Attributes\Authorize;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
@@ -57,6 +58,7 @@ new class extends Component {
      | OPEN — dipicu dari kasir RJ
      =============================== */
     #[On('open-transfer-rj-ke-ugd')]
+    #[Authorize('pintu.open-transfer-rj-ke-ugd')]
     public function openTransfer(int $rjNo): void
     {
         if (empty($rjNo)) {
@@ -107,6 +109,10 @@ new class extends Component {
             ->leftJoin('rsmst_doctors as d', 'd.dr_id', '=', 'h.dr_id')
             ->select('p.reg_name', 'h.klaim_id', 'h.dr_id', 'd.dr_name')
             ->first();
+        if (!$hdr) {
+            $this->dispatch('toast', type: 'error', message: 'Kunjungan RJ tidak ditemukan.');
+            return;
+        }
         $this->regName = $hdr->reg_name ?? null;
         $this->transferKlaimId = $hdr->klaim_id ?: 'UM';
 

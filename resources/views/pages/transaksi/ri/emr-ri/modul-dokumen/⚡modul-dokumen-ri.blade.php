@@ -2,6 +2,7 @@
 // resources/views/pages/transaksi/ri/emr-ri/modul-dokumen/rm-modul-dokumen-ri-actions.blade.php
 
 use Livewire\Component;
+use Livewire\Attributes\Authorize;
 use Livewire\Attributes\On;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
@@ -88,6 +89,7 @@ new class extends Component {
     }
 
     #[On('emr-ri.modul-dokumen.open')]
+    #[Authorize('pintu.emr-ri.modul-dokumen.open')]
     public function open(string $riHdrNo, string $tab = 'generalConsent'): void
     {
         if (empty($riHdrNo)) {

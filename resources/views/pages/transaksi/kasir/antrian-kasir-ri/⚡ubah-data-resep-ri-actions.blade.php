@@ -12,6 +12,7 @@
 // Log dicatat di Log Aktivitas kunjungan RI (AdministrasiRI.userLogs), memuat No SLS.
 
 use Livewire\Component;
+use Livewire\Attributes\Authorize;
 use Livewire\Attributes\On;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -40,6 +41,7 @@ new class extends Component {
      | OPEN — dipicu dari Resep Inap (kasir, antrian-kasir-ri)
      =============================== */
     #[On('open-ubah-data-resep-ri')]
+    #[Authorize('pintu.open-ubah-data-resep-ri')]
     public function openUbahDataResep(int $slsNo): void
     {
         if (empty($slsNo)) {

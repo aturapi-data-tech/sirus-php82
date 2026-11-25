@@ -114,6 +114,7 @@ new class extends Component {
      | OPEN REKAM MEDIS PERAWAT
      =============================== */
     #[On('emr-rj.rekam-medis.open')]
+    #[Authorize('pintu.emr-rj.rekam-medis.open')]
     public function openRekamMedisPerawat(int $rjNo): void
     {
         // Mode embedded dibuka oleh pembungkus (emr-coding-rj), bukan event ini. Event yang sama datang

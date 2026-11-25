@@ -16,6 +16,7 @@
 // Header Tutup: memancarkan 'emr-ri-tutup' / 'coding-fhir-ri-tutup' → tryClose() guard tab aktif.
 
 use Livewire\Component;
+use Livewire\Attributes\Authorize;
 use Livewire\Attributes\On;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 
@@ -38,6 +39,7 @@ new class extends Component {
     }
 
     #[On('emr-ri.rekam-medis.open')]
+    #[Authorize('pintu.emr-ri.rekam-medis.open')]
     public function bukaRekamMedis(string $riHdrNo): void
     {
         $this->buka($riHdrNo, 'rekamMedis');

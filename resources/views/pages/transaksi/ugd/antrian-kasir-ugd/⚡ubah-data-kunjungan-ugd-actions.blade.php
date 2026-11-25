@@ -16,6 +16,7 @@
 // diganti — kasir menyesuaikannya sendiri di modal Administrasi.
 
 use Livewire\Component;
+use Livewire\Attributes\Authorize;
 use Livewire\Attributes\On;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -49,6 +50,7 @@ new class extends Component {
      | OPEN — dipicu dari Antrian Kasir UGD
      =============================== */
     #[On('open-ubah-data-kunjungan-ugd')]
+    #[Authorize('pintu.open-ubah-data-kunjungan-ugd')]
     public function openUbahDataKunjungan(int $rjNo): void
     {
         if (empty($rjNo)) {

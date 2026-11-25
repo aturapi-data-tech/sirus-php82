@@ -119,6 +119,7 @@ new class extends Component {
      | OPEN REKAM MEDIS UGD
      =============================== */
     #[On('emr-ugd.rekam-medis.open')]
+    #[Authorize('pintu.emr-ugd.rekam-medis.open')]
     public function openRekamMedis(int $rjNo): void
     {
         // Mode embedded dibuka oleh pembungkus (emr-coding-ugd), bukan event ini. Event yang sama datang

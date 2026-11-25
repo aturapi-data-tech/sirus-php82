@@ -16,6 +16,7 @@
 // 'coding-fhir-ugd-tutup' → tryClose() dirty guard di sini.
 
 use Livewire\Component;
+use Livewire\Attributes\Authorize;
 use Livewire\Attributes\On;
 use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
@@ -44,6 +45,7 @@ new class extends Component {
     }
 
     #[On('emr-ugd.rekam-medis.open')]
+    #[Authorize('pintu.emr-ugd.rekam-medis.open')]
     public function bukaRekamMedis(int $rjNo): void
     {
         $this->buka($rjNo, 'rekamMedis');

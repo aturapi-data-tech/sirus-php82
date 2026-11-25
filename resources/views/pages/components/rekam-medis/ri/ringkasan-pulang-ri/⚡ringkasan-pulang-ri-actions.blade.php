@@ -13,6 +13,7 @@
 // Buka Kunci (Gate dokumen.bukaKunci) mencabut TTD PETUGAS saja; TTD penerima dipertahankan.
 
 use Livewire\Component;
+use Livewire\Attributes\Authorize;
 use Livewire\Attributes\On;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\DB;
@@ -44,6 +45,7 @@ new class extends Component {
 
     /* ═══════════════ OPEN ═══════════════ */
     #[On('ringkasan-pulang-ri.open')]
+    #[Authorize('pintu.ringkasan-pulang-ri.open')]
     public function open(int $riHdrNo): void
     {
         $this->riHdrNo = $riHdrNo;

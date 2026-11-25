@@ -10,6 +10,7 @@
 // Maka No SKDP BPJS yang SUDAH tersimpan di JSON kunjungan ini tidak boleh dihapus — dicek ulang dari DB saat hapus.
 
 use Livewire\Component;
+use Livewire\Attributes\Authorize;
 use Livewire\Attributes\On;
 use Carbon\Carbon;
 use App\Http\Traits\BPJS\VclaimTrait;
@@ -35,6 +36,7 @@ new class extends Component {
     public string $pesanGagalMuat = '';
 
     #[On('daftar-surat-kontrol-bpjs.open')]
+    #[Authorize('pintu.daftar-surat-kontrol-bpjs.open')]
     public function bukaDaftar(?string $noKartu = null, ?string $noSep = null, ?string $jalur = null, ?string $nomorKunjungan = null): void
     {
         if (!auth()->user()?->can('bpjs.hapusSuratKontrol')) {

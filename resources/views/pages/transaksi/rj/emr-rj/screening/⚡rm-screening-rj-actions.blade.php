@@ -1,6 +1,7 @@
 <?php
 
 use Livewire\Component;
+use Livewire\Attributes\Authorize;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Rj\EmrRJTrait;
@@ -54,6 +55,7 @@ new class extends Component {
      | OPEN
      =============================== */
     #[On('open-rm-screening-rj')]
+    #[Authorize('pintu.open-rm-screening-rj')]
     public function openScreening(int $rjNo): void
     {
         if (empty($rjNo)) {
