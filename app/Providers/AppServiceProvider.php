@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
+use Livewire\Livewire;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -33,6 +34,11 @@ class AppServiceProvider extends ServiceProvider
             || request()->isSecure()) {
             URL::forceScheme('https');
         }
+
+        // Penjaga URL halaman ikut berjalan di setiap aksi Livewire (/livewire/update),
+        // bukan cuma saat halaman dibuka. Hanya berlaku untuk route yang memakai
+        // middleware akses.halaman (routes/web.php).
+        Livewire::addPersistentMiddleware([\App\Http\Middleware\CekAksesHalaman::class]);
 
         // Rate limiter API Mobile JKN (route di bootstrap/app.php, middleware throttle:mobile-jkn).
         // WAJIB di sini, bukan di callback `then:` withRouting: callback itu tidak dijalankan saat
@@ -102,11 +108,7 @@ class AppServiceProvider extends ServiceProvider
         // Share $sidebarMenus (grouped + filtered by user role) ke sidebar layout.
         // Tidak query DB di guest pages — guard via auth check.
         View::composer('layouts.app-sidebar', function ($view) {
-            $roles = auth()->check()
-                ? auth()->user()->getRoleNames()->map(fn($r) => trim(strtolower($r)))->values()->toArray()
-                : [];
-
-            $view->with('sidebarMenus', AppMenu::grouped($roles));
+            $view->with('sidebarMenus', AppMenu::grouped(auth()->user()));
         });
     }
 }

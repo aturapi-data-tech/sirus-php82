@@ -64,6 +64,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [
             \App\Http\Middleware\TrackUserActivity::class,
         ]);
+        $middleware->alias([
+            'akses.halaman' => \App\Http\Middleware\CekAksesHalaman::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         // Bentuk error JSON API Mobile JKN dipertahankan sama dengan project lamanya

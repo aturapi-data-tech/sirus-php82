@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Models\User;
+use App\Support\AksesHalaman;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Route;
 
@@ -9,8 +11,8 @@ use Illuminate\Support\Facades\Route;
  * AppMenu — sumber tunggal definisi menu aplikasi (dashboard + sidebar).
  *
  * - `all()` mengembalikan semua entri (defensive: skip route yang tidak terdaftar)
- * - `forRoles($roles)` filter by role names (lowercase)
- * - `grouped(array $roles)` filter + sort + group by 'group' untuk render UI.
+ * - `forUser($user)` filter menurut hak akses (App\Support\AksesHalaman)
+ * - `grouped($user)` filter + sort + group by 'group' untuk render UI.
  *
  * Tambah/edit menu di method `definitions()` saja. Dashboard & sidebar otomatis ikut.
  */
@@ -42,32 +44,31 @@ class AppMenu
     }
 
     /**
-     * Filter entries by role names (case-insensitive).
-     * Entri ber-roles ['*'] (SEMUA_ROLE) selalu lolos, apa pun role user.
+     * Menu yang boleh dilihat user — keputusan di App\Support\AksesHalaman (centang "Lihat"
+     * per role di Role Control), SAMA dengan penjaga URL CekAksesHalaman. Jadi menu yang
+     * tampil = halaman yang boleh dibuka; tidak ada lagi menu tersembunyi tapi URL-nya terbuka.
      *
-     * @param  array<int, string>  $userRoles
+     * Kolom 'roles' di definitions() kini hanya isi awal (perintah akses:sinkron) dan
+     * cadangan bila permission route itu belum dibuat.
+     *
      * @return array<int, array<string, mixed>>
      */
-    public static function forRoles(array $userRoles): array
+    public static function forUser(?User $user): array
     {
-        // trim() penting: nama role di DB pernah mengandung trailing space ('Manager Umum')
-        // → strtolower saja tidak match dan seluruh menu role tsb hilang.
-        $roles = array_map(fn($r) => trim(strtolower($r)), $userRoles);
+        if (!$user) {
+            return [];
+        }
 
         return array_values(array_filter(
             self::all(),
-            fn($m) => in_array(self::SEMUA_ROLE, $m['roles'], true) || !empty(array_intersect($m['roles'], $roles)),
+            fn ($m) => AksesHalaman::boleh($user, $m['route']),
         ));
     }
 
-    /**
-     * Sorted + grouped by 'group'. Cocok untuk render sidebar/dashboard.
-     *
-     * @param  array<int, string>  $userRoles
-     */
-    public static function grouped(array $userRoles): Collection
+    /** Sorted + grouped by 'group'. Cocok untuk render sidebar/dashboard. */
+    public static function grouped(?User $user): Collection
     {
-        return collect(self::forRoles($userRoles))
+        return collect(self::forUser($user))
             ->sortBy([['groupOrder', 'asc'], ['order', 'asc']])
             ->groupBy('group');
     }

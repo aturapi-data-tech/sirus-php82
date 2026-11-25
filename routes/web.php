@@ -28,7 +28,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 // });
 
 
-Route::middleware(['auth'])->group(function () {
+// akses.halaman: URL dijaga sesuai centang Lihat di Role Control (App\Support\AksesHalaman)
+Route::middleware(['auth', 'akses.halaman'])->group(function () {
     // Halaman acuan standarisasi UI (design system internal)
     Route::livewire('/panduan-dev', 'pages::panduan-dev.panduan-dev')
         ->name('panduan-dev');
