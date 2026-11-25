@@ -2,6 +2,9 @@
 
 use Livewire\Component;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
+use Livewire\Attributes\Locked;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\QueryException;
 use Illuminate\Contracts\Cache\LockTimeoutException;
@@ -23,6 +26,7 @@ new class extends Component {
     // — PHP mengizinkan static call ke trait tanpa harus use-nya di class.
     use EmrRJTrait, MasterPasienTrait, WithRenderVersioningTrait;
 
+    #[Locked] // klien tak bisa membalik mode untuk lolos cek Ubah
     public string $formMode = 'create';
     // true hanya selama modal terbuka — guard @if isi modal. Tidak bisa pakai $rjNo karena
     // mode create memang tanpa rjNo; isi modal (LOV pasien/dokter, vclaim) baru di-mount saat dibuka.
@@ -89,6 +93,7 @@ new class extends Component {
      | OPEN CREATE
      =============================== */
     #[On('daftar-rj.create.open')]
+    #[Authorize('rj.daftar.tambah')]
     public function openCreate(): void
     {
         $this->resetForm();
@@ -112,6 +117,7 @@ new class extends Component {
      | OPEN EDIT
      =============================== */
     #[On('daftar-rj.edit.open')]
+    #[Authorize('rj.daftar.ubah')]
     public function openEdit(string $rjNo): void
     {
         $this->resetForm();
@@ -161,6 +167,8 @@ new class extends Component {
      =============================== */
     public function save(): void
     {
+        Gate::authorize($this->formMode === 'create' ? 'rj.daftar.tambah' : 'rj.daftar.ubah');
+
         if ($this->isFormLocked) {
             $this->dispatch('toast', type: 'error', message: 'Form dalam mode read-only, tidak dapat menyimpan data.');
             return;
@@ -1258,6 +1266,8 @@ new class extends Component {
     #[On('sep-deleted')]
     public function handleSepDeleted(): void
     {
+        Gate::authorize($this->formMode === 'create' ? 'rj.daftar.tambah' : 'rj.daftar.ubah');
+
         $this->formDaftar['sep'] = ['noSep' => '', 'reqSep' => [], 'resSep' => []];
         $this->reqSepTersimpan = [];
         $this->persistSepNode('terhapus');
@@ -1267,6 +1277,8 @@ new class extends Component {
     #[On('sep-generated')]
     public function handleSepGenerated($reqSep): void
     {
+        Gate::authorize($this->formMode === 'create' ? 'rj.daftar.tambah' : 'rj.daftar.ubah');
+
         $this->formDaftar['sep']['reqSep'] = $reqSep;
         $this->formDaftar['noReferensi'] = $this->resolveNoReferensi($reqSep);
         $this->incrementVersion('modal');

@@ -4,6 +4,7 @@ use Livewire\Component;
 use Livewire\WithPagination;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -122,6 +123,7 @@ new class extends Component {
     /* ===============================
      | SET STATUS — Belum only (reset)
      =============================== */
+    #[Authorize('rj.booking.ubah')]
     public function setStatus(string $nobooking, string $status): void
     {
         DB::table('referensi_mobilejkn_bpjs')
@@ -135,6 +137,7 @@ new class extends Component {
     /* ===============================
      | CHECKIN — insert rstxn_rjhdrs + update_antrean BPJS
      =============================== */
+    #[Authorize('rj.booking.tambah')] // checkin = membuat kunjungan RJ
     public function prosesCheckin(string $nobooking): void
     {
         $now = Carbon::now(config('app.timezone'));
@@ -433,6 +436,7 @@ new class extends Component {
     /* ===============================
      | BATAL — Modal + BPJS API
      =============================== */
+    #[Authorize('rj.booking.hapus')]
     public function openBatalModal(string $nobooking): void
     {
         $this->batalNobooking = $nobooking;
@@ -440,6 +444,7 @@ new class extends Component {
         $this->dispatch('open-modal', name: 'batal-booking');
     }
 
+    #[Authorize('rj.booking.hapus')]
     public function konfirmasiBatal(): void
     {
         $this->validate(['batalKeterangan' => 'required|min:3'], [], ['batalKeterangan' => 'Keterangan Batal']);
@@ -829,7 +834,7 @@ new class extends Component {
                                                 Cek
                                             </button>
 
-                                            @if ($row->status !== 'Belum')
+                                            @if ($row->status !== 'Belum' && auth()->user()->can('rj.booking.ubah'))
                                                 <button type="button"
                                                     wire:click="setStatus('{{ $row->nobooking }}', 'Belum')"
                                                     wire:loading.attr="disabled"
@@ -841,7 +846,7 @@ new class extends Component {
                                                 </button>
                                             @endif
 
-                                            @if ($row->status === 'Belum')
+                                            @if ($row->status === 'Belum' && auth()->user()->can('rj.booking.tambah'))
                                                 <button type="button"
                                                     wire:click="prosesCheckin('{{ $row->nobooking }}')"
                                                     wire:loading.attr="disabled"
@@ -856,7 +861,7 @@ new class extends Component {
                                                 </button>
                                             @endif
 
-                                            @if ($row->status === 'Belum')
+                                            @if ($row->status === 'Belum' && auth()->user()->can('rj.booking.hapus'))
                                                 <button type="button"
                                                     wire:click="openBatalModal('{{ $row->nobooking }}')"
                                                     title="Batal"

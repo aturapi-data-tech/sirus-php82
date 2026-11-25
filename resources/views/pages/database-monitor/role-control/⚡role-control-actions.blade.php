@@ -119,7 +119,8 @@ new class extends Component {
     /**
      * Matriks centang: halaman (dari AppMenu, per grup) × lihat/tambah/ubah/hapus,
      * aksi khusus (AksiRole::KHUSUS, per area), dan sisa permission di luar katalog.
-     * Nilai sel = id permission (string) atau null bila belum dibuat `akses:sinkron`.
+     * Nilai sel = id permission (string), null bila belum dibuat `akses:sinkron`,
+     * atau false bila aksi itu tidak berlaku di halaman tsb.
      */
     #[Computed]
     public function matriks(): array
@@ -136,10 +137,12 @@ new class extends Component {
             }
             $sudah[$m['route']] = true;
 
+            // false = aksi tak berlaku di halaman ini ('aksi' AppMenu); null = belum disinkron.
             $sel = [];
+            $berlaku = AksesHalaman::aksiBerlaku($m['route']);
             foreach (AksesHalaman::AKSI as $aksi) {
                 $nama = AksesHalaman::namaPermission($m['route'], $aksi);
-                $sel[$aksi] = $idPerNama[$nama] ?? null;
+                $sel[$aksi] = in_array($aksi, $berlaku, true) ? ($idPerNama[$nama] ?? null) : false;
                 $terpakai[$nama] = true;
             }
             $halaman[$m['group']][] = [
@@ -325,7 +328,8 @@ new class extends Component {
                                 <div class="p-3 text-sm text-blue-800 border border-blue-200 rounded-lg bg-blue-50 dark:bg-blue-900/20 dark:border-blue-800/40 dark:text-blue-200">
                                     <p><b>Lihat</b> = menu tampil & halaman bisa dibuka. <b>Tambah / Ubah / Hapus</b> = tombol aksi di halaman itu.
                                         <b>Aksi Khusus</b> = hak di luar keempatnya (buka kunci, kirim bridging, dll.).</p>
-                                    <p class="mt-1">User mendapat gabungan hak dari semua role yang dipegangnya. Perubahan berlaku setelah <b>Simpan</b>.</p>
+                                    <p class="mt-1">User mendapat gabungan hak dari semua role yang dipegangnya. Perubahan berlaku setelah <b>Simpan</b>.
+                                        Tanda <b>·</b> = aksi tidak berlaku di halaman itu.</p>
                                 </div>
 
                                 @if ($matriks['belumSinkron'])
@@ -395,8 +399,10 @@ new class extends Component {
                                                                     @if ($r['sel'][$aksi])
                                                                         <input type="checkbox" x-model="pilih" value="{{ $r['sel'][$aksi] }}" aria-label="{{ ucfirst($aksi) }} {{ $r['title'] }}"
                                                                             class="w-4 h-4 bg-gray-100 border-gray-300 rounded cursor-pointer text-brand-green focus:ring-brand-green/50 focus:ring-2 dark:bg-gray-700 dark:border-gray-600">
+                                                                    @elseif ($r['sel'][$aksi] === false)
+                                                                        <span class="text-muted-soft" title="Tidak berlaku di halaman ini">·</span>
                                                                     @else
-                                                                        <span class="text-muted-soft">—</span>
+                                                                        <span class="text-muted-soft" title="Belum dibuat — jalankan akses:sinkron">—</span>
                                                                     @endif
                                                                 </td>
                                                             @endforeach

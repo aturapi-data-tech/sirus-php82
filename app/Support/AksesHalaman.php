@@ -110,6 +110,12 @@ class AksesHalaman
     /** @var array<string, array<int, string>>|null route → roles (lowercase) dari AppMenu */
     private static ?array $rolesMenu = null;
 
+    /** @var array<string, array<int, string>> route → aksi berlaku (hanya yang diisi 'aksi') */
+    private static array $aksiMenu = [];
+
+    /** @var array<string, array<string, array<int, string>>> route → aksi → roles awal */
+    private static array $rolesAksiMenu = [];
+
     public static function namaPermission(string $route, string $aksi): string
     {
         return $route . '.' . $aksi;
@@ -151,7 +157,34 @@ class AksesHalaman
             return $user->checkPermissionTo($permission);
         }
 
-        return !empty(array_intersect($rolesMenu, self::rolesUser($user)));
+        return !empty(array_intersect(self::rolesAwal($route, $aksi), self::rolesUser($user)));
+    }
+
+    /**
+     * Aksi yang berlaku di route (kunci 'aksi' AppMenu; default keempatnya).
+     * Route anak (INDUK) ikut induk pertamanya.
+     *
+     * @return array<int, string>
+     */
+    public static function aksiBerlaku(string $route): array
+    {
+        $route = self::INDUK[$route][0] ?? $route;
+        self::rolesMenu();
+
+        return self::$aksiMenu[$route] ?? self::AKSI;
+    }
+
+    /**
+     * Centang awal (cadangan sebelum sinkron + isi `akses:sinkron`) untuk satu aksi:
+     * 'rolesAksi'[aksi] bila diisi, selain itu 'roles' menu.
+     *
+     * @return array<int, string> nama role lowercase
+     */
+    public static function rolesAwal(string $route, string $aksi): array
+    {
+        $roles = self::rolesMenu()[$route] ?? [];
+
+        return self::$rolesAksiMenu[$route][$aksi] ?? $roles;
     }
 
     /** @return array<int, string> nama role user, lowercase + trim (nama role di DB pernah ber-spasi) */
@@ -223,9 +256,18 @@ class AksesHalaman
         }
 
         $peta = [];
+        self::$aksiMenu = [];
+        self::$rolesAksiMenu = [];
+        $kecil = fn (array $roles) => array_map(fn ($r) => trim(strtolower($r)), $roles);
         foreach (AppMenu::all() as $m) {
-            $roles = array_map(fn ($r) => trim(strtolower($r)), $m['roles']);
-            $peta[$m['route']] = array_values(array_unique([...($peta[$m['route']] ?? []), ...$roles]));
+            $route = $m['route'];
+            $peta[$route] = array_values(array_unique([...($peta[$route] ?? []), ...$kecil($m['roles'])]));
+            if (isset($m['aksi'])) {
+                self::$aksiMenu[$route] = array_values(array_intersect(self::AKSI, $m['aksi']));
+            }
+            foreach ($m['rolesAksi'] ?? [] as $aksi => $roles) {
+                self::$rolesAksiMenu[$route][$aksi] = $kecil($roles);
+            }
         }
 
         return self::$rolesMenu = $peta;

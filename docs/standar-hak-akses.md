@@ -25,11 +25,20 @@ User ──(model_has_roles)──> Role ──(role_has_permissions)──> Per
 ## Menambah menu / halaman baru
 
 1. Route di dalam grup `Route::middleware(['auth', 'akses.halaman'])` di `routes/web.php`.
-2. Entri di `AppMenu::definitions()` — kolom `roles` = **centang awal** saja.
+2. Entri di `AppMenu::definitions()` — kolom `roles` = **centang awal** saja. Opsional:
+   - `'aksi' => ['lihat', 'tambah', 'ubah']` — aksi yang berlaku; sisanya tampil `·` di Role
+     Control dan tidak dibuat permission-nya (mis. halaman tanpa Hapus).
+   - `'rolesAksi' => ['tambah' => [...], 'ubah' => [...]]` — centang awal per aksi bila beda
+     dari `roles` (contoh: Daftar RJ/UGD/RI — banyak role boleh Lihat, hanya
+     `AppMenu::ROLES_PENDAFTARAN` yang boleh Tambah/Ubah).
 3. Guard di komponen (lihat pola di bawah).
 4. Deploy, lalu **`php artisan akses:sinkron`** (lokal & produksi). Membuat 4 permission
    halaman baru + menyalin centang awal. Aman diulang: centang yang dicabut admin tidak kembali.
 5. Admin menyesuaikan centang di Role Control.
+
+Mengoreksi centang awal route yang permission-nya **sudah** ada:
+`php artisan akses:sinkron --ulang=rj.daftar,ugd.daftar` — mengisi ulang centang route itu
+dari definisi (menimpa Role Control untuk route itu saja; coba `--dry-run` dulu).
 
 Halaman yang **tidak** tampil di menu (dibuka dari halaman hub) → jangan masuk AppMenu;
 daftarkan induknya di `AksesHalaman::INDUK`. Lupa = halaman tertutup (di mode `log`: tercatat

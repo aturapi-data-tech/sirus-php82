@@ -4,6 +4,7 @@ use Livewire\Component;
 use Livewire\WithPagination;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
@@ -68,11 +69,13 @@ new class extends Component {
     /* -------------------------
      | Child modal triggers
      * ------------------------- */
+    #[Authorize('ugd.daftar.tambah')]
     public function openCreate(): void
     {
         $this->dispatch('daftar-ugd.create.open');
     }
 
+    #[Authorize('ugd.daftar.ubah')]
     public function openEdit(string $rjNo): void
     {
         $this->dispatch('daftar-ugd.edit.open', rjNo: $rjNo);
@@ -448,12 +451,12 @@ new class extends Component {
                         </div>
 
                         {{-- Pendaftaran UGD — Mr, Admin, Supervisor Tu --}}
-                        @hasanyrole(['Mr', 'Admin', 'Supervisor Tu'])
+                        @can('ugd.daftar.tambah')
                             <x-primary-button type="button" wire:click="openCreate" class="whitespace-nowrap">
                                 <x-ikon nama="tambah" ukuran="w-5 h-5" class="mr-1" />
                                 Pendaftaran UGD
                             </x-primary-button>
-                        @endhasanyrole
+                        @endcan
                     </div>
 
                 </div>
@@ -747,7 +750,7 @@ new class extends Component {
                                                                 jalur="UGD" />
 
                                                             <div class="grid grid-cols-2 gap-1 items-stretch">
-                                                                @hasanyrole(['Mr', 'Admin', 'Supervisor Tu'])
+                                                                @can('ugd.daftar.ubah')
                                                                     <x-dropdown-link href="#"
                                                                         wire:click.prevent="openEdit('{{ $row->rj_no }}')"
                                                                         class="px-3 py-2 text-sm rounded-lg h-full bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20">
@@ -761,7 +764,7 @@ new class extends Component {
                                                                             </span>
                                                                         </div>
                                                                     </x-dropdown-link>
-                                                                @endhasanyrole
+                                                                @endcan
 
                                                                 {{-- Modul Dokumen — admisi (Mr/Tu) mengisi General Consent saat pendaftaran; buka langsung ke tab itu --}}
                                                                 @hasanyrole('Admin|Mr|Supervisor Tu|Tu|Casemix|Perawat|Dokter')

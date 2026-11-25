@@ -18,6 +18,12 @@ use Illuminate\Support\Facades\Route;
  */
 class AppMenu
 {
+    /**
+     * Petugas yang boleh MENDAFTARKAN / MENGUBAH pendaftaran RJ, UGD, RI — centang awal
+     * Tambah & Ubah Daftar RJ/UGD/RI (dulu @hasanyrole literal di tombol Daftar Baru & Ubah).
+     */
+    private const ROLES_PENDAFTARAN = ['mr', 'admin', 'supervisor tu'];
+
     /** Role yang berhak melihat semua menu Master. */
     private const MASTER_ROLES = ['admin', 'manager umum', 'manager medis', 'supervisor penunjang', 'supervisor tu'];
 
@@ -77,6 +83,12 @@ class AppMenu
      * Definisi semua menu. Helper $entry guard route existence + inject 'href'.
      * Setiap entry: ['group','groupOrder','order','route','title','desc','roles','badge'].
      *
+     * Opsional (hak akses, lihat docs/standar-hak-akses.md):
+     *  - 'aksi'      => aksi yang BERLAKU di halaman ini (default keempatnya: lihat/tambah/ubah/hapus);
+     *                   kolom lain tampil "—" di Role Control dan tidak dibuat permission-nya.
+     *  - 'rolesAksi' => centang awal per aksi bila beda dari 'roles' (mis. hanya petugas
+     *                   pendaftaran yang boleh Tambah walau banyak role boleh Lihat).
+     *
      * @param  callable(array):?array  $entry
      * @return array<int, ?array<string, mixed>>
      */
@@ -133,17 +145,17 @@ class AppMenu
             $entry(['group' => 'Master Akuntansi', 'groupOrder' => 4, 'order' => 3, 'route' => 'master.konf-akun-trans', 'title' => 'Master Konfigurasi Akun Transaksi', 'desc' => 'Mapping akun debit/kredit untuk tiap jenis transaksi (RJ, UGD, RI, Resep, dll.)', 'roles' => $masterRoles, 'badge' => 'Akuntansi']),
 
             // ── Rawat Jalan ────────────────────────────────────────────
-            $entry(['group' => 'Rawat Jalan', 'groupOrder' => 5, 'order' => 1, 'route' => 'rj.daftar', 'title' => 'Daftar Rawat Jalan', 'desc' => 'Pendaftaran & manajemen pasien poli rawat jalan harian', 'roles' => ['admin', 'manager umum', 'supervisor tu', 'mr'], 'badge' => 'RJ']),
+            $entry(['group' => 'Rawat Jalan', 'groupOrder' => 5, 'order' => 1, 'route' => 'rj.daftar', 'aksi' => ['lihat', 'tambah', 'ubah'], 'rolesAksi' => ['tambah' => self::ROLES_PENDAFTARAN, 'ubah' => self::ROLES_PENDAFTARAN], 'title' => 'Daftar Rawat Jalan', 'desc' => 'Pendaftaran & manajemen pasien poli rawat jalan harian', 'roles' => ['admin', 'manager umum', 'supervisor tu', 'mr'], 'badge' => 'RJ']),
             $entry(['group' => 'Rawat Jalan', 'groupOrder' => 5, 'order' => 2, 'route' => 'rj.pelayanan', 'title' => 'Pelayanan Rawat Jalan', 'desc' => 'EMR poli — anamnesis, pemeriksaan, diagnosa & resep oleh dokter/perawat', 'roles' => ['admin', 'manager medis', 'dokter', 'perawat'], 'badge' => 'PEL-RJ']),
             $entry(['group' => 'Rawat Jalan', 'groupOrder' => 5, 'order' => 3, 'route' => 'rj.booking', 'title' => 'Booking Rawat Jalan', 'desc' => 'Pasien booking poli via Mobile JKN — siap diaktivasi jadi pendaftaran', 'roles' => ['admin', 'mr', 'manager umum', 'supervisor tu'], 'badge' => 'BKG']),
             $entry(['group' => 'Rawat Jalan', 'groupOrder' => 5, 'order' => 4, 'route' => 'kontrol.jadwal-kontrol', 'title' => 'Jadwal Kontrol Pasien', 'desc' => 'Lihat & geser tanggal rencana kontrol (SKDP) RJ/RI — update otomatis ke BPJS', 'roles' => ['admin', 'mr', 'tu', 'supervisor tu', 'manager umum'], 'badge' => 'SKDP']),
 
             // ── UGD ────────────────────────────────────────────────────
-            $entry(['group' => 'Unit Gawat Darurat', 'groupOrder' => 6, 'order' => 1, 'route' => 'ugd.daftar', 'title' => 'Daftar UGD', 'desc' => 'Pendaftaran & manajemen pasien Unit Gawat Darurat harian', 'roles' => ['admin', 'manager umum', 'supervisor tu', 'mr'], 'badge' => 'UGD']),
+            $entry(['group' => 'Unit Gawat Darurat', 'groupOrder' => 6, 'order' => 1, 'route' => 'ugd.daftar', 'aksi' => ['lihat', 'tambah', 'ubah'], 'rolesAksi' => ['tambah' => self::ROLES_PENDAFTARAN, 'ubah' => self::ROLES_PENDAFTARAN], 'title' => 'Daftar UGD', 'desc' => 'Pendaftaran & manajemen pasien Unit Gawat Darurat harian', 'roles' => ['admin', 'manager umum', 'supervisor tu', 'mr'], 'badge' => 'UGD']),
             $entry(['group' => 'Unit Gawat Darurat', 'groupOrder' => 6, 'order' => 2, 'route' => 'ugd.pelayanan', 'title' => 'Pelayanan UGD', 'desc' => 'EMR UGD — triase, asesmen, tindakan & resep oleh dokter/perawat UGD', 'roles' => ['admin', 'manager medis', 'dokter', 'perawat', 'apoteker', 'laboratorium'], 'badge' => 'PEL-UGD']),
 
             // ── Rawat Inap ─────────────────────────────────────────────
-            $entry(['group' => 'Rawat Inap', 'groupOrder' => 7, 'order' => 1, 'route' => 'ri.daftar', 'title' => 'Daftar Rawat Inap', 'desc' => 'Pendaftaran, transfer kamar, & manajemen pasien rawat inap', 'roles' => ['admin', 'manager medis', 'manager umum', 'supervisor tu', 'mr', 'perawat', 'dokter', 'casemix', 'tu', 'apoteker', 'gizi', 'laboratorium', 'radiologi'], 'badge' => 'RI']),
+            $entry(['group' => 'Rawat Inap', 'groupOrder' => 7, 'order' => 1, 'route' => 'ri.daftar', 'aksi' => ['lihat', 'tambah', 'ubah'], 'rolesAksi' => ['tambah' => self::ROLES_PENDAFTARAN, 'ubah' => self::ROLES_PENDAFTARAN], 'title' => 'Daftar Rawat Inap', 'desc' => 'Pendaftaran, transfer kamar, & manajemen pasien rawat inap', 'roles' => ['admin', 'manager medis', 'manager umum', 'supervisor tu', 'mr', 'perawat', 'dokter', 'casemix', 'tu', 'apoteker', 'gizi', 'laboratorium', 'radiologi'], 'badge' => 'RI']),
             $entry(['group' => 'Rawat Inap', 'groupOrder' => 7, 'order' => 2, 'route' => 'ri.update-tt', 'title' => 'Sinkronisasi Tempat Tidur', 'desc' => 'Sync ketersediaan TT rawat inap → Aplicares BPJS & SIRS Kemenkes', 'roles' => ['admin', 'mr', 'perawat', 'dokter'], 'badge' => 'TT']),
             $entry(['group' => 'Rawat Inap', 'groupOrder' => 7, 'order' => 3, 'route' => 'ri.gizi', 'title' => 'Gizi Rawat Inap', 'desc' => 'Program diet harian pasien RI & rekap porsi dapur', 'roles' => ['admin', 'manager medis', 'manager umum', 'gizi'], 'badge' => 'GIZI']),
 
