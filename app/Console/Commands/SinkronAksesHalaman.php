@@ -37,6 +37,13 @@ use Spatie\Permission\PermissionRegistrar;
  * centangnya — tak ada kode yang memeriksanya, jadi hak siapa pun tidak berubah.
  * Nama lama sumber 'menggantikan' baru dihapus sesudah semua penggantinya ada (centang
  * sudah diwariskan). Daftar yang dihapus + role-nya dicatat ke log channel 'akses'.
+ *
+ * PENGAMAN BENTROK (insiden prod 2026-11-26, ORA-00001 CACHE_KEY_PK):
+ *  - Memakai kunci yang sama dengan sinkron otomatis (SinkronAksesOtomatis::bukaKunci) — perintah manual
+ *    menunggu bila sinkron otomatis sedang jalan, dan sebaliknya sinkron otomatis melewatinya.
+ *  - Selama sinkron, cache permission Spatie dialihkan ke store 'array' (memori proses ini). Tanpa ini tiap
+ *    Permission::create / givePermissionTo membangun ulang cache di tabel CACHE lewat MERGE, yang bentrok
+ *    dengan request web yang membangunnya bersamaan. Cache asli cukup dibuang SEKALI di akhir.
  */
 class SinkronAksesHalaman extends Command
 {
@@ -49,6 +56,42 @@ class SinkronAksesHalaman extends Command
     public function handle(): int
     {
         $dryRun = (bool) $this->option('dry-run');
+
+        $kunci = null;
+        if (!SinkronAksesOtomatis::$sedangMenyinkron) {
+            $kunci = SinkronAksesOtomatis::bukaKunci();
+            if ($kunci === false) {
+                $this->error('Berkas kunci storage/framework/akses-sinkron.tanda.lock tidak bisa dibuka — periksa izin folder storage/framework.');
+                return self::FAILURE;
+            }
+            if (!flock($kunci, LOCK_EX | LOCK_NB)) {
+                $this->line('Sinkron otomatis sedang berjalan — menunggu sampai selesai…');
+                flock($kunci, LOCK_EX);
+            }
+        }
+
+        $registrar = app(PermissionRegistrar::class);
+        $storeAsli = config('permission.cache.store');
+        config(['permission.cache.store' => 'array']);
+        $registrar->initializeCache();
+
+        try {
+            return $this->jalankan($dryRun);
+        } finally {
+            config(['permission.cache.store' => $storeAsli]);
+            $registrar->initializeCache();
+            if (!$dryRun) {
+                $registrar->forgetCachedPermissions(); // cache asli (DB) dibuang sekali, tanpa ditulis ulang di sini
+            }
+            if ($kunci) {
+                flock($kunci, LOCK_UN);
+                fclose($kunci);
+            }
+        }
+    }
+
+    private function jalankan(bool $dryRun): int
+    {
 
         $roleDb = Role::where('guard_name', 'web')->get()
             ->keyBy(fn ($r) => trim(strtolower($r->name)));
@@ -159,7 +202,6 @@ class SinkronAksesHalaman extends Command
         $dibersihkan = $this->bersihkan($dikenal, $dryRun);
 
         if (!$dryRun) {
-            app(PermissionRegistrar::class)->forgetCachedPermissions();
             AksesHalaman::lupakanCache();
             SinkronAksesOtomatis::tulisTanda(); // sinkron otomatis tak perlu mengulang
         }
