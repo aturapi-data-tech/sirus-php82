@@ -2,6 +2,9 @@
 
 use Livewire\Component;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
+use Livewire\Attributes\Locked;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\QueryException;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
@@ -9,6 +12,7 @@ use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 new class extends Component {
     use WithRenderVersioningTrait;
 
+    #[Locked]
     public string $formMode      = 'create';
     public array  $renderVersions = [];
     protected array $renderAreas = ['modal'];
@@ -29,6 +33,7 @@ new class extends Component {
     // =========================================================
 
     #[On('master.laborat.openCreateClab')]
+    #[Authorize('master.laborat.tambah')]
     public function openCreateClab(): void
     {
         $this->resetAll();
@@ -39,6 +44,7 @@ new class extends Component {
     }
 
     #[On('master.laborat.openEditClab')]
+    #[Authorize('master.laborat.ubah')]
     public function openEditClab(string $clabId): void
     {
         $row = DB::table('lbmst_clabs')->where('clab_id', $clabId)->first();
@@ -60,6 +66,7 @@ new class extends Component {
     }
 
     #[On('master.laborat.deleteClab')]
+    #[Authorize('master.laborat.hapus')]
     public function deleteClab(string $clabId): void
     {
         try {
@@ -86,8 +93,33 @@ new class extends Component {
         }
     }
 
+
+    /**
+     * Celah ID record: kunci record tak boleh diubah dari klien — `save()` memakainya sebagai
+     * WHERE update, jadi mengubahnya = menulis ke record LAIN. Array publik bisa diubah klien
+     * di path mana pun walau tak ada inputnya, jadi dijaga di sini.
+     *  - kunci saat edit ('clab_id'): ditolak bila bukan mode create (inputnya disabled saat edit)
+     *  - kunci isian server (—): selalu ditolak
+     */
+    public function updatingFormClab($value, ?string $key = null): void
+    {
+        $kunciEdit = ['clab_id'];
+        $kunciServer = [];
+        $dijaga = $this->formMode === 'create' ? $kunciServer : [...$kunciEdit, ...$kunciServer];
+        if ($key === null) {
+            // seluruh array diganti dari klien: tolak bila nilai kunci berubah
+            foreach ($dijaga as $k) {
+                abort_if((string) (($value[$k] ?? '')) !== (string) ($this->formClab[$k] ?? ''), 403, 'Kunci record tidak boleh diubah.');
+            }
+            return;
+        }
+        abort_if(in_array(explode('.', $key)[0], $dijaga, true), 403, 'Kunci record tidak boleh diubah.');
+    }
+
     public function save(): void
     {
+        Gate::authorize($this->formMode === 'create' ? 'master.laborat.tambah' : 'master.laborat.ubah');
+
         $this->validate(
             [
                 'formClab.clab_id'   => $this->formMode === 'create' ? 'required|string|max:5|unique:lbmst_clabs,clab_id' : 'required|string|max:5',

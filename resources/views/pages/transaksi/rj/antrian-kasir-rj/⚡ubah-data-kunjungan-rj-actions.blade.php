@@ -14,6 +14,8 @@
 // diganti — kasir menyesuaikannya sendiri di modal Administrasi.
 
 use Livewire\Component;
+use Livewire\Attributes\Locked;
+use Livewire\Attributes\Authorize;
 use Livewire\Attributes\On;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -23,6 +25,7 @@ use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 new class extends Component {
     use EmrRJTrait, WithRenderVersioningTrait;
 
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public ?int $rjNo = null;
 
     // ── Isian koreksi ──
@@ -47,6 +50,7 @@ new class extends Component {
      | OPEN — dipicu dari Antrian Kasir RJ
      =============================== */
     #[On('open-ubah-data-kunjungan-rj')]
+    #[Authorize('pintu.open-ubah-data-kunjungan-rj')]
     public function openUbahDataKunjungan(int $rjNo): void
     {
         if (empty($rjNo)) {

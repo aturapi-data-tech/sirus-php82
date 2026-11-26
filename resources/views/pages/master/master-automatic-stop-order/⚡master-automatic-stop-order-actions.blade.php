@@ -11,12 +11,17 @@ use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
+use Livewire\Attributes\Locked;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Component;
 
 new class extends Component {
     use WithRenderVersioningTrait;
 
+    #[Locked]
     public string $formMode   = 'create';
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public int    $originalId = 0;
     public array  $renderVersions = [];
     protected array $renderAreas  = ['modal'];
@@ -43,6 +48,7 @@ new class extends Component {
     }
 
     #[On('master.automatic-stop-order.openCreate')]
+    #[Authorize('master.automatic-stop-order.tambah')]
     public function openCreate(): void
     {
         $this->resetForm();
@@ -56,6 +62,7 @@ new class extends Component {
     }
 
     #[On('master.automatic-stop-order.openEdit')]
+    #[Authorize('master.automatic-stop-order.ubah')]
     public function openEdit(int $golonganId): void
     {
         $row = DB::table('rsmst_stop_order_golongans')->where('golongan_id', $golonganId)->first();
@@ -83,6 +90,7 @@ new class extends Component {
     }
 
     #[On('master.automatic-stop-order.toggleActive')]
+    #[Authorize('master.automatic-stop-order.ubah')]
     public function toggleActive(int $golonganId): void
     {
         $sekarang = (string) DB::table('rsmst_stop_order_golongans')->where('golongan_id', $golonganId)->value('active_status');
@@ -99,6 +107,7 @@ new class extends Component {
     }
 
     #[On('master.automatic-stop-order.requestDelete')]
+    #[Authorize('master.automatic-stop-order.hapus')]
     public function deleteGolongan(int $golonganId): void
     {
         $jumlahObat = DB::table('rsmst_stop_order_products')->where('golongan_id', $golonganId)->count();
@@ -128,6 +137,8 @@ new class extends Component {
 
     public function save(): void
     {
+        Gate::authorize($this->formMode === 'create' ? 'master.automatic-stop-order.tambah' : 'master.automatic-stop-order.ubah');
+
         $this->validate($this->rules(), $this->messages(), $this->validationAttributes());
 
         $kode = mb_strtoupper(trim($this->form['golongan_kode']));

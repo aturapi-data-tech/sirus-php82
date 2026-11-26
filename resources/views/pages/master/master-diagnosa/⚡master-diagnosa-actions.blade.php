@@ -2,6 +2,9 @@
 
 use Livewire\Component;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
+use Livewire\Attributes\Locked;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Database\QueryException;
@@ -9,6 +12,7 @@ use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 
 new class extends Component {
     use WithRenderVersioningTrait;
+    #[Locked]
     public string $formMode = 'create'; // create|edit
     public array $renderVersions = [];
 protected array $renderAreas = ['modal'];
@@ -29,6 +33,7 @@ protected array $renderAreas = ['modal'];
 }
 
     #[On('master.diagnosa.openCreate')]
+    #[Authorize('master.diagnosa.tambah')]
     public function openCreate(): void
     {
         $this->resetFormFields();
@@ -41,6 +46,7 @@ $this->incrementVersion('modal');
     }
 
     #[On('master.diagnosa.openEdit')]
+    #[Authorize('master.diagnosa.ubah')]
     public function openEdit(string $diagId): void
     {
         $row = DB::table('rsmst_mstdiags')->where('diag_id', $diagId)->first();
@@ -124,6 +130,8 @@ $this->incrementVersion('modal');
 
     public function save(): void
     {
+        Gate::authorize($this->formMode === 'create' ? 'master.diagnosa.tambah' : 'master.diagnosa.ubah');
+
         $data = $this->validate();
 
         $payload = [
@@ -151,6 +159,7 @@ $this->incrementVersion('modal');
     }
 
     #[On('master.diagnosa.requestDelete')]
+    #[Authorize('master.diagnosa.hapus')]
     public function deleteFromGrid(string $diagId): void
     {
         try {

@@ -2,6 +2,7 @@
 // resources/views/pages/transaksi/penunjang/kamar-operasi/crew-jasa-kamar-operasi.blade.php
 
 use Livewire\Component;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -21,6 +22,7 @@ use App\Support\KamarOperasiTarif;
 new class extends Component {
     use KamarOperasiTrait;
 
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public string $okReg = '';
     public bool $isFormLocked = true;
     public string $sumber = 'RI';

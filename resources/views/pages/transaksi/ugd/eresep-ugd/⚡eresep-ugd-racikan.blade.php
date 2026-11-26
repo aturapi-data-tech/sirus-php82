@@ -1,6 +1,7 @@
 <?php
 // resources/views/pages/transaksi/ugd/eresep-ugd/eresep-ugd-racikan.blade.php
 
+use Livewire\Attributes\Authorize;
 use Livewire\Component;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
@@ -129,6 +130,8 @@ new class extends Component {
         $this->addProduct($payload['product_id'], $payload['product_name'], (float) ($payload['sales_price'] ?? 0));
     }
 
+    #[Authorize('ugd.emr.tulisEresep')]
+
     public function addProduct(string $productId, string $productName, float $salesPrice): void
     {
         // Auto-fill Satuan (takar) dari master dimatikan dulu — user input manual.
@@ -155,6 +158,7 @@ new class extends Component {
     /* ===============================
      | INSERT PRODUCT
      =============================== */
+    #[Authorize('ugd.emr.tulisEresep')]
     public function insertProduct(): void
     {
         if ($this->isFormLocked) {
@@ -303,6 +307,7 @@ new class extends Component {
     /* ===============================
      | REMOVE PRODUCT
      =============================== */
+    #[Authorize('ugd.emr.tulisEresep')]
     public function removeProduct(int $rjObatDtl): void
     {
         if ($this->isFormLocked) {
@@ -374,7 +379,7 @@ new class extends Component {
         <div class="px-4">
             <div wire:key="{{ $this->renderKey('eresep-racikan-ugd', [$rjNo ?? 'new']) }}">
                 <div>
-                    @role(['Dokter', 'Admin'])
+                    @can('ugd.emr.tulisEresep')
                         <div x-data>
                             @if (!$formEresepRacikan)
                                 <div class="flex items-center gap-3 mt-2">
@@ -456,7 +461,7 @@ new class extends Component {
                                 </div>
                             @endif
                         </div>
-                    @endrole
+                    @endcan
 
                     <div class="flex flex-col my-2">
                         <div class="overflow-x-auto rounded-lg">
@@ -546,9 +551,9 @@ new class extends Component {
                                                                 @enderror
                                                             </td>
                                                             <td class="px-4 py-3 text-center">
-                                                                @role(['Dokter', 'Admin'])
+                                                                @can('ugd.emr.tulisEresep')
                                                                     <x-hapus-button wire:click.prevent="removeProduct('{{ $eresep['rjObatDtl'] }}')" :disabled="$isFormLocked" confirm="Hapus obat racikan ini?" title="Hapus obat" />
-                                                                @endrole
+                                                                @endcan
                                                             </td>
                                                         </tr>
                                                         @php $myPreviousRow = $eresep['noRacikan']; @endphp

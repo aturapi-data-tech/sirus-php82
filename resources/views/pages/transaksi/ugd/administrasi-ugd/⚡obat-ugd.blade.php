@@ -2,6 +2,7 @@
 // resources/views/pages/transaksi/ugd/administrasi-ugd/obat-ugd.blade.php
 
 use Livewire\Component;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Computed;
 use Illuminate\Support\Facades\DB;
@@ -26,6 +27,7 @@ new class extends Component {
     // Saldo stok apotek untuk obat yang sedang dipilih di form entry.
     public ?float $stokTersedia = null;
 
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public ?int $editingDtl = null;
     public array $editRow = [];
 

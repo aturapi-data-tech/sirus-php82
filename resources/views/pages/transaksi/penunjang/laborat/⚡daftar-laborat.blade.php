@@ -252,6 +252,7 @@ new class extends Component {
                     {{-- RIGHT ACTIONS --}}
                     <div class="flex items-center gap-2 ml-auto">
                         {{-- Tambah pemeriksaan dari sisi lab (ruangan tidak mengirim order) --}}
+                        @can('penunjang.laborat.tambah')
                         <x-primary-button type="button"
                             wire:click="$dispatch('laborat.tambah.open', { source: '{{ $filterLayanan ?: 'RJ' }}' })">
                             <span class="flex items-center gap-1.5">
@@ -259,6 +260,7 @@ new class extends Component {
                                 Tambah Pemeriksaan
                             </span>
                         </x-primary-button>
+                        @endcan
 
                         {{-- Tombol standar Refresh + Reset (komponen; tanpa label kolom) --}}
                         <x-toolbar-refresh-reset :label="null" />

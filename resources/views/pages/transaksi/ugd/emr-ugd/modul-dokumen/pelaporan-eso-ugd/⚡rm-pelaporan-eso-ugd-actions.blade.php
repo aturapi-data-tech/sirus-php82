@@ -582,7 +582,7 @@ new class extends Component {
     public function removeEntry(string $id): void
     {
         // Guard SERVER — guard blade saja bisa ditembus lewat wire:click.
-        if (!auth()->user()?->can('dokumen.hapus')) {
+        if (!auth()->user()?->can('ugd.dokumen.hapus')) {
             $this->dispatch('toast', type: 'error', message: 'Anda tidak berwenang menghapus entri.');
             return;
         }
@@ -624,12 +624,12 @@ new class extends Component {
     }
 
     /* ===============================
-     | BUKA KUNCI — hanya Admin / Manager (Gate dokumen.bukaKunci).
+     | BUKA KUNCI — hanya Admin / Manager (Gate ugd.dokumen.bukaKunci).
      | Mencabut kunci + TTD pelapor; entri kembali draft untuk dikoreksi.
      =============================== */
     private function bolehBukaKunci(): bool
     {
-        return (bool) auth()->user()?->can('dokumen.bukaKunci');
+        return (bool) auth()->user()?->can('ugd.dokumen.bukaKunci');
     }
 
     public function bukaKunci(string $id): void
@@ -1324,7 +1324,7 @@ new class extends Component {
                                             <x-modul-dokumen.status-entri :final="$isFinal" />
                                         </td>
                                         <td class="ds-c whitespace-nowrap" @click.stop>
-                                            <x-modul-dokumen.aksi-entri kunci="{{ $idEntri }}" :final="$isFinal" :terkunci="$isFormLocked"
+                                            <x-modul-dokumen.aksi-entri jalur="ugd" kunci="{{ $idEntri }}" :final="$isFinal" :terkunci="$isFormLocked"
                                                 :bisaDiubah="filled($idEntri)"
                                                 hapus="removeEntry"
                                                 judulLihat="Lihat entri terkunci"

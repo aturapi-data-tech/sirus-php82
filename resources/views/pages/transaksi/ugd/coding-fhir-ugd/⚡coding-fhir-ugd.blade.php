@@ -9,7 +9,7 @@
 //   perencanaan/coding-perencanaan-ugd P — terapi, tindak lanjut, cara keluar (baca)
 //
 // Form EMR UGD cukup teks klinis (fokus pelayanan); kode SNOMED dkk diisi di sini SESUDAH
-// pelayanan oleh Dokter/Perawat/MR/manager (Gate emr.codingFhir) — keputusan user 2026-10-28.
+// pelayanan oleh Dokter/Perawat/MR/manager (Gate ugd.emr.codingFhir) — keputusan user 2026-10-28.
 // Lokasi data TIDAK berubah (key yang sama di datadaftarpolirj_json), jadi sender SATUSEHAT
 // tidak berubah. Simpan = event 'save-coding-fhir-ugd'; tiap kelompok yang punya kode menyimpan
 // bagiannya sendiri (pola save-rm-* EMR). Tetap bisa diisi walau EMR terkunci.
@@ -56,7 +56,7 @@ new class extends Component {
     {
         $this->registerAreas(['modal-coding-fhir-ugd']);
         $this->embedded = $embedded;
-        if ($embedded && $rjNo && auth()->user()?->can('emr.codingFhir')) {
+        if ($embedded && $rjNo && auth()->user()?->can('ugd.emr.codingFhir')) {
             $this->rjNo = $rjNo;
             $this->incrementVersion('modal-coding-fhir-ugd');
         }
@@ -69,7 +69,7 @@ new class extends Component {
         if ($this->embedded) {
             return;
         }
-        if (!auth()->user()?->can('emr.codingFhir')) {
+        if (!auth()->user()?->can('ugd.emr.codingFhir')) {
             $this->dispatch('toast', type: 'error', message: 'Anda tidak berhak membuka Coding SATUSEHAT.');
             return;
         }

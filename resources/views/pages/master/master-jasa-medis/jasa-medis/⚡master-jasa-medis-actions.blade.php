@@ -2,6 +2,9 @@
 
 use Livewire\Component;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
+use Livewire\Attributes\Locked;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Database\QueryException;
@@ -10,6 +13,7 @@ use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 new class extends Component {
     use WithRenderVersioningTrait;
 
+    #[Locked]
     public string $formMode = 'create'; // create|edit
     public array $renderVersions = [];
     protected array $renderAreas = ['modal'];
@@ -51,6 +55,7 @@ new class extends Component {
      | OPEN / CLOSE
      =============================== */
     #[On('master.jasa-medis.openCreate')]
+    #[Authorize('master.jasa-medis.tambah')]
     public function openCreate(): void
     {
         $this->resetAllFields();
@@ -62,6 +67,7 @@ new class extends Component {
     }
 
     #[On('master.jasa-medis.openEdit')]
+    #[Authorize('master.jasa-medis.ubah')]
     public function openEdit(string $pactId): void
     {
         $row = DB::table('rsmst_actparamedics')->where('pact_id', $pactId)->first();
@@ -270,8 +276,21 @@ new class extends Component {
     /* ===============================
      | SAVE — header + paket (delete-then-insert)
      =============================== */
+
+    /**
+     * Celah ID record: kunci record yang sedang diedit tak boleh diubah dari klien — `save()`
+     * memakainya sebagai WHERE update, jadi mengubahnya = menulis ke record LAIN. Inputnya
+     * sudah disabled saat edit, jadi user biasa tak pernah mengirim perubahan ini.
+     */
+    public function updatingPactId(): void
+    {
+        abort_if($this->formMode !== 'create', 403, 'Kunci record tidak boleh diubah.');
+    }
+
     public function save(): void
     {
+        Gate::authorize($this->formMode === 'create' ? 'master.jasa-medis.tambah' : 'master.jasa-medis.ubah');
+
         $rules = [
             'pactId' => ['required', 'string', 'max:10', $this->formMode === 'create' ? Rule::unique('rsmst_actparamedics', 'pact_id') : Rule::unique('rsmst_actparamedics', 'pact_id')->ignore($this->pactId, 'pact_id')],
             'pactDesc' => ['required', 'string', 'max:100'],
@@ -344,6 +363,7 @@ new class extends Component {
      | TOGGLE ACTIVE
      =============================== */
     #[On('master.jasa-medis.toggleActive')]
+    #[Authorize('master.jasa-medis.ubah')]
     public function toggleActive(string $pactId): void
     {
         $cur = (string) DB::table('rsmst_actparamedics')->where('pact_id', $pactId)->value('active_status');
@@ -357,6 +377,7 @@ new class extends Component {
      | DELETE — cek transaksi dulu
      =============================== */
     #[On('master.jasa-medis.requestDelete')]
+    #[Authorize('master.jasa-medis.hapus')]
     public function deleteFromGrid(string $pactId): void
     {
         try {

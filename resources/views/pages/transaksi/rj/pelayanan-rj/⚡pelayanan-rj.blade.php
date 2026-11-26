@@ -1,6 +1,7 @@
 <?php
 
 use Livewire\Component;
+use Livewire\Attributes\Authorize;
 use Livewire\WithPagination;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
@@ -86,6 +87,7 @@ new class extends Component {
     /* -------------------------
      | Child modal triggers — pelayanan-only
      * ------------------------- */
+    #[Authorize('rj.pelayanan.bukaRekamMedis')]
     public function openRekamMedis(string $rjNo): void
     {
         $this->dispatch('emr-rj.rekam-medis.open', rjNo: $rjNo);
@@ -97,11 +99,13 @@ new class extends Component {
         $this->dispatch('coding-fhir-rj.open', rjNo: $rjNo);
     }
 
+    #[Authorize('rj.pelayanan.bukaModulDokumen')]
     public function openModulDokumen(int $rjNo): void
     {
         $this->dispatch('emr-rj.modul-dokumen.open', rjNo: $rjNo);
     }
 
+    #[Authorize('rj.pelayanan.bukaAdministrasi')]
     public function openAdministrasiPasien(string $rjNo): void
     {
         $this->dispatch('emr-rj.administrasi.open', rjNo: $rjNo);
@@ -1033,7 +1037,7 @@ new class extends Component {
                                                                  Tombol di sini; logika di komponen host task-id-poli-actions (mount 1×).
                                                                  wire:click="$dispatch(...)" = aksi Livewire (BUKAN Alpine) → host tangkap
                                                                  via #[On]. Nol komponen Livewire per baris. Redup dari $row->task_id4/5. --}}
-                                                            @hasanyrole('Perawat|Admin')
+                                                            @can('rj.pelayanan.taskIdPoli')
                                                                 <div class="flex space-x-1">
                                                                     <x-info-button type="button"
                                                                         wire:click="$dispatch('task-id-poli-proses', { rjNo: {{ $row->rj_no }}, aksi: '4' })"
@@ -1059,11 +1063,11 @@ new class extends Component {
                                                                         TaskId Antrean
                                                                     </x-primary-button>
                                                                 </div>
-                                                            @endhasanyrole
+                                                            @endcan
 
                                                             {{-- GRID 2 KOLOM --}}
                                                             <div class="grid grid-cols-2 gap-1 items-stretch">
-                                                                @hasanyrole('Perawat|Dokter|Admin|Casemix|Mr')
+                                                                @can('rj.pelayanan.bukaRekamMedis')
                                                                     <x-dropdown-link href="#"
                                                                         wire:click.prevent="openRekamMedis('{{ $row->rj_no }}')"
                                                                         class="px-3 py-2 text-sm rounded-lg h-full bg-green-50 hover:bg-green-100 dark:bg-green-900/20 dark:hover:bg-green-900/40">
@@ -1077,9 +1081,9 @@ new class extends Component {
                                                                             </span>
                                                                         </div>
                                                                     </x-dropdown-link>
-                                                                @endhasanyrole
+                                                                @endcan
 
-                                                                @hasanyrole('Perawat|Dokter|Admin|Mr')
+                                                                @can('rj.pelayanan.bukaPengkajianMedis')
                                                                     <x-dropdown-link href="#"
                                                                         x-on:click.prevent="$dispatch('pelayanan-rj.pengkajian-medis.open', { rjNo: {{ $row->rj_no }} })"
                                                                         class="px-3 py-2 text-sm rounded-lg h-full bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/40">
@@ -1093,9 +1097,9 @@ new class extends Component {
                                                                             </span>
                                                                         </div>
                                                                     </x-dropdown-link>
-                                                                @endhasanyrole
+                                                                @endcan
 
-                                                                @hasanyrole('Perawat|Dokter|Admin|Mr')
+                                                                @can('rj.pelayanan.bukaPrmrj')
                                                                     <x-dropdown-link href="#"
                                                                         x-on:click.prevent="$dispatch('pelayanan-rj.prmrj.open', { rjNo: {{ $row->rj_no }} })"
                                                                         class="px-3 py-2 text-sm rounded-lg h-full bg-sky-50 hover:bg-sky-100 dark:bg-sky-900/30 dark:hover:bg-sky-900/40">
@@ -1109,9 +1113,9 @@ new class extends Component {
                                                                             </span>
                                                                         </div>
                                                                     </x-dropdown-link>
-                                                                @endhasanyrole
+                                                                @endcan
 
-                                                                @hasanyrole('Admin|Perawat|Dokter|Casemix|Mr')
+                                                                @can('rj.pelayanan.bukaModulDokumen')
                                                                     <x-dropdown-link href="#"
                                                                         wire:click.prevent="openModulDokumen('{{ $row->rj_no }}')"
                                                                         class="px-3 py-2 text-sm rounded-lg h-full bg-yellow-50 hover:bg-yellow-100 dark:bg-yellow-900/20 dark:hover:bg-yellow-900/40">
@@ -1125,9 +1129,9 @@ new class extends Component {
                                                                             </span>
                                                                         </div>
                                                                     </x-dropdown-link>
-                                                                @endhasanyrole
+                                                                @endcan
 
-                                                                @hasanyrole('Admin|Perawat|Casemix|Tu')
+                                                                @can('rj.pelayanan.bukaAdministrasi')
                                                                     <x-dropdown-link href="#"
                                                                         wire:click.prevent="openAdministrasiPasien('{{ $row->rj_no }}')"
                                                                         class="px-3 py-2 text-sm rounded-lg h-full bg-purple-50 hover:bg-purple-100 dark:bg-purple-900/20 dark:hover:bg-purple-900/40">
@@ -1141,9 +1145,9 @@ new class extends Component {
                                                                             </span>
                                                                         </div>
                                                                     </x-dropdown-link>
-                                                                @endhasanyrole
+                                                                @endcan
 
-                                                                @hasanyrole('Admin|Tu|Perawat|Manager Umum|Supervisor Tu')
+                                                                @can('rj.pelayanan.bukaTransferUgd')
                                                                     @php
                                                                         $canTransferUgd = $row->rj_status === 'A';
                                                                         $trfUgdClass = $canTransferUgd
@@ -1164,9 +1168,9 @@ new class extends Component {
                                                                             </span>
                                                                         </div>
                                                                     </x-dropdown-link>
-                                                                @endhasanyrole
+                                                                @endcan
 
-                                                                @can('emr.codingFhir')
+                                                                @can('rj.emr.codingFhir')
                                                                     <x-dropdown-link href="#"
                                                                         wire:click.prevent="openCodingFhir('{{ $row->rj_no }}')"
                                                                         class="px-3 py-2 text-sm rounded-lg h-full bg-brand-green/5 hover:bg-brand-green/10 dark:bg-brand-green/10">
@@ -1258,9 +1262,9 @@ new class extends Component {
 
             {{-- Host aksi Task ID poli (berisi fungsi) — mount 1×. Tombol tiap baris
                  dispatch 'task-id-poli-proses' ke sini via wire:click. --}}
-            @hasanyrole('Perawat|Admin')
+            @can('rj.pelayanan.taskIdPoli')
                 <livewire:pages::transaksi.rj.task-id-pelayanan.task-id-poli-actions wire:key="task-id-poli-actions-host" />
-            @endhasanyrole
+            @endcan
 
         </div>
     </div>

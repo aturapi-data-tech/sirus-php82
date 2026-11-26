@@ -73,6 +73,15 @@ return [
             'replace_placeholders' => true,
         ],
 
+        // Penjaga URL halaman (CekAksesHalaman): akses di luar hak role.
+        'akses' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/akses-halaman.log'),
+            'level' => 'warning',
+            'days' => 90,
+            'replace_placeholders' => true,
+        ],
+
         'slack' => [
             'driver' => 'slack',
             'url' => env('LOG_SLACK_WEBHOOK_URL'),

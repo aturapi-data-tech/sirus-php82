@@ -1,5 +1,6 @@
 <?php
 
+use Livewire\Attributes\Authorize;
 use Livewire\Component;
 use Livewire\Attributes\On;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
@@ -112,6 +113,7 @@ new class extends Component {
     /* ===============================
      | INSERT PRODUCT
      =============================== */
+    #[Authorize('ri.emr.tulisEresep')]
     public function insertProduct(): void
     {
         if ($this->isFormLocked) {
@@ -225,6 +227,7 @@ new class extends Component {
     /* ===============================
      | REMOVE PRODUCT
      =============================== */
+    #[Authorize('ri.emr.tulisEresep')]
     public function removeProduct(string $riObatDtl): void
     {
         if ($this->isFormLocked) {
@@ -295,7 +298,7 @@ new class extends Component {
                     $isResepEditable = !$isFormLocked && !$hasTTDResep;
                 @endphp
 
-                @role(['Dokter', 'Admin'])
+                @can('ri.emr.tulisEresep')
                     @if ($isResepEditable)
                         <div x-data>
 
@@ -412,7 +415,7 @@ new class extends Component {
 
                         </div>
                     @endif
-                @endrole
+                @endcan
 
                 {{-- Tabel Obat Racikan --}}
                 <div class="flex flex-col my-2">
@@ -502,11 +505,11 @@ new class extends Component {
                                                         @enderror
                                                     </td>
                                                     <td class="px-4 py-3 text-center">
-                                                        @role(['Dokter', 'Admin'])
+                                                        @can('ri.emr.tulisEresep')
                                                             @if ($isResepEditable)
                                                                 <x-hapus-button wire:click.prevent="removeProduct('{{ $eresep['riObatDtl'] }}')" confirm="Hapus obat racikan ini?" title="Hapus obat" />
                                                             @endif
-                                                        @endrole
+                                                        @endcan
                                                     </td>
                                                 </tr>
                                                 @php $prevRacikan = $eresep['noRacikan'] ?? ''; @endphp

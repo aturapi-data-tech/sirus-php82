@@ -1,6 +1,7 @@
 <?php
 
 use Livewire\Component;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Livewire\WithFileUploads;
 use Illuminate\Support\Facades\DB;
@@ -12,6 +13,7 @@ new class extends Component {
 
     public string $formMode = 'create';
     public bool $isFormLocked = false;
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public ?int $userId = null;
 
     public array $renderVersions = [];

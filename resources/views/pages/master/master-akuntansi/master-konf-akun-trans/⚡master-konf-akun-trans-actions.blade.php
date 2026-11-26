@@ -2,6 +2,9 @@
 
 use Livewire\Component;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
+use Livewire\Attributes\Locked;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\QueryException;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
@@ -9,7 +12,9 @@ use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 new class extends Component {
     use WithRenderVersioningTrait;
 
+    #[Locked]
     public string $formMode   = 'create';
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public string $originalId = '';
     public array  $renderVersions = [];
     protected array $renderAreas  = ['modal'];
@@ -26,6 +31,7 @@ new class extends Component {
     }
 
     #[On('master.konf-akun-trans.openCreate')]
+    #[Authorize('master.konf-akun-trans.tambah')]
     public function openCreate(): void
     {
         $this->resetForm();
@@ -36,6 +42,7 @@ new class extends Component {
     }
 
     #[On('master.konf-akun-trans.openEdit')]
+    #[Authorize('master.konf-akun-trans.ubah')]
     public function openEdit(string $confId): void
     {
         $row = DB::table('tkacc_confacctxns')->where('conf_id', $confId)->first();
@@ -61,6 +68,7 @@ new class extends Component {
     }
 
     #[On('master.konf-akun-trans.requestDelete')]
+    #[Authorize('master.konf-akun-trans.hapus')]
     public function deleteKonf(string $confId): void
     {
         try {
@@ -83,6 +91,8 @@ new class extends Component {
 
     public function save(): void
     {
+        Gate::authorize($this->formMode === 'create' ? 'master.konf-akun-trans.tambah' : 'master.konf-akun-trans.ubah');
+
         $rules = [
             'form.conf_id' => $this->formMode === 'create'
                 ? 'required|string|max:240|regex:/^[A-Z0-9_.-]+$/|unique:tkacc_confacctxns,conf_id'

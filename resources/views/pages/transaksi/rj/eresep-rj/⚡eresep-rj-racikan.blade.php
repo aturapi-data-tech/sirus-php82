@@ -1,5 +1,6 @@
 <?php
 
+use Livewire\Attributes\Authorize;
 use Livewire\Component;
 use App\Http\Traits\Txn\Rj\EmrRJTrait;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
@@ -151,6 +152,7 @@ new class extends Component {
     /* ===============================
      | ADD PRODUCT (dari LOV) — hanya set draft form, belum simpan ke DB
      =============================== */
+    #[Authorize('rj.emr.tulisEresep')]
     public function addProduct(string $productId, string $productName, float $salesPrice): void
     {
         // Auto-fill Satuan (takar) dari master dimatikan dulu — user input manual.
@@ -179,6 +181,7 @@ new class extends Component {
     /* ===============================
      | INSERT PRODUCT
      =============================== */
+    #[Authorize('rj.emr.tulisEresep')]
     public function insertProduct(): void
     {
         if ($this->isFormLocked) {
@@ -326,6 +329,7 @@ new class extends Component {
     /* ===============================
      | REMOVE PRODUCT
      =============================== */
+    #[Authorize('rj.emr.tulisEresep')]
     public function removeProduct(int $rjObatDtl): void
     {
         if ($this->isFormLocked) {
@@ -414,7 +418,7 @@ new class extends Component {
             <div wire:key="{{ $this->renderKey('eresep-racikan-rj', [$rjNo ?? 'new']) }}">
 
 
-                @role(['Dokter', 'Admin'])
+                @can('rj.emr.tulisEresep')
                     <div x-data x-ref="racikanSection">
 
                         {{-- LOV + No Racikan --}}
@@ -534,7 +538,7 @@ new class extends Component {
                         @endif
 
                     </div>
-                @endrole
+                @endcan
 
                 {{-- Tabel Resep Racikan --}}
                 <div class="flex flex-col my-2">
@@ -641,9 +645,9 @@ new class extends Component {
 
                                                         {{-- Action --}}
                                                         <td class="px-4 py-3 text-center">
-                                                            @role(['Dokter', 'Admin'])
+                                                            @can('rj.emr.tulisEresep')
                                                                 <x-hapus-button wire:click.prevent="removeProduct('{{ $eresep['rjObatDtl'] }}')" :disabled="$isFormLocked" confirm="Hapus obat racikan ini?" title="Hapus obat" />
-                                                            @endrole
+                                                            @endcan
                                                         </td>
                                                     </tr>
 

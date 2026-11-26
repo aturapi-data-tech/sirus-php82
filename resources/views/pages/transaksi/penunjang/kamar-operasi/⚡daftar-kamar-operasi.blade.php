@@ -1,6 +1,7 @@
 <?php
 
 use Livewire\Component;
+use Livewire\Attributes\Authorize;
 use Livewire\WithPagination;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
@@ -113,6 +114,7 @@ new class extends Component {
         'RI' => ['emr-ri.modul-dokumen.open', 'pelayananBedah'],
     ];
 
+    #[Authorize('penunjang.kamar-operasi.bukaDokumenBedah')]
     public function openDokumenBedah(string $sumber, $indukNo): void
     {
         if (!isset(self::DOKUMEN_BEDAH[$sumber]) || empty($indukNo)) {
@@ -312,8 +314,10 @@ new class extends Component {
 <div>
     @php
         // Dihitung sekali: transaksi OK (Tu/Perawat/...) vs hanya dokumen bedah (Dokter/Casemix/Mr/Gizi).
+        // Hak dari Role Control: Ubah = membuka modal transaksi, Tambah = membuat transaksi baru.
         $bolehTransaksiOk = $this->isAllowedRoleOk();
-        $pesanTanpaAksesOk = 'Hanya Perawat, Tu, Supervisor Penunjang, Manager Umum & Admin yang dapat mengentri transaksi operasi.';
+        $bolehTambahOk = (bool) auth()->user()?->can('penunjang.kamar-operasi.tambah');
+        $pesanTanpaAksesOk = 'Akun Anda belum diberi hak mengentri transaksi operasi.';
     @endphp
     <x-page-title
         title="Transaksi Tindakan Operasi"
@@ -415,8 +419,8 @@ new class extends Component {
                     <div class="flex items-center gap-2 ml-auto">
                         {{-- Layanan yang sedang difilter dibawa ke modal Tambah supaya
                              petugas tidak perlu memilihnya dua kali (pola daftar-laborat). --}}
-                        <x-primary-button type="button" :disabled="!$bolehTransaksiOk"
-                            :title="$bolehTransaksiOk ? null : $pesanTanpaAksesOk"
+                        <x-primary-button type="button" :disabled="!$bolehTambahOk"
+                            :title="$bolehTambahOk ? null : $pesanTanpaAksesOk"
                             wire:click="$dispatch('kamar-operasi-tambah.open', { sumber: '{{ $filterLayanan ?: 'RI' }}' })">
                             <span class="flex items-center gap-1.5">
                                 <x-ikon nama="tambah" />
@@ -632,7 +636,7 @@ new class extends Component {
                                                  termasuk di baris RJ/UGD — menyembunyikannya bikin petugas
                                                  mengira fiturnya rusak. Untuk RJ/UGD isinya dinonaktifkan
                                                  berikut alasannya. --}}
-                                            @hasanyrole($this::ROLE_MENU_OK)
+                                            @can('penunjang.kamar-operasi.bukaDokumenBedah')
                                                 <x-dropdown align="right" width="w-72" :melayang="true">
                                                 <x-slot name="trigger">
                                                     <x-secondary-button type="button" class="p-2.5">
@@ -708,7 +712,7 @@ new class extends Component {
                                                     </div>
                                                 </x-slot>
                                             </x-dropdown>
-                                        @endhasanyrole
+                                        @endcan
                                         @endif
                                         </div>
                                     </td>

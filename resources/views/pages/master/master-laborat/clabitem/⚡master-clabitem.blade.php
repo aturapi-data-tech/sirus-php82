@@ -4,6 +4,7 @@ use Livewire\Component;
 use Livewire\WithPagination;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
 use Livewire\Attributes\Url;
 use Illuminate\Support\Facades\DB;
 use App\Support\CakupanLoincLab;
@@ -57,6 +58,7 @@ new class extends Component {
     }
 
     /* --- Dispatch ke actions --- */
+    #[Authorize('master.laborat.tambah')]
     public function openCreateClabitem(): void
     {
         if (!$this->selectedClabId) {
@@ -65,11 +67,13 @@ new class extends Component {
         $this->dispatch('master.laborat.openCreateClabitem', clabId: $this->selectedClabId);
     }
 
+    #[Authorize('master.laborat.ubah')]
     public function openEditClabitem(string $clabitemId, string $clabId, string $productId): void
     {
         $this->dispatch('master.laborat.openEditClabitem', clabitemId: $clabitemId, clabId: $clabId, productId: $productId);
     }
 
+    #[Authorize('master.laborat.hapus')]
     public function requestDeleteClabitem(string $clabitemId, string $clabId, string $productId): void
     {
         $this->dispatch('master.laborat.deleteClabitem', clabitemId: $clabitemId, clabId: $clabId, productId: $productId);
@@ -155,10 +159,12 @@ new class extends Component {
                             </x-select-input>
                         </div>
                         @if ($selectedClabId)
+                            @can('master.laborat.tambah')
                             <x-primary-button type="button" wire:click="openCreateClabitem" class="whitespace-nowrap">
                                 <x-ikon nama="tambah" />
                                 Tambah Pemeriksaan
                             </x-primary-button>
+                            @endcan
                         @endif
                         <x-toolbar-refresh-reset :label="null" />
                     </div>
@@ -389,7 +395,10 @@ new class extends Component {
                                     {{-- AKSI --}}
                                     <td class="ds-c px-6 py-4 align-top">
                                         <div class="flex justify-center gap-2">
+                                            @can('master.laborat.ubah')
                                             <x-action-edit wire:click="openEditClabitem('{{ $item->clabitem_id }}', '{{ $item->clab_id }}', '{{ $item->product_id }}')" />
+                                            @endcan
+                                            @can('master.laborat.hapus')
                                             <x-action-delete :action="'requestDeleteClabitem(\'' .
                                                 $item->clabitem_id .
                                                 '\', \'' .
@@ -398,6 +407,7 @@ new class extends Component {
                                                 $item->product_id .
                                                 '\')'" title="Hapus Item"
                                                 message="Yakin hapus item {{ $item->clabitem_desc }}?" />
+                                            @endcan
                                         </div>
                                     </td>
                                 </tr>

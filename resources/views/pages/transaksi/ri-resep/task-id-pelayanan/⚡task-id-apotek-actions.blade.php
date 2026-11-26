@@ -1,6 +1,8 @@
 <?php
 
 use Livewire\Component;
+use Livewire\Attributes\Authorize;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -27,6 +29,7 @@ use App\Support\TaskIdAntrean;
  *    rstxn_rihdrs.datadaftarri_json apotekHdr[].taskId6/7) IDENTIK versi lama.
  */
 new class extends Component {
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public ?int $slsNo = null;
 
     /* ===============================
@@ -34,6 +37,7 @@ new class extends Component {
      | Detail event: { slsNo, aksi } dengan aksi ∈ {'6','7'}.
      =============================== */
     #[On('task-id-apotek-proses-ri')]
+    #[Authorize('ri-resep.antrian.taskIdApotek')] // tombol khusus halaman (Role Control), dulu @hasanyrole('Apoteker|Admin') di tombol saja
     public function proses(int $slsNo, string $aksi): void
     {
         $this->slsNo = $slsNo;
@@ -53,6 +57,7 @@ new class extends Component {
      |   - update imtxn_slshdrs (waktu_masuk_pelayanan + no_antrian)
      |   - mirror ke rstxn_rihdrs.datadaftarri_json di apotekHdr[].taskId6
      =============================== */
+    #[Authorize('ri-resep.antrian.taskIdApotek')] // tombol khusus halaman (Role Control), dulu @hasanyrole('Apoteker|Admin') di tombol saja
     public function prosesTaskId6(): void
     {
         if (empty($this->slsNo)) {
@@ -141,6 +146,7 @@ new class extends Component {
     /* ===============================
      | PROSES TASKID7 — Keluar Apotek RI
      =============================== */
+    #[Authorize('ri-resep.antrian.taskIdApotek')] // tombol khusus halaman (Role Control), dulu @hasanyrole('Apoteker|Admin') di tombol saja
     public function prosesTaskId7(): void
     {
         if (empty($this->slsNo)) {

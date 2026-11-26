@@ -15,6 +15,7 @@
 // (diet berlaku terus sampai diganti entri baru).
 
 use Livewire\Component;
+use Livewire\Attributes\Authorize;
 use Livewire\WithPagination;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
@@ -67,11 +68,13 @@ new class extends Component {
     }
 
     // Buka modal yang sama dengan daftar-ri (event & komponen identik)
+    #[Authorize('ri.gizi.bukaModulDokumen')]
     public function openModulDokumen(string $riHdrNo): void
     {
         $this->dispatch('emr-ri.modul-dokumen.open', riHdrNo: $riHdrNo);
     }
 
+    #[Authorize('ri.gizi.bukaAdministrasi')]
     public function openAdministrasiPasien(string $riHdrNo): void
     {
         $this->dispatch('emr-ri.administrasi.open', riHdrNo: $riHdrNo);
@@ -652,7 +655,7 @@ new class extends Component {
                                                             @endif
 
                                                             {{-- Modul Dokumen — gate role sama dgn daftar-ri --}}
-                                                            @hasanyrole('Admin|Perawat|Dokter|Casemix|Mr|Gizi')
+                                                            @can('ri.gizi.bukaModulDokumen')
                                                                 <x-dropdown-link href="#"
                                                                     wire:click.prevent="openModulDokumen('{{ $row->rihdr_no }}')"
                                                                     class="px-3 py-2 text-sm rounded-lg bg-yellow-50 hover:bg-yellow-100 dark:bg-yellow-900/20">
@@ -670,10 +673,10 @@ new class extends Component {
                                                                         </span>
                                                                     </div>
                                                                 </x-dropdown-link>
-                                                            @endhasanyrole
+                                                            @endcan
 
                                                             {{-- Administrasi — gate role sama dgn daftar-ri --}}
-                                                            @hasanyrole('Admin|Perawat|Casemix|Tu|Gizi')
+                                                            @can('ri.gizi.bukaAdministrasi')
                                                                 <x-dropdown-link href="#"
                                                                     wire:click.prevent="openAdministrasiPasien('{{ $row->rihdr_no }}')"
                                                                     class="px-3 py-2 text-sm rounded-lg bg-purple-50 hover:bg-purple-100 dark:bg-purple-900/20">
@@ -691,7 +694,7 @@ new class extends Component {
                                                                         </span>
                                                                     </div>
                                                                 </x-dropdown-link>
-                                                            @endhasanyrole
+                                                            @endcan
 
                                                         </div>
                                                     </div>

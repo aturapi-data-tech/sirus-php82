@@ -11,12 +11,17 @@ use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
+use Livewire\Attributes\Locked;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Component;
 
 new class extends Component {
     use WithRenderVersioningTrait;
 
+    #[Locked]
     public string $formMode   = 'create';
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public int    $originalId = 0;
     public array  $renderVersions = [];
     protected array $renderAreas  = ['modal'];
@@ -48,6 +53,7 @@ new class extends Component {
     }
 
     #[On('master.ews.openCreateRespon')]
+    #[Authorize('master.ews.tambah')]
     public function openCreate(string $varian = 'DEWASA'): void
     {
         $this->resetForm();
@@ -62,6 +68,7 @@ new class extends Component {
     }
 
     #[On('master.ews.openEditRespon')]
+    #[Authorize('master.ews.ubah')]
     public function openEdit(int $responId): void
     {
         $row = DB::table('rsmst_ews_respons')->where('respon_id', $responId)->first();
@@ -92,6 +99,7 @@ new class extends Component {
     }
 
     #[On('master.ews.requestDeleteRespon')]
+    #[Authorize('master.ews.hapus')]
     public function deleteRespon(int $responId): void
     {
         try {
@@ -115,6 +123,8 @@ new class extends Component {
 
     public function save(): void
     {
+        Gate::authorize($this->formMode === 'create' ? 'master.ews.tambah' : 'master.ews.ubah');
+
         $this->validate([
             'form.varian'          => 'required|in:' . implode(',', array_keys(EwsDefault::VARIAN)),
             'form.urutan'          => 'required|integer|min:0|max:999',

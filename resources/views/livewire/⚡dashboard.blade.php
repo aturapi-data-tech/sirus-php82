@@ -7,13 +7,6 @@ use Livewire\Attributes\Computed;
 new class extends Component {
     public string $search = '';
 
-    // ✅ Semua role user (lowercase) dipakai untuk filtering menu
-    #[Computed]
-    public function userRoles(): array
-    {
-        return auth()->user()->getRoleNames()->map(fn($r) => trim(strtolower($r)))->values()->toArray();
-    }
-
     #[Computed]
     public function masterMenus(): array
     {
@@ -24,13 +17,13 @@ new class extends Component {
     #[Computed]
     public function visibleMenus(): array
     {
-        return AppMenu::forRoles($this->userRoles);
+        return AppMenu::forUser(auth()->user());
     }
 
     #[Computed]
     public function groupedMenus()
     {
-        $grouped = AppMenu::grouped($this->userRoles);
+        $grouped = AppMenu::grouped(auth()->user());
 
         $q = trim(mb_strtolower($this->search));
         if ($q === '') {

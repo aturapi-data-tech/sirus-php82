@@ -4,6 +4,7 @@ use Livewire\Component;
 use Livewire\WithPagination;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
 use Illuminate\Support\Facades\DB;
 
 new class extends Component {
@@ -35,11 +36,13 @@ new class extends Component {
     /* -------------------------
      | Child modal triggers
      * ------------------------- */
+    #[Authorize('master.others.tambah')]
     public function openCreate(): void
     {
         $this->dispatch('master.others.openCreate');
     }
 
+    #[Authorize('master.others.ubah')]
     public function openEdit(string $otherId): void
     {
         $this->dispatch('master.others.openEdit', otherId: $otherId);
@@ -48,11 +51,13 @@ new class extends Component {
     /* -------------------------
     | Request Delete (delegate ke actions)
     * ------------------------- */
+    #[Authorize('master.others.hapus')]
     public function requestDelete(string $otherId): void
     {
         $this->dispatch('master.others.requestDelete', otherId: $otherId);
     }
 
+    #[Authorize('master.others.ubah')]
     public function toggleActive(string $otherId): void
     {
         $this->dispatch('master.others.toggleActive', otherId: $otherId);
@@ -142,10 +147,12 @@ new class extends Component {
                             </x-select-input>
                         </div>
 
+                        @can('master.others.tambah')
                         <x-primary-button type="button" wire:click="openCreate">
                             <x-ikon nama="tambah" />
                             Tambah Data Lain-lain Baru
                         </x-primary-button>
+                        @endcan
                         <x-toolbar-refresh-reset :label="null" />
                     </div>
                 </div>
@@ -180,17 +187,27 @@ new class extends Component {
                                         </span>
                                     </td>
                                     <td class="px-6 py-4">
+                                        @can('master.others.ubah')
                                         <x-toggle :current="(string) $row->active_status" trueValue="1" falseValue="0"
                                             wireClick="toggleActive('{{ $row->other_id }}')">
                                             {{ (string) $row->active_status === '1' ? 'Aktif' : 'Tidak Aktif' }}
                                         </x-toggle>
+                                        @else
+                                        <x-badge :variant="(string) $row->active_status === '1' ? 'success' : 'danger'">
+                                            {{ (string) $row->active_status === '1' ? 'Aktif' : 'Tidak Aktif' }}
+                                        </x-badge>
+                                        @endcan
                                     </td>
                                     <td class="ds-c px-6 py-4">
                                         <div class="flex justify-center gap-2">
+                                            @can('master.others.ubah')
                                             <x-action-edit wire:click="openEdit('{{ $row->other_id }}')" />
+                                            @endcan
 
+                                            @can('master.others.hapus')
                                             <x-action-delete :action="'requestDelete(\'' . $row->other_id . '\')'"
                                                 title="Hapus Data" message="Yakin hapus data {{ $row->other_desc }}?" />
+                                            @endcan
                                         </div>
                                     </td>
                                 </tr>

@@ -2,6 +2,9 @@
 
 use Livewire\Component;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
+use Livewire\Attributes\Locked;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\QueryException;
 use Carbon\Carbon;
@@ -19,7 +22,9 @@ use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 new class extends Component {
     use WithRenderVersioningTrait;
 
+    #[Locked]
     public string $formMode = 'create'; // create|edit
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public string $originalEmpId = '';
     public array $renderVersions = [];
     protected array $renderAreas = ['modal'];
@@ -48,6 +53,7 @@ new class extends Component {
     }
 
     #[On('master.karyawan-hr.openCreate')]
+    #[Authorize('master.karyawan-hr.tambah')]
     public function openCreate(): void
     {
         $this->resetFormFields();
@@ -59,6 +65,7 @@ new class extends Component {
     }
 
     #[On('master.karyawan-hr.openEdit')]
+    #[Authorize('master.karyawan-hr.ubah')]
     public function openEdit(string $empId): void
     {
         $row = DB::table('hrmst_employees')->where('emp_id', $empId)->first();
@@ -184,6 +191,8 @@ new class extends Component {
 
     public function save(): void
     {
+        Gate::authorize($this->formMode === 'create' ? 'master.karyawan-hr.tambah' : 'master.karyawan-hr.ubah');
+
         $this->validate();
 
         $form = $this->formKaryawanHr;
@@ -223,6 +232,7 @@ new class extends Component {
     }
 
     #[On('master.karyawan-hr.requestDelete')]
+    #[Authorize('master.karyawan-hr.hapus')]
     public function deleteFromGrid(string $empId): void
     {
         $isUsedInOk = DB::table('rstxn_oks')

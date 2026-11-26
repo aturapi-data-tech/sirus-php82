@@ -2,6 +2,7 @@
 // resources/views/pages/transaksi/ugd/antrian-kasir-ugd/antrian-kasir-ugd.blade.php
 
 use Livewire\Component;
+use Livewire\Attributes\Authorize;
 use Livewire\WithPagination;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
@@ -85,6 +86,7 @@ new class extends Component {
         $this->resetPage();
     }
 
+    #[Authorize('ugd.antrian-kasir.bukaAdministrasi')]
     public function openAdministrasiPasien(string $rjNo): void
     {
         $this->dispatch('emr-ugd.administrasi.open', rjNo: $rjNo);
@@ -634,7 +636,7 @@ new class extends Component {
                                                             jalur="UGD" />
 
                                                         <div class="grid grid-cols-2 gap-1 items-stretch">
-                                                        @hasanyrole('Admin|Tu|Manager Umum|Supervisor Tu')
+                                                        @can('ugd.antrian-kasir.bukaAdministrasi')
                                                         <x-dropdown-link href="#" wire:click.prevent="openAdministrasiPasien('{{ $row->rj_no }}')"
                                                             class="px-3 py-2 text-sm rounded-lg h-full bg-purple-50 hover:bg-purple-100 dark:bg-purple-900/20 dark:hover:bg-purple-900/40">
                                                             <div class="flex items-start gap-2">
@@ -647,10 +649,10 @@ new class extends Component {
                                                                 </span>
                                                             </div>
                                                         </x-dropdown-link>
-                                                        @endhasanyrole
+                                                        @endcan
 
                                                         {{-- Transfer — aktif HANYA saat status Antrian (rj_status='A') --}}
-                                                        @hasanyrole('Admin|Tu|Perawat|Manager Umum|Supervisor Tu')
+                                                        @can('ugd.antrian-kasir.bukaTransferRi')
                                                         @if ($row->rj_status === 'A')
                                                         <x-dropdown-link href="#" wire:click.prevent="$dispatch('open-transfer-ugd-ke-ri', { rjNo: {{ $row->rj_no }} })"
                                                             class="px-3 py-2 text-sm rounded-lg h-full bg-teal-50 hover:bg-teal-100 dark:bg-teal-900/20 dark:hover:bg-teal-900/40">
@@ -677,7 +679,7 @@ new class extends Component {
                                                             </div>
                                                         </div>
                                                         @endif
-                                                        @endhasanyrole
+                                                        @endcan
 
                                                         {{-- Ubah Data Kunjungan (tanggal/shift/klaim) — HANYA saat status Antrian --}}
                                                         @can('ugd.ubahDataKunjungan')

@@ -1,6 +1,7 @@
 <?php
 
 use Livewire\Component;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -15,6 +16,7 @@ new class extends Component {
     use EmrUGDTrait, MasterPasienTrait, WithRenderVersioningTrait, WithValidationToastTrait;
 
     public bool $isFormLocked = false;
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public ?int $rjNo = null;
     /**
      * IRISAN dokumen: cabang `anamnesa` (model form — jalur validasi & wire:model kini
@@ -393,7 +395,7 @@ new class extends Component {
     public function bukaKunciTtdPerawatPenerima(): void
     {
         // Guard SERVER — guard blade saja bisa ditembus, wire:click memanggil method publik.
-        if (! auth()->user()?->can('dokumen.bukaKunci')) {
+        if (! auth()->user()?->can('ugd.dokumen.bukaKunci')) {
             $this->dispatch('toast', type: 'error', message: 'Anda tidak berhak membuka kunci TTD Perawat.');
 
             return;

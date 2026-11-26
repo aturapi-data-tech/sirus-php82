@@ -2,6 +2,9 @@
 
 use Livewire\Component;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
+use Livewire\Attributes\Locked;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\QueryException;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
@@ -9,7 +12,9 @@ use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 new class extends Component {
     use WithRenderVersioningTrait;
 
+    #[Locked]
     public string $formMode   = 'create';
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public string $originalId = '';
     public array  $renderVersions = [];
     protected array $renderAreas  = ['modal'];
@@ -27,6 +32,7 @@ new class extends Component {
     }
 
     #[On('master.group-akun.openCreate')]
+    #[Authorize('master.group-akun.tambah')]
     public function openCreate(): void
     {
         $this->resetForm();
@@ -37,6 +43,7 @@ new class extends Component {
     }
 
     #[On('master.group-akun.openEdit')]
+    #[Authorize('master.group-akun.ubah')]
     public function openEdit(string $graId): void
     {
         $row = DB::table('tkacc_gr_accountses')->where('gra_id', $graId)->first();
@@ -57,6 +64,7 @@ new class extends Component {
     }
 
     #[On('master.group-akun.requestDelete')]
+    #[Authorize('master.group-akun.hapus')]
     public function deleteGroupAkun(string $graId): void
     {
         try {
@@ -79,6 +87,8 @@ new class extends Component {
 
     public function save(): void
     {
+        Gate::authorize($this->formMode === 'create' ? 'master.group-akun.tambah' : 'master.group-akun.ubah');
+
         $rules = [
             'form.gra_id'     => $this->formMode === 'create'
                 ? 'required|string|max:25|regex:/^[A-Z0-9_-]+$/|unique:tkacc_gr_accountses,gra_id'

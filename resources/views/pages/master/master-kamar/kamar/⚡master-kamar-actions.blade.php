@@ -2,6 +2,9 @@
 
 use Livewire\Component;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
+use Livewire\Attributes\Locked;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\QueryException;
 use App\Support\CakupanLocationKamar;
@@ -57,6 +60,7 @@ new class extends Component {
         return self::SIRS_TT_LABEL[(string) ($id ?? '')] ?? '';
     }
 
+    #[Locked]
     public string $formMode      = 'create';
     public array  $renderVersions = [];
     protected array $renderAreas = ['modal'];
@@ -109,6 +113,7 @@ new class extends Component {
     // =========================================================
 
     #[On('master.kamar.openCreateKamar')]
+    #[Authorize('master.kamar.tambah')]
     public function openCreateKamar(string $bangsalId): void
     {
         $this->resetAll();
@@ -120,6 +125,7 @@ new class extends Component {
     }
 
     #[On('master.kamar.openEditKamar')]
+    #[Authorize('master.kamar.ubah')]
     public function openEditKamar(string $roomId): void
     {
         $row = DB::table('rsmst_rooms')->where('room_id', $roomId)->first();
@@ -168,6 +174,7 @@ new class extends Component {
     }
 
     #[On('master.kamar.toggleActiveRoom')]
+    #[Authorize('master.kamar.ubah')]
     public function toggleActiveRoom(string $roomId): void
     {
         $cur = (string) DB::table('rsmst_rooms')->where('room_id', $roomId)->value('active_status');
@@ -180,6 +187,7 @@ new class extends Component {
     }
 
     #[On('master.kamar.deleteKamar')]
+    #[Authorize('master.kamar.hapus')]
     public function deleteKamar(string $roomId): void
     {
         try {
@@ -213,8 +221,33 @@ new class extends Component {
         }
     }
 
+
+    /**
+     * Celah ID record: kunci record tak boleh diubah dari klien — `save()` memakainya sebagai
+     * WHERE update, jadi mengubahnya = menulis ke record LAIN. Array publik bisa diubah klien
+     * di path mana pun walau tak ada inputnya, jadi dijaga di sini.
+     *  - kunci saat edit ('room_id'): ditolak bila bukan mode create (inputnya disabled saat edit)
+     *  - kunci isian server (—): selalu ditolak
+     */
+    public function updatingFormKamar($value, ?string $key = null): void
+    {
+        $kunciEdit = ['room_id'];
+        $kunciServer = [];
+        $dijaga = $this->formMode === 'create' ? $kunciServer : [...$kunciEdit, ...$kunciServer];
+        if ($key === null) {
+            // seluruh array diganti dari klien: tolak bila nilai kunci berubah
+            foreach ($dijaga as $k) {
+                abort_if((string) (($value[$k] ?? '')) !== (string) ($this->formKamar[$k] ?? ''), 403, 'Kunci record tidak boleh diubah.');
+            }
+            return;
+        }
+        abort_if(in_array(explode('.', $key)[0], $dijaga, true), 403, 'Kunci record tidak boleh diubah.');
+    }
+
     public function save(): void
     {
+        Gate::authorize($this->formMode === 'create' ? 'master.kamar.tambah' : 'master.kamar.ubah');
+
         $this->validate(
             [
                 'formKamar.room_id'         => $this->formMode === 'create' ? 'required|string|max:5|unique:rsmst_rooms,room_id' : 'required|string|max:5',
@@ -278,6 +311,7 @@ new class extends Component {
      * Idempoten: cari dulu by identifier bisnis (room_id); kalau belum ada baru createLocation.
      * room_uuid ini dipakai sebagai lokasi Encounter Rawat Inap (analog poli_uuid di RJ/UGD).
      */
+    #[Authorize('master.kamar.ubah')]
     public function daftarkanUuidKamar(): void
     {
         $roomId   = trim((string) ($this->formKamar['room_id'] ?? ''));
@@ -356,6 +390,7 @@ new class extends Component {
         $this->aplicList                    = [];
     }
 
+    #[Authorize('master.kamar.ubah')]
     public function daftarkanAplic(): void
     {
         $roomId = $this->formKamar['room_id'];
@@ -445,6 +480,7 @@ new class extends Component {
         $this->sirsList                = [];
     }
 
+    #[Authorize('master.kamar.ubah')]
     public function daftarkanSirs(): void
     {
         $roomId = $this->formKamar['room_id'];

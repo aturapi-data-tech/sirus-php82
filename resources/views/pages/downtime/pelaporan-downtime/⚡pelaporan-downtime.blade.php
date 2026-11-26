@@ -19,6 +19,7 @@ use App\Http\Traits\Sistem\PelaporanDowntime\PelaporanDowntimeTrait;
 use Carbon\Carbon;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Pagination\Paginator;
+use Livewire\Attributes\Authorize;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -66,6 +67,7 @@ new class extends Component {
         $this->resetPage();
     }
 
+    #[Authorize('downtime.pelaporan.tambah')]
     public function openCreate(): void
     {
         $this->dispatch('pelaporan-downtime.openCreate');
@@ -185,10 +187,12 @@ new class extends Component {
                                 <option value="100">100</option>
                             </x-select-input>
                         </div>
-                        <x-primary-button type="button" wire:click="openCreate" :disabled="! $siapDipakai">
-                            <x-ikon nama="tambah" />
-                            Catat Kejadian Down Time
-                        </x-primary-button>
+                        @can('downtime.pelaporan.tambah')
+                            <x-primary-button type="button" wire:click="openCreate" :disabled="! $siapDipakai">
+                                <x-ikon nama="tambah" />
+                                Catat Kejadian Down Time
+                            </x-primary-button>
+                        @endcan
                         <x-toolbar-refresh-reset :label="null" />
                     </div>
                 </div>

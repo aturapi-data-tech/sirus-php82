@@ -216,10 +216,10 @@ new class extends Component {
         $this->dispatch('toast', type: 'info', message: 'Mode edit SBAR — ubah lalu klik Perbarui SBAR.');
     }
 
-    /* ── Pemilik entri (petugasSBARCode === myuser_code) atau Admin ── */
+    /* ── Pemilik entri (petugasSBARCode === myuser_code), atau role bercentang ugd.sbar.ubahSemua ── */
     private function canEditSbar(array $sbar): bool
     {
-        if (auth()->user()->hasRole('Admin')) {
+        if (auth()->user()->can('ugd.sbar.ubahSemua')) {
             return true;
         }
         $ownerCode = (string) ($sbar['petugasSBARCode'] ?? '');
@@ -296,8 +296,8 @@ new class extends Component {
 
         // Hapus SBAR: hanya level Supervisor (2) ke atas — fungsional (Dokter/Perawat dll)
         // tidak bisa walau pemilik entri.
-        if (!auth()->user()->hasAnyRole(['Admin', 'Manager Umum', 'Manager Medis', 'Supervisor Penunjang', 'Supervisor Tu', 'Mr', 'Casemix'])) {
-            $this->dispatch('toast', type: 'error', message: 'Hanya Supervisor ke atas yang dapat menghapus SBAR.');
+        if (!auth()->user()->can('ugd.sbar.hapus')) {
+            $this->dispatch('toast', type: 'error', message: 'Anda tidak berhak menghapus SBAR.');
             return;
         }
 
@@ -347,13 +347,13 @@ new class extends Component {
 
         $dpjpId = $this->dpjpUgdId();
         $dpjpName = $this->dpjpDesc;
-        $isAdmin = auth()->user()->hasRole('Admin');
+        $bolehReviewSemua = auth()->user()->can('ugd.sbar.reviewSemua');
 
         if ($dpjpId === '') {
             $this->dispatch('toast', type: 'error', message: 'Dokter UGD belum ditentukan pada kunjungan ini.');
             return;
         }
-        if (!$isAdmin && $dpjpId !== auth()->user()->myuser_code) {
+        if (!$bolehReviewSemua && $dpjpId !== auth()->user()->myuser_code) {
             $this->dispatch('toast', type: 'error', message: 'Hanya DPJP UGD / Admin yang dapat me-review SBAR.');
             return;
         }
@@ -401,8 +401,8 @@ new class extends Component {
         }
 
         $dpjpId = $this->dpjpUgdId();
-        $isAdmin = auth()->user()->hasRole('Admin');
-        if (!$isAdmin && ($dpjpId === '' || $dpjpId !== auth()->user()->myuser_code)) {
+        $bolehReviewSemua = auth()->user()->can('ugd.sbar.reviewSemua');
+        if (!$bolehReviewSemua && ($dpjpId === '' || $dpjpId !== auth()->user()->myuser_code)) {
             $this->dispatch('toast', type: 'error', message: 'Hanya DPJP UGD / Admin yang dapat membatalkan review.');
             return;
         }
@@ -475,8 +475,8 @@ new class extends Component {
             return;
         }
 
-        // Copy hanya bisa dilakukan oleh profesi yang sama, kecuali Admin.
-        if (!auth()->user()->hasRole('Admin')) {
+        // Copy hanya bisa dilakukan oleh profesi yang sama, kecuali role bercentang ugd.sbar.copySemua.
+        if (!auth()->user()->can('ugd.sbar.copySemua')) {
             if ($this->profesiSaya() !== ($sbar['profession'] ?? '')) {
                 $this->dispatch('toast', type: 'error', message: 'Hanya bisa copy SBAR dari profesi yang sama.');
                 return;
@@ -729,7 +729,7 @@ new class extends Component {
                         // DPJP UGD = dokter kunjungan. Hanya dia (atau Admin) yang boleh review/TTD SBAR.
                         $dpjpUgdId = $dpjpId;
                         $isDpjpUgd = $dpjpUgdId !== '' && $dpjpUgdId === auth()->user()->myuser_code;
-                        $canReviewDpjp = $dpjpUgdId !== '' && ($isDpjpUgd || auth()->user()->hasRole('Admin'));
+                        $canReviewDpjp = $dpjpUgdId !== '' && ($isDpjpUgd || auth()->user()->can('ugd.sbar.reviewSemua'));
                     @endphp
 
                     @forelse ($filtered as $idx => $sbar)
@@ -784,16 +784,15 @@ new class extends Component {
 
                                     @if (!$isFormLocked)
                                         @php
-                                            $isAdmin = auth()->user()->hasRole('Admin');
                                             $myRole = trim((string) auth()->user()->profesiKlinis());
                                             $sbarRole = $sbar['profession'] ?? '';
                                             // Hapus SBAR: hanya level Supervisor (2) ke atas — fungsional (Dokter/Perawat dll)
                                             // tidak bisa, walau pemilik entri.
-                                            $canDelete = auth()->user()->hasAnyRole(['Admin', 'Manager Umum', 'Manager Medis', 'Supervisor Penunjang', 'Supervisor Tu', 'Mr', 'Casemix']);
-                                            $canCopy = $isAdmin || $myRole === $sbarRole;
-                                            // Edit: pemilik entri (petugasSBARCode) atau Admin
+                                            $canDelete = auth()->user()->can('ugd.sbar.hapus');
+                                            $canCopy = auth()->user()->can('ugd.sbar.copySemua') || $myRole === $sbarRole;
+                                            // Edit: pemilik entri (petugasSBARCode), atau role bercentang ugd.sbar.ubahSemua
                                             $ownerCode = (string) ($sbar['petugasSBARCode'] ?? '');
-                                            $canEdit = $isAdmin || ($ownerCode !== '' && $ownerCode === auth()->user()->myuser_code);
+                                            $canEdit = auth()->user()->can('ugd.sbar.ubahSemua') || ($ownerCode !== '' && $ownerCode === auth()->user()->myuser_code);
                                         @endphp
                                         <div class="flex gap-1.5">
                                             @if ($canReviewDpjp)

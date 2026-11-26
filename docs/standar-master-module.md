@@ -315,6 +315,7 @@ Modul yang sudah 100% sesuai: `master-agama`, `master-stocklocations`, `master-a
 - [ ] `x-enter-chain` + Enter di field terakhir = simpan; fokus otomatis saat modal buka
 - [ ] Toast sukses/gagal via `dispatch('toast', ...)`; refresh list via event `saved`
 - [ ] File tidak melebihi batas §7; pecah partial bila perlu
+- [ ] Hak akses (`docs/standar-hak-akses.md`): menu di AppMenu, `@can('master.<x>.tambah|ubah|hapus')` di tombol, `#[Authorize]` di openCreate/openEdit/delete (list & listener actions), `Gate::authorize()` tambah/ubah di awal `save()`, `#[Locked]` pada `$formMode`, lalu `php artisan akses:sinkron`
 
 ---
 

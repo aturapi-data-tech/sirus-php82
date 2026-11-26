@@ -12,10 +12,10 @@
             <x-input-error :messages="$errors->get('anamnesa.pengkajianPerawatan.perawatPenerima')" class="mt-1" />
 
             {{-- Buka Kunci TTD Perawat — muncul hanya bila SUDAH ter-TTD dan untuk role
-                 berhak (Gate dokumen.bukaKunci, sama dengan Buka Kunci Screening &
+                 berhak (Gate rj.dokumen.bukaKunci, sama dengan Buka Kunci Screening &
                  modul dokumen). Tombol TTD sendiri hilang begitu stempel terisi. --}}
             @if (filled($anamnesa['pengkajianPerawatan']['perawatPenerima'] ?? ''))
-                @can('dokumen.bukaKunci')
+                @can('rj.dokumen.bukaKunci')
                     @if ($adaDrPemeriksa)
                         {{-- Dokter menandatangani TERAKHIR dan TTD-nya mengesahkan seluruh
                              rekaman. Selagi stempelnya berdiri, stempel perawat tak boleh

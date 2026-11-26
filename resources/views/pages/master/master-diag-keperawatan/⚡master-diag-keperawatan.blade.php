@@ -4,6 +4,7 @@ use Livewire\Component;
 use Livewire\WithPagination;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
 use Illuminate\Support\Facades\DB;
 
 new class extends Component {
@@ -35,16 +36,19 @@ new class extends Component {
     /* -------------------------
      | Child modal triggers
      * ------------------------- */
+    #[Authorize('master.diag-keperawatan.tambah')]
     public function openCreate(): void
     {
         $this->dispatch('master.diagkep.openCreate');
     }
 
+    #[Authorize('master.diag-keperawatan.ubah')]
     public function openEdit(string $diagkepId): void
     {
         $this->dispatch('master.diagkep.openEdit', diagkepId: $diagkepId);
     }
 
+    #[Authorize('master.diag-keperawatan.hapus')]
     public function requestDelete(string $diagkepId): void
     {
         $this->dispatch('master.diagkep.requestDelete', diagkepId: $diagkepId);
@@ -128,10 +132,12 @@ new class extends Component {
                             </x-select-input>
                         </div>
 
+                        @can('master.diag-keperawatan.tambah')
                         <x-primary-button type="button" wire:click="openCreate">
                             <x-ikon nama="tambah" />
                             Tambah Data Diagnosis Keperawatan Baru
                         </x-primary-button>
+                        @endcan
                         <x-toolbar-refresh-reset :label="null" />
                     </div>
                 </div>
@@ -175,10 +181,14 @@ new class extends Component {
 
                                     <td class="ds-c px-6 py-4">
                                         <div class="flex justify-center gap-2">
+                                            @can('master.diag-keperawatan.ubah')
                                             <x-action-edit wire:click="openEdit('{{ $row->diagkep_id }}')" />
+                                            @endcan
 
+                                            @can('master.diag-keperawatan.hapus')
                                             <x-action-delete :action="'requestDelete(\'' . $row->diagkep_id . '\')'"
                                                 title="Hapus Diagnosis" message="Yakin hapus data diagnosis {{ $row->diagkep_desc }}?" />
+                                            @endcan
                                         </div>
                                     </td>
                                 </tr>

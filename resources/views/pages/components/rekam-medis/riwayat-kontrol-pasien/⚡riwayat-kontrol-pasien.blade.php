@@ -14,6 +14,7 @@
 
 use Carbon\Carbon;
 use Livewire\Component;
+use Livewire\Attributes\Authorize;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Computed;
 use Illuminate\Support\Facades\DB;
@@ -33,6 +34,7 @@ new class extends Component {
     public string $tglBaru = '';
 
     #[On('riwayat-kontrol.open')]
+    #[Authorize('pintu.riwayat-kontrol.open')]
     public function open(string $regNo, string $regName = ''): void
     {
         if (empty($regNo)) {

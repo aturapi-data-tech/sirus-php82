@@ -2,6 +2,7 @@
 // resources/views/pages/transaksi/ugd/administrasi-ugd/lain-lain-ugd.blade.php
 
 use Livewire\Component;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
@@ -17,6 +18,7 @@ new class extends Component {
     public ?int $rjNo = null;
     public array $rjLainLain = [];
 
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public ?int $editingDtl = null;
     public array $editRow = [];
 

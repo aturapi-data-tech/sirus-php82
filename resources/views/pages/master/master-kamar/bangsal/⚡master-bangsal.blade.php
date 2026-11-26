@@ -110,6 +110,7 @@ use Livewire\Component;
 use Livewire\WithPagination;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
 use Illuminate\Support\Facades\DB;
 
 new class extends Component {
@@ -141,16 +142,19 @@ new class extends Component {
     }
 
     /* --- Dispatch ke actions --- */
+    #[Authorize('master.kamar.tambah')]
     public function openCreateBangsal(): void
     {
         $this->dispatch('master.kamar.openCreateBangsal');
     }
 
+    #[Authorize('master.kamar.ubah')]
     public function openEditBangsal(string $id): void
     {
         $this->dispatch('master.kamar.openEditBangsal', bangsalId: $id);
     }
 
+    #[Authorize('master.kamar.hapus')]
     public function requestDeleteBangsal(string $id): void
     {
         $this->dispatch('master.kamar.deleteBangsal', bangsalId: $id);
@@ -266,10 +270,12 @@ new class extends Component {
                                         <option value="20">20</option>
                                     </x-select-input>
                                 </div>
+                                @can('master.kamar.tambah')
                                 <x-primary-button type="button" wire:click="openCreateBangsal">
                                     <x-ikon nama="tambah" />
                                     Tambah Data Bangsal Baru
                                 </x-primary-button>
+                                @endcan
                                 <x-toolbar-refresh-reset :label="null" />
                             </div>
                         </div>
@@ -355,10 +361,14 @@ new class extends Component {
                                             {{-- AKSI --}}
                                             <td class="ds-c px-6 py-4 align-top" wire:click.stop>
                                                 <div class="flex justify-center gap-2">
+                                                    @can('master.kamar.ubah')
                                                     <x-action-edit wire:click="openEditBangsal('{{ $bangsal->bangsal_id }}')" />
+                                                    @endcan
+                                                    @can('master.kamar.hapus')
                                                     <x-action-delete :action="'requestDeleteBangsal(\'' . $bangsal->bangsal_id . '\')'"
                                                         title="Hapus Bangsal"
                                                         message="Yakin hapus bangsal {{ $bangsal->bangsal_name }}?" />
+                                                    @endcan
                                                 </div>
                                             </td>
                                         </tr>

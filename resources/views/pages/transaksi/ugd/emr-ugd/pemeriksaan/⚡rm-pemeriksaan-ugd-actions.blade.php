@@ -1,5 +1,6 @@
 <?php
 
+use Livewire\Attributes\Authorize;
 use Livewire\Component;
 use App\Support\AnatomiPemeriksaan;
 use Livewire\Attributes\On;
@@ -253,6 +254,7 @@ new class extends Component {
     /* ===============================
      | UPLOAD HASIL PENUNJANG
      =============================== */
+    #[Authorize('ugd.emr.uploadPenunjang')]
     public function uploadHasilPenunjang(): void
     {
         if ($this->isFormLocked) {
@@ -326,6 +328,7 @@ new class extends Component {
     /* ===============================
      | DELETE HASIL PENUNJANG
      =============================== */
+    #[Authorize('ugd.emr.uploadPenunjang')]
     public function deleteHasilPenunjang(string $file): void
     {
         if ($this->isFormLocked) {
@@ -387,6 +390,7 @@ new class extends Component {
     /* ===============================
      | VIEW PENUNJANG PDF
      =============================== */
+    #[Authorize('ugd.emr.lihatUploadPenunjang')]
     public function openModalViewPenunjang(string $file): void
     {
         // Strategi: ambil filename saja, rakit path sesuai setting (mount → upload → legacy).

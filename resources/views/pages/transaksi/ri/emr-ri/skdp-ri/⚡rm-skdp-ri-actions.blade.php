@@ -347,7 +347,7 @@ new class extends Component {
     ═══════════════════════════════════════ */
     public function bukaDaftarSuratKontrol(): void
     {
-        if (!auth()->user()?->can('bpjs.hapusSuratKontrol')) {
+        if (!auth()->user()?->can('ri.bpjs.hapusSuratKontrol')) {
             $this->dispatch('toast', type: 'error', message: 'Hanya Admin & manager ke atas yang dapat membuka/menghapus surat kontrol BPJS.');
             return;
         }
@@ -454,7 +454,7 @@ new class extends Component {
 
                     <div class="flex flex-wrap items-center justify-end gap-2 pt-2">
                         {{-- Daftar surat kontrol BPJS milik kartu pasien (lihat + hapus di VClaim) — mepet kiri --}}
-                        @if (!$isFormLocked && auth()->user()?->can('bpjs.hapusSuratKontrol'))
+                        @if (!$isFormLocked && auth()->user()?->can('ri.bpjs.hapusSuratKontrol'))
                             <x-outline-button type="button" wire:click="bukaDaftarSuratKontrol" wire:loading.attr="disabled"
                                 wire:target="bukaDaftarSuratKontrol" class="mr-auto">
                                 <span wire:loading.remove wire:target="bukaDaftarSuratKontrol" class="inline-flex items-center gap-2">

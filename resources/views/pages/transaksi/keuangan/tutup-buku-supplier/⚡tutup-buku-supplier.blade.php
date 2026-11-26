@@ -8,7 +8,7 @@
  * baris yang sudah ada diperbarui, yang belum ada dibuat; angka lama dicatat di log.
  * Opname saldo DP tidak dimasukkan (tetap dihitung terpisah oleh SaldoDpSupplier).
  *
- * Khusus Admin. Tidak menyentuh saldo akun Neraca (tktxn_saldoawalakuns).
+ * Hak keuangan.tutup-buku (Role Control). Tidak menyentuh saldo akun Neraca (tktxn_saldoawalakuns).
  */
 
 use Livewire\Component;
@@ -20,8 +20,6 @@ use App\Support\Keuangan\SaldoDpSupplier;
 use App\Support\Keuangan\TutupBukuSupplier;
 
 new class extends Component {
-    private const ROLE_TUTUP_BUKU = ['Admin'];
-
     public string $jenis = SaldoDpSupplier::JENIS_PBF;
     /** Tahun yang ditutup — menghasilkan saldo awal tahun berikutnya. */
     public int $tahun = 0;
@@ -31,7 +29,7 @@ new class extends Component {
 
     public function mount(): void
     {
-        abort_unless(auth()->user()?->hasAnyRole(self::ROLE_TUTUP_BUKU), 403, 'Tutup buku supplier khusus Admin.');
+        abort_unless(auth()->user()?->can('keuangan.tutup-buku.lihat'), 403, 'Anda tidak memiliki akses ke Tutup Buku Supplier.');
         $this->tahun = (int) Carbon::now()->year - 1;
     }
 
@@ -79,8 +77,8 @@ new class extends Component {
 
     public function siapkanProses(): void
     {
-        if (!auth()->user()?->hasAnyRole(self::ROLE_TUTUP_BUKU)) {
-            $this->dispatch('toast', type: 'error', message: 'Tutup buku supplier khusus Admin.');
+        if (!auth()->user()?->can('keuangan.tutup-buku.ubah')) {
+            $this->dispatch('toast', type: 'error', message: 'Anda tidak memiliki akses untuk memproses tutup buku supplier.');
             return;
         }
         if ($this->ringkasan['beda'] + $this->ringkasan['baru'] === 0) {
@@ -98,8 +96,8 @@ new class extends Component {
     public function proses(): void
     {
         $this->konfirmasi = false;
-        if (!auth()->user()?->hasAnyRole(self::ROLE_TUTUP_BUKU)) {
-            $this->dispatch('toast', type: 'error', message: 'Tutup buku supplier khusus Admin.');
+        if (!auth()->user()?->can('keuangan.tutup-buku.ubah')) {
+            $this->dispatch('toast', type: 'error', message: 'Anda tidak memiliki akses untuk memproses tutup buku supplier.');
             return;
         }
 
@@ -159,10 +157,12 @@ new class extends Component {
                     <x-toggle wire:model.live="hanyaBerubah" :trueValue="true" :falseValue="false" label="Hanya yang berubah / baru" />
                 </div>
                 <div class="ml-auto">
+                    @can('keuangan.tutup-buku.ubah')
                     <x-primary-button type="button" wire:click="siapkanProses" class="h-11"
                         wire:loading.attr="disabled" wire:target="siapkanProses">
                         <x-ikon nama="proses" /> Proses Tutup Buku {{ $tahun }}
                     </x-primary-button>
+                    @endcan
                 </div>
             </div>
 

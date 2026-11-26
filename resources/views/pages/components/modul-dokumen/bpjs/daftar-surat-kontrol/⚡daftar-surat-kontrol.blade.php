@@ -5,11 +5,13 @@
 // Dipakai saat insert ditolak "Sudah Diterbitkan Rencana Kunjungan Kontrol Di Tanggal Yang Sama":
 // petugas bisa melihat surat mana yang menempati tanggal itu lalu menghapusnya bila memang tak dipakai.
 // Tampilan = standar modul dokumen (modal full, header, tabel-daftar, footer sticky).
-// Hanya Admin & manager ke atas (Gate bpjs.hapusSuratKontrol) — dicek di buka & hapus, bukan cuma tombol.
+// Hanya Admin & manager ke atas (Gate rj./ri.bpjs.hapusSuratKontrol, PER JALUR) — dicek di buka & hapus, bukan cuma tombol.
 // Fungsi dasarnya: membuat ulang No SKDP saat surat kontrol sudah terbit di BPJS tapi nomornya GAGAL tersimpan ke DB.
 // Maka No SKDP BPJS yang SUDAH tersimpan di JSON kunjungan ini tidak boleh dihapus — dicek ulang dari DB saat hapus.
 
 use Livewire\Component;
+use Livewire\Attributes\Authorize;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Carbon\Carbon;
 use App\Http\Traits\BPJS\VclaimTrait;
@@ -21,6 +23,7 @@ new class extends Component {
 
     public string $noKartu = '';
     public string $noSepSekarang = '';
+    #[Locked] // menentukan hak yang dicek (rj./ri.) — tak boleh diganti dari klien
     public ?string $jalur = null;
 
     /** rjNo (RJ) / riHdrNo (RI) kunjungan pembuka modal. */
@@ -35,14 +38,16 @@ new class extends Component {
     public string $pesanGagalMuat = '';
 
     #[On('daftar-surat-kontrol-bpjs.open')]
+    #[Authorize('pintu.daftar-surat-kontrol-bpjs.open')]
     public function bukaDaftar(?string $noKartu = null, ?string $noSep = null, ?string $jalur = null, ?string $nomorKunjungan = null): void
     {
-        if (!auth()->user()?->can('bpjs.hapusSuratKontrol')) {
-            $this->dispatch('toast', type: 'error', message: 'Hanya Admin & manager ke atas yang dapat membuka/menghapus surat kontrol BPJS.');
-            return;
-        }
+        // Jalur dulu: hak yang dicek bergantung padanya.
         if (!in_array($jalur, ['RJ', 'RI'], true) || blank($nomorKunjungan)) {
             $this->dispatch('toast', type: 'error', message: 'Kunjungan asal tidak dikenali — buka ulang dari form Surat Kontrol.');
+            return;
+        }
+        if (!$this->bolehHapusSuratKontrol($jalur)) {
+            $this->dispatch('toast', type: 'error', message: 'Hanya Admin & manager ke atas yang dapat membuka/menghapus surat kontrol BPJS.');
             return;
         }
         $this->noKartu = trim((string) $noKartu);
@@ -137,9 +142,22 @@ new class extends Component {
         $this->muatDaftar();
     }
 
+    /** Hak hapus surat kontrol PER JALUR: RJ → rj.bpjs.hapusSuratKontrol, RI → ri.bpjs.hapusSuratKontrol. */
+    private function bolehHapusSuratKontrol(?string $jalur): bool
+    {
+        if ($jalur === 'RJ') {
+            return (bool) auth()->user()?->can('rj.bpjs.hapusSuratKontrol');
+        }
+        if ($jalur === 'RI') {
+            return (bool) auth()->user()?->can('ri.bpjs.hapusSuratKontrol');
+        }
+
+        return false;
+    }
+
     public function hapus(string $noSuratKontrol): void
     {
-        if (!auth()->user()?->can('bpjs.hapusSuratKontrol')) {
+        if (!$this->bolehHapusSuratKontrol($this->jalur)) {
             $this->dispatch('toast', type: 'error', message: 'Hanya Admin & manager ke atas yang dapat membuka/menghapus surat kontrol BPJS.');
             return;
         }

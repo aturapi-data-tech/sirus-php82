@@ -512,7 +512,7 @@ new class extends Component {
             $this->dispatch('coding-fhir-rj.tersimpan', berhasil: true);
             return;
         }
-        if (!auth()->user()?->can('emr.codingFhir')) {
+        if (!auth()->user()?->can('rj.emr.codingFhir')) {
             $this->dispatch('toast', type: 'error', message: 'Anda tidak berhak menyimpan Coding SATUSEHAT.');
             $this->dispatch('coding-fhir-rj.tersimpan', berhasil: false);
             return;

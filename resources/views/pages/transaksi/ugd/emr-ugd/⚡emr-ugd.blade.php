@@ -2,6 +2,7 @@
 // resources/views/pages/transaksi/ugd/emr-ugd/emr-ugd.blade.php
 
 use Livewire\Component;
+use Livewire\Attributes\Authorize;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
@@ -71,6 +72,8 @@ new class extends Component {
         $this->dispatch('close-modal', name: 'icare-modal-ugd');
     }
 
+    #[Authorize('ugd.emr.myiCare')]
+
     public function myiCare(string $noSep): void
     {
         if (!$noSep) {
@@ -118,6 +121,7 @@ new class extends Component {
      | OPEN REKAM MEDIS UGD
      =============================== */
     #[On('emr-ugd.rekam-medis.open')]
+    #[Authorize('pintu.emr-ugd.rekam-medis.open')]
     public function openRekamMedis(int $rjNo): void
     {
         // Mode embedded dibuka oleh pembungkus (emr-coding-ugd), bukan event ini. Event yang sama datang
@@ -172,6 +176,7 @@ new class extends Component {
     /* ===============================
      | ADMINISTRASI
      =============================== */
+    #[Authorize('ugd.emr.bukaAdministrasi')]
     public function openAdministrasiPasien(int $rjNo): void
     {
         $this->dispatch('emr-ugd.administrasi.open', rjNo: $rjNo);
@@ -182,6 +187,7 @@ new class extends Component {
         $this->dispatch('emr-ugd.log-aktivitas.open', rjNo: $rjNo);
     }
 
+    #[Authorize('ugd.emr.bukaEresep')]
     public function openEresep(int $rjNo): void
     {
         if (!$rjNo) {

@@ -4,6 +4,7 @@ use Livewire\Component;
 use Livewire\WithPagination;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
 use Livewire\Attributes\Url;
 use Illuminate\Support\Facades\DB;
 use App\Support\CakupanKfa;
@@ -68,6 +69,7 @@ new class extends Component {
      | Open Create Modal
              * Fungsi: Trigger modal create di child component
      * ------------------------- */
+    #[Authorize('master.obat.tambah')]
     public function openCreate(): void
     {
         $this->dispatch('master.obat.openCreate');
@@ -77,6 +79,7 @@ new class extends Component {
      | Open Edit Modal
              * Fungsi: Trigger modal edit di child component
      * ------------------------- */
+    #[Authorize('master.obat.ubah')]
     public function openEdit(string $productId): void
     {
         $this->dispatch('master.obat.openEdit', productId: $productId);
@@ -86,6 +89,7 @@ new class extends Component {
      | Request Delete
              * Fungsi: Delegate proses delete ke child component (actions)
      * ------------------------- */
+    #[Authorize('master.obat.hapus')]
     public function requestDelete(string $productId): void
     {
         $this->dispatch('master.obat.requestDelete', productId: $productId);
@@ -288,10 +292,12 @@ new class extends Component {
                         </div>
 
                         {{-- Tambah Obat Button --}}
+                        @can('master.obat.tambah')
                         <x-primary-button type="button" wire:click="openCreate">
                             <x-ikon nama="tambah" />
                             Tambah Data Obat Baru
                         </x-primary-button>
+                        @endcan
 
                         <x-toolbar-refresh-reset :label="null" />
                     </div>
@@ -379,10 +385,14 @@ new class extends Component {
 
                                     <td class="ds-c px-6 py-4">
                                         <div class="flex justify-center gap-2">
+                                            @can('master.obat.ubah')
                                             <x-action-edit wire:click="openEdit('{{ $row->product_id }}')" />
+                                            @endcan
+                                            @can('master.obat.hapus')
                                             <x-action-delete :action="'requestDelete(\'' . $row->product_id . '\')'"
                                                 title="Hapus Obat"
                                                 message="Yakin hapus data obat {{ $row->product_name }}?" />
+                                            @endcan
                                         </div>
                                     </td>
                                 </tr>

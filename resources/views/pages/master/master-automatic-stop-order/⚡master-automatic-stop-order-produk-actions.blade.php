@@ -10,12 +10,17 @@ use App\Support\AutomaticStopOrder\AutomaticStopOrderMaster;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
+use Livewire\Attributes\Locked;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Component;
 
 new class extends Component {
     use WithRenderVersioningTrait;
 
+    #[Locked]
     public string $formMode   = 'create';
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public string $originalId = '';
     public array  $renderVersions = [];
     protected array $renderAreas  = ['modal'];
@@ -51,6 +56,7 @@ new class extends Component {
     }
 
     #[On('master.automatic-stop-order.openCreateProduk')]
+    #[Authorize('master.automatic-stop-order.tambah')]
     public function openCreate(int $golonganId = 0): void
     {
         $this->resetForm();
@@ -66,6 +72,7 @@ new class extends Component {
     }
 
     #[On('master.automatic-stop-order.openEditProduk')]
+    #[Authorize('master.automatic-stop-order.ubah')]
     public function openEdit(string $productId): void
     {
         $row = DB::table('rsmst_stop_order_products as pemetaan')
@@ -95,6 +102,7 @@ new class extends Component {
     }
 
     #[On('master.automatic-stop-order.toggleActiveProduk')]
+    #[Authorize('master.automatic-stop-order.ubah')]
     public function toggleActive(string $productId): void
     {
         $sekarang = (string) DB::table('rsmst_stop_order_products')->where('product_id', $productId)->value('active_status');
@@ -111,6 +119,7 @@ new class extends Component {
     }
 
     #[On('master.automatic-stop-order.requestDeleteProduk')]
+    #[Authorize('master.automatic-stop-order.hapus')]
     public function deleteProduk(string $productId): void
     {
         $deleted = DB::table('rsmst_stop_order_products')->where('product_id', $productId)->delete();
@@ -135,6 +144,8 @@ new class extends Component {
 
     public function save(): void
     {
+        Gate::authorize($this->formMode === 'create' ? 'master.automatic-stop-order.tambah' : 'master.automatic-stop-order.ubah');
+
         $this->validate($this->rules(), $this->messages(), $this->validationAttributes());
 
         if ($this->formMode === 'create') {

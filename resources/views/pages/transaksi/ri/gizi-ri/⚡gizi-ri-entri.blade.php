@@ -7,6 +7,7 @@
 // (query ringan tanpa CLOB) lalu meneruskan event open/save ke komponen.
 
 use Livewire\Component;
+use Livewire\Attributes\Authorize;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 
@@ -60,6 +61,7 @@ new class extends Component {
     }
 
     // Buka modal sibling di halaman worklist (event sama dgn footer EMR RI)
+    #[Authorize('ri.gizi.bukaModulDokumenEntri')]
     public function openModulDokumen(): void
     {
         if (empty($this->riHdrNo)) {
@@ -68,6 +70,7 @@ new class extends Component {
         $this->dispatch('emr-ri.modul-dokumen.open', riHdrNo: $this->riHdrNo);
     }
 
+    #[Authorize('ri.gizi.bukaAdministrasiEntri')]
     public function openAdministrasiPasien(): void
     {
         if (empty($this->riHdrNo)) {
@@ -265,7 +268,7 @@ new class extends Component {
                     {{-- KIRI: aksi lintas modul --}}
                     <div class="flex flex-wrap items-center gap-2">
 
-                        @hasanyrole('Admin|Perawat|Dokter|Casemix|Apoteker|Gizi')
+                        @can('ri.gizi.bukaModulDokumenEntri')
                             {{-- Modul Dokumen — indigo solid --}}
                             <x-primary-button type="button" wire:click="openModulDokumen"
                                 wire:loading.attr="disabled" wire:target="openModulDokumen"
@@ -276,9 +279,9 @@ new class extends Component {
                                 <span wire:loading wire:target="openModulDokumen"
                                     class="flex items-center gap-1"><x-loading /> Memuat...</span>
                             </x-primary-button>
-                        @endhasanyrole
+                        @endcan
 
-                        @hasanyrole('Admin|Perawat|Casemix|Apoteker|Gizi')
+                        @can('ri.gizi.bukaAdministrasiEntri')
                             {{-- Administrasi — teal solid --}}
                             <x-primary-button type="button" wire:click="openAdministrasiPasien"
                                 wire:loading.attr="disabled" wire:target="openAdministrasiPasien"
@@ -290,7 +293,7 @@ new class extends Component {
                                 <span wire:loading wire:target="openAdministrasiPasien"
                                     class="flex items-center gap-1"><x-loading /> Memuat...</span>
                             </x-primary-button>
-                        @endhasanyrole
+                        @endcan
 
                     </div>
 

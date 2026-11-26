@@ -430,7 +430,7 @@ new class extends Component {
 
     public function bukaKunci(string $createdAt): void
     {
-        if (!auth()->user()?->can('dokumen.bukaKunci')) {
+        if (!auth()->user()?->can('ugd.dokumen.bukaKunci')) {
             $this->dispatch('toast', type: 'error', message: 'Anda tidak berwenang membuka kunci.');
             return;
         }
@@ -597,7 +597,7 @@ new class extends Component {
 
     public function hapus(string $createdAt): void
     {
-        if (!auth()->user()?->can('dokumen.hapus')) {
+        if (!auth()->user()?->can('ugd.dokumen.hapus')) {
             $this->dispatch('toast', type: 'error', message: 'Anda tidak berwenang menghapus entri.');
             return;
         }
@@ -1043,7 +1043,7 @@ new class extends Component {
                                                         <x-modul-dokumen.status-entri :final="$isFinal" />
                                                     </td>
                                                     <td class="px-4 py-3 text-center align-middle whitespace-nowrap" @click.stop>
-                                                        <x-modul-dokumen.aksi-entri kunci="{{ $rowKey }}" :final="$isFinal" :terkunci="$isFormLocked"
+                                                        <x-modul-dokumen.aksi-entri jalur="ugd" kunci="{{ $rowKey }}" :final="$isFinal" :terkunci="$isFormLocked"
                                                             judulLihat="Lihat detail (read-only) di form atas"
                                                             judulBukaKunci="Buka Kunci Surgical Safety Checklist"
                                                             pesanBukaKunci="KETIGA TTD (Dokter Anestesi, Perawat Instrumen, Operator) akan dicabut & entri kembali menjadi draft untuk dikoreksi. Lanjutkan?"

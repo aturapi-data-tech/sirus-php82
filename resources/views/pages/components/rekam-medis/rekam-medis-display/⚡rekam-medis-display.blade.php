@@ -1,6 +1,8 @@
 <?php
 
+use Livewire\Attributes\Authorize;
 use Livewire\Component;
+use Livewire\Attributes\Locked;
 use Livewire\WithPagination;
 use Livewire\Attributes\Computed;
 use Illuminate\Support\Facades\DB;
@@ -75,6 +77,7 @@ new class extends Component {
  | Properties tambahan untuk Copy Resep
  * ======================= */
 
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public string $rjNoRefCopyTo = ''; // No. transaksi RJ yang sedang aktif (tujuan copy)
 
     /**
@@ -93,6 +96,7 @@ new class extends Component {
     /* =======================
  | Copy Resep
  * ======================= */
+    #[Authorize('rj.emr.salinResep')]
     public function copyResep(string $txnNo, string $layananStatus): void
     {
         if ($layananStatus !== 'RJ') {
@@ -384,10 +388,14 @@ new class extends Component {
     /** txn_no kunjungan yg sedang dibuka di modal RM (untuk navigasi Prev/Next). */
     public $navTxnNo = null;
 
+    #[Authorize('rj.emr.bukaRiwayatRekamMedis')]
+
     public function OpenRekamMedisRj($rjNo): void
     {
         $this->openRekamMedis($rjNo, 'RJ');
     }
+
+    #[Authorize('ri.emr.bukaRiwayatRekamMedis')]
 
     public function OpenRekamMedisRi($riHdrNo): void
     {
@@ -400,6 +408,7 @@ new class extends Component {
      * cetak di modul-dokumen hidup bersamaan di halaman Pelayanan UGD (lihat catatan
      * di surat-kematian-riwayat-ugd.blade.php).
      */
+    #[Authorize('ugd.emr.bukaRiwayatRekamMedis')]
     public function lihatSuratKematianUgd($rjNo): void
     {
         $this->dispatch('surat-kematian-riwayat.lihat', rjNo: (int) $rjNo);
@@ -410,20 +419,28 @@ new class extends Component {
         $this->dispatch('surat-kematian-riwayat.cetak', rjNo: (int) $rjNo);
     }
 
+    #[Authorize('ri.emr.bukaRiwayatRekamMedis')]
+
     public function lihatSuratKematianRi($riHdrNo): void
     {
         $this->dispatch('surat-kematian-riwayat-ri.lihat', riHdrNo: (string) $riHdrNo);
     }
+
+    #[Authorize('ri.emr.bukaRiwayatRekamMedis')]
 
     public function cetakSuratKematianRi($riHdrNo): void
     {
         $this->dispatch('surat-kematian-riwayat-ri.cetak', riHdrNo: (string) $riHdrNo);
     }
 
+    #[Authorize('ugd.emr.bukaRiwayatRekamMedis')]
+
     public function OpenRekamMedisUgd($rjNo): void
     {
         $this->openRekamMedis($rjNo, 'UGD');
     }
+
+    #[Authorize('rj.emr.lihatRekamMedisV1')]
 
     public function OpenRekamMedisRjV1($rjNo): void
     {
@@ -495,6 +512,7 @@ new class extends Component {
      * Hanya valid kalau component di-mount dengan contextRI=true.
      * Listener di rm-pengkajian-awal-ri-actions akan fetch data UGD & set fields.
      */
+    #[Authorize('ri.emr.salinAsesmenPerawatUgd')]
     public function copyAssessmentPerawatUGD(int $txnNoUGD): void
     {
         if (!$this->contextRI) {
@@ -509,6 +527,7 @@ new class extends Component {
      * Copy Asesmen Dokter dari kunjungan UGD ke Pengkajian Dokter RI.
      * Listener di rm-pengkajian-dokter-ri-actions akan fetch data UGD & set fields.
      */
+    #[Authorize('ri.emr.salinAsesmenDokterUgd')]
     public function copyAssessmentDokterUGD(int $txnNoUGD): void
     {
         if (!$this->contextRI) {
@@ -785,20 +804,20 @@ new class extends Component {
                                                     </div>
 
                                                     {{-- Actions --}}
-                                                    @role(['Dokter', 'Admin', 'Perawat', 'Casemix', 'Mr'])
+                                                    @canany(['rj.emr.bukaRiwayatRekamMedis', 'ugd.emr.bukaRiwayatRekamMedis', 'ri.emr.bukaRiwayatRekamMedis'])
                                                         <div class="mt-3 space-y-2">
                                                             <div class="flex flex-wrap gap-2">
-                                                                @if ($isRJ)
+                                                                @if ($isRJ && auth()->user()->can('rj.emr.bukaRiwayatRekamMedis'))
                                                                     <div class="flex flex-wrap gap-2">
                                                                         @if (!$contextRI)
-                                                                            @hasanyrole('Dokter|Admin')
+                                                                            @can('rj.emr.salinResep')
                                                                                 <x-primary-button type="button"
                                                                                     wire:click="copyResep('{{ $myQData->txn_no }}','{{ $myQData->layanan_status }}')"
                                                                                     class="text-sm px-3 py-1.5">
                                                                                     <x-ikon nama="salin" class="mr-1" />
                                                                                     Copy Resep
                                                                                 </x-primary-button>
-                                                                            @endhasanyrole
+                                                                            @endcan
                                                                         @endif
 
                                                                         <x-outline-button type="button"
@@ -819,7 +838,7 @@ new class extends Component {
                                                                             </span>
                                                                         </x-outline-button>
 
-                                                                        @hasanyrole('Perawat|Admin|Casemix|Mr|Manager Medis|Manager Umum')
+                                                                        @can('rj.emr.lihatRekamMedisV1')
                                                                             <x-outline-button type="button"
                                                                                 wire:click="OpenRekamMedisRjV1('{{ $myQData->txn_no }}')"
                                                                                 wire:loading.attr="disabled"
@@ -857,11 +876,11 @@ new class extends Component {
                                                                                     </span>
                                                                                 </x-outline-button>
                                                                             @endif
-                                                                        @endhasanyrole
+                                                                        @endcan
                                                                     </div>
                                                                 @endif
 
-                                                                @if ($isUGD)
+                                                                @if ($isUGD && auth()->user()->can('ugd.emr.bukaRiwayatRekamMedis'))
                                                                     @php
                                                                         // Pintasan Surat Kematian: hanya bila kunjungan ini P0 DAN suratnya
                                                                         // sudah tersimpan — kalau belum ada, tak ada yg bisa dilihat/dicetak.
@@ -909,7 +928,7 @@ new class extends Component {
                                                                         @endif
 
                                                                         @if ($contextRI)
-                                                                            @hasanyrole('Perawat|Admin')
+                                                                            @can('ri.emr.salinAsesmenPerawatUgd')
                                                                                 <x-primary-button type="button"
                                                                                     wire:click="copyAssessmentPerawatUGD({{ $myQData->txn_no }})"
                                                                                     wire:confirm="Copy asesmen perawat (keluhan utama, tanda vital, BB/TB) dari kunjungan UGD ini ke Pengkajian Awal Rawat Inap?"
@@ -929,9 +948,9 @@ new class extends Component {
                                                                                         Menyalin...
                                                                                     </span>
                                                                                 </x-primary-button>
-                                                                            @endhasanyrole
+                                                                            @endcan
 
-                                                                            @hasanyrole('Dokter|Admin')
+                                                                            @can('ri.emr.salinAsesmenDokterUgd')
                                                                                 <x-primary-button type="button"
                                                                                     wire:click="copyAssessmentDokterUGD({{ $myQData->txn_no }})"
                                                                                     wire:confirm="Copy asesmen dokter (keluhan utama, riwayat penyakit sekarang/dahulu, alergi, pemeriksaan fisik) dari kunjungan UGD ini ke Pengkajian Dokter Rawat Inap?"
@@ -951,12 +970,12 @@ new class extends Component {
                                                                                         Menyalin...
                                                                                     </span>
                                                                                 </x-primary-button>
-                                                                            @endhasanyrole
+                                                                            @endcan
                                                                         @endif
                                                                     </div>
                                                                 @endif
 
-                                                                @if ($isRI)
+                                                                @if ($isRI && auth()->user()->can('ri.emr.bukaRiwayatRekamMedis'))
                                                                     {{-- Resume Medis RI (RM 41) — preview modal (read-only).
                                                                          Pakai cetak-rekam-medis-ri.open (preview view), bukan
                                                                          resume-medis-ri.open (editor TinyMCE). Pembuatan/edit
@@ -1016,7 +1035,7 @@ new class extends Component {
                                                                 </div>
                                                             @endif
                                                         </div>
-                                                    @endrole
+                                                    @endcanany
                                                 </td>
                                             </tr>
                                         @empty

@@ -304,7 +304,7 @@ new class extends Component {
      =============================== */
     private function bolehBukaKunci(): bool
     {
-        return (bool) auth()->user()?->can('dokumen.bukaKunci');
+        return (bool) auth()->user()?->can('ri.dokumen.bukaKunci');
     }
 
     public function bukaKunci(): void
@@ -740,7 +740,7 @@ new class extends Component {
                         <x-cetak-button wire:click="cetak" label="Cetak" />
 
                         @if ($isFormLocked && !empty($consent['petugasPemeriksa']))
-                            @can('dokumen.bukaKunci')
+                            @can('ri.dokumen.bukaKunci')
                                 <x-confirm-button variant="warning-soft" action="bukaKunci()"
                                     title="Buka Kunci General Consent"
                                     message="TTD petugas akan dicabut & form dapat diedit kembali. Lanjutkan?"

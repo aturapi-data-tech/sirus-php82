@@ -1,6 +1,8 @@
 <?php
 
 use Livewire\Component;
+use Livewire\Attributes\Locked;
+use Livewire\Attributes\Authorize;
 use Livewire\Attributes\On;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -11,6 +13,7 @@ new class extends Component {
     use EmrRJTrait, WithRenderVersioningTrait;
 
     public bool $isFormLocked = false;
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public ?int $rjNo = null;
     /**
      * Jejak petugas administrasi terakhir + penanda termuat — bukan dokumennya.
@@ -71,6 +74,7 @@ new class extends Component {
      | OPEN MODAL
      =============================== */
     #[On('emr-rj.administrasi.open')]
+    #[Authorize('pintu.emr-rj.administrasi.open')]
     public function openAdministrasiPasien(int $rjNo, bool $readOnly = false): void
     {
         $this->resetForm();
@@ -760,7 +764,7 @@ new class extends Component {
 
                     {{-- KIRI: Log Aktivitas — slate solid, manager ke atas (pola footer EMR/Administrasi RI) --}}
                     <div class="flex items-center gap-2">
-                        @can('emr.logAktivitas')
+                        @can('rj.emr.logAktivitas')
                             <x-primary-button type="button" wire:click="openLogAktivitas({{ $rjNo }})"
                                 wire:loading.attr="disabled" wire:target="openLogAktivitas"
                                 class="gap-1 !bg-slate-600 hover:!bg-slate-700 !text-white focus:!ring-slate-300 dark:!bg-slate-600 dark:!text-white dark:hover:!bg-slate-700 dark:focus:!ring-slate-900">

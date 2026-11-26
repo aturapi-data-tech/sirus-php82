@@ -24,6 +24,7 @@
  */
 
 use Livewire\Component;
+use Livewire\Attributes\Authorize;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\SATUSEHAT\SatuSehatTrait;
@@ -49,6 +50,7 @@ new class extends Component {
     public string $pesan = '';
 
     #[On('rekam-medis-nasional.open')]
+    #[Authorize('pintu.rekam-medis-nasional.open')]
     public function open(string $jalur, $nomor): void
     {
         $this->reset();

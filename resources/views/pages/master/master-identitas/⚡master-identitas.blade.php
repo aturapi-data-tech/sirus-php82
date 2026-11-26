@@ -17,6 +17,7 @@
  */
 
 use Livewire\Component;
+use Livewire\Attributes\Authorize;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\QueryException;
 
@@ -102,6 +103,7 @@ new class extends Component {
         }
     }
 
+    #[Authorize('master.identitas.ubah')]
     public function simpan(): void
     {
         $this->validate(
@@ -329,10 +331,12 @@ new class extends Component {
                 </div>
                 <div class="flex justify-end gap-2">
                     <x-secondary-button type="button" wire:click="batal"><x-ikon nama="batal" /> Batal</x-secondary-button>
+                    @can('master.identitas.ubah')
                     <x-primary-button type="button" wire:click="simpan" wire:loading.attr="disabled" wire:target="simpan">
                         <span wire:loading.remove wire:target="simpan" class="inline-flex items-center gap-2"><x-ikon nama="simpan" /> Simpan</span>
                         <span wire:loading wire:target="simpan"><x-loading /> Menyimpan...</span>
                     </x-primary-button>
+                    @endcan
                 </div>
             </div>
         </div>

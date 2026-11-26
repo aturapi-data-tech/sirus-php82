@@ -11,6 +11,8 @@
 // sini: bila klaim diganti ke BPJS, SEP dibuat lewat Pendaftaran Ubah (Mr/Admin).
 
 use Livewire\Component;
+use Livewire\Attributes\Locked;
+use Livewire\Attributes\Authorize;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
@@ -19,6 +21,7 @@ use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 new class extends Component {
     use EmrRITrait, WithRenderVersioningTrait;
 
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public ?int $riHdrNo = null;
 
     public string $klaimId = 'UM';
@@ -40,6 +43,7 @@ new class extends Component {
      | OPEN — dipicu dari menu titik-3 Daftar Kasir RI
      =============================== */
     #[On('open-ubah-data-kunjungan-ri')]
+    #[Authorize('pintu.open-ubah-data-kunjungan-ri')]
     public function openUbahDataKunjungan(int $riHdrNo): void
     {
         if (empty($riHdrNo)) {

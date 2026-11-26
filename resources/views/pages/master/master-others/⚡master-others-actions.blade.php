@@ -2,6 +2,9 @@
 
 use Livewire\Component;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
+use Livewire\Attributes\Locked;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Database\QueryException;
@@ -10,6 +13,7 @@ use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 new class extends Component {
     use WithRenderVersioningTrait;
 
+    #[Locked]
     public string $formMode = 'create'; // create|edit
     public array $renderVersions = [];
     protected array $renderAreas = ['modal'];
@@ -25,6 +29,7 @@ new class extends Component {
     }
 
     #[On('master.others.openCreate')]
+    #[Authorize('master.others.tambah')]
     public function openCreate(): void
     {
         $this->resetFormFields();
@@ -36,6 +41,7 @@ new class extends Component {
     }
 
     #[On('master.others.openEdit')]
+    #[Authorize('master.others.ubah')]
     public function openEdit(string $otherId): void
     {
         $row = DB::table('rsmst_others')->where('other_id', $otherId)->first();
@@ -114,6 +120,8 @@ new class extends Component {
 
     public function save(): void
     {
+        Gate::authorize($this->formMode === 'create' ? 'master.others.tambah' : 'master.others.ubah');
+
         $data = $this->validate();
 
         $payload = [
@@ -138,6 +146,7 @@ new class extends Component {
     }
 
     #[On('master.others.toggleActive')]
+    #[Authorize('master.others.ubah')]
     public function toggleActive(string $otherId): void
     {
         $cur = (string) DB::table('rsmst_others')->where('other_id', $otherId)->value('active_status');
@@ -149,6 +158,7 @@ new class extends Component {
     }
 
     #[On('master.others.requestDelete')]
+    #[Authorize('master.others.hapus')]
     public function deleteFromGrid(string $otherId): void
     {
         try {

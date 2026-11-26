@@ -1,6 +1,7 @@
 <?php
 
 use Livewire\Component;
+use Livewire\Attributes\Authorize;
 use Livewire\WithPagination;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
@@ -86,6 +87,7 @@ new class extends Component {
         $this->dispatch('ri-resep-antrian.telaah.open', slsNo: $slsNo);
     }
 
+    #[Authorize('ri-resep.antrian.bukaAdministrasi')]
     public function openAdministrasi(int $slsNo, ?string $tab = null): void
     {
         $this->dispatch('ri-resep-administrasi.open', slsNo: $slsNo, tab: $tab);
@@ -568,7 +570,7 @@ new class extends Component {
 
                                             {{-- Masuk / Keluar Apotek (TaskID 6/7 components — pola UGD) --}}
                                             <div class="grid grid-cols-2 gap-1">
-                                                @hasanyrole('Apoteker|Admin')
+                                                @can('ri-resep.antrian.taskIdApotek')
                                                 {{-- Tombol di sini; logika di komponen host task-id-apotek-actions (mount 1×).
                                                      wire:click="$dispatch(...)" = aksi Livewire (BUKAN Alpine) → host tangkap
                                                      via #[On]. Nol komponen Livewire per baris. Redup dari $row->task_id6/7. --}}
@@ -587,7 +589,7 @@ new class extends Component {
                                                     <x-ikon nama="kirim" />
                                                     TaskId7
                                                 </x-primary-button>
-                                                @endhasanyrole
+                                                @endcan
                                             </div>
 
                                             {{-- Telaah Resep & Obat --}}
@@ -621,7 +623,7 @@ new class extends Component {
                                                      Dulu nota ter-post (status 'L') tampil sebagai tombol hijau
                                                      "Lihat / Cetak"; sekarang rupanya sama, hanya TAB TUJUAN yang
                                                      berbeda — 'kasir' bila sudah post, 'obat' bila belum. --}}
-                                                @hasanyrole('Apoteker|Admin|Tu')
+                                                @can('ri-resep.antrian.bukaAdministrasi')
                                                     <x-secondary-button
                                                         wire:click="openAdministrasi({{ $row->sls_no }}, '{{ $row->status === 'L' ? 'kasir' : 'obat' }}')"
                                                         class="text-sm whitespace-nowrap justify-center !bg-purple-600 !text-white !border-purple-700 hover:!bg-purple-700 dark:!bg-purple-600 dark:!text-white dark:!border-purple-700 dark:hover:!bg-purple-700"
@@ -629,7 +631,7 @@ new class extends Component {
                                                         <x-ikon nama="pembayaran" ukuran="w-3.5 h-3.5" class="mr-1" />
                                                         Administrasi
                                                     </x-secondary-button>
-                                                @endhasanyrole
+                                                @endcan
                                             </div>
 
                                         </div>

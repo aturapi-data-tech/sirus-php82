@@ -2,6 +2,9 @@
 
 use Livewire\Component;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
+use Livewire\Attributes\Locked;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -22,9 +25,11 @@ new class extends Component {
     public const STATUS_BATAL = 'F';
 
     public array $renderVersions = [];
+    #[Locked]
     public string $formMode = 'create';
 
     // ── Header ──
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public ?int $trfNo = null;
     public ?string $trfDateDisplay = null;
     public ?string $slCodeFrom = null;
@@ -53,6 +58,7 @@ new class extends Component {
 
     /* ══════════════════════════════ OPEN CREATE ══════════════════════════════ */
     #[On('transfer-stock.openCreate')]
+    #[Authorize('gudang.transfer-stock.tambah')]
     public function openCreate(string $slCodeFrom = self::WAREHOUSE_SL_CODE): void
     {
         if (!in_array($slCodeFrom, [self::WAREHOUSE_SL_CODE, self::APOTEK_SL_CODE], true)) {
@@ -292,6 +298,8 @@ new class extends Component {
     /* ══════════════════════════════ SAVE DRAFT ══════════════════════════════ */
     public function saveDraft(): void
     {
+        Gate::authorize(($this->formMode === 'create' || !$this->trfNo) ? 'gudang.transfer-stock.tambah' : 'gudang.transfer-stock.ubah');
+
         try {
             $this->validateBeforeSave();
 
@@ -348,6 +356,8 @@ new class extends Component {
     /* ══════════════════════════════ POSTING ══════════════════════════════ */
     public function postTransfer(): void
     {
+        Gate::authorize('gudang.transfer-stock.posting');
+
         try {
             $this->validateBeforeSave();
 
@@ -740,16 +750,20 @@ new class extends Component {
                         @endif
 
                         @unless ($this->isReadonly)
+                            @can(($formMode === 'create' || !$trfNo) ? 'gudang.transfer-stock.tambah' : 'gudang.transfer-stock.ubah')
                             <x-secondary-button type="button" wire:click="saveDraft" wire:loading.attr="disabled">
                                 <span wire:loading.remove wire:target="saveDraft" class="inline-flex items-center gap-2"><x-ikon nama="simpan" /> Simpan Sementara</span>
                                 <span wire:loading wire:target="saveDraft">Menyimpan...</span>
                             </x-secondary-button>
+                            @endcan
+                            @can('gudang.transfer-stock.posting')
                             <x-confirm-button variant="primary" action="postTransfer()" title="Proses Transfer Stok"
                                 message="Yakin proses transfer ini? Stok di lokasi asal & tujuan akan langsung tercatat di Kartu Stock."
                                 confirmText="Ya, proses" cancelText="Batal">
                                 <x-ikon nama="proses" />
                                 Proses Stok
                             </x-confirm-button>
+                            @endcan
                         @endunless
 
                         <x-secondary-button type="button" wire:click="closeModal"><x-ikon nama="batal" /> Tutup</x-secondary-button>

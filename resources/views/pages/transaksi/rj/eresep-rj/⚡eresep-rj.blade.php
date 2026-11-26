@@ -1,6 +1,8 @@
 <?php
 
 use Livewire\Component;
+use Livewire\Attributes\Locked;
+use Livewire\Attributes\Authorize;
 use Livewire\Attributes\On;
 use App\Http\Traits\Txn\Rj\EmrRJTrait;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
@@ -11,6 +13,7 @@ new class extends Component {
     use EmrRJTrait, WithRenderVersioningTrait;
 
     public bool $isFormLocked = false;
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public ?int $rjNo = null;
     /**
      * IRISAN dokumen: hanya dua cabang status yang MEMANG dikelola induk ini
@@ -53,6 +56,7 @@ new class extends Component {
      | OPEN ERESEP RJ
      =============================== */
     #[On('emr-rj.eresep.open')]
+    #[Authorize('pintu.emr-rj.eresep.open')]
     public function openEresep(int $rjNo): void
     {
         $this->resetForm();

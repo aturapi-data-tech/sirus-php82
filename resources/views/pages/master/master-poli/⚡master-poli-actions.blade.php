@@ -2,6 +2,9 @@
 
 use Livewire\Component;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
+use Livewire\Attributes\Locked;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\QueryException;
 use App\Support\CakupanLocationPoli;
@@ -13,6 +16,7 @@ use App\Http\Traits\SATUSEHAT\LocationTrait;
 
 new class extends Component {
     use WithRenderVersioningTrait, LocationTrait;
+    #[Locked]
     public string $formMode = 'create'; // create|edit
     public string $originalPoliId = '';
     public array $renderVersions = [];
@@ -28,6 +32,7 @@ new class extends Component {
     ];
 
     #[On('master.poli.openCreate')]
+    #[Authorize('master.poli.tambah')]
     public function openCreate(): void
     {
         $this->resetFormFields();
@@ -40,6 +45,7 @@ new class extends Component {
     }
 
     #[On('master.poli.openEdit')]
+    #[Authorize('master.poli.ubah')]
     public function openEdit(string $poliId): void
     {
         $row = DB::table('rsmst_polis')->where('poli_id', $poliId)->first();
@@ -125,8 +131,33 @@ new class extends Component {
         ];
     }
 
+
+    /**
+     * Celah ID record: kunci record tak boleh diubah dari klien — `save()` memakainya sebagai
+     * WHERE update, jadi mengubahnya = menulis ke record LAIN. Array publik bisa diubah klien
+     * di path mana pun walau tak ada inputnya, jadi dijaga di sini.
+     *  - kunci saat edit ('poliId'): ditolak bila bukan mode create (inputnya disabled saat edit)
+     *  - kunci isian server (—): selalu ditolak
+     */
+    public function updatingFormPoli($value, ?string $key = null): void
+    {
+        $kunciEdit = ['poliId'];
+        $kunciServer = [];
+        $dijaga = $this->formMode === 'create' ? $kunciServer : [...$kunciEdit, ...$kunciServer];
+        if ($key === null) {
+            // seluruh array diganti dari klien: tolak bila nilai kunci berubah
+            foreach ($dijaga as $k) {
+                abort_if((string) (($value[$k] ?? '')) !== (string) ($this->formPoli[$k] ?? ''), 403, 'Kunci record tidak boleh diubah.');
+            }
+            return;
+        }
+        abort_if(in_array(explode('.', $key)[0], $dijaga, true), 403, 'Kunci record tidak boleh diubah.');
+    }
+
     public function save(): void
     {
+        Gate::authorize($this->formMode === 'create' ? 'master.poli.tambah' : 'master.poli.ubah');
+
         $this->validate();
 
         $payload = [
@@ -157,6 +188,7 @@ new class extends Component {
      * Idempoten: cari dulu by identifier (poli_id); kalau belum ada baru createLocation.
      * Untuk poli UGD/IGD, poli_uuid ini dipakai sebagai lokasi Encounter UGD.
      */
+    #[Authorize('master.poli.ubah')]
     public function daftarkanUuidPoli(): void
     {
         $poliId = trim((string) ($this->formPoli['poliId'] ?? ''));
@@ -215,6 +247,7 @@ new class extends Component {
     }
 
     #[On('master.poli.requestDelete')]
+    #[Authorize('master.poli.hapus')]
     public function deleteFromGrid(string $poliId): void
     {
         try {

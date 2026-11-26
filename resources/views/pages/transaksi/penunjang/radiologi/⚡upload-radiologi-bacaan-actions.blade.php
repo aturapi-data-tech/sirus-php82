@@ -13,9 +13,11 @@
 // Setelah save sukses, dispatch 'radiologi-refresh' ke parent.
 
 use Livewire\Component;
+use Livewire\Attributes\Locked;
 use Livewire\WithFileUploads;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Authorize;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -26,7 +28,9 @@ new class extends Component {
     use WithFileUploads, WithValidationToastTrait;
 
     public string $selectedSource = '';
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public ?int $selectedDtl = null;
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public ?int $selectedRefNo = null;
 
     public $pdfFile = null;
@@ -37,6 +41,7 @@ new class extends Component {
      | OPEN UPLOAD PDF (HASIL BACAAN) MODAL
      =============================== */
     #[On('radiologi.bacaan.upload.open')]
+    #[Authorize('penunjang.radiologi.upload.ubah')]
     public function openUploadPdfModal(string $source, int $dtlNo, int $refNo): void
     {
         $this->selectedSource = $source;
@@ -53,6 +58,7 @@ new class extends Component {
         $this->reset(['selectedSource', 'selectedDtl', 'selectedRefNo', 'pdfFile']);
     }
 
+    #[Authorize('penunjang.radiologi.upload.ubah')]
     public function uploadPdf(): void
     {
         $this->validateWithToast(
@@ -109,6 +115,7 @@ new class extends Component {
      | OPEN GENERATE HASIL BACAAN MODAL
      =============================== */
     #[On('radiologi.bacaan.generate.open')]
+    #[Authorize('penunjang.radiologi.upload.ubah')]
     public function openGenerateModal(string $source, int $dtlNo, int $refNo): void
     {
         $this->selectedSource = $source;
@@ -150,6 +157,7 @@ new class extends Component {
             ->get(['d.dr_id', 'd.dr_name']);
     }
 
+    #[Authorize('penunjang.radiologi.upload.ubah')]
     public function generatePdf(): void
     {
         // validateWithToast: gagal → toast + re-throw (Livewire isi $errors utk @error inline)

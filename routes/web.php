@@ -28,7 +28,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 // });
 
 
-Route::middleware(['auth'])->group(function () {
+// akses.halaman: URL dijaga sesuai centang Lihat di Role Control (App\Support\AksesHalaman)
+Route::middleware(['auth', 'akses.halaman'])->group(function () {
     // Halaman acuan standarisasi UI (design system internal)
     Route::livewire('/panduan-dev', 'pages::panduan-dev.panduan-dev')
         ->name('panduan-dev');
@@ -613,18 +614,6 @@ Route::middleware(['auth'])->group(function () {
     // ===========================================
     // DASHBOARD MANAJEMEN
     // ===========================================
-    Route::livewire('/manajemen/indikator-pelayanan', 'pages::manajemen.indikator-pelayanan.indikator-pelayanan')
-        ->name('manajemen.indikator-pelayanan');
-
-    Route::livewire('/manajemen/indikator-penunjang', 'pages::manajemen.indikator-penunjang.indikator-penunjang')
-        ->name('manajemen.indikator-penunjang');
-
-    Route::livewire('/manajemen/indikator-tu', 'pages::manajemen.indikator-tu.indikator-tu')
-        ->name('manajemen.indikator-tu');
-
-    Route::livewire('/manajemen/monitoring-keuangan', 'pages::manajemen.monitoring-keuangan.monitoring-keuangan')
-        ->name('manajemen.monitoring-keuangan');
-
     Route::livewire('/manajemen/rs/satu-sehat/monitoring-satu-sehat', 'pages::manajemen.rs.satu-sehat.monitoring-satu-sehat.monitoring-satu-sehat')
         ->name('manajemen.rs.satu-sehat.monitoring-satu-sehat');
 
@@ -636,9 +625,6 @@ Route::middleware(['auth'])->group(function () {
 
     Route::livewire('/manajemen/rs/rekam-medis/arsip-modul-dokumen', 'pages::manajemen.rs.rekam-medis.arsip-modul-dokumen.arsip-modul-dokumen')
         ->name('manajemen.rs.rekam-medis.arsip-modul-dokumen');
-
-    Route::livewire('/manajemen/laporan-diagnosa', 'pages::manajemen.laporan-diagnosa.laporan-diagnosa')
-        ->name('manajemen.laporan-diagnosa');
 
     Route::livewire('/manajemen/laporan-diagnosa/hitung-diagnosa', 'pages::manajemen.laporan-diagnosa.hitung-diagnosa.hitung-diagnosa')
         ->name('manajemen.laporan-diagnosa.hitung-diagnosa');

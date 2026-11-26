@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Tutup Buku Tahunan — satu menu, tiga tab (khusus Admin):
+ * Tutup Buku Tahunan — satu menu, tiga tab (hak keuangan.tutup-buku di Role Control):
  *   - Saldo Akun (Kas & Neraca)  → TKTXN_SALDOAWALAKUNS        (⚡tutup-buku-akun)
  *   - Stok                       → TKTXN_SALDOAWALSTOCKS[NON]   (⚡tutup-buku-stok)
  *   - Hutang & DP Supplier       → TKTXN_SALDOAWALHUTANGS[NON]  (keuangan/tutup-buku-supplier)
@@ -11,13 +11,11 @@
 use Livewire\Component;
 
 new class extends Component {
-    private const ROLE_TUTUP_BUKU = ['Admin'];
-
     public string $tab = 'akun';
 
     public function mount(): void
     {
-        abort_unless(auth()->user()?->hasAnyRole(self::ROLE_TUTUP_BUKU), 403, 'Tutup buku khusus Admin.');
+        abort_unless(auth()->user()?->can('keuangan.tutup-buku.lihat'), 403, 'Anda tidak memiliki akses ke Tutup Buku.');
     }
 
     public function setTab(string $tab): void

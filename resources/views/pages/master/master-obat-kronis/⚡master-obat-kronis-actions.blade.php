@@ -2,6 +2,9 @@
 
 use Livewire\Component;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
+use Livewire\Attributes\Locked;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
@@ -9,7 +12,9 @@ use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 new class extends Component {
     use WithRenderVersioningTrait;
 
+    #[Locked]
     public string $formMode   = 'create';
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public string $originalId = '';
     public array  $renderVersions = [];
     protected array $renderAreas  = ['modal'];
@@ -28,6 +33,7 @@ new class extends Component {
     }
 
     #[On('master.obat-kronis.openCreate')]
+    #[Authorize('master.obat-kronis.tambah')]
     public function openCreate(): void
     {
         $this->resetForm();
@@ -38,6 +44,7 @@ new class extends Component {
     }
 
     #[On('master.obat-kronis.openEdit')]
+    #[Authorize('master.obat-kronis.ubah')]
     public function openEdit(string $productId): void
     {
         $row = DB::table('rsmst_listobatbpjses as k')
@@ -66,6 +73,7 @@ new class extends Component {
     }
 
     #[On('master.obat-kronis.requestDelete')]
+    #[Authorize('master.obat-kronis.hapus')]
     public function deleteObatKronis(string $productId): void
     {
         $deleted = DB::table('rsmst_listobatbpjses')->where('product_id', $productId)->delete();
@@ -90,6 +98,8 @@ new class extends Component {
 
     public function save(): void
     {
+        Gate::authorize($this->formMode === 'create' ? 'master.obat-kronis.tambah' : 'master.obat-kronis.ubah');
+
         $rules = [
             'form.product_id' => [
                 'required', 'string', 'max:50',

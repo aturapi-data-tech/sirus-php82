@@ -2,6 +2,9 @@
 
 use Livewire\Component;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
+use Livewire\Attributes\Locked;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\QueryException;
 
@@ -11,6 +14,7 @@ use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 new class extends Component {
     use WithRenderVersioningTrait;
 
+    #[Locked]
     public string $formMode = 'create'; // create|edit
     public string $originalDiagkepId = '';
     public array $renderVersions = [];
@@ -45,6 +49,7 @@ new class extends Component {
      | Open Create
      * ------------------------- */
     #[On('master.diagkep.openCreate')]
+    #[Authorize('master.diag-keperawatan.tambah')]
     public function openCreate(): void
     {
         $this->resetFormFields();
@@ -60,6 +65,7 @@ new class extends Component {
      | Open Edit
      * ------------------------- */
     #[On('master.diagkep.openEdit')]
+    #[Authorize('master.diag-keperawatan.ubah')]
     public function openEdit(string $diagkepId): void
     {
         $row = DB::table('rsmst_diagkeperawatans')->where('diagkep_id', $diagkepId)->first();
@@ -225,8 +231,21 @@ new class extends Component {
     /* -------------------------
      | Save
      * ------------------------- */
+
+    /**
+     * Celah ID record: kunci record yang sedang diedit tak boleh diubah dari klien — `save()`
+     * memakainya sebagai WHERE update, jadi mengubahnya = menulis ke record LAIN. Inputnya
+     * sudah disabled saat edit, jadi user biasa tak pernah mengirim perubahan ini.
+     */
+    public function updatingDiagkepId(): void
+    {
+        abort_if($this->formMode !== 'create', 403, 'Kunci record tidak boleh diubah.');
+    }
+
     public function save(): void
     {
+        Gate::authorize($this->formMode === 'create' ? 'master.diag-keperawatan.tambah' : 'master.diag-keperawatan.ubah');
+
         $this->validate();
 
         $jsonData = $this->buildJsonData();
@@ -332,6 +351,7 @@ new class extends Component {
     }
 
     #[On('master.diagkep.requestDelete')]
+    #[Authorize('master.diag-keperawatan.hapus')]
     public function deleteFromGrid(string $diagkepId): void
     {
         try {

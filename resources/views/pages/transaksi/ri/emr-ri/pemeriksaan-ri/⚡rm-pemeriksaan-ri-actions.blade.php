@@ -2,6 +2,7 @@
 // resources/views/pages/transaksi/ri/emr-ri/pemeriksaan-ri/rm-pemeriksaan-ri-actions.blade.php
 
 use Livewire\Component;
+use Livewire\Attributes\Authorize;
 use Livewire\Attributes\On;
 use Livewire\WithFileUploads;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
@@ -77,6 +78,8 @@ new class extends Component {
         $this->incrementVersion('modal-pemeriksaan-ri');
     }
 
+    #[Authorize('ri.emr.uploadPenunjang')]
+
     public function uploadHasilPenunjang(): void
     {
         if ($this->isFormLocked) {
@@ -133,6 +136,8 @@ new class extends Component {
         }
     }
 
+    #[Authorize('ri.emr.uploadPenunjang')]
+
     public function deleteHasilPenunjang(string $file): void
     {
         if ($this->isFormLocked) {
@@ -174,6 +179,7 @@ new class extends Component {
         }
     }
 
+    #[Authorize('ri.emr.bukaHasilPenunjang')]
     public function openModalViewPenunjang(string $file): void
     {
         // Strategi: ambil filename saja, rakit path sesuai setting (mount → upload → legacy).
@@ -329,7 +335,7 @@ new class extends Component {
     {{-- ════════════ TAB 2 — UPLOAD PENUNJANG ════════════ --}}
     <div x-show="activeTab === 'upload'" x-transition.opacity.duration.200ms class="space-y-4">
 
-        @hasanyrole('Perawat|Admin')
+        @can('ri.emr.uploadPenunjang')
             <div class="p-4 bg-canvas border border-hairline rounded-xl shadow-sm dark:bg-gray-900 dark:border-gray-700">
                 <h3 class="mb-3 text-sm font-semibold text-body dark:text-gray-300">Upload Hasil Penunjang</h3>
                 <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -371,7 +377,7 @@ new class extends Component {
 
                 </div>
             </div>
-        @endhasanyrole
+        @endcan
 
         <div
             class="overflow-x-auto rounded-2xl border border-hairline bg-canvas dark:border-gray-700 dark:bg-gray-900">
@@ -391,7 +397,7 @@ new class extends Component {
                             <td class="px-4 py-3 text-body dark:text-gray-300">{{ $item['desc'] ?? '-' }}</td>
                             <td class="px-4 py-3">
                                 <div class="flex items-center justify-center gap-2">
-                                    @hasanyrole('Perawat|Admin|Dokter')
+                                    @can('ri.emr.bukaHasilPenunjang')
                                         <x-icon-button wire:click="openModalViewPenunjang('{{ $item['file'] ?? '' }}')"
                                             title="Lihat PDF">
                                             <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -400,8 +406,8 @@ new class extends Component {
                                                     clip-rule="evenodd" />
                                             </svg>
                                         </x-icon-button>
-                                    @endhasanyrole
-                                    @hasanyrole('Perawat|Admin')
+                                    @endcan
+                                    @can('ri.emr.uploadPenunjang')
                                         <x-confirm-button variant="danger" :action="'deleteHasilPenunjang(\'' . ($item['file'] ?? '') . '\')'" title="Hapus File"
                                             message="Yakin ingin menghapus file {{ $item['desc'] ?? '' }}?"
                                             confirmText="Ya, hapus" cancelText="Batal" :disabled="$isFormLocked">
@@ -410,7 +416,7 @@ new class extends Component {
                                                     d="M17 4h-4V2a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v2H1a1 1 0 0 0 0 2h1v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6h1a1 1 0 1 0 0-2ZM7 2h4v2H7V2Zm1 14a1 1 0 1 1-2 0V8a1 1 0 0 1 2 0v8Zm4 0a1 1 0 0 1-2 0V8a1 1 0 0 1 2 0v8Z" />
                                             </svg>
                                         </x-confirm-button>
-                                    @endhasanyrole
+                                    @endcan
                                 </div>
                             </td>
                         </tr>

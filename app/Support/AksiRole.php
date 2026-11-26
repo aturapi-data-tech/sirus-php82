@@ -8,12 +8,12 @@ namespace App\Support;
  * Menggantikan penulisan literal berulang di tiap berkas:
  *
  *   SEBELUM  @hasanyrole('Admin|Manager Umum|Manager Medis')      (6 tempat, mudah melenceng)
- *   SESUDAH  @can('emr.logAktivitas')                             (1 sumber)
+ *   SESUDAH  @can('{rj|ugd|ri}.emr.logAktivitas')                             (1 sumber)
  *
  * Konstanta dikonsumsi lewat Gate yang didaftarkan di
  * App\Providers\AppServiceProvider::boot(). Pemakaian:
- *   - Blade  : @can('dokumen.hapus') ... @endcan
- *   - Server : auth()->user()?->can('dokumen.hapus')
+ *   - Blade  : @can('{rj|ugd|ri}.dokumen.hapus') ... @endcan
+ *   - Server : auth()->user()?->can('{rj|ugd|ri}.dokumen.hapus')
  *
  * ATURAN PENTING — SATU KONSTANTA PER MAKSUD, BUKAN PER DAFTAR ROLE.
  * Dua aksi yang kebetulan punya daftar sama TETAP dipisah konstantanya, supaya
@@ -22,12 +22,15 @@ namespace App\Support;
  * aksi destruktif dan yang kedua hanya melihat audit log — menggabungkannya
  * berarti menaikkan hak lihat log setiap kali kebijakan hapus dilonggarkan.
  *
- * MENAMBAH KLASTER BARU:
- *   1. tambah konstanta di sini (beri prefix area),
- *   2. daftarkan Gate-nya di AppServiceProvider,
- *   3. ganti @hasanyrole literal di blade dengan @can, DAN
- *   4. pastikan guard SERVER di method-nya ikut memakai ->can() — guard blade
- *      saja bisa ditembus karena wire:click memanggil method publik.
+ * MENAMBAH AKSI KHUSUS BARU (lihat docs/standar-hak-akses.md):
+ *   1. tambah konstanta di sini (beri prefix area) = role CENTANG AWAL,
+ *   2. daftarkan di berkas programnya (app/Akses/Program/<Kelompok>/*.php, kunci 'aksiKhusus') — Gate
+ *      terdaftar otomatis di AppServiceProvider dan muncul di baris program itu di Role Control,
+ *   3. pakai @can('nama') di blade, DAN guard SERVER #[Authorize('nama')] /
+ *      ->can() di method-nya — guard blade saja bisa ditembus karena wire:click
+ *      memanggil method publik,
+ *   4. deploy — permission + centang awal dibuat otomatis (SinkronAksesOtomatis).
+ * Setelah sinkron, hak sebenarnya = centang di Role Control; konstanta tinggal cadangan.
  *
  * BELUM diklaster (sengaja): aksi yang daftar role-nya BERBEDA antar jalur/modul
  * — openAdministrasiPasien (6 varian), openModulDokumen (4), openAdministrasi (3),
@@ -51,7 +54,9 @@ class AksiRole
      * Dipisah dari DOKUMEN_BUKA_KUNCI walau isinya kini sama: menandatangani atas nama
      * orang lain adalah hak yang berbeda dari mencabut TTD.
      */
-    public const DOKUMEN_TTD_PERWAKILAN = ['Admin', 'Manager Umum', 'Manager Medis'];
+    // Admin dicabut (keputusan user 2026-11-25): Admin = role sistem, bukan jabatan; perwakilan
+    // tetap pengecualian ber-jejak milik manager (cetakan tetap DPJP, penekan di `diwakilkanOleh`).
+    public const DOKUMEN_TTD_PERWAKILAN = ['Manager Umum', 'Manager Medis'];
 
     /* ─────────────────────────────── EMR ─────────────────────────────── */
 
@@ -202,12 +207,12 @@ class AksiRole
 
     /**
      * Koreksi (Edit) transaksi Penerimaan & Pengeluaran Kas TU (rstxn_tucashds / rstxn_tucashks).
-     * Manager ke atas saja (keputusan user 2026-11-17) — entri baru tetap boleh petugas kas.
+     * Pengawas keuangan (2026-11-25, dulu Admin|MU|MM) — entri baru tetap boleh petugas kas.
      */
-    public const KAS_TU_KOREKSI = ['Admin', 'Manager Umum', 'Manager Medis'];
+    public const KAS_TU_KOREKSI = self::PENGAWAS_KEUANGAN;
 
-    /** Hapus transaksi Penerimaan & Pengeluaran Kas TU — manager ke atas (keputusan user 2026-11-17). */
-    public const KAS_TU_HAPUS = ['Admin', 'Manager Umum', 'Manager Medis'];
+    /** Hapus transaksi Penerimaan & Pengeluaran Kas TU — lihat PENGAWAS_KEUANGAN. */
+    public const KAS_TU_HAPUS = self::PENGAWAS_KEUANGAN;
 
     /* ─────────────────────────────── GUDANG ─────────────────────────────── */
 
@@ -275,4 +280,102 @@ class AksiRole
      * membatalkan pekerjaannya sendiri. Jangan disamakan dengan daftar akses
      * modulnya (yang memuat Laboratorium/Perawat) — itu justru melonggarkan.
      */
+
+    /* ───────────────────── KASIR & APOTEK: POSTING / BATAL ───────────────────── */
+    /*
+     * Disalin persis dari @hasanyrole / hasAnyRole lama di komponen kasir (T3, 2026-11-25).
+     * Batal TIDAK memakai kolom Hapus halaman: batal membalik jurnal/stok/status dan
+     * sering eskalasi ke atasan — kebijakannya beda dari menghapus satu baris data.
+     */
+    /**
+     * PENGAWAS KEUANGAN — keputusan user 2026-11-25: semua aksi pengawasan transaksi keuangan
+     * (batal kasir, batal kunjungan/transfer/inap, hapus bayar piutang, koreksi/hapus kas TU)
+     * diseragamkan ke Supervisor Tu & manager ke atas, dan manager di sini = MANAGER UMUM saja
+     * (Manager Medis tidak). Posting & entri harian tetap petugas (Tu) — itu bukan pengawasan.
+     * Tiap aksi tetap punya konstantanya sendiri (aturan "satu konstanta per maksud").
+     */
+    private const PENGAWAS_KEUANGAN = ['Admin', 'Manager Umum', 'Supervisor Tu'];
+
+    public const KASIR_RJ_POSTING = ['Admin', 'Tu'];
+    public const KASIR_RJ_BATAL = self::PENGAWAS_KEUANGAN;
+    public const KASIR_RJ_BATAL_TRANSFER_UGD = self::PENGAWAS_KEUANGAN;
+    public const KASIR_RJ_BATAL_KUNJUNGAN = self::PENGAWAS_KEUANGAN;
+    public const KASIR_UGD_POSTING = ['Admin', 'Tu'];
+    public const KASIR_UGD_BATAL = self::PENGAWAS_KEUANGAN;
+    public const KASIR_UGD_BATAL_TRANSFER_RI = self::PENGAWAS_KEUANGAN;
+    public const KASIR_UGD_BATAL_KUNJUNGAN = self::PENGAWAS_KEUANGAN;
+    public const KASIR_RI_POSTING = ['Admin', 'Tu'];
+    /**
+     * Batal Transaksi Pulang RI. Dulu tombol = Admin|Supervisor Tu, server = Admin|Tu (tidak
+     * sama). Kini PENGAWAS_KEUANGAN (2026-11-25).
+     */
+    public const KASIR_RI_BATAL = self::PENGAWAS_KEUANGAN;
+    public const KASIR_RI_BATAL_INAP = self::PENGAWAS_KEUANGAN;
+    /** Terima Angsuran Awal (titipan) RI = petugas kasir (sama dengan Proses Pulang) + atasannya. */
+    public const RI_ANGSURAN_AWAL_TERIMA = ['Admin', 'Tu', 'Supervisor Tu'];
+    /** Hapus Angsuran Awal RI — pengawas keuangan (uang sudah diterima), sama dengan Batal Pulang. */
+    public const RI_ANGSURAN_AWAL_HAPUS = self::PENGAWAS_KEUANGAN;
+    public const KASIR_RESEP_RI_POSTING = ['Admin', 'Tu', 'Manager Umum', 'Supervisor Tu'];
+    public const KASIR_RESEP_RI_BATAL = self::PENGAWAS_KEUANGAN;
+    public const KASIR_RESEP_RI_UBAH_JASA = ['Admin', 'Tu', 'Manager Umum', 'Supervisor Tu'];
+    public const APOTEK_RESEP_RI_POSTING = ['Apoteker', 'Admin', 'Tu'];
+    public const APOTEK_RESEP_RI_BATAL = ['Apoteker', 'Admin', 'Tu'];
+    public const APOTEK_RESEP_RI_UBAH_JASA = ['Admin', 'Tu'];
+
+    /* ─────────────────────────── PIUTANG (T4) ─────────────────────────── */
+    /*
+     * Komponen pembayaran-piutang-actions dipakai DUA halaman (Pelunasan Klaim BPJS & Piutang
+     * Per Pasien), jadi haknya aksi khusus, bukan `{route}.{aksi}`.
+     */
+    /** Mencatat pembayaran/pelunasan piutang — dulu cukup bisa membuka halaman (role menu). */
+    public const PIUTANG_BAYAR = ['Admin', 'Manager Umum', 'Supervisor Tu', 'Tu'];
+    /** Hapus pembayaran piutang yang salah — dulu ROLE_HAPUS_BAYAR (aturan tanggal/keterangan tetap di kode). */
+    public const PIUTANG_HAPUS_BAYAR = self::PENGAWAS_KEUANGAN;
+
+    /* ─────────────────────── CPPT & SBAR (RI + UGD) ─────────────────────── */
+    /**
+     * Aturan PEMILIK entri (edit = penulisnya) dan DPJP (review = DPJP Utama) tetap di kode
+     * modul — bukan role. Yang di sini hanya PENGECUALIAN-nya, dulu tertulis `hasRole('Admin')`.
+     */
+    /** Hapus entri CPPT — manager ke atas, walau bukan pemilik entri. */
+    public const RI_CPPT_HAPUS = ['Admin', 'Manager Umum', 'Manager Medis'];
+    /** Edit entri CPPT milik petugas lain. */
+    public const RI_CPPT_UBAH_SEMUA = ['Admin'];
+    /** Copy entri CPPT dari profesi lain. */
+    public const RI_CPPT_COPY_SEMUA = ['Admin'];
+    /** Review/TTD CPPT walau bukan DPJP Utama pasien. */
+    public const RI_CPPT_REVIEW_SEMUA = ['Admin'];
+    /** Hapus entri SBAR. */
+    public const RI_SBAR_HAPUS = ['Admin', 'Manager Umum', 'Manager Medis', 'Supervisor Penunjang', 'Supervisor Tu', 'Mr', 'Casemix'];
+    /** Edit entri SBAR milik petugas lain. */
+    public const RI_SBAR_UBAH_SEMUA = ['Admin'];
+    /** Copy entri SBAR dari profesi lain. */
+    public const RI_SBAR_COPY_SEMUA = ['Admin'];
+    /** Review/TTD SBAR walau bukan DPJP Utama pasien. */
+    public const RI_SBAR_REVIEW_SEMUA = ['Admin'];
+    /** SBAR UGD (T6) — pola sama dgn SBAR RI; "DPJP" di UGD = dokter kunjungan. */
+    public const UGD_SBAR_HAPUS = ['Admin', 'Manager Umum', 'Manager Medis', 'Supervisor Penunjang', 'Supervisor Tu', 'Mr', 'Casemix'];
+    public const UGD_SBAR_UBAH_SEMUA = ['Admin'];
+    public const UGD_SBAR_COPY_SEMUA = ['Admin'];
+    public const UGD_SBAR_REVIEW_SEMUA = ['Admin'];
+
+    /**
+     * KATALOG AKSI KHUSUS — nama Gate => [label, roles awal, program, kelompok, area].
+     *
+     * Definisinya di berkas program app/Akses/Program/<Kelompok>/*.php (kunci 'aksiKhusus'), bukan di sini;
+     * konstanta di atas = daftar role CENTANG AWAL yang dirujuk berkas program itu.
+     *
+     * Tiap entri jadi (1) Gate dengan nama yang sama (AppServiceProvider) dan (2) permission
+     * yang dicentang per role di Role Control (dibuat otomatis saat deploy). Setelah permission
+     * ada, centang Role Control yang menentukan; roles di sini tinggal cadangan.
+     *
+     * Sengaja TIDAK di sini: EMR_PENUNJANG_LIHAT — bukan hak aksi melainkan penanda
+     * profesi (User::profesiKlinis, pemangkas tab EMR); tetap berbasis role.
+     *
+     * @return array<string, array{label: string, roles: array<int, string>, program: string, kelompok: string, area: string}>
+     */
+    public static function khusus(): array
+    {
+        return array_map(fn (array $aksi) => $aksi + ['area' => $aksi['program']], ProgramAkses::aksiKhusus());
+    }
 }

@@ -5,6 +5,7 @@ use Livewire\WithPagination;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
+use Livewire\Attributes\Authorize;
 use Illuminate\Support\Facades\DB;
 use App\Support\CakupanLoincRadiologi;
 
@@ -73,12 +74,14 @@ new class extends Component {
      * ========================= */
 
     // ==================== OPEN CREATE MODAL ====================
+    #[Authorize('master.radiologis.tambah')]
     public function openCreate(): void
     {
         $this->dispatch('master.radiologis.openCreate');
     }
 
     // ==================== OPEN EDIT MODAL ====================
+    #[Authorize('master.radiologis.ubah')]
     public function openEdit(string $radId): void
     {
         $this->dispatch('master.radiologis.openEdit', radId: $radId);
@@ -87,6 +90,7 @@ new class extends Component {
     /* =========================
      | Request Delete (delegate ke actions)
      * ========================= */
+    #[Authorize('master.radiologis.hapus')]
     public function requestDelete(string $radId): void
     {
         $this->dispatch('master.radiologis.requestDelete', radId: $radId);
@@ -105,6 +109,7 @@ new class extends Component {
     /* =========================
      | Toggle Status Aktif (delegate ke actions)
      * ========================= */
+    #[Authorize('master.radiologis.ubah')]
     public function toggleActive(string $radId): void
     {
         $this->dispatch('master.radiologis.toggleActive', radId: $radId);
@@ -281,10 +286,12 @@ new class extends Component {
                             <span wire:loading wire:target="cekStatusLoinc">Mengecek...</span>
                         </x-outline-button>
 
+                        @can('master.radiologis.tambah')
                         <x-primary-button type="button" wire:click="openCreate">
                             <x-ikon nama="tambah" />
                             Tambah Data Radiologis Baru
                         </x-primary-button>
+                        @endcan
                         <x-toolbar-refresh-reset :label="null" />
                     </div>
                 </div>
@@ -332,10 +339,16 @@ new class extends Component {
                                     </td>
                                     <td class="px-6 py-4">{{ $this->formatRupiah($row->rad_price) }}</td>
                                     <td class="px-6 py-4">
+                                        @can('master.radiologis.ubah')
                                         <x-toggle :current="(string) $row->active_status" trueValue="1" falseValue="0"
                                             wireClick="toggleActive('{{ $row->rad_id }}')">
                                             {{ (string) $row->active_status === '1' ? 'Aktif' : 'Tidak Aktif' }}
                                         </x-toggle>
+                                        @else
+                                        <x-badge :variant="(string) $row->active_status === '1' ? 'success' : 'danger'">
+                                            {{ (string) $row->active_status === '1' ? 'Aktif' : 'Tidak Aktif' }}
+                                        </x-badge>
+                                        @endcan
                                     </td>
                                     <td class="px-6 py-4">{{ $row->rad_jd ?? '-' }}</td>
                                     <td class="px-6 py-4">{{ $row->rad_jm ?? '-' }}</td>
@@ -364,10 +377,14 @@ new class extends Component {
                                     </td>
                                     <td class="ds-c px-6 py-4">
                                         <div class="flex justify-center gap-2">
+                                            @can('master.radiologis.ubah')
                                             <x-action-edit wire:click="openEdit('{{ $row->rad_id }}')" />
+                                            @endcan
 
+                                            @can('master.radiologis.hapus')
                                             <x-action-delete :action="'requestDelete(\'' . $row->rad_id . '\')'"
                                                 title="Hapus Radiologis" message="Yakin hapus data radiologis {{ $row->rad_desc }}?" />
+                                            @endcan
                                         </div>
                                     </td>
                                 </tr>

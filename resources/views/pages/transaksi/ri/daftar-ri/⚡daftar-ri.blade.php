@@ -5,6 +5,7 @@ use Livewire\Component;
 use Livewire\WithPagination;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
@@ -63,26 +64,32 @@ new class extends Component {
         $this->resetPage();
     }
 
+    #[Authorize('ri.daftar.tambah')]
     public function openCreate(): void
     {
         $this->dispatch('daftar-ri.create.open');
     }
+    #[Authorize('ri.daftar.ubah')]
     public function openEdit(string $riHdrNo): void
     {
         $this->dispatch('daftar-ri.edit.open', riHdrNo: $riHdrNo);
     }
+    #[Authorize('ri.daftar.bukaRekamMedis')]
     public function openRekamMedis(string $riHdrNo): void
     {
         $this->dispatch('emr-ri.rekam-medis.open', riHdrNo: $riHdrNo);
     }
+    #[Authorize('ri.daftar.bukaModulDokumen')]
     public function openModulDokumen(string $riHdrNo): void
     {
         $this->dispatch('emr-ri.modul-dokumen.open', riHdrNo: $riHdrNo);
     }
+    #[Authorize('ri.daftar.bukaAdministrasi')]
     public function openAdministrasiPasien(string $riHdrNo): void
     {
         $this->dispatch('emr-ri.administrasi.open', riHdrNo: $riHdrNo);
     }
+    #[Authorize('ri.pindahKamar')]
     public function openPindahKamar(string $riHdrNo): void
     {
         $this->dispatch('emr-ri.pindah-kamar.open', riHdrNo: $riHdrNo);
@@ -108,6 +115,7 @@ new class extends Component {
     {
         $this->dispatch('daftar-ri.satu-sehat.open', riHdrNo: $riHdrNo);
     }
+    #[Authorize('ri.daftar.bukaBerkasBpjs')]
     public function openBerkasBpjs(int $rihdrNo): void
     {
         $this->dispatch('berkas-bpjs.open', rjNo: $rihdrNo);
@@ -481,12 +489,12 @@ new class extends Component {
                         </div>
 
                         {{-- Pendaftaran Rawat Inap — Mr, Admin, Supervisor Tu --}}
-                        @hasanyrole(['Mr', 'Admin', 'Supervisor Tu'])
+                        @can('ri.daftar.tambah')
                             <x-primary-button type="button" wire:click="openCreate" class="whitespace-nowrap">
                                 <x-ikon nama="tambah" ukuran="w-5 h-5" class="mr-1" />
                                 Pendaftaran Rawat Inap
                             </x-primary-button>
-                        @endhasanyrole
+                        @endcan
                     </div>
 
                 </div>
@@ -731,7 +739,7 @@ new class extends Component {
                                                             jalur="Rawat Inap" />
 
                                                         <div class="grid grid-cols-2 gap-1 items-stretch">
-                                                        @hasanyrole(['Mr', 'Admin', 'Supervisor Tu'])
+                                                        @can('ri.daftar.ubah')
                                                             <x-dropdown-link href="#"
                                                                 wire:click.prevent="openEdit('{{ $row->rihdr_no }}')"
                                                                 class="px-3 py-2 text-sm rounded-lg h-full bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20">
@@ -745,9 +753,9 @@ new class extends Component {
                                                                     </span>
                                                                 </div>
                                                             </x-dropdown-link>
-                                                        @endhasanyrole
+                                                        @endcan
 
-                                                        @hasanyrole('Perawat|Dokter|Admin|Casemix|Apoteker|Gizi|Laboratorium|Radiologi')
+                                                        @can('ri.daftar.bukaRekamMedis')
                                                             <x-dropdown-link href="#"
                                                                 wire:click.prevent="openRekamMedis('{{ $row->rihdr_no }}')"
                                                                 class="px-3 py-2 text-sm rounded-lg h-full bg-green-50 hover:bg-green-100 dark:bg-green-900/20">
@@ -761,10 +769,10 @@ new class extends Component {
                                                                     </span>
                                                                 </div>
                                                             </x-dropdown-link>
-                                                        @endhasanyrole
+                                                        @endcan
 
                                                         {{-- Modul Dokumen — admisi (Mr/Tu) mengisi General Consent saat pendaftaran (host default tab generalConsent) --}}
-                                                        @hasanyrole('Admin|Mr|Supervisor Tu|Tu|Casemix|Perawat|Dokter|Gizi|Laboratorium|Radiologi')
+                                                        @can('ri.daftar.bukaModulDokumen')
                                                             <x-dropdown-link href="#"
                                                                 wire:click.prevent="openModulDokumen('{{ $row->rihdr_no }}')"
                                                                 class="px-3 py-2 text-sm rounded-lg h-full bg-yellow-50 hover:bg-yellow-100 dark:bg-yellow-900/20">
@@ -778,9 +786,9 @@ new class extends Component {
                                                                     </span>
                                                                 </div>
                                                             </x-dropdown-link>
-                                                        @endhasanyrole
+                                                        @endcan
 
-                                                        @can('rekonsiliasi.obat')
+                                                        @can('ri.emr.rekonsiliasiObat')
                                                             <x-dropdown-link href="#"
                                                                 wire:click.prevent="openRekonsiliasiObat('{{ $row->rihdr_no }}')"
                                                                 class="px-3 py-2 text-sm rounded-lg h-full bg-cyan-50 hover:bg-cyan-100 dark:bg-cyan-900/20">
@@ -796,7 +804,7 @@ new class extends Component {
                                                             </x-dropdown-link>
                                                         @endcan
 
-                                                        @hasanyrole('Admin|Perawat|Casemix|Tu|Gizi')
+                                                        @can('ri.daftar.bukaAdministrasi')
                                                             <x-dropdown-link href="#"
                                                                 wire:click.prevent="openAdministrasiPasien('{{ $row->rihdr_no }}')"
                                                                 class="px-3 py-2 text-sm rounded-lg h-full bg-purple-50 hover:bg-purple-100 dark:bg-purple-900/20">
@@ -810,7 +818,7 @@ new class extends Component {
                                                                     </span>
                                                                 </div>
                                                             </x-dropdown-link>
-                                                        @endhasanyrole
+                                                        @endcan
 
                                                         @can('ri.pindahKamar')
                                                             <x-dropdown-link href="#"
@@ -828,7 +836,7 @@ new class extends Component {
                                                             </x-dropdown-link>
                                                         @endcan
 
-                                                        @hasanyrole('Admin|Casemix|Tu|Mr')
+                                                        @can('ri.daftar.bukaBerkasBpjs')
                                                             <x-dropdown-link href="#"
                                                                 wire:click.prevent="openBerkasBpjs({{ $row->rihdr_no }})"
                                                                 class="px-3 py-2 text-sm rounded-lg h-full bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/30 dark:hover:bg-amber-900/40">
@@ -842,7 +850,7 @@ new class extends Component {
                                                                     </span>
                                                                 </div>
                                                             </x-dropdown-link>
-                                                        @endhasanyrole
+                                                        @endcan
 
                                                         @can('idrg.kirim')
                                                             @if (($row->klaim_status === 'BPJS' || $row->klaim_id === 'JM') && $row->ri_status === 'P')
@@ -862,7 +870,7 @@ new class extends Component {
                                                             @endif
                                                         @endcan
 
-                                                        @can('emr.codingFhir')
+                                                        @can('ri.emr.codingFhir')
                                                             <x-dropdown-link href="#"
                                                                 wire:click.prevent="openCodingFhir('{{ $row->rihdr_no }}')"
                                                                 class="px-3 py-2 text-sm rounded-lg h-full bg-brand-green/5 hover:bg-brand-green/10 dark:bg-brand-green/10">
@@ -878,7 +886,7 @@ new class extends Component {
                                                             </x-dropdown-link>
                                                         @endcan
 
-                                                        @can('satusehat.kirim')
+                                                        @can('ri.satusehat.kirim')
                                                             <x-dropdown-link href="#"
                                                                 wire:click.prevent="openSatuSehat('{{ $row->rihdr_no }}')"
                                                                 class="px-3 py-2 text-sm rounded-lg h-full bg-teal-50 hover:bg-teal-100 dark:bg-teal-900/20 dark:hover:bg-teal-900/40">

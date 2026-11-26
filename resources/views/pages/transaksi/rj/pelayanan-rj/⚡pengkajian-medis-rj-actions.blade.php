@@ -8,7 +8,7 @@
 // prosedur di rawat jalan BOLEH dipakai lagi, asal ditinjau/diverifikasi dan
 // diperbarui sesuai kondisi terkini. Lebih dari 30 hari, WAJIB pengkajian ulang.
 //
-// Siklus: Draft -> TTD dokter (mengunci) -> Buka Kunci (Gate dokumen.bukaKunci).
+// Siklus: Draft -> TTD dokter (mengunci) -> Buka Kunci (Gate rj.dokumen.bukaKunci).
 // Tampilan baku modul dokumen dua layar: daftar (tabel riwayat review) -> formulir.
 // Satu kunjungan = SATU baris review; dijaga indeks IDX_PKJ_REVIEW_PEMAKAI.
 // Rancangan kolom & bentuk REVIEW_JSON: docs/ddl-pengkajian-medis-pp12.sql.
@@ -16,6 +16,7 @@
 // BELUM ADA: cetak & viewer rekam medis.
 
 use Livewire\Component;
+use Livewire\Attributes\Authorize;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
@@ -96,6 +97,7 @@ new class extends Component {
     public string $layar = 'daftar';
 
     #[On('pelayanan-rj.pengkajian-medis.open')]
+    #[Authorize('pintu.pelayanan-rj.pengkajian-medis.open')]
     public function open(int $rjNo): void
     {
         $this->reset(['regNo', 'tglKunjungan', 'sebelumnya', 'riwayat']);
@@ -334,7 +336,7 @@ new class extends Component {
      */
     public function bukaKunciReview(int $reviewNo): void
     {
-        if (! auth()->user()?->can('dokumen.bukaKunci')) {
+        if (! auth()->user()?->can('rj.dokumen.bukaKunci')) {
             $this->dispatch('toast', type: 'error', message: 'Anda tidak berhak membuka kunci.');
 
             return;
@@ -383,7 +385,7 @@ new class extends Component {
      */
     public function hapusReview(int $reviewNo): void
     {
-        if (! auth()->user()?->can('dokumen.hapus')) {
+        if (! auth()->user()?->can('rj.dokumen.hapus')) {
             $this->dispatch('toast', type: 'error', message: 'Anda tidak berwenang menghapus entri.');
 
             return;
@@ -1037,7 +1039,7 @@ new class extends Component {
                                         <x-modul-dokumen.status-entri :final="$review['terkunci']" />
                                     </td>
                                     <td class="px-4 py-3 text-center align-middle whitespace-nowrap" @click.stop>
-                                        <x-modul-dokumen.aksi-entri kunci="{{ $review['reviewNo'] }}" :final="$review['terkunci']"
+                                        <x-modul-dokumen.aksi-entri jalur="rj" kunci="{{ $review['reviewNo'] }}" :final="$review['terkunci']"
                                             lanjut="{{ $milikKunjunganIni ? 'lanjutkanPengisian' : '' }}"
                                             lihat="{{ $milikKunjunganIni ? 'lihatReview' : '' }}"
                                             bukaKunci="bukaKunciReview" hapus="hapusReview" :hapusHanyaDraft="true"

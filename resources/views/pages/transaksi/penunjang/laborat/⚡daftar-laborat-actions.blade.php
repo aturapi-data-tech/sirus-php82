@@ -1,6 +1,7 @@
 <?php
 
 use Livewire\Component;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -20,6 +21,7 @@ new class extends Component {
     /* =======================
      | State
      * ======================= */
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public string $checkupNo = '';
     public string $activeTab = 'PemeriksaanLab'; // PemeriksaanLab | PemeriksaanLuar | Obat
     public array $headerData = [];
@@ -696,28 +698,18 @@ new class extends Component {
     }
 
     /* =======================
-     | ROLE CHECK
+     | HAK AKSES — diatur di Role Control (aksi khusus "prosesStatus")
      * ======================= */
     private function isAllowedRole(): bool
     {
-        $user = auth()->user();
-        if (!$user) {
-            return false;
-        }
-
-        return $user->hasAnyRole(['Admin', 'Laboratorium']);
+        return (bool) auth()->user()?->can('penunjang.laborat.prosesStatus');
     }
 
-    /* Batal transaksi hanya boleh Admin + Supervisor Penunjang
-       (operator Lab tidak boleh batal sendiri — escalate ke atasan). */
+    /* Batal transaksi = eskalasi ke atasan (operator Lab tidak boleh batal sendiri).
+       Daftar yang berhak diatur di Role Control (aksi khusus "batal"). */
     private function isAllowedBatal(): bool
     {
-        $user = auth()->user();
-        if (!$user) {
-            return false;
-        }
-
-        return $user->hasAnyRole(['Admin', 'Supervisor Penunjang']);
+        return (bool) auth()->user()?->can('penunjang.laborat.batal');
     }
 };
 ?>
@@ -874,10 +866,10 @@ new class extends Component {
                     @php $st = $headerData['checkup_status'] ?? ''; @endphp
 
                     {{-- KIRI: Tombol Batal — sendiri, terpisah dari tombol utama.
-                         Admin, Supervisor Penunjang. P→F (batal pendaftaran) / H→P (batal transaksi). --}}
+                         Hak "batal" dari Role Control (eskalasi ke atasan). P→F (batal pendaftaran) / H→P (batal transaksi). --}}
                     <div class="flex items-center gap-2">
                         @if ($st === 'P')
-                            @hasanyrole(['Admin', 'Supervisor Penunjang'])
+                            @can('penunjang.laborat.batal')
                                 <span title="{{ $indukTerkunci ? $indukTerkunciAlasan : '' }}">
                                     <x-confirm-button variant="danger" action="batalkanPendaftaran()"
                                         :disabled="$indukTerkunci" title="Batalkan Pendaftaran"
@@ -887,9 +879,9 @@ new class extends Component {
                                         Batalkan Pendaftaran
                                     </x-confirm-button>
                                 </span>
-                            @endhasanyrole
+                            @endcan
                         @elseif ($st === 'H')
-                            @hasanyrole(['Admin', 'Supervisor Penunjang'])
+                            @can('penunjang.laborat.batal')
                                 <span title="{{ $indukTerkunci ? $indukTerkunciAlasan : '' }}">
                                     <x-confirm-button variant="danger" action="batalkanTransaksi()"
                                         :disabled="$indukTerkunci" title="Batalkan Transaksi"
@@ -899,12 +891,12 @@ new class extends Component {
                                         Batalkan Transaksi
                                     </x-confirm-button>
                                 </span>
-                            @endhasanyrole
+                            @endcan
                         @endif
 
                         {{-- Keterangan kenapa batal di-disable (status transaksi induk) --}}
                         @if ($indukTerkunci && in_array($st, ['P', 'H'], true))
-                            @hasanyrole(['Admin', 'Supervisor Penunjang'])
+                            @can('penunjang.laborat.batal')
                                 <span class="inline-flex items-center gap-1 text-xs italic text-error dark:text-red-400">
                                     <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -912,7 +904,7 @@ new class extends Component {
                                     </svg>
                                     {{ $indukTerkunciAlasan }}
                                 </span>
-                            @endhasanyrole
+                            @endcan
                         @endif
                     </div>
 
@@ -920,6 +912,7 @@ new class extends Component {
                     <div class="flex items-center gap-2">
                         {{-- Tombol utama --}}
                         @if ($st === 'P')
+                            @can('penunjang.laborat.prosesStatus')
                             <x-primary-button type="button" wire:click="updateCheckupStatus('C')"
                                 wire:loading.attr="disabled" class="text-xs">
                                 <span wire:loading.remove wire:target="updateCheckupStatus('C')" class="inline-flex items-center gap-2"><x-ikon nama="proses" ukuran="w-3.5 h-3.5" /> Proses
@@ -929,7 +922,9 @@ new class extends Component {
                                     <x-loading /> Memproses Administrasi...
                                 </span>
                             </x-primary-button>
+                            @endcan
                         @elseif ($st === 'C')
+                            @can('penunjang.laborat.prosesStatus')
                             <x-primary-button type="button" wire:click="updateCheckupStatus('H')"
                                 wire:loading.attr="disabled" class="text-xs">
                                 <span wire:loading.remove wire:target="updateCheckupStatus('H')" class="inline-flex items-center gap-2"><x-ikon nama="simpan" ukuran="w-3.5 h-3.5" /> Simpan Hasil
@@ -939,6 +934,7 @@ new class extends Component {
                                     <x-loading /> Menyimpan Hasil...
                                 </span>
                             </x-primary-button>
+                            @endcan
                         @elseif ($st === 'H')
                             <x-badge variant="success">Sudah Selesai</x-badge>
                             <x-cetak-button wire:click="cetakHasilLab" label="Cetak Hasil Laboratorium" />

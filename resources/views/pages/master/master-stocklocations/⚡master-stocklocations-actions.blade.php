@@ -2,6 +2,9 @@
 
 use Livewire\Component;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
+use Livewire\Attributes\Locked;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\QueryException;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
@@ -9,7 +12,9 @@ use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 new class extends Component {
     use WithRenderVersioningTrait;
 
+    #[Locked]
     public string $formMode = 'create';
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public string $originalCode = '';
     public array $renderVersions = [];
     protected array $renderAreas = ['modal'];
@@ -29,6 +34,7 @@ new class extends Component {
     }
 
     #[On('master.stocklocations.openCreate')]
+    #[Authorize('master.stocklocations.tambah')]
     public function openCreate(): void
     {
         $this->resetForm();
@@ -40,6 +46,7 @@ new class extends Component {
     }
 
     #[On('master.stocklocations.openEdit')]
+    #[Authorize('master.stocklocations.ubah')]
     public function openEdit(string $slCode): void
     {
         $row = DB::table('immst_stocklocations')->where('sl_code', $slCode)->first();
@@ -66,6 +73,7 @@ new class extends Component {
     }
 
     #[On('master.stocklocations.requestDelete')]
+    #[Authorize('master.stocklocations.hapus')]
     public function deleteRow(string $slCode): void
     {
         try {
@@ -89,6 +97,8 @@ new class extends Component {
 
     public function save(): void
     {
+        Gate::authorize($this->formMode === 'create' ? 'master.stocklocations.tambah' : 'master.stocklocations.ubah');
+
         $codeRule = $this->formMode === 'create'
             ? ['required', 'string', 'max:10', 'unique:immst_stocklocations,sl_code']
             : ['required', 'string', 'max:10'];

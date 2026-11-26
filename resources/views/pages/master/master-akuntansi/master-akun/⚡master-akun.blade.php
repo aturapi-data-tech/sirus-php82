@@ -4,6 +4,7 @@ use Livewire\Component;
 use Livewire\WithPagination;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
 use Illuminate\Support\Facades\DB;
 
 new class extends Component {
@@ -19,21 +20,25 @@ new class extends Component {
     public function updatedFilterGroup(): void   { $this->resetPage(); }
     public function updatedFilterKas(): void     { $this->resetPage(); }
 
+    #[Authorize('master.akun.tambah')]
     public function openCreate(): void
     {
         $this->dispatch('master.akun.openCreate');
     }
 
+    #[Authorize('master.akun.ubah')]
     public function openEdit(string $accId): void
     {
         $this->dispatch('master.akun.openEdit', accId: $accId);
     }
 
+    #[Authorize('master.akun.hapus')]
     public function requestDelete(string $accId): void
     {
         $this->dispatch('master.akun.requestDelete', accId: $accId);
     }
 
+    #[Authorize('master.akun.ubah')]
     public function toggleActive(string $accId): void
     {
         $cur = (string) DB::table('acmst_accounts')->where('acc_id', $accId)->value('active_status');
@@ -44,6 +49,7 @@ new class extends Component {
         $this->resetPage();
     }
 
+    #[Authorize('master.akun.ubah')]
     public function toggleKas(string $accId): void
     {
         $cur = (string) DB::table('acmst_accounts')->where('acc_id', $accId)->value('kas_status');
@@ -167,10 +173,12 @@ new class extends Component {
                                 <option value="100">100</option>
                             </x-select-input>
                         </div>
+                        @can('master.akun.tambah')
                         <x-primary-button type="button" wire:click="openCreate">
                             <x-ikon nama="tambah" />
                             Tambah Akun
                         </x-primary-button>
+                        @endcan
                         <x-toolbar-refresh-reset :label="null" />
                     </div>
                 </div>
@@ -216,25 +224,41 @@ new class extends Component {
                                         @endif
                                     </td>
                                     <td class="px-6 py-4 align-middle">
+                                        @can('master.akun.ubah')
                                         <x-toggle :current="(string) $row->kas_status"
                                             trueValue="1" falseValue="0" size="md"
                                             wireClick="toggleKas('{{ $row->acc_id }}')">
                                             {{ (string) $row->kas_status === '1' ? 'Kas' : 'Non-Kas' }}
                                         </x-toggle>
+                                        @else
+                                        <x-badge :variant="(string) $row->kas_status === '1' ? 'info' : 'gray'">
+                                            {{ (string) $row->kas_status === '1' ? 'Kas' : 'Non-Kas' }}
+                                        </x-badge>
+                                        @endcan
                                     </td>
                                     <td class="px-6 py-4 align-middle">
+                                        @can('master.akun.ubah')
                                         <x-toggle :current="(string) $row->active_status"
                                             trueValue="1" falseValue="0" size="md"
                                             wireClick="toggleActive('{{ $row->acc_id }}')">
                                             {{ (string) $row->active_status === '1' ? 'Aktif' : 'Non-aktif' }}
                                         </x-toggle>
+                                        @else
+                                        <x-badge :variant="(string) $row->active_status === '1' ? 'success' : 'danger'">
+                                            {{ (string) $row->active_status === '1' ? 'Aktif' : 'Non-aktif' }}
+                                        </x-badge>
+                                        @endcan
                                     </td>
                                     <td class="ds-c px-6 py-4 align-middle">
                                         <div class="flex justify-center gap-2">
+                                            @can('master.akun.ubah')
                                             <x-action-edit wire:click="openEdit('{{ $row->acc_id }}')" />
+                                            @endcan
+                                            @can('master.akun.hapus')
                                             <x-action-delete :action="'requestDelete(\'' . $row->acc_id . '\')'"
                                                 title="Hapus Akun"
                                                 message="Yakin hapus akun {{ $row->acc_name }}?" />
+                                            @endcan
                                         </div>
                                     </td>
                                 </tr>

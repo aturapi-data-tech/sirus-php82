@@ -2,6 +2,7 @@
 // resources/views/pages/transaksi/rj/emr-rj/modul-dokumen/modul-dokumen-rj.blade.php
 
 use Livewire\Component;
+use Livewire\Attributes\Authorize;
 use Livewire\Attributes\On;
 use App\Http\Traits\Txn\Rj\EmrRJTrait;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
@@ -46,6 +47,7 @@ new class extends Component {
     private const TAB_BOLEH = ['suket', 'general-consent', 'inform-consent', 'penundaan-pelayanan', 'pelayanan-bedah', 'berkas-luar'];
 
     #[On('emr-rj.modul-dokumen.open')]
+    #[Authorize('pintu.emr-rj.modul-dokumen.open')]
     public function openModulDokumen(int $rjNo, string $tab = 'suket'): void
     {
         $this->resetForm();

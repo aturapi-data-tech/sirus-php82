@@ -29,8 +29,8 @@ new class extends Component {
             return;
         }
 
-        // Log Aktivitas hanya untuk Manager ke atas (leveling README: level 3-4).
-        if (!auth()->user()->hasAnyRole(['Admin', 'Manager Umum', 'Manager Medis'])) {
+        // Log Aktivitas: hak 'ri.emr.logAktivitas' (Role Control; centang awal Manager ke atas).
+        if (!auth()->user()->can('ri.emr.logAktivitas')) {
             $this->dispatch('toast', type: 'error', message: 'Hanya Manager ke atas yang dapat melihat Log Aktivitas.');
             return;
         }

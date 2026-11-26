@@ -2,6 +2,7 @@
 // resources/views/pages/transaksi/ugd/eresep-ugd/eresep-ugd.blade.php
 
 use Livewire\Component;
+use Livewire\Attributes\Authorize;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -45,6 +46,7 @@ new class extends Component {
      | OPEN
      =============================== */
     #[On('emr-ugd.eresep.open')]
+    #[Authorize('pintu.emr-ugd.eresep.open')]
     public function openEresep(int $rjNo): void
     {
         $this->resetForm();

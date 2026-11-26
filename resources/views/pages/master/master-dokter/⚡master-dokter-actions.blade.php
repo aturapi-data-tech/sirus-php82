@@ -3,6 +3,9 @@
 
 use Livewire\Component;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
+use Livewire\Attributes\Locked;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\QueryException;
 use App\Support\CakupanIhsDokter;
@@ -12,6 +15,7 @@ use App\Http\Traits\SATUSEHAT\PractitionerTrait;
 new class extends Component {
     use WithRenderVersioningTrait, PractitionerTrait;
 
+    #[Locked]
     public string $formMode = 'create'; // create | edit
 
     // ── Form fields ──
@@ -73,6 +77,7 @@ new class extends Component {
      | OPEN CREATE
      =============================== */
     #[On('master.dokter.openCreate')]
+    #[Authorize('master.dokter.tambah')]
     public function openCreate(): void
     {
         $this->resetFormFields();
@@ -87,6 +92,7 @@ new class extends Component {
      | OPEN EDIT
      =============================== */
     #[On('master.dokter.openEdit')]
+    #[Authorize('master.dokter.ubah')]
     public function openEdit(string $drId): void
     {
         $row = DB::table('rsmst_doctors')->where('dr_id', $drId)->first();
@@ -231,8 +237,21 @@ new class extends Component {
         }
     }
 
+
+    /**
+     * Celah ID record: kunci record yang sedang diedit tak boleh diubah dari klien — `save()`
+     * memakainya sebagai WHERE update, jadi mengubahnya = menulis ke record LAIN. Inputnya
+     * sudah disabled saat edit, jadi user biasa tak pernah mengirim perubahan ini.
+     */
+    public function updatingDrId(): void
+    {
+        abort_if($this->formMode !== 'create', 403, 'Kunci record tidak boleh diubah.');
+    }
+
     public function save(): void
     {
+        Gate::authorize($this->formMode === 'create' ? 'master.dokter.tambah' : 'master.dokter.ubah');
+
         $data = $this->validate();
 
         $payload = [
@@ -273,6 +292,7 @@ new class extends Component {
      | DELETE (delegate dari grid)
      =============================== */
     #[On('master.dokter.requestDelete')]
+    #[Authorize('master.dokter.hapus')]
     public function deleteFromGrid(string $drId): void
     {
         try {

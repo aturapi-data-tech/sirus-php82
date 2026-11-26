@@ -1,6 +1,7 @@
 <?php
 
 use Livewire\Component;
+use Livewire\Attributes\Authorize;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -95,6 +96,7 @@ new class extends Component {
     /* ===============================
      | BUKA MODAL PINDAH / ASSIGN
      =============================== */
+    #[Authorize('ri.pindahKamar')]
     public function openPindahKamar(): void
     {
         $this->dispatch('emr-ri.pindah-kamar.open', riHdrNo: $this->riHdrNo);

@@ -5,12 +5,14 @@
 // (rm-diagnosa-ugd-actions) apa adanya — diagnosis + prosedur; perubahan tercatat di log.
 
 use Livewire\Component;
+use Livewire\Attributes\Authorize;
 use Livewire\Attributes\On;
 
 new class extends Component {
     public ?int $rjNo = null;
 
     #[On('daftar-ugd.diagnosa.open')]
+    #[Authorize('pintu.daftar-ugd.diagnosa.open')]
     public function open(int $rjNo): void
     {
         $this->rjNo = $rjNo;

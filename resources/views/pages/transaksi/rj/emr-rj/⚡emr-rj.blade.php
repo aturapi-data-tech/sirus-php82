@@ -1,6 +1,7 @@
 <?php
 
 use Livewire\Component;
+use Livewire\Attributes\Authorize;
 use Livewire\Attributes\On;
 use App\Http\Traits\Txn\Rj\EmrRJTrait;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
@@ -30,6 +31,7 @@ new class extends Component {
     /* =======================
      | i-Care BPJS
      * ======================= */
+    #[Authorize('rj.emr.myiCare')]
     public function myiCare(string $noSep): void
     {
         if (!$noSep) {
@@ -113,6 +115,7 @@ new class extends Component {
      | OPEN REKAM MEDIS PERAWAT
      =============================== */
     #[On('emr-rj.rekam-medis.open')]
+    #[Authorize('pintu.emr-rj.rekam-medis.open')]
     public function openRekamMedisPerawat(int $rjNo): void
     {
         // Mode embedded dibuka oleh pembungkus (emr-coding-rj), bukan event ini. Event yang sama datang
@@ -188,6 +191,7 @@ new class extends Component {
         $this->dispatch('save-rm-perencanaan-rj');
     }
 
+    #[Authorize('rj.emr.bukaAdministrasi')]
     public function openAdministrasiPasien(string $rjNo): void
     {
         $this->dispatch('emr-rj.administrasi.open', rjNo: $rjNo);
@@ -198,6 +202,7 @@ new class extends Component {
         $this->dispatch('emr-rj.log-aktivitas.open', rjNo: $rjNo);
     }
 
+    #[Authorize('rj.emr.bukaEresep')]
     public function openEresep(int $rjNo): void
     {
         if (!$rjNo) {

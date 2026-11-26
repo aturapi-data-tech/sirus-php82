@@ -4,7 +4,7 @@
 // Modal GABUNGAN EMR UGD + Coding SATUSEHAT UGD dalam tab (pola halaman Kasir: <x-tabs> + @if per tab,
 // komponen asli dipasang apa adanya) — pola emr-coding-rj, keputusan user 2026-10-28, supaya tak buka-tutup dua modal.
 //   tab rekamMedis → emr-ugd         :embedded="true"  (body + footer aksi EMR utuh)
-//   tab coding     → coding-fhir-ugd :embedded="true"  (hanya bila Gate emr.codingFhir)
+//   tab coding     → coding-fhir-ugd :embedded="true"  (hanya bila Gate ugd.emr.codingFhir)
 // Modal, dirty guard, header & identitas pasien milik komponen ini. Dipasang di Pelayanan UGD menggantikan
 // emr-ugd & coding-fhir-ugd berdiri sendiri; mendengar event lamanya:
 //   'emr-ugd.rekam-medis.open' (rjNo) → tab Rekam Medis   ·   'coding-fhir-ugd.open' (rjNo) → tab Coding.
@@ -16,6 +16,7 @@
 // 'coding-fhir-ugd-tutup' → tryClose() dirty guard di sini.
 
 use Livewire\Component;
+use Livewire\Attributes\Authorize;
 use Livewire\Attributes\On;
 use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
@@ -44,6 +45,7 @@ new class extends Component {
     }
 
     #[On('emr-ugd.rekam-medis.open')]
+    #[Authorize('pintu.emr-ugd.rekam-medis.open')]
     public function bukaRekamMedis(int $rjNo): void
     {
         $this->buka($rjNo, 'rekamMedis');
@@ -52,7 +54,7 @@ new class extends Component {
     #[On('coding-fhir-ugd.open')]
     public function bukaCoding(string $rjNo): void
     {
-        if (!auth()->user()?->can('emr.codingFhir')) {
+        if (!auth()->user()?->can('ugd.emr.codingFhir')) {
             $this->dispatch('toast', type: 'error', message: 'Anda tidak berhak membuka Coding SATUSEHAT.');
             return;
         }
@@ -61,7 +63,7 @@ new class extends Component {
 
     private function buka(int $rjNo, string $tab): void
     {
-        $this->bisaCoding = (bool) auth()->user()?->can('emr.codingFhir');
+        $this->bisaCoding = (bool) auth()->user()?->can('ugd.emr.codingFhir');
         // Kunjungan & tab sama saat modal masih terbuka (mis. kembali dari E-Resep) → isi TIDAK di-mount
         // ulang; perilaku lama emr-ugd (seksi Perencanaan dimuat ulang sendiri oleh E-Resep).
         if ($this->rjNo !== $rjNo || $this->tabAktif !== $tab) {

@@ -2,6 +2,9 @@
 
 use Livewire\Component;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
+use Livewire\Attributes\Locked;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\QueryException;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
@@ -9,7 +12,9 @@ use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 new class extends Component {
     use WithRenderVersioningTrait;
 
+    #[Locked]
     public string $formMode = 'create';
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public string $originalId = '';
     public array $renderVersions = [];
     protected array $renderAreas = ['modal'];
@@ -29,6 +34,7 @@ new class extends Component {
 
     // ─── Open Create ──────────────────────────────────────────────────────────
     #[On('master.loinc.openCreate')]
+    #[Authorize('master.loinc.tambah')]
     public function openCreate(): void
     {
         $this->resetForm();
@@ -41,6 +47,7 @@ new class extends Component {
 
     // ─── Open Edit ────────────────────────────────────────────────────────────
     #[On('master.loinc.openEdit')]
+    #[Authorize('master.loinc.ubah')]
     public function openEdit(string $loincCode): void
     {
         $row = DB::table('rsmst_loinc_codes')->where('loinc_code', $loincCode)->first();
@@ -67,6 +74,7 @@ new class extends Component {
 
     // ─── Delete ───────────────────────────────────────────────────────────────
     #[On('master.loinc.requestDelete')]
+    #[Authorize('master.loinc.hapus')]
     public function deleteLoinc(string $loincCode): void
     {
         try {
@@ -90,6 +98,8 @@ new class extends Component {
     // ─── Save ─────────────────────────────────────────────────────────────────
     public function save(): void
     {
+        Gate::authorize($this->formMode === 'create' ? 'master.loinc.tambah' : 'master.loinc.ubah');
+
         $rules = [
             'form.loinc_code' => $this->formMode === 'create'
                 ? 'required|string|max:20|unique:rsmst_loinc_codes,loinc_code'

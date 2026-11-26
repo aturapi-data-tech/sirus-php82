@@ -6,8 +6,10 @@
 // Setelah upload sukses, dispatch 'radiologi-refresh' ke parent.
 
 use Livewire\Component;
+use Livewire\Attributes\Locked;
 use Livewire\WithFileUploads;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
@@ -17,11 +19,14 @@ new class extends Component {
     use WithFileUploads, WithValidationToastTrait;
 
     public string $selectedSource = '';
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public ?int $selectedDtl = null;
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public ?int $selectedRefNo = null;
     public $fotoFile = null;
 
     #[On('radiologi.foto.open')]
+    #[Authorize('penunjang.radiologi.upload.ubah')]
     public function openUploadFotoModal(string $source, int $dtlNo, int $refNo): void
     {
         $this->selectedSource = $source;
@@ -38,6 +43,7 @@ new class extends Component {
         $this->reset(['selectedSource', 'selectedDtl', 'selectedRefNo', 'fotoFile']);
     }
 
+    #[Authorize('penunjang.radiologi.upload.ubah')]
     public function uploadFoto(): void
     {
         $this->validateWithToast(

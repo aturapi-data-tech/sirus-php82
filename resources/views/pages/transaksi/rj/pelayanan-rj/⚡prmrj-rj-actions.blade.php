@@ -12,6 +12,7 @@
  */
 
 use Livewire\Component;
+use Livewire\Attributes\Authorize;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -66,6 +67,7 @@ new class extends Component {
     ];
 
     #[On('pelayanan-rj.prmrj.open')]
+    #[Authorize('pintu.pelayanan-rj.prmrj.open')]
     public function open(int $rjNo): void
     {
         $this->reset(['regNo', 'namaPasien', 'otomatis', 'riwayat', 'riwayatTotal']);
@@ -414,7 +416,7 @@ new class extends Component {
      */
     public function bukaKunciPrmrj(int $prmrjNo): void
     {
-        if (! auth()->user()?->can('dokumen.bukaKunci')) {
+        if (! auth()->user()?->can('rj.dokumen.bukaKunci')) {
             $this->dispatch('toast', type: 'error', message: 'Anda tidak berhak membuka kunci.');
 
             return;
@@ -458,7 +460,7 @@ new class extends Component {
     /** Hapus satu baris RM.06. Hanya boleh saat TIDAK terkunci. */
     public function hapusPrmrj(int $prmrjNo): void
     {
-        if (! auth()->user()?->can('dokumen.hapus')) {
+        if (! auth()->user()?->can('rj.dokumen.hapus')) {
             $this->dispatch('toast', type: 'error', message: 'Anda tidak berwenang menghapus entri.');
 
             return;
@@ -958,7 +960,7 @@ new class extends Component {
                                                 <x-cetak-button wire:click="cetak({{ (int) $baris['prmrjNo'] }})" title="Cetak kunjungan ini saja" />
 
                                                 @if ($baris['terkunci'])
-                                                    @can('dokumen.bukaKunci')
+                                                    @can('rj.dokumen.bukaKunci')
                                                         <x-confirm-button variant="warning-soft"
                                                             :action="'bukaKunciPrmrj(' . (int) $baris['prmrjNo'] . ')'"
                                                             title="Buka Kunci PRMRJ"
@@ -969,7 +971,7 @@ new class extends Component {
                                                         </x-confirm-button>
                                                     @endcan
                                                 @else
-                                                    @can('dokumen.hapus')
+                                                    @can('rj.dokumen.hapus')
                                                         <x-hapus-button wire:click="hapusPrmrj({{ (int) $baris['prmrjNo'] }})" class="ml-auto" confirm="Yakin hapus baris PRMRJ ini?" title="Hapus baris ini" />
                                                     @endcan
                                                 @endif

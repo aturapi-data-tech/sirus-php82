@@ -2,6 +2,9 @@
 
 use Livewire\Component;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
+use Livewire\Attributes\Locked;
+use Illuminate\Support\Facades\Gate;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -16,9 +19,11 @@ new class extends Component {
     private const KATEGORI_STOK = 'medis';
 
     public array $renderVersions = [];
+    #[Locked]
     public string $formMode = 'create';
 
     // ── Header ──
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public ?int $rcvNo = null;
     public ?string $rcvDate = null;
     public ?string $suppId = null;
@@ -40,6 +45,7 @@ new class extends Component {
     // ── Keranjang (in-memory array) ──
     public array $details = [];
     private int $detailCounter = 0;
+    #[Locked] // diisi server (cekHargaBeli); kalau tak dikunci, klien bisa ubah harga pokok produk lain
     public array $pendingPriceUpdate = [];
 
     // ── Summary ──
@@ -72,6 +78,7 @@ new class extends Component {
      | OPEN CREATE
      ══════════════════════════════ */
     #[On('penerimaan-medis.openCreate')]
+    #[Authorize('gudang.penerimaan-medis.tambah')]
     public function openCreate(): void
     {
         $this->resetFormFields();
@@ -246,6 +253,9 @@ new class extends Component {
      ══════════════════════════════ */
     public function cekHargaBeliEntry(): void
     {
+        // Bisa menulis harga master (auto update) — ikut hak entri sesuai mode.
+        Gate::authorize($this->formMode === 'create' ? 'gudang.penerimaan-medis.tambah' : 'gudang.penerimaan-medis.ubah');
+
         if (!$this->entryProductId || !$this->entryCostPrice) {
             return;
         }
@@ -293,6 +303,8 @@ new class extends Component {
 
     public function confirmUpdateHarga(): void
     {
+        Gate::authorize($this->formMode === 'create' ? 'gudang.penerimaan-medis.tambah' : 'gudang.penerimaan-medis.ubah');
+
         if (empty($this->pendingPriceUpdate)) {
             return;
         }
@@ -581,6 +593,8 @@ new class extends Component {
     /** Langkah 2 posting: tulis. Pemeriksaan diulang — dialog hanya tampilan. */
     public function simpan(): void
     {
+        Gate::authorize($this->formMode === 'create' ? 'gudang.penerimaan-medis.tambah' : 'gudang.penerimaan-medis.ubah');
+
         $this->pratinjau = [];
         $empId = $this->periksaPosting();
         if ($empId === null) {
@@ -744,12 +758,8 @@ new class extends Component {
     #[On('penerimaan-medis.requestDelete')]
     public function deleteFromGrid(string $rcvNo): void
     {
-        if (
-            !auth()
-                ->user()
-                ->hasAnyRole(['Admin', 'Tu'])
-        ) {
-            $this->dispatch('toast', type: 'error', message: 'Hanya Admin dan TU yang dapat menghapus.');
+        if (!auth()->user()->can('gudang.penerimaan-medis.hapus')) {
+            $this->dispatch('toast', type: 'error', message: 'Anda tidak memiliki akses untuk menghapus.');
             return;
         }
 
@@ -793,12 +803,8 @@ new class extends Component {
     #[On('penerimaan-medis.requestBatal')]
     public function batalFromGrid(string $rcvNo): void
     {
-        if (
-            !auth()
-                ->user()
-                ->hasAnyRole(['Admin', 'Tu'])
-        ) {
-            $this->dispatch('toast', type: 'error', message: 'Hanya Admin dan TU yang dapat membatalkan.');
+        if (!auth()->user()->can('transaksi.batalPenerimaan')) {
+            $this->dispatch('toast', type: 'error', message: 'Anda tidak memiliki akses untuk membatalkan.');
             return;
         }
 
@@ -1401,11 +1407,13 @@ new class extends Component {
                     {{-- KANAN: Tutup + Bayar --}}
                     <div class="flex flex-wrap justify-end gap-2">
                         <x-secondary-button type="button" wire:click="closeModal"><x-ikon nama="batal" /> Tutup</x-secondary-button>
+                        @can($formMode === 'create' ? 'gudang.penerimaan-medis.tambah' : 'gudang.penerimaan-medis.ubah')
                         <x-primary-button type="button" wire:click="openBayar"
                             :disabled="count($details) === 0 || ($formMode === 'edit' && $rcvStatus !== 'A')">
                             <x-ikon nama="proses" class="mr-1" />
                             Proses Pembayaran
                         </x-primary-button>
+                        @endcan
                     </div>
                 </div>
             </div>

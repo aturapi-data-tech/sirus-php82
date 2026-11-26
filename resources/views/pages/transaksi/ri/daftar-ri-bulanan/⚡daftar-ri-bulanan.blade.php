@@ -1,6 +1,7 @@
 <?php
 
 use Livewire\Component;
+use Livewire\Attributes\Authorize;
 use Livewire\WithPagination;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
@@ -80,6 +81,7 @@ new class extends Component {
         $this->dispatch('daftar-ri.idrg.open', riHdrNo: $rihdrNo);
     }
 
+    #[Authorize('ri.daftar-bulanan.bukaBerkasBpjs')]
     public function openBerkasBpjs(int $rihdrNo): void
     {
         $this->dispatch('berkas-bpjs.open', rjNo: $rihdrNo);
@@ -87,6 +89,7 @@ new class extends Component {
 
     // Buka modal Administrasi dalam mode view-only — Casemix verifikasi tagihan vs klaim.
     // Hanya dipakai dari bulanan (mutasi data dilarang dari bulanan).
+    #[Authorize('ri.daftar-bulanan.bukaAdministrasi')]
     public function openAdministrasi(int $rihdrNo): void
     {
         $this->dispatch('emr-ri.administrasi.open', riHdrNo: $rihdrNo, readOnly: true);
@@ -542,7 +545,7 @@ new class extends Component {
 
                                                         {{-- GRID 2 KOLOM --}}
                                                         <div class="grid grid-cols-2 gap-1 items-stretch">
-                                                        @hasanyrole('Admin|Casemix|Tu')
+                                                        @can('ri.daftar-bulanan.bukaAdministrasi')
                                                             @if ($row->ri_status === 'P')
                                                             <x-dropdown-link href="#"
                                                                 wire:click.prevent="openAdministrasi({{ $row->rihdr_no }})"
@@ -558,9 +561,9 @@ new class extends Component {
                                                                 </div>
                                                             </x-dropdown-link>
                                                             @endif
-                                                        @endhasanyrole
+                                                        @endcan
 
-                                                        @hasanyrole('Admin|Casemix|Tu')
+                                                        @can('ri.daftar-bulanan.bukaBerkasBpjs')
                                                             <x-dropdown-link href="#"
                                                                 wire:click.prevent="openBerkasBpjs({{ $row->rihdr_no }})"
                                                                 class="px-3 py-2 text-sm rounded-lg h-full bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/30 dark:hover:bg-amber-900/40">
@@ -574,7 +577,7 @@ new class extends Component {
                                                                     </span>
                                                                 </div>
                                                             </x-dropdown-link>
-                                                        @endhasanyrole
+                                                        @endcan
 
                                                         @can('idrg.kirim')
                                                             @if (($row->klaim_status === 'BPJS' || $row->klaim_id === 'JM') && $row->ri_status === 'P')

@@ -28,10 +28,12 @@
  */
 
 use Livewire\Component;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Database\QueryException;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
@@ -40,9 +42,7 @@ use App\Support\Keuangan\SaldoDpSupplier;
 new class extends Component {
     use WithRenderVersioningTrait;
 
-    /** Hapus salah bayar — sama dengan Pembayaran Piutang. */
-    private const ROLE_HAPUS_BAYAR = ['Admin', 'Supervisor Tu'];
-
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public ?string $suppId   = null;
     public ?string $suppName = null;
     public int     $sisaChecked = 0;
@@ -256,6 +256,8 @@ new class extends Component {
     /* ── Langkah 2: tulis ── */
     public function prosesBayar(): void
     {
+        Gate::authorize('keuangan.pembayaran-hutang-pbf.tambah');
+
         $this->validate();
         $this->pratinjau = [];
 
@@ -568,7 +570,8 @@ new class extends Component {
 
     protected function bolehHapusPembayaran(string $tanggal, string $keterangan): bool
     {
-        if (!auth()->user()?->hasAnyRole(self::ROLE_HAPUS_BAYAR)) {
+        // Hak hapus salah bayar dari Role Control (keuangan.pembayaran-hutang-pbf.hapus).
+        if (!auth()->user()?->can('keuangan.pembayaran-hutang-pbf.hapus')) {
             return false;
         }
         if (str_starts_with($keterangan, 'Angsuran Awal')) {
@@ -998,12 +1001,14 @@ new class extends Component {
 
                     <div class="flex justify-end gap-2">
                         <x-secondary-button type="button" wire:click="closeModal"><x-ikon nama="batal" /> Batal</x-secondary-button>
+                        @can('keuangan.pembayaran-hutang-pbf.tambah')
                         <x-primary-button type="button" wire:click="siapkanKonfirmasi" x-ref="btnProses"
                             :disabled="(int) $bayar > $sisaChecked"
                             wire:loading.attr="disabled" wire:target="siapkanKonfirmasi">
                             <span wire:loading.remove wire:target="siapkanKonfirmasi" class="inline-flex items-center gap-2"><x-ikon nama="proses" /> Proses Pembayaran</span>
                             <span wire:loading wire:target="siapkanKonfirmasi"><x-loading /> Memeriksa...</span>
                         </x-primary-button>
+                        @endcan
                     </div>
                 </div>
             </div>
@@ -1064,11 +1069,13 @@ new class extends Component {
 
                         <div class="flex justify-end gap-2 px-5 py-4 border-t border-hairline bg-surface-soft dark:bg-gray-800/50 dark:border-gray-700">
                             <x-secondary-button type="button" wire:click="batalKonfirmasi"><x-ikon nama="batal" /> Batal</x-secondary-button>
+                            @can('keuangan.pembayaran-hutang-pbf.tambah')
                             <x-primary-button type="button" wire:click="prosesBayar" x-ref="btnYaProses"
                                 wire:loading.attr="disabled" wire:target="prosesBayar">
                                 <span wire:loading.remove wire:target="prosesBayar" class="inline-flex items-center gap-2"><x-ikon nama="proses" /> Ya, proses</span>
                                 <span wire:loading wire:target="prosesBayar"><x-loading /> Memproses...</span>
                             </x-primary-button>
+                            @endcan
                         </div>
                     </div>
                 </div>

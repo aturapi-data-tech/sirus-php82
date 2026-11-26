@@ -4,7 +4,7 @@
 // Modal GABUNGAN EMR RI + Coding SATUSEHAT RI dalam tab (pola halaman Kasir: <x-tabs> + @if per tab,
 // komponen asli dipasang apa adanya) — pola emr-coding-rj/ugd, keputusan user 2026-10-28.
 //   tab rekamMedis → emr-ri          :embedded="true"
-//   tab coding     → coding-fhir-ri  :embedded="true"  (hanya bila Gate emr.codingFhir)
+//   tab coding     → coding-fhir-ri  :embedded="true"  (hanya bila Gate ri.emr.codingFhir)
 // Dipasang di Daftar RI menggantikan emr-ri & coding-fhir-ri berdiri sendiri; mendengar event lamanya:
 //   'emr-ri.rekam-medis.open' (riHdrNo) → tab Rekam Medis   ·   'coding-fhir-ri.open' (riHdrNo) → tab Coding.
 //
@@ -16,6 +16,7 @@
 // Header Tutup: memancarkan 'emr-ri-tutup' / 'coding-fhir-ri-tutup' → tryClose() guard tab aktif.
 
 use Livewire\Component;
+use Livewire\Attributes\Authorize;
 use Livewire\Attributes\On;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 
@@ -38,6 +39,7 @@ new class extends Component {
     }
 
     #[On('emr-ri.rekam-medis.open')]
+    #[Authorize('pintu.emr-ri.rekam-medis.open')]
     public function bukaRekamMedis(string $riHdrNo): void
     {
         $this->buka($riHdrNo, 'rekamMedis');
@@ -46,7 +48,7 @@ new class extends Component {
     #[On('coding-fhir-ri.open')]
     public function bukaCoding(string $riHdrNo): void
     {
-        if (!auth()->user()?->can('emr.codingFhir')) {
+        if (!auth()->user()?->can('ri.emr.codingFhir')) {
             $this->dispatch('toast', type: 'error', message: 'Anda tidak berhak membuka Coding SATUSEHAT.');
             return;
         }
@@ -55,7 +57,7 @@ new class extends Component {
 
     private function buka(string $riHdrNo, string $tab): void
     {
-        $this->bisaCoding = (bool) auth()->user()?->can('emr.codingFhir');
+        $this->bisaCoding = (bool) auth()->user()?->can('ri.emr.codingFhir');
         if ($this->riHdrNo !== $riHdrNo || $this->tabAktif !== $tab) {
             $this->incrementVersion('modal-emr-coding-ri');
         }

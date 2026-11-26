@@ -240,7 +240,7 @@ new class extends Component {
 
                                                     {{-- Titik-3 aksi — @click.stop supaya klik menu tidak ikut memilih baris
                                                          (re-render baris bakal menutup dropdown Alpine-nya). --}}
-                                                    @can('rekonsiliasi.obat')
+                                                    @can('ri.emr.rekonsiliasiObat')
                                                         <div @click.stop class="mt-0.5">
                                                             <x-dropdown width="w-[300px]" :melayang="true">
                                                                 <x-slot name="trigger">

@@ -1,6 +1,8 @@
 <?php
 
+use Livewire\Attributes\Authorize;
 use Livewire\Component;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -25,6 +27,7 @@ use App\Support\TaskIdAntrean;
 new class extends Component {
     use EmrRJTrait, AntrianTrait;
 
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public ?int $rjNo = null;
 
     /** Modal banding TaskId: identitas kunjungan (kecil, aman sebagai properti publik). */
@@ -43,6 +46,7 @@ new class extends Component {
      | Detail event: { rjNo, aksi } dengan aksi ∈ {'4','5','antrean'}.
      =============================== */
     #[On('task-id-poli-proses')]
+    #[Authorize('rj.pelayanan.taskIdPoli')]
     public function proses(int $rjNo, string $aksi): void
     {
         $this->rjNo = $rjNo;
@@ -64,6 +68,7 @@ new class extends Component {
      | 3. Push ke BPJS jika poli spesialis — DI LUAR transaksi (API call)
      | 4. lockRJRow + update waktu_masuk_poli + patch taskIdPelayanan — atomik
     =============================== */
+    #[Authorize('rj.pelayanan.taskIdPoli')]
     public function prosesTaskId4(): void
     {
         // 1. Guard: rjNo belum di-set
@@ -185,6 +190,7 @@ new class extends Component {
      | 3. Push ke BPJS jika poli spesialis — DI LUAR transaksi (API call)
      | 4. lockRJRow + patch hanya key taskIdPelayanan — atomik
     =============================== */
+    #[Authorize('rj.pelayanan.taskIdPoli')]
     public function prosesTaskId5(): void
     {
         // 1. Guard: rjNo belum di-set
@@ -291,6 +297,7 @@ new class extends Component {
      | (Kode lama membaca response.listTaskId → selalu kosong.)
      | Tidak menulis apa pun ke DB / JSON — aman diklik berulang.
     =============================== */
+    #[Authorize('rj.pelayanan.taskIdPoli')]
     public function prosesTaskidAntrean(): void
     {
         if (empty($this->rjNo)) {

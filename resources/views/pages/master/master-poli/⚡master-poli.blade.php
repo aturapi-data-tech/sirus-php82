@@ -5,6 +5,7 @@ use Livewire\WithPagination;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
+use Livewire\Attributes\Authorize;
 use Illuminate\Support\Facades\DB;
 use App\Support\CakupanLocationPoli;
 
@@ -46,11 +47,13 @@ new class extends Component {
     /* -------------------------
      | Child modal triggers
      * ------------------------- */
+    #[Authorize('master.poli.tambah')]
     public function openCreate(): void
     {
         $this->dispatch('master.poli.openCreate');
     }
 
+    #[Authorize('master.poli.ubah')]
     public function openEdit(string $poliId): void
     {
         $this->dispatch('master.poli.openEdit', poliId: $poliId);
@@ -59,6 +62,7 @@ new class extends Component {
     /* -------------------------
     | Request Delete (delegate ke actions)
     * ------------------------- */
+    #[Authorize('master.poli.hapus')]
     public function requestDelete(string $poliId): void
     {
         $this->dispatch('master.poli.requestDelete', poliId: $poliId);
@@ -163,10 +167,12 @@ new class extends Component {
                             </x-select-input>
                         </div>
 
+                        @can('master.poli.tambah')
                         <x-primary-button type="button" wire:click="openCreate">
                             <x-ikon nama="tambah" />
                             Tambah Data Poli Baru
                         </x-primary-button>
+                        @endcan
                         <x-toolbar-refresh-reset :label="null" />
                     </div>
                 </div>
@@ -221,10 +227,14 @@ new class extends Component {
 
                                     <td class="ds-c px-6 py-4">
                                         <div class="flex justify-center gap-2">
+                                            @can('master.poli.ubah')
                                             <x-action-edit wire:click="openEdit('{{ $row->poli_id }}')" />
+                                            @endcan
 
+                                            @can('master.poli.hapus')
                                             <x-action-delete :action="'requestDelete(\'' . $row->poli_id . '\')'"
                                                 title="Hapus Poli" message="Yakin hapus data poli {{ $row->poli_desc }}?" />
+                                            @endcan
                                         </div>
                                     </td>
                                 </tr>

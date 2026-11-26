@@ -2,8 +2,10 @@
 
 use Livewire\Component;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Locked;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Database\QueryException;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 
@@ -14,6 +16,7 @@ new class extends Component {
     protected array $renderAreas = ['modal'];
 
     /* Satu modal dipakai dua mode: entri baru & koreksi baris terpilih. */
+    #[Locked]
     public ?string $editingNo = null;
 
     public array $formEntry = [
@@ -172,6 +175,11 @@ new class extends Component {
      =============================== */
     public function simpan(): void
     {
+        // Entri baru butuh hak Tambah; koreksi dijaga kasTu.koreksi di simpanKoreksi().
+        if (!$this->editingNo) {
+            Gate::authorize('keuangan.pengeluaran-kas-tu.tambah');
+        }
+
         $this->validate($this->aturan(), $this->pesanAturan());
 
         $empId = $this->petugasSiap();
@@ -224,7 +232,7 @@ new class extends Component {
         }
 
         if (!$this->bolehKoreksi()) {
-            $this->dispatch('toast', type: 'warning', message: 'Hanya Manager ke atas yang dapat mengoreksi transaksi kas.');
+            $this->dispatch('toast', type: 'warning', message: 'Anda tidak memiliki akses untuk mengoreksi transaksi kas.');
             $this->closeModal();
             return;
         }
@@ -271,7 +279,7 @@ new class extends Component {
         }
 
         if (!$this->bolehKoreksi()) {
-            $this->dispatch('toast', type: 'warning', message: 'Hanya Manager ke atas yang dapat mengoreksi transaksi kas.');
+            $this->dispatch('toast', type: 'warning', message: 'Anda tidak memiliki akses untuk mengoreksi transaksi kas.');
             return;
         }
 
@@ -327,7 +335,7 @@ new class extends Component {
     public function hapusDariDaftar(string $tucashkNo): void
     {
         if (!auth()->user()?->can('kasTu.hapus')) {
-            $this->dispatch('toast', type: 'error', message: 'Hanya Manager ke atas yang dapat menghapus transaksi kas.');
+            $this->dispatch('toast', type: 'error', message: 'Anda tidak memiliki akses untuk menghapus transaksi kas.');
             return;
         }
 
@@ -473,6 +481,7 @@ new class extends Component {
                             {{ $editingNo ? 'Batal' : 'Tutup' }}
                         </x-secondary-button>
 
+                        @if ($editingNo || auth()->user()?->can('keuangan.pengeluaran-kas-tu.tambah'))
                         <x-primary-button type="button" wire:click="simpan" wire:loading.attr="disabled"
                             wire:target="simpan" x-ref="btnSimpan">
                             <span wire:loading.remove wire:target="simpan" class="inline-flex items-center gap-2">
@@ -481,6 +490,7 @@ new class extends Component {
                             </span>
                             <span wire:loading wire:target="simpan"><x-loading /> Menyimpan...</span>
                         </x-primary-button>
+                        @endif
                     </div>
                 </div>
             </div>

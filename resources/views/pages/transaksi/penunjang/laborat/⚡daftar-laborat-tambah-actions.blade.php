@@ -21,6 +21,7 @@ use Livewire\Component;
 use Livewire\WithPagination;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Authorize;
 use Illuminate\Support\Facades\DB;
 use App\Support\OracleLob;
 use App\Http\Traits\Concerns\WithValidationToastTrait;
@@ -54,6 +55,7 @@ new class extends Component {
      | OPEN / CLOSE MODAL
      =============================== */
     #[On('laborat.tambah.open')]
+    #[Authorize('penunjang.laborat.tambah')]
     public function openTambahModal(string $source = 'RJ'): void
     {
         $this->source = in_array($source, ['RJ', 'UGD', 'RI'], true) ? $source : 'RJ';
@@ -348,6 +350,7 @@ new class extends Component {
     /* ===============================
      | INSERT ORDER LAB
      =============================== */
+    #[Authorize('penunjang.laborat.tambah')]
     public function insertLab(): void
     {
         if (!$this->selectedRefNo) {

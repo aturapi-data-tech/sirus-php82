@@ -4,6 +4,7 @@ use Livewire\Component;
 use Livewire\WithPagination;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
 use Illuminate\Support\Facades\DB;
 
 new class extends Component {
@@ -26,16 +27,19 @@ new class extends Component {
         $this->resetPage();
     }
 
+    #[Authorize('master.stocklocations.tambah')]
     public function openCreate(): void
     {
         $this->dispatch('master.stocklocations.openCreate');
     }
 
+    #[Authorize('master.stocklocations.ubah')]
     public function openEdit(string $slCode): void
     {
         $this->dispatch('master.stocklocations.openEdit', slCode: $slCode);
     }
 
+    #[Authorize('master.stocklocations.hapus')]
     public function requestDelete(string $slCode): void
     {
         $this->dispatch('master.stocklocations.requestDelete', slCode: $slCode);
@@ -130,11 +134,13 @@ new class extends Component {
                                 <option value="100">100</option>
                             </x-select-input>
                         </div>
+                        @can('master.stocklocations.tambah')
                         <x-primary-button type="button" wire:click="openCreate" class="whitespace-nowrap"
                             title="Tambah lokasi stok baru">
                             <x-ikon nama="tambah" class="mr-1" />
                             Tambah Lokasi
                         </x-primary-button>
+                        @endcan
                         <x-toolbar-refresh-reset :label="null" />
                     </div>
                 </div>
@@ -199,10 +205,14 @@ new class extends Component {
 
                                     <td class="ds-c px-6 py-4">
                                         <div class="flex justify-center gap-2">
+                                            @can('master.stocklocations.ubah')
                                             <x-action-edit wire:click="openEdit('{{ $row->sl_code }}')" />
+                                            @endcan
+                                            @can('master.stocklocations.hapus')
                                             <x-action-delete :action="'requestDelete(\'' . $row->sl_code . '\')'"
                                                 title="Hapus Lokasi Stok"
                                                 message="Yakin hapus lokasi {{ $row->sl_code }} - {{ $row->sl_name }}?" />
+                                            @endcan
                                         </div>
                                     </td>
                                 </tr>

@@ -5,10 +5,12 @@
  */
 
 use Livewire\Component;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 
 new class extends Component {
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public ?int $userId = null;
     public string $userName = '';
     public string $userEmail = '';

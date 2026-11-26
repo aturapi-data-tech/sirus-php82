@@ -4,6 +4,7 @@
 // timeout Apache (AH01075), peringatan PHP-FPM, slowlog (stack trace request lambat), error Laravel.
 // Log milik root dibaca lewat sudo tail dengan argumen persis (lihat tab Setup Server).
 
+use App\Support\AksesHalaman;
 use Livewire\Component;
 use Livewire\Attributes\Computed;
 use Illuminate\Support\Carbon;
@@ -30,7 +31,8 @@ new class extends Component {
 
     public function mount(): void
     {
-        abort_unless(auth()->user()?->hasRole('Admin'), 403);
+        // Selalu dicek (tak ikut mode 'log'): halaman ini membaca log server lewat sudo.
+        abort_unless(AksesHalaman::boleh(auth()->user(), 'database-monitor.monitor-server'), 403);
 
         $this->userProsesPhp = function_exists('posix_geteuid')
             ? (posix_getpwuid(posix_geteuid())['name'] ?? 'www-data')

@@ -4,6 +4,7 @@ use Livewire\Component;
 use Livewire\WithPagination;
 use Livewire\WithFileUploads;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Authorize;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
@@ -120,6 +121,7 @@ new class extends Component {
     /* ===============================
      | OPEN UPLOAD MODAL — PDF per dtl (1 dtl = 1 PDF)
      =============================== */
+    #[Authorize('penunjang.laborat.lab-luar.ubah')]
     public function openUploadModal(int $checkupNo, int $dtl): void
     {
         $row = DB::table('lbtxn_checkupoutdtls')
@@ -147,6 +149,7 @@ new class extends Component {
         $this->pdfKeterangan = '';
     }
 
+    #[Authorize('penunjang.laborat.lab-luar.ubah')]
     public function uploadHasil(): void
     {
         $this->validate(
@@ -323,13 +326,19 @@ new class extends Component {
                                         </svg>
                                         Lihat PDF
                                     </a>
+                                    @can('penunjang.laborat.lab-luar.ubah')
                                     <x-secondary-button type="button"
                                         wire:click="openUploadModal({{ $r->checkup_no }}, {{ $r->labout_dtl }})"
                                         class="text-xs"><x-ikon nama="unggah" ukuran="w-3.5 h-3.5" /> Replace</x-secondary-button>
+                                    @endcan
                                 @else
+                                    @can('penunjang.laborat.lab-luar.ubah')
                                     <x-primary-button type="button"
                                         wire:click="openUploadModal({{ $r->checkup_no }}, {{ $r->labout_dtl }})"
                                         class="text-xs"><x-ikon nama="unggah" ukuran="w-3.5 h-3.5" /> Upload Hasil</x-primary-button>
+                                    @else
+                                        <span class="text-xs text-muted-soft">-</span>
+                                    @endcan
                                 @endif
                             </td>
                         </tr>

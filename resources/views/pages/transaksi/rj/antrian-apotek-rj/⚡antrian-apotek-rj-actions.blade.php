@@ -82,13 +82,13 @@ new class extends Component {
      | SAVE TELAAH RESEP
      =============================== */
     /* ===============================
-     | BUKA KUNCI TELAAH (pola modul dokumen) — hanya pemegang Gate dokumen.bukaKunci.
+     | BUKA KUNCI TELAAH (pola modul dokumen) — hanya pemegang Gate rj.dokumen.bukaKunci.
      | Cabut TTD SATU bagian; isian butir dipertahankan supaya tinggal dikoreksi lalu
      | ditandatangani ulang. Dicatat ke audit log kunjungan.
      =============================== */
     public function bukaKunciTelaah(string $bagian): void
     {
-        if (!auth()->user()?->can('dokumen.bukaKunci')) {
+        if (!auth()->user()?->can('rj.dokumen.bukaKunci')) {
             $this->dispatch('toast', type: 'error', message: 'Hanya Admin / Manager yang dapat membuka kunci.');
             return;
         }
@@ -785,7 +785,7 @@ new class extends Component {
                             <svg class="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>
                             <span>Resep: <strong>TTD-E</strong> {{ $ttdResep['userLog'] }} · {{ $ttdResep['userLogDate'] }}</span>
                         </span>
-                        @can('dokumen.bukaKunci')
+                        @can('rj.dokumen.bukaKunci')
                             <x-confirm-button variant="warning-soft" action="bukaKunciTelaah('telaahResep')"
                                 title="Buka Kunci Telaah Resep"
                                 message="TTD-E Telaah Resep akan dicabut dan bagian ini bisa diedit lagi. Isian butir tetap. Tindakan dicatat di audit log."
@@ -800,7 +800,7 @@ new class extends Component {
                             <svg class="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>
                             <span>Obat: <strong>TTD-E</strong> {{ $ttdObat['userLog'] }} · {{ $ttdObat['userLogDate'] }}</span>
                         </span>
-                        @can('dokumen.bukaKunci')
+                        @can('rj.dokumen.bukaKunci')
                             <x-confirm-button variant="warning-soft" action="bukaKunciTelaah('telaahObat')"
                                 title="Buka Kunci Telaah Obat"
                                 message="TTD-E Telaah Obat akan dicabut dan bagian ini bisa diedit lagi. Isian butir tetap. Tindakan dicatat di audit log."

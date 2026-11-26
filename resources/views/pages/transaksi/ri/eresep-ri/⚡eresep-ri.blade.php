@@ -1,6 +1,7 @@
 <?php
 
 use Livewire\Component;
+use Livewire\Attributes\Authorize;
 use Livewire\Attributes\On;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
@@ -48,6 +49,7 @@ new class extends Component {
      | OPEN ERESEP RI
      =============================== */
     #[On('emr-ri.eresep.open')]
+    #[Authorize('pintu.emr-ri.eresep.open')]
     public function openEresep(int $riHdrNo): void
     {
         $this->resetForm();
@@ -195,6 +197,7 @@ new class extends Component {
      | CITO — ubah prioritas resep DRAFT
      | Hanya sebelum TTD/kirim: setelah terkirim, apotek sudah membaca prioritasnya.
      =============================== */
+    #[Authorize('ri.emr.tulisEresep')]
     public function toggleCitoResep(int $resepIndex): void
     {
         if ($this->isFormLocked) {
@@ -234,6 +237,7 @@ new class extends Component {
     /* ===============================
      | HAPUS RESEP HEADER
      =============================== */
+    #[Authorize('ri.emr.tulisEresep')]
     public function removeResepHdr(int $resepIndex): void
     {
         if ($this->isFormLocked) {
@@ -292,6 +296,7 @@ new class extends Component {
     /* ===============================
      | TTD DOKTER → KIRIM KE APOTEK
      =============================== */
+    #[Authorize('ri.emr.tulisEresep')]
     public function setDokterPeresep(int $resepIndex): void
     {
         if ($this->isFormLocked) {
@@ -311,7 +316,7 @@ new class extends Component {
         }
 
         $user = auth()->user();
-        if (!$user->hasAnyRole(['Dokter', 'Admin'])) {
+        if (!$user->can('ri.emr.tulisEresep')) {
             $this->dispatch('toast', type: 'error', message: "User {$user->name} bukan Dokter atau Admin.");
             return;
         }
@@ -367,6 +372,7 @@ new class extends Component {
      |  - status = 'A'      → hapus data apotek + hapus TTD
      |  - status = 'L'      → TOLAK, sudah diproses
      =============================== */
+    #[Authorize('ri.emr.tulisEresep')]
     public function batalTTD(int $resepIndex): void
     {
         if ($this->isFormLocked) {
@@ -443,6 +449,7 @@ new class extends Component {
     /* ===============================
      | COPY RESEP (hanya yg sudah TTD)
      =============================== */
+    #[Authorize('ri.emr.tulisEresep')]
     public function copyResepHdr(int $sumberIndex): void
     {
         if ($this->isFormLocked) {
@@ -770,7 +777,7 @@ new class extends Component {
 
                                                 {{-- ── DRAFT: belum TTD ── --}}
                                                 @if (!$hasTTD && !$isFormLocked)
-                                                    @role(['Dokter', 'Admin'])
+                                                    @can('ri.emr.tulisEresep')
                                                         {{-- Prioritas CITO masih bisa diubah selama draft --}}
                                                         <x-toggle :current="$hdr['cito'] ?? '0'" trueValue="1" falseValue="0" onColor="bg-error"
                                                             wireClick="toggleCitoResep({{ $resepIndex }})" label="CITO — didahulukan apotek" />
@@ -787,12 +794,12 @@ new class extends Component {
 
                                                         {{-- Hapus Draft --}}
                                                         <x-hapus-button wire:click.prevent="removeResepHdr({{ $resepIndex }})" confirm="Hapus resep draft ini? Tindakan tidak dapat dibatalkan." label="Hapus Draft" title="Hapus resep yang belum ditandatangani" />
-                                                    @endrole
+                                                    @endcan
                                                 @endif
 
                                                 {{-- ── SUDAH TTD ── --}}
                                                 @if ($hasTTD)
-                                                    @role(['Dokter', 'Admin'])
+                                                    @can('ri.emr.tulisEresep')
                                                         @if (!$isFormLocked)
                                                             @if ($isApotekLocked)
                                                                 {{-- Resep sudah selesai diproses apotek, tidak bisa diedit --}}
@@ -831,7 +838,7 @@ new class extends Component {
                                                                 Salin ke Resep Baru
                                                             </x-primary-button>
                                                         @endif
-                                                    @endrole
+                                                    @endcan
 
                                                     {{-- Kirim ke Plan CPPT --}}
                                                     <x-primary-button

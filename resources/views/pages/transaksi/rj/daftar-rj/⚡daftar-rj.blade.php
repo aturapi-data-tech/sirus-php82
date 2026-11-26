@@ -4,6 +4,7 @@ use Livewire\Component;
 use Livewire\WithPagination;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
@@ -91,11 +92,13 @@ new class extends Component {
     /* -------------------------
      | Child modal triggers
      * ------------------------- */
+    #[Authorize('rj.daftar.tambah')]
     public function openCreate(): void
     {
         $this->dispatch('daftar-rj.create.open');
     }
 
+    #[Authorize('rj.daftar.ubah')]
     public function openEdit(string $rjNo): void
     {
         $this->dispatch('daftar-rj.edit.open', rjNo: $rjNo);
@@ -113,6 +116,7 @@ new class extends Component {
     }
 
     /** Modul Dokumen dari daftar pendaftaran — admisi langsung ke tab General Consent. */
+    #[Authorize('rj.daftar.bukaModulDokumen')]
     public function openModulDokumen(int $rjNo): void
     {
         $this->dispatch('emr-rj.modul-dokumen.open', rjNo: $rjNo, tab: 'general-consent');
@@ -125,6 +129,7 @@ new class extends Component {
      | Pola sama dengan komponen berkas-bpjs-rj-actions, di-parameter per rj_no.
      | Slot lain (GROUPING/LAIN-LAIN/Lab/Radiologi) tetap lewat modal Berkas BPJS.
      * ------------------------- */
+    #[Authorize('rj.daftar.bukaBerkasBpjs')]
     public function generateSep(int $rjNo): void
     {
         try {
@@ -177,6 +182,8 @@ new class extends Component {
         }
     }
 
+    #[Authorize('rj.daftar.bukaBerkasBpjs')]
+
     public function generateRm(int $rjNo): void
     {
         try {
@@ -217,6 +224,8 @@ new class extends Component {
             $this->dispatch('toast', type: 'error', message: 'Gagal generate RM: ' . $e->getMessage());
         }
     }
+
+    #[Authorize('rj.daftar.bukaBerkasBpjs')]
 
     public function generateSkdp(int $rjNo): void
     {
@@ -836,12 +845,12 @@ new class extends Component {
                         </div>
 
                         {{-- Pendaftaran Rawat Jalan — Mr, Admin, Supervisor Tu --}}
-                        @hasanyrole(['Mr', 'Admin', 'Supervisor Tu'])
+                        @can('rj.daftar.tambah')
                             <x-primary-button type="button" wire:click="openCreate" class="whitespace-nowrap">
                                 <x-ikon nama="tambah" ukuran="w-5 h-5" class="mr-1" />
                                 Pendaftaran Rawat Jalan
                             </x-primary-button>
-                        @endhasanyrole
+                        @endcan
                     </div>
 
                 </div>
@@ -1067,7 +1076,7 @@ new class extends Component {
                                             $berkasTerupload = $row->berkas_uploaded ?? [];
                                         @endphp
                                         @if ($isBpjs)
-                                            @hasanyrole('Admin|Casemix|Tu|Mr')
+                                            @can('rj.daftar.bukaBerkasBpjs')
                                                 @php
                                                     $berkasInline = [
                                                         1 => ['label' => 'SEP', 'method' => 'generateSep'],
@@ -1115,7 +1124,7 @@ new class extends Component {
                                                         @endforeach
                                                     </div>
                                                 @endif
-                                            @endhasanyrole
+                                            @endcan
                                         @endif
 
                                         <div x-show="expanded" x-collapse class="space-y-0.5">
@@ -1235,7 +1244,7 @@ new class extends Component {
 
                                                             {{-- GRID 2 KOLOM --}}
                                                             <div class="grid grid-cols-2 gap-1 items-stretch">
-                                                                @hasanyrole(['Mr', 'Admin', 'Supervisor Tu'])
+                                                                @can('rj.daftar.ubah')
                                                                     <x-dropdown-link href="#"
                                                                         wire:click.prevent="openEdit('{{ $row->rj_no }}')"
                                                                         class="px-3 py-2 text-sm rounded-lg h-full bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-900/40">
@@ -1249,10 +1258,10 @@ new class extends Component {
                                                                             </span>
                                                                         </div>
                                                                     </x-dropdown-link>
-                                                                @endhasanyrole
+                                                                @endcan
 
                                                                 {{-- Modul Dokumen — admisi (Mr/Tu) mengisi General Consent saat pendaftaran; buka langsung ke tab itu --}}
-                                                                @hasanyrole('Admin|Mr|Supervisor Tu|Tu|Casemix|Perawat|Dokter')
+                                                                @can('rj.daftar.bukaModulDokumen')
                                                                     <x-dropdown-link href="#"
                                                                         wire:click.prevent="openModulDokumen({{ $row->rj_no }})"
                                                                         class="px-3 py-2 text-sm rounded-lg h-full bg-yellow-50 hover:bg-yellow-100 dark:bg-yellow-900/20 dark:hover:bg-yellow-900/40">
@@ -1266,9 +1275,9 @@ new class extends Component {
                                                                             </span>
                                                                         </div>
                                                                     </x-dropdown-link>
-                                                                @endhasanyrole
+                                                                @endcan
 
-                                                                @hasanyrole('Admin|Casemix|Mr|Dokter')
+                                                                @can('rj.daftar.bukaDiagnosa')
                                                                     <x-dropdown-link href="#"
                                                                         x-on:click.prevent="$dispatch('daftar-rj.diagnosa.open', { rjNo: {{ $row->rj_no }} })"
                                                                         class="px-3 py-2 text-sm rounded-lg h-full bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/40">
@@ -1282,9 +1291,9 @@ new class extends Component {
                                                                             </span>
                                                                         </div>
                                                                     </x-dropdown-link>
-                                                                @endhasanyrole
+                                                                @endcan
 
-                                                                @hasanyrole('Admin|Mr|Tu|Casemix')
+                                                                @can('rj.daftar.bukaRiwayatKontrol')
                                                                     <x-dropdown-link href="#"
                                                                         x-on:click.prevent="$dispatch('riwayat-kontrol.open', { regNo: '{{ $row->reg_no }}', regName: '{{ addslashes($row->reg_name) }}' })"
                                                                         class="px-3 py-2 text-sm rounded-lg h-full bg-cyan-50 hover:bg-cyan-100 dark:bg-cyan-900/30 dark:hover:bg-cyan-900/40">
@@ -1298,9 +1307,9 @@ new class extends Component {
                                                                             </span>
                                                                         </div>
                                                                     </x-dropdown-link>
-                                                                @endhasanyrole
+                                                                @endcan
 
-                                                                @can('emr.codingFhir')
+                                                                @can('rj.emr.codingFhir')
                                                                     <x-dropdown-link href="#"
                                                                         wire:click.prevent="openCodingFhir('{{ $row->rj_no }}')"
                                                                         class="px-3 py-2 text-sm rounded-lg h-full bg-brand-green/5 hover:bg-brand-green/10 dark:bg-brand-green/10">
@@ -1316,7 +1325,7 @@ new class extends Component {
                                                                     </x-dropdown-link>
                                                                 @endcan
 
-                                                                @can('satusehat.kirim')
+                                                                @can('rj.satusehat.kirim')
                                                                     <x-dropdown-link href="#"
                                                                         wire:click.prevent="openSatuSehat('{{ $row->rj_no }}')"
                                                                         class="px-3 py-2 text-sm rounded-lg h-full bg-teal-50 hover:bg-teal-100 dark:bg-teal-900/20 dark:hover:bg-teal-900/40">
@@ -1363,7 +1372,7 @@ new class extends Component {
 
                                                 {{-- SATU SEHAT — status kirim PER-RESOURCE, di kanan tombol titik-3.
                                                      Abu-abu = belum dikirim, hijau/brand = sudah. Klik chip mana pun = buka modal Kirim Satu Sehat. --}}
-                                                @can('satusehat.kirim')
+                                                @can('rj.satusehat.kirim')
                                                     <div class="flex-1 min-w-0">
                                                         <x-input-label value="Satu Sehat" class="mb-1 text-[10px] uppercase tracking-wide text-muted" />
                                                     <div class="flex flex-wrap items-center gap-1">
@@ -1385,7 +1394,7 @@ new class extends Component {
                                                 {{-- Batal (Task ID 99) — baris bawah. Manager Medis/Umum (Admin otomatis via super-user).
                                                      Tombol di sini; logika di host task-id-99 (mount 1×). wire:click="$dispatch(...)"
                                                      = aksi Livewire → host tangkap via #[On]. Redup dari $row->task_id99. --}}
-                                                @hasanyrole('Admin|Manager Medis|Manager Umum')
+                                                @can('rj.daftar.batalTaskId99')
                                                     <div class="inline-block">
                                                         <x-danger-button type="button"
                                                             wire:click="$dispatch('task-id-batal-proses-rj', { rjNo: {{ $row->rj_no }} })"
@@ -1398,7 +1407,7 @@ new class extends Component {
                                                             </span>
                                                         </x-danger-button>
                                                     </div>
-                                                @endhasanyrole
+                                                @endcan
 
                                             </div>
                                         @endif
@@ -1432,14 +1441,14 @@ new class extends Component {
 
             {{-- Host aksi Batal antrian (task-id-99) — mount 1×. Tombol Batal tiap baris
                  dispatch 'task-id-batal-proses-rj' ke sini via wire:click. --}}
-            @hasanyrole('Admin|Manager Medis|Manager Umum')
+            @can('rj.daftar.batalTaskId99')
                 <livewire:pages::transaksi.rj.task-id-pelayanan.task-id-99
                     wire:key="task-id-99-rj-host" />
-            @endhasanyrole
+            @endcan
 
             <livewire:pages::transaksi.rj.daftar-rj.daftar-rj-actions wire:key="daftar-rj-actions" />
             <livewire:pages::transaksi.rj.daftar-rj.satu-sehat-rj-actions wire:key="satu-sehat-rj-actions" />
-            @can('emr.codingFhir')
+            @can('rj.emr.codingFhir')
                 <livewire:pages::transaksi.rj.coding-fhir-rj.coding-fhir-rj wire:key="coding-fhir-rj" />
             @endcan
             <livewire:pages::components.rekam-medis.etiket.cetak-etiket wire:key="cetak-etiket-pasien" />

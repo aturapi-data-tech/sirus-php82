@@ -1,6 +1,7 @@
 <?php
 
 use Livewire\Component;
+use Livewire\Attributes\Authorize;
 use Livewire\Attributes\On;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
@@ -9,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 new class extends Component {
 
     #[On('cetak-kwitansi-ri-obat.open')]
+    #[Authorize('pintu.cetak-kwitansi-ri-obat.open')]
     public function open(int $slsNo): mixed
     {
         $hdr = DB::selectOne(

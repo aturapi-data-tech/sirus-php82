@@ -469,7 +469,7 @@ Sub-section ditulis di `section[i].section[j]`:
 
 **Pemetaan ke node `satuSehat` (RJ) — per 2026-10-28.** Teks klinis diisi di EMR; kode SNOMED/KFA
 diisi SESUDAH pelayanan di layar **Coding SATUSEHAT** (`pages/transaksi/rj/coding-fhir-rj/`, Gate
-`emr.codingFhir`; Pelayanan RJ = tab Coding di modal gabungan `emr-coding-rj`, Daftar RJ = modal sendiri). Kode disimpan di key yang sama dengan teksnya, jadi sender
+`{rj|ugd|ri}.emr.codingFhir`; Pelayanan RJ = tab Coding di modal gabungan `emr-coding-rj`, Daftar RJ = modal sendiri). Kode disimpan di key yang sama dengan teksnya, jadi sender
 membaca dari JSON EMR seperti biasa.
 
 | Section | Sumber kode (JSON EMR) | Sender → node `satuSehat` |
@@ -575,7 +575,7 @@ bisa kembar (urutan berbeda). Belum diubah; RI sudah pakai awalan `RI-`.
 #### UGD disamakan dengan alur IGD apikesehatan.com (2026-10-28)
 
 Pola sama dengan RJ di atas: EMR UGD hanya teks klinis, kode diisi di layar
-`pages/transaksi/ugd/coding-fhir-ugd/` (Gate `emr.codingFhir`; Pelayanan UGD = tab Coding di modal
+`pages/transaksi/ugd/coding-fhir-ugd/` (Gate `{rj|ugd|ri}.emr.codingFhir`; Pelayanan UGD = tab Coding di modal
 gabungan `emr-coding-ugd`, Daftar UGD = modal sendiri).
 Kirim Semua UGD = 23 kartu + selesaikan Encounter + resume.
 

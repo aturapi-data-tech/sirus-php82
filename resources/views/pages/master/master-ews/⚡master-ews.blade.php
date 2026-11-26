@@ -11,6 +11,7 @@ use App\Support\Ews\EwsDefault;
 use App\Support\Ews\EwsSkor;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Illuminate\Support\Facades\DB;
@@ -52,14 +53,21 @@ new class extends Component {
     }
 
     // ── Parameter ──
+    #[Authorize('master.ews.tambah')]
     public function openCreate(): void            { $this->dispatch('master.ews.openCreate', varian: $this->varian); }
+    #[Authorize('master.ews.ubah')]
     public function openEdit(int $paramId): void  { $this->dispatch('master.ews.openEdit', paramId: $paramId); }
+    #[Authorize('master.ews.hapus')]
     public function requestDelete(int $paramId): void { $this->dispatch('master.ews.requestDelete', paramId: $paramId); }
+    #[Authorize('master.ews.ubah')]
     public function toggleActive(int $paramId): void { $this->dispatch('master.ews.toggleActive', paramId: $paramId); }
 
     // ── Respon ──
+    #[Authorize('master.ews.tambah')]
     public function openCreateRespon(): void           { $this->dispatch('master.ews.openCreateRespon', varian: $this->varian); }
+    #[Authorize('master.ews.ubah')]
     public function openEditRespon(int $responId): void { $this->dispatch('master.ews.openEditRespon', responId: $responId); }
+    #[Authorize('master.ews.hapus')]
     public function requestDeleteRespon(int $responId): void { $this->dispatch('master.ews.requestDeleteRespon', responId: $responId); }
 
     public function openSimulasi(): void { $this->dispatch('master.ews.openSimulasi', varian: $this->varian); }
@@ -168,11 +176,13 @@ new class extends Component {
                                 </x-select-input>
                             </div>
                             <x-secondary-button type="button" wire:click="openSimulasi"><x-ikon nama="proses" /> Simulasi Skor</x-secondary-button>
+                            @can('master.ews.tambah')
                             @if ($tampilan === 'respon')
                                 <x-primary-button type="button" wire:click="openCreateRespon"><x-ikon nama="tambah" /> Tambah Respon</x-primary-button>
                             @else
                                 <x-primary-button type="button" wire:click="openCreate"><x-ikon nama="tambah" /> Tambah Parameter</x-primary-button>
                             @endif
+                            @endcan
                             <x-toolbar-refresh-reset :label="null" />
                         </div>
                     </div>
@@ -307,9 +317,13 @@ new class extends Component {
                                         <td class="max-w-md"><div class="line-clamp-2 text-sm" title="{{ $row->respon }}">{{ $row->respon }}</div></td>
                                         <td class="ds-c">
                                             <div class="flex justify-center gap-2">
+                                                @can('master.ews.ubah')
                                                 <x-action-edit wire:click="openEditRespon({{ $row->respon_id }})" />
+                                                @endcan
+                                                @can('master.ews.hapus')
                                                 <x-action-delete :action="'requestDeleteRespon(' . $row->respon_id . ')'"
                                                     title="Hapus Respon EWS" message="Yakin hapus respon {{ $row->kategori }} ({{ $row->frekuensi }})?" />
+                                                @endcan
                                             </div>
                                         </td>
                                     </tr>
@@ -355,14 +369,24 @@ new class extends Component {
                                         <td class="ds-c">{{ $row->jumlah_rentang }}</td>
                                         <td class="ds-td-token">{{ $row->gantikan_kode ?: '-' }}</td>
                                         <td class="ds-c">
+                                            @can('master.ews.ubah')
                                             <x-toggle :current="$row->active_status" trueValue="1" falseValue="0"
                                                 wireClick="toggleActive({{ $row->param_id }})" />
+                                            @else
+                                            <x-badge :variant="(string) $row->active_status === '1' ? 'success' : 'danger'">
+                                                {{ (string) $row->active_status === '1' ? 'Aktif' : 'Tidak Aktif' }}
+                                            </x-badge>
+                                            @endcan
                                         </td>
                                         <td class="ds-c">
                                             <div class="flex justify-center gap-2">
+                                                @can('master.ews.ubah')
                                                 <x-action-edit wire:click="openEdit({{ $row->param_id }})" />
+                                                @endcan
+                                                @can('master.ews.hapus')
                                                 <x-action-delete :action="'requestDelete(' . $row->param_id . ')'"
                                                     title="Hapus Parameter EWS" message="Yakin hapus parameter {{ $row->param_desc }} beserta rentang skornya?" />
+                                                @endcan
                                             </div>
                                         </td>
                                     </tr>

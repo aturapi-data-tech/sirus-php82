@@ -1,6 +1,7 @@
 <?php
 
 use Livewire\Component;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
@@ -29,6 +30,7 @@ new class extends Component {
     public array $renderVersions = [];
     protected array $renderAreas = ['kamar-operasi-actions-modal'];
 
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public string $okReg = '';
     public string $activeTab = 'Tindakan'; // Tindakan | BahanAlat
     public array $headerData = [];
@@ -578,7 +580,7 @@ new class extends Component {
 
                 <div class="flex flex-wrap items-center justify-between gap-3">
 
-                    {{-- KIRI: Batal (Admin / Supervisor Penunjang) --}}
+                    {{-- KIRI: Batal (hak penunjang.kamar-operasi.batal di Role Control) --}}
                     <div class="flex items-center gap-2">
                         @if ($statusOk === 'A')
                             @if ($this->isAllowedBatalOk())

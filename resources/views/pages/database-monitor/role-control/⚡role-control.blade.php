@@ -5,6 +5,7 @@ use Livewire\WithPagination;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
+use App\Support\AksiRole;
 
 new class extends Component {
     use WithPagination;
@@ -77,9 +78,16 @@ new class extends Component {
     public function rows()
     {
         $roles = $this->baseQuery()->paginate($this->itemsPerPage);
+        $katalogKhusus = AksiRole::khusus();
 
         foreach ($roles as $role) {
-            $role->permission_list = DB::table('role_has_permissions')->join('permissions', 'permissions.id', '=', 'role_has_permissions.permission_id')->where('role_has_permissions.role_id', $role->id)->pluck('permissions.name')->all();
+            // Ringkasan, bukan daftar nama: satu role bisa memegang ratusan permission
+            // (matriks halaman × lihat/tambah/ubah/hapus + aksi khusus).
+            $namaPermission = DB::table('role_has_permissions')->join('permissions', 'permissions.id', '=', 'role_has_permissions.permission_id')->where('role_has_permissions.role_id', $role->id)->pluck('permissions.name');
+            $role->jumlah_halaman = $namaPermission->filter(fn ($n) => str_ends_with($n, '.lihat'))->count();
+            // Khusus = katalog AksiRole + tombol khusus halaman (`{route}.{kunci}` selain 4 aksi baku).
+            $role->jumlah_khusus = $namaPermission->filter(fn ($n) => isset($katalogKhusus[$n]) || !preg_match('/\.(lihat|tambah|ubah|hapus)$/', $n))->count();
+            $role->jumlah_permission = $namaPermission->count();
 
             $role->user_count = DB::table('model_has_roles')->where('role_id', $role->id)->where('model_type', \App\Models\User::class)->count();
         }
@@ -200,7 +208,7 @@ new class extends Component {
                                 <th class="px-4 py-3 font-semibold">ID</th>
                                 <th class="px-4 py-3 font-semibold">Nama Role</th>
                                 <th class="px-4 py-3 font-semibold">Guard</th>
-                                <th class="px-4 py-3 font-semibold">Permissions</th>
+                                <th class="px-4 py-3 font-semibold">Hak Akses</th>
                                 <th class="px-4 py-3 font-semibold">Jml User</th>
                                 <th class="px-4 py-3 font-semibold">Dibuat</th>
                                 <th class="px-4 py-3 font-semibold">Aksi</th>
@@ -222,16 +230,14 @@ new class extends Component {
                                     </td>
 
                                     <td class="px-4 py-3">
-                                        <div class="flex flex-wrap gap-1">
-                                            @forelse($row->permission_list as $p)
-                                                <span
-                                                    class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200">
-                                                    {{ $p }}
-                                                </span>
-                                            @empty
-                                                <span class="text-xs italic text-muted-soft">Tanpa permission</span>
-                                            @endforelse
-                                        </div>
+                                        @if ($row->jumlah_permission > 0)
+                                            <div class="flex flex-wrap gap-1">
+                                                <x-badge variant="success">{{ $row->jumlah_halaman }} halaman</x-badge>
+                                                <x-badge variant="alternative">{{ $row->jumlah_khusus }} aksi khusus</x-badge>
+                                            </div>
+                                        @else
+                                            <span class="text-xs italic text-muted-soft">Tanpa permission</span>
+                                        @endif
                                     </td>
 
                                     <td class="px-4 py-3">

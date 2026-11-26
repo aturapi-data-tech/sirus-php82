@@ -1,6 +1,7 @@
 <?php
 
 use Livewire\Component;
+use Livewire\Attributes\Authorize;
 use Livewire\WithPagination;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
@@ -104,6 +105,7 @@ new class extends Component {
         $this->dispatch('antrian-apotek.telaah-resep.open', rjNo: $rjNo);
     }
 
+    #[Authorize('rj.antrian-apotek.bukaAdministrasi')]
     public function openAdministrasiPasien(string $rjNo): void
     {
         $this->dispatch('emr-rj.administrasi.open', rjNo: $rjNo);
@@ -686,7 +688,7 @@ new class extends Component {
                                             <div class="grid grid-cols-2 gap-2">
                                                 {{-- Group T6+T7 (sub-grid 2 kolom) --}}
                                                 <div class="grid grid-cols-2 gap-1">
-                                                    @hasanyrole('Apoteker|Admin')
+                                                    @can('rj.antrian-apotek.taskIdApotek')
                                                         {{-- Tombol di sini; logika di komponen host task-id-apotek-actions (mount 1×).
                                                              wire:click="$dispatch(...)" = aksi Livewire (BUKAN Alpine) → host tangkap
                                                              via #[On]. Nol komponen Livewire per baris. Redup dari $row->task_id6/7. --}}
@@ -705,7 +707,7 @@ new class extends Component {
                                                             <x-ikon nama="kirim" />
                                                             TaskId7
                                                         </x-primary-button>
-                                                    @endhasanyrole
+                                                    @endcan
                                                 </div>
 
                                                 {{-- Telaah --}}
@@ -735,14 +737,14 @@ new class extends Component {
                                                     <div></div>
                                                 @endif
 
-                                                @hasanyrole('Admin|Perawat|Casemix|Apoteker')
+                                                @can('rj.antrian-apotek.bukaAdministrasi')
                                                     <x-secondary-button
                                                         wire:click="openAdministrasiPasien('{{ $row->rj_no }}')"
                                                         class="text-sm whitespace-nowrap justify-center !bg-purple-600 !text-white !border-purple-700 hover:!bg-purple-700 dark:!bg-purple-600 dark:!text-white dark:!border-purple-700 dark:hover:!bg-purple-700">
                                                         <x-ikon nama="pembayaran" ukuran="w-3.5 h-3.5" class="mr-1" />
                                                         Administrasi
                                                     </x-secondary-button>
-                                                @endhasanyrole
+                                                @endcan
                                             </div>
 
                                         </div>
@@ -784,10 +786,10 @@ new class extends Component {
 
         {{-- Host aksi Task ID apotek (berisi fungsi) — mount 1×. Tombol tiap baris
              dispatch 'task-id-apotek-proses-rj' ke sini via wire:click. --}}
-        @hasanyrole('Apoteker|Admin')
+        @can('rj.antrian-apotek.taskIdApotek')
             <livewire:pages::transaksi.rj.task-id-pelayanan.task-id-apotek-actions
                 wire:key="task-id-apotek-actions-rj-host" />
-        @endhasanyrole
+        @endcan
 
         <livewire:pages::transaksi.rj.antrian-apotek-rj.antrian-apotek-rj-actions
             wire:key="antrian-apotek-rj-actions" />

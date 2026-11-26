@@ -1,6 +1,7 @@
 <?php
 
 use Livewire\Component;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -22,16 +23,12 @@ use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 new class extends Component {
     use EmrRITrait, WithRenderVersioningTrait;
 
-    /** Yang boleh menerima titipan = petugas kasir (sama dengan Proses Pulang) + atasannya. */
-    private const ROLE_ENTRI = ['Admin', 'Tu', 'Supervisor Tu'];
-
-    /** Hapus = eskalasi ke atasan (sama dengan Batal Transaksi Pulang): uang sudah diterima. */
-    private const ROLE_HAPUS = ['Admin', 'Supervisor Tu'];
 
     public array $renderVersions = [];
     protected array $renderAreas = ['angsuran-awal-ri'];
 
     public bool $isFormLocked = false;
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public ?int $riHdrNo = null;
 
     /** Baris rstxn_ripaymentdtls kunjungan ini (hasil query, bukan dokumen EMR). */
@@ -92,14 +89,16 @@ new class extends Component {
         }
     }
 
+    /** Terima titipan — aksi khusus Rawat Inap (Role Control), centang awal AksiRole::RI_ANGSURAN_AWAL_TERIMA. */
     public function bolehEntri(): bool
     {
-        return (bool) auth()->user()?->hasAnyRole(self::ROLE_ENTRI);
+        return (bool) auth()->user()?->can('ri.angsuranAwal.terima');
     }
 
+    /** Hapus titipan = eskalasi ke atasan (uang sudah diterima) — AksiRole::RI_ANGSURAN_AWAL_HAPUS. */
     public function bolehHapus(): bool
     {
-        return (bool) auth()->user()?->hasAnyRole(self::ROLE_HAPUS);
+        return (bool) auth()->user()?->can('ri.angsuranAwal.hapus');
     }
 
     /* ===============================

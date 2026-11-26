@@ -435,7 +435,7 @@ new class extends Component {
      =============================== */
     public function bukaKunci(string $key): void
     {
-        if (!auth()->user()?->can('dokumen.bukaKunci')) {
+        if (!auth()->user()?->can('ri.dokumen.bukaKunci')) {
             $this->dispatch('toast', type: 'error', message: 'Anda tidak berwenang membuka kunci entri.');
             return;
         }
@@ -476,7 +476,7 @@ new class extends Component {
 
     public function hapus(string $key): void
     {
-        if (!auth()->user()?->can('dokumen.hapus')) {
+        if (!auth()->user()?->can('ri.dokumen.hapus')) {
             $this->dispatch('toast', type: 'error', message: 'Anda tidak berwenang menghapus entri.');
             return;
         }
@@ -1116,7 +1116,7 @@ new class extends Component {
                                                 <x-modul-dokumen.status-entri :final="$rowFinal" />
                                             </td>
                                             <td class="px-4 py-3 text-center align-middle whitespace-nowrap" @click.stop>
-                                                <x-modul-dokumen.aksi-entri kunci="{{ $rowKey }}" :final="$rowFinal" :terkunci="$isFormLocked"
+                                                <x-modul-dokumen.aksi-entri jalur="ri" kunci="{{ $rowKey }}" :final="$rowFinal" :terkunci="$isFormLocked"
                                                     judulLihat="Lihat entri terkunci"
                                                     judulBukaKunci="Buka Kunci Surveilans ISK"
                                                     pesanBukaKunci="Buka kunci entri surveilans ini? TTD petugas akan dicabut."

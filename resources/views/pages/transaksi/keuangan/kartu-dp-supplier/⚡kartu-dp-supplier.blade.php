@@ -23,8 +23,6 @@ use Illuminate\Database\QueryException;
 use App\Support\Keuangan\SaldoDpSupplier;
 
 new class extends Component {
-    private const ROLE_KARTU = ['Admin'];
-
     public string $jenis = SaldoDpSupplier::JENIS_PBF;
     public int $tahun = 0;
     public string $cari = '';
@@ -42,7 +40,7 @@ new class extends Component {
 
     public function mount(): void
     {
-        abort_unless(auth()->user()?->hasAnyRole(self::ROLE_KARTU), 403, 'Kartu DP Supplier khusus Admin.');
+        abort_unless(auth()->user()?->can('keuangan.kartu-dp-supplier.lihat'), 403, 'Anda tidak memiliki akses ke Kartu DP Supplier.');
         $this->tahun = (int) Carbon::now()->year;
     }
 
@@ -88,14 +86,14 @@ new class extends Component {
     public function bolehOpname(): bool
     {
         return $this->suppId !== null && $this->tahun === (int) Carbon::now()->year
-            && (bool) auth()->user()?->hasAnyRole(self::ROLE_KARTU);
+            && (bool) auth()->user()?->can('keuangan.kartu-dp-supplier.ubah');
     }
 
     /* ── Opname: langkah 1 hitung selisih & konfirmasi ── */
     public function siapkanOpname(): void
     {
         if (!$this->bolehOpname()) {
-            $this->dispatch('toast', type: 'error', message: 'Opname hanya untuk tahun berjalan (' . Carbon::now()->year . '), khusus Admin.');
+            $this->dispatch('toast', type: 'error', message: 'Opname hanya untuk tahun berjalan (' . Carbon::now()->year . ') dan bagi yang memiliki akses opname.');
             return;
         }
         $this->validate([

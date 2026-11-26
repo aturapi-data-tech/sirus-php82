@@ -1,14 +1,10 @@
 {{-- pages/transaksi/ugd/emr-ugd/pemeriksaan/tabs/umum-tab.blade.php --}}
 <div class="space-y-4">
-    @role('Dokter')
-        @include('pages.transaksi.ugd.emr-ugd.pemeriksaan.tabs.umum-tab-dokter-view')
-    @endrole
-
-    @hasanyrole('Perawat|Admin|Casemix')
+    {{-- Satu tampilan saja: punya hak isi (Perawat/Admin/Casemix) → form isian, walau juga Dokter
+         (mis. fisioterapis = Perawat + Dokter untuk TTD). Selain itu → tampilan baca. --}}
+    @if (auth()->user()->hasAnyRole(['Perawat', 'Admin', 'Casemix']))
         @include('pages.transaksi.ugd.emr-ugd.pemeriksaan.tabs.umum-tab-perawat-view')
-    @endhasanyrole
-
-    @if (!auth()->user()->hasAnyRole(['Dokter', 'Perawat', 'Admin', 'Casemix']))
+    @else
         @include('pages.transaksi.ugd.emr-ugd.pemeriksaan.tabs.umum-tab-dokter-view')
     @endif
 

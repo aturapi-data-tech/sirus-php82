@@ -687,7 +687,7 @@ new class extends Component {
      =============================== */
     public function hapusForm(string $tipe, string $id): void
     {
-        if (!auth()->user()?->can('dokumen.hapus')) {
+        if (!auth()->user()?->can('ri.dokumen.hapus')) {
             $this->dispatch('toast', type: 'error', message: 'Anda tidak berwenang menghapus entri.');
             return;
         }
@@ -728,11 +728,11 @@ new class extends Component {
     }
 
     /* ===============================
-     | BUKA KUNCI Form A / Form B — cabut TTD MPP, entri kembali Draft (Gate dokumen.bukaKunci)
+     | BUKA KUNCI Form A / Form B — cabut TTD MPP, entri kembali Draft (Gate ri.dokumen.bukaKunci)
      =============================== */
     public function bukaKunciForm(string $tipe, string $id): void
     {
-        if (!auth()->user()?->can('dokumen.bukaKunci')) {
+        if (!auth()->user()?->can('ri.dokumen.bukaKunci')) {
             $this->dispatch('toast', type: 'error', message: 'Anda tidak berwenang membuka kunci.');
             return;
         }
@@ -1049,7 +1049,7 @@ new class extends Component {
                                         <x-modul-dokumen.status-entri :final="$isFinal" />
                                     </td>
                                     <td class="px-4 py-3 text-center align-middle whitespace-nowrap" @click.stop>
-                                        <x-modul-dokumen.aksi-entri kunci="{{ $rowKey }}" :final="$isFinal" :terkunci="$isFormLocked"
+                                        <x-modul-dokumen.aksi-entri jalur="ri" kunci="{{ $rowKey }}" :final="$isFinal" :terkunci="$isFormLocked"
                                             lanjut="editEntryA"
                                             lihat="viewEntryA"
                                             cetak="cetakFormA"
@@ -1122,7 +1122,7 @@ new class extends Component {
                                                                         @if (!empty($fbPetugas)) TTD: {{ $fbPetugas }} @else <span class="text-red-600 dark:text-red-400">Belum TTD</span> @endif
                                                                     </p>
                                                                 </div>
-                                                                <x-modul-dokumen.aksi-entri kunci="{{ $fbKey }}" :final="$fbFinal" :terkunci="$isFormLocked"
+                                                                <x-modul-dokumen.aksi-entri jalur="ri" kunci="{{ $fbKey }}" :final="$fbFinal" :terkunci="$isFormLocked"
                                                                     lanjut="editEntryB"
                                                                     lihat="viewEntryB"
                                                                     cetak="cetakFormB"

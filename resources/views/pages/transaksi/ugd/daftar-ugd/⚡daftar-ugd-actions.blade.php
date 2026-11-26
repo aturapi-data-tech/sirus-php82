@@ -3,6 +3,9 @@
 
 use Livewire\Component;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
+use Livewire\Attributes\Locked;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\QueryException;
 use Illuminate\Contracts\Cache\LockTimeoutException;
@@ -22,6 +25,7 @@ new class extends Component {
     // Gunakan VclaimTrait::method() static call langsung.
     use EmrUGDTrait, MasterPasienTrait, WithRenderVersioningTrait, RujukanMasukTrait;
 
+    #[Locked] // klien tak bisa membalik mode untuk lolos cek Ubah
     public string $formMode = 'create';
     public bool $isFormLocked = false;
     // true hanya selama modal terbuka — guard @if isi modal. Tidak bisa pakai $rjNo
@@ -109,6 +113,7 @@ new class extends Component {
      *                               kosong untuk pendaftaran biasa.
      */
     #[On('daftar-ugd.create.open')]
+    #[Authorize('ugd.daftar.tambah')]
     public function openCreate(array $rujukanMasuk = []): void
     {
         $this->resetForm();
@@ -181,6 +186,7 @@ new class extends Component {
      | OPEN EDIT
      =============================== */
     #[On('daftar-ugd.edit.open')]
+    #[Authorize('ugd.daftar.ubah')]
     public function openEdit(string $rjNo): void
     {
         $this->resetForm();
@@ -233,6 +239,8 @@ new class extends Component {
      =============================== */
     public function save(): void
     {
+        Gate::authorize($this->formMode === 'create' ? 'ugd.daftar.tambah' : 'ugd.daftar.ubah');
+
         if ($this->isFormLocked) {
             $this->dispatch('toast', type: 'error', message: 'Form read-only, tidak dapat menyimpan.');
             return;
@@ -890,6 +898,8 @@ new class extends Component {
     #[On('sep-deleted-ugd')]
     public function handleSepDeleted(): void
     {
+        Gate::authorize($this->formMode === 'create' ? 'ugd.daftar.tambah' : 'ugd.daftar.ubah');
+
         $this->formDaftar['sep'] = ['noSep' => '', 'reqSep' => [], 'resSep' => []];
         $this->reqSepTersimpan = [];
         $this->persistSepNode('terhapus');
@@ -899,6 +909,8 @@ new class extends Component {
     #[On('sep-generated-ugd')]
     public function handleSepGenerated(array $reqSep): void
     {
+        Gate::authorize($this->formMode === 'create' ? 'ugd.daftar.tambah' : 'ugd.daftar.ubah');
+
         $this->formDaftar['sep']['reqSep'] = $reqSep;
 
         $noRujukan = $reqSep['request']['t_sep']['rujukan']['noRujukan'] ?? null;

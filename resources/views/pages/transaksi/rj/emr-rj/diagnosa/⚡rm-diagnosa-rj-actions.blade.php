@@ -1,6 +1,7 @@
 <?php
 
 use Livewire\Component;
+use Livewire\Attributes\Locked;
 use App\Http\Traits\Txn\Rj\EmrRJTrait;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 use Illuminate\Support\Facades\DB;
@@ -10,6 +11,7 @@ new class extends Component {
     use EmrRJTrait, WithRenderVersioningTrait;
 
     public bool $isFormLocked = false;
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public ?int $rjNo = null;
     /**
      * IRISAN dokumen: empat cabang yang memang dikelola komponen ini. Dua terakhir

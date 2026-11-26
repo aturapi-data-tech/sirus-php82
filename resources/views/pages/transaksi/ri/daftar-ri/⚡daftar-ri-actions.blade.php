@@ -3,6 +3,9 @@
 
 use Livewire\Component;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
+use Livewire\Attributes\Locked;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\QueryException;
 use Illuminate\Contracts\Cache\LockTimeoutException;
@@ -20,6 +23,7 @@ new class extends Component {
     // bukan dari sini — komponen ini hanya menerima event sep-generated-ri/spri-generated-ri.
     use EmrRITrait, MasterPasienTrait, WithRenderVersioningTrait;
 
+    #[Locked] // klien tak bisa membalik mode untuk lolos cek Ubah
     public string $formMode = 'create';
     public bool $isFormLocked = false;
     // Guard @if isi modal: true hanya selama modal terbuka (create maupun edit). riHdrNo
@@ -89,6 +93,7 @@ new class extends Component {
      | OPEN CREATE
      =============================== */
     #[On('daftar-ri.create.open')]
+    #[Authorize('ri.daftar.tambah')]
     public function openCreate(): void
     {
         $this->resetForm();
@@ -119,6 +124,7 @@ new class extends Component {
      | OPEN EDIT
      =============================== */
     #[On('daftar-ri.edit.open')]
+    #[Authorize('ri.daftar.ubah')]
     public function openEdit(string $riHdrNo): void
     {
         $this->resetForm();
@@ -162,6 +168,8 @@ new class extends Component {
      =============================== */
     public function save(): void
     {
+        Gate::authorize($this->formMode === 'create' ? 'ri.daftar.tambah' : 'ri.daftar.ubah');
+
         if ($this->isFormLocked) {
             $this->dispatch('toast', type: 'error', message: 'Form read-only, tidak dapat menyimpan.');
             return;
@@ -666,6 +674,8 @@ new class extends Component {
     #[On('sep-generated-ri')]
     public function handleSepGenerated(array $reqSep, string $noSep = '', array $resSep = []): void
     {
+        Gate::authorize($this->formMode === 'create' ? 'ri.daftar.tambah' : 'ri.daftar.ubah');
+
         $this->formDaftar['sep']['reqSep'] = $reqSep;
 
         if (!empty($noSep)) {
@@ -694,6 +704,8 @@ new class extends Component {
     #[On('spri-generated-ri')]
     public function handleSpriGenerated(array $spriData): void
     {
+        Gate::authorize($this->formMode === 'create' ? 'ri.daftar.tambah' : 'ri.daftar.ubah');
+
         $this->formDaftar['spri'] = $spriData;
 
         // Sync noReferensi dari noSPRIBPJS jika belum ada rujukan lain

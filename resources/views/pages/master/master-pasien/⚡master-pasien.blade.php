@@ -7,6 +7,7 @@ use Livewire\WithPagination;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
+use Livewire\Attributes\Authorize;
 use Illuminate\Support\Facades\DB;
 use App\Support\CakupanIhsPasien;
 use App\Support\IhsPasienSatuSehat;
@@ -51,11 +52,13 @@ new class extends Component {
     /* -------------------------
      | Child modal triggers
      * ------------------------- */
+    #[Authorize('master.pasien.tambah')]
     public function openCreate(): void
     {
         $this->dispatch('master.pasien.openCreate');
     }
 
+    #[Authorize('master.pasien.ubah')]
     public function openEdit(string $regNo): void
     {
         $this->dispatch('master.pasien.openEdit', regNo: $regNo);
@@ -64,6 +67,7 @@ new class extends Component {
     /* -------------------------
      | Request Delete (delegate ke actions)
      * ------------------------- */
+    #[Authorize('master.pasien.hapus')]
     public function requestDelete(string $regNo): void
     {
         $this->dispatch('master.pasien.requestDelete', regNo: $regNo);
@@ -139,7 +143,7 @@ new class extends Component {
 
     public function bolehAmbilIhs(): bool
     {
-        return (bool) auth()->user()?->hasAnyRole(['Admin', 'Mr']);
+        return (bool) auth()->user()?->can('master.pasien.ambilIhs');
     }
 
     public function ihsDiStaging(): bool
@@ -152,6 +156,7 @@ new class extends Component {
         return 'ihs-massal.' . auth()->id() . '.' . $bagian;
     }
 
+    #[Authorize('master.pasien.ubah')]
     public function mulaiAmbilIhs(): void
     {
         if (!$this->bolehAmbilIhs() || $this->ihsBerjalan) {
@@ -185,6 +190,7 @@ new class extends Component {
         unset($this->rows);
     }
 
+    #[Authorize('master.pasien.ubah')]
     public function putaranAmbilIhs(): void
     {
         if (!$this->ihsBerjalan || !$this->bolehAmbilIhs()) {
@@ -285,10 +291,12 @@ new class extends Component {
                             </x-select-input>
                         </div>
 
+                        @can('master.pasien.tambah')
                         <x-primary-button type="button" wire:click="openCreate">
                             <x-ikon nama="tambah" />
                             Tambah Data Pasien Baru
                         </x-primary-button>
+                        @endcan
                         <x-toolbar-refresh-reset :label="null" />
                     </div>
                 </div>
@@ -298,7 +306,7 @@ new class extends Component {
 
 
             {{-- Ambil IHS massal --}}
-            @if ($filterIhs === 'belum' && $this->bolehAmbilIhs())
+            @if ($filterIhs === 'belum' && $this->bolehAmbilIhs() && auth()->user()?->can('master.pasien.ubah'))
                 <div class="px-4 py-3 mt-3 border rounded-xl bg-canvas border-hairline dark:bg-gray-900 dark:border-gray-700"
                     @if ($ihsBerjalan) wire:poll.1s="putaranAmbilIhs" @endif>
                     <div class="flex flex-wrap items-center justify-between gap-3">
@@ -403,10 +411,14 @@ new class extends Component {
                                     <td class="px-6 py-4 max-w-xs truncate" style="color:var(--muted)">{{ $row->address ?? '-' }}</td>
                                     <td class="ds-c px-6 py-4">
                                         <div class="flex justify-center gap-2">
+                                            @can('master.pasien.ubah')
                                             <x-action-edit wire:click="openEdit('{{ $row->reg_no }}')" />
+                                            @endcan
 
+                                            @can('master.pasien.hapus')
                                             <x-action-delete :action="'requestDelete(\'' . $row->reg_no . '\')'" title="Hapus Pasien"
                                                 message="Yakin hapus pasien {{ $row->reg_name }}?" />
+                                            @endcan
                                         </div>
                                     </td>
                                 </tr>

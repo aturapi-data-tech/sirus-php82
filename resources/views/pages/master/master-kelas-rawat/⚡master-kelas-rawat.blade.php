@@ -4,6 +4,7 @@ use Livewire\Component;
 use Livewire\WithPagination;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Authorize;
 use Illuminate\Support\Facades\DB;
 
 new class extends Component {
@@ -22,16 +23,19 @@ new class extends Component {
         $this->resetPage();
     }
 
+    #[Authorize('master.kelas.tambah')]
     public function openCreate(): void
     {
         $this->dispatch('master.class.openCreate');
     }
 
+    #[Authorize('master.kelas.ubah')]
     public function openEdit(int $classId): void
     {
         $this->dispatch('master.class.openEdit', classId: $classId);
     }
 
+    #[Authorize('master.kelas.hapus')]
     public function requestDelete(int $classId): void
     {
         $this->dispatch('master.class.requestDelete', classId: $classId);
@@ -93,10 +97,12 @@ new class extends Component {
                                 <option value="20">20</option>
                             </x-select-input>
                         </div>
+                        @can('master.kelas.tambah')
                         <x-primary-button type="button" wire:click="openCreate">
                             <x-ikon nama="tambah" />
                             Tambah Data Kelas Rawat Baru
                         </x-primary-button>
+                        @endcan
                         <x-toolbar-refresh-reset :label="null" />
                     </div>
                 </div>
@@ -136,9 +142,13 @@ new class extends Component {
                                     {{-- AKSI --}}
                                     <td class="ds-c px-6 py-4 align-top">
                                         <div class="flex justify-center gap-2">
+                                            @can('master.kelas.ubah')
                                             <x-action-edit wire:click="openEdit({{ $row->class_id }})" />
+                                            @endcan
+                                            @can('master.kelas.hapus')
                                             <x-action-delete :action="'requestDelete(' . $row->class_id . ')'"
                                                 title="Hapus Kelas" message="Yakin hapus kelas {{ $row->class_desc }}?" />
+                                            @endcan
                                         </div>
                                     </td>
                                 </tr>

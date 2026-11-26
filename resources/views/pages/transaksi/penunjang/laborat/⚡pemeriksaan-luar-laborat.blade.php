@@ -1,9 +1,11 @@
 <?php
 
 use Livewire\Component;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Reactive;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 
 new class extends Component {
@@ -12,6 +14,7 @@ new class extends Component {
     public array $renderVersions = [];
     protected array $renderAreas = ['form-tambah-luar'];
 
+    #[Locked] // kunci record — tak boleh diubah dari klien (celah ID)
     public string $checkupNo = '';
     #[Reactive]
     public string $labStatus = 'P';
@@ -65,6 +68,8 @@ new class extends Component {
      * ======================= */
     public function addOutDtl(): void
     {
+        Gate::authorize('penunjang.laborat.ubah');
+
         if ($this->labStatus !== 'P') {
             $this->dispatch('toast', type: 'warning', message: $this->labStatus === 'C' ? 'Sedang proses input hasil, tidak bisa menambah item.' : 'Hasil sudah disimpan.');
             return;
@@ -108,6 +113,8 @@ new class extends Component {
      * ======================= */
     public function updateOutDtlResult(int $laboutDtl, string $field, string $value): void
     {
+        Gate::authorize('penunjang.laborat.ubah');
+
         // P = hanya desc, C = hanya hasil & normal, H = terkunci
         if ($this->labStatus === 'H') {
             $this->dispatch('toast', type: 'warning', message: 'Hasil LAB sudah disimpan, tidak bisa diubah.');
@@ -141,6 +148,8 @@ new class extends Component {
      * ======================= */
     public function deleteOutDtlRow(int $laboutDtl): void
     {
+        Gate::authorize('penunjang.laborat.ubah');
+
         if ($this->labStatus !== 'P') {
             $this->dispatch('toast', type: 'warning', message: 'Tidak bisa menghapus, pemeriksaan sudah diproses.');
             return;
@@ -174,6 +183,8 @@ new class extends Component {
 
 <div>
     <div class="space-y-4">
+        {{-- Hak ubah dari Role Control — tanpa hak, isian tampil sebagai teks --}}
+        @php $bolehUbah = (bool) auth()->user()?->can('penunjang.laborat.ubah'); @endphp
 
         @if ($labStatus === 'P')
             <div class="p-3 text-sm border rounded-lg bg-blue-50 border-blue-200 text-blue-700">
@@ -186,7 +197,7 @@ new class extends Component {
         @endif
 
         {{-- FORM ADD (hanya saat P, hanya deskripsi) --}}
-        @if ($labStatus === 'P')
+        @if ($labStatus === 'P' && $bolehUbah)
         <div class="p-4 border rounded-lg bg-surface-soft dark:bg-gray-800 dark:border-gray-700"
             x-data
             x-on:focus-labout-desc.window="$nextTick(() => setTimeout(() => $refs.inputLaboutDesc?.focus(), 100))">
@@ -244,7 +255,7 @@ new class extends Component {
                             <td class="px-3 py-2 text-muted">{{ $idx + 1 }}</td>
                             {{-- Deskripsi: editable saat P, read-only saat C/H --}}
                             <td class="px-3 py-2">
-                                @if ($labStatus === 'P')
+                                @if ($labStatus === 'P' && $bolehUbah)
                                     <x-text-input type="text" value="{{ $out['labout_desc'] ?? '' }}"
                                         wire:change="updateOutDtlResult({{ $out['labout_dtl'] }}, 'labout_desc', $event.target.value)"
                                         class="text-sm" />
@@ -254,7 +265,7 @@ new class extends Component {
                             </td>
                             {{-- Tarif: editable saat P, read-only saat C/H. Auto-format thousands. --}}
                             <td class="px-3 py-2 text-right">
-                                @if ($labStatus === 'P')
+                                @if ($labStatus === 'P' && $bolehUbah)
                                     <x-text-input-number value="{{ $out['labout_price'] ?? '' }}"
                                         class="!w-32"
                                         extra-blur="$wire.updateOutDtlResult({{ $out['labout_dtl'] }}, 'labout_price', raw.toString())"
@@ -267,7 +278,7 @@ new class extends Component {
                             </td>
                             {{-- Hasil: editable saat C, read-only saat P/H --}}
                             <td class="px-3 py-2">
-                                @if ($labStatus === 'C')
+                                @if ($labStatus === 'C' && $bolehUbah)
                                     <x-text-input type="text" value="{{ $out['labout_result'] ?? '' }}"
                                         wire:change="updateOutDtlResult({{ $out['labout_dtl'] }}, 'labout_result', $event.target.value)"
                                         class="!w-40 text-sm"
@@ -278,7 +289,7 @@ new class extends Component {
                             </td>
                             {{-- Normal: editable saat C, read-only saat P/H --}}
                             <td class="px-3 py-2">
-                                @if ($labStatus === 'C')
+                                @if ($labStatus === 'C' && $bolehUbah)
                                     <x-text-input type="text" value="{{ $out['labout_normal'] ?? '' }}"
                                         wire:change="updateOutDtlResult({{ $out['labout_dtl'] }}, 'labout_normal', $event.target.value)"
                                         class="!w-40 text-sm"
@@ -289,7 +300,7 @@ new class extends Component {
                             </td>
                             {{-- Aksi: hapus hanya saat P --}}
                             <td class="px-3 py-2 text-center">
-                                @if ($labStatus === 'P')
+                                @if ($labStatus === 'P' && $bolehUbah)
                                     <button type="button"
                                         wire:click="deleteOutDtlRow({{ $out['labout_dtl'] }})"
                                         wire:confirm="Yakin hapus item ini?"

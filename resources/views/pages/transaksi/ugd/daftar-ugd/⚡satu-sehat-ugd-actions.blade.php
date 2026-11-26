@@ -5,6 +5,7 @@
 //   anamnesa tanpa SNOMED → tidak ada kartu Chief Complaint & Allergy.
 
 use Livewire\Component;
+use Livewire\Attributes\Authorize;
 use Livewire\Attributes\On;
 use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
 
@@ -126,6 +127,7 @@ new class extends Component {
     }
 
     #[On('daftar-ugd.satu-sehat.open')]
+    #[Authorize('pintu.daftar-ugd.satu-sehat.open')]
     public function handleOpenSatuSehat(string $rjNo): void
     {
         // Antrean SELALU direset saat modal dibuka. Rantai yang tersangkut pada

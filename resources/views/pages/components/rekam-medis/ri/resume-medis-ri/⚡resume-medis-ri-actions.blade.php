@@ -109,7 +109,7 @@
  * tombol "TTD DPJP & Kunci" men-stempel dokter login (nama + myuser_code + waktu) ke
  * `datadaftarri_json.resumeMedisTtd` sekaligus menyimpan isi editor, lalu resume
  * terkunci. Koreksi pasca-pulang tetap bisa: "Buka Kunci" (penanda tangan sendiri
- * atau Gate `dokumen.bukaKunci`) mencabut TTD, dokter mengoreksi, lalu TTD ulang.
+ * atau Gate `ri.dokumen.bukaKunci`) mencabut TTD, dokter mengoreksi, lalu TTD ulang.
  * Cetak memakai stempel tersimpan — dulu gambar TTD DPJP Utama ditempel otomatis
  * saat cetak walau dokternya belum pernah menyetujui isinya.
  *
@@ -145,6 +145,7 @@
  */
 
 use Carbon\Carbon;
+use Livewire\Attributes\Authorize;
 use Livewire\Component;
 use Livewire\Attributes\On;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -194,6 +195,7 @@ new class extends Component {
      |   3. Dispatch open-modal → TinyMCE boot dgn pre-fill
     ═══════════════════════════════════════ */
     #[On('resume-medis-ri.open')]
+    #[Authorize('pintu.resume-medis-ri.open')]
     public function open(int $riHdrNo): void
     {
         $this->riHdrNo = $riHdrNo;
@@ -555,12 +557,12 @@ new class extends Component {
     }
 
     /**
-     * Perwakilan (manager ke atas, Gate dokumen.ttdPerwakilan): boleh TTD atas nama DPJP
+     * Perwakilan (manager ke atas, Gate ri.dokumen.ttdPerwakilan): boleh TTD atas nama DPJP
      * Utama bila dirinya BUKAN DPJP Utama pasien ini dan leveling Utama sudah terisi.
      */
     public function bolehTtdPerwakilan(): bool
     {
-        return count($this->dpjpUtamaList) > 0 && !$this->bolehTtdDpjp() && Gate::allows('dokumen.ttdPerwakilan');
+        return count($this->dpjpUtamaList) > 0 && !$this->bolehTtdDpjp() && Gate::allows('ri.dokumen.ttdPerwakilan');
     }
 
     /** DPJP Utama yang diwakili = Utama PERTAMA di leveling (urutan isian). */
@@ -681,13 +683,13 @@ new class extends Component {
             : 'Resume medis ditandatangani DPJP dan terkunci.');
     }
 
-    /** Boleh buka kunci: penanda tangan sendiri, atau role pemegang Gate dokumen.bukaKunci. */
+    /** Boleh buka kunci: penanda tangan sendiri, atau role pemegang Gate ri.dokumen.bukaKunci. */
     public function bolehBukaKunci(): bool
     {
         $kodeSaya = (string) (auth()->user()->myuser_code ?? '');
 
         return ($kodeSaya !== '' && $kodeSaya === (string) ($this->ttdDpjp['kode'] ?? ''))
-            || Gate::allows('dokumen.bukaKunci');
+            || Gate::allows('ri.dokumen.bukaKunci');
     }
 
     /* Buka kunci = cabut TTD DPJP; isi resume tetap, bisa dikoreksi lalu TTD ulang. */
