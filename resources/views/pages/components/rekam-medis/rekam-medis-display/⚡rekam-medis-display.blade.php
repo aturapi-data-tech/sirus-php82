@@ -440,6 +440,13 @@ new class extends Component {
         $this->openRekamMedis($rjNo, 'UGD');
     }
 
+    #[Authorize('ugd.emr.lihatRekamMedisV1')]
+
+    public function OpenRekamMedisUgdV1($rjNo): void
+    {
+        $this->dispatch('cetak-rekam-medis-ugd-v1.open', rjNo: (int) $rjNo);
+    }
+
     #[Authorize('rj.emr.lihatRekamMedisV1')]
 
     public function OpenRekamMedisRjV1($rjNo): void
@@ -909,6 +916,26 @@ new class extends Component {
                                                                             </span>
                                                                         </x-outline-button>
 
+                                                                        @can('ugd.emr.lihatRekamMedisV1')
+                                                                            <x-outline-button type="button"
+                                                                                wire:click="OpenRekamMedisUgdV1('{{ $myQData->txn_no }}')"
+                                                                                wire:loading.attr="disabled"
+                                                                                wire:target="OpenRekamMedisUgdV1('{{ $myQData->txn_no }}')">
+                                                                                <span wire:loading.remove
+                                                                                    wire:target="OpenRekamMedisUgdV1('{{ $myQData->txn_no }}')"
+                                                                                    class="flex items-center gap-1">
+                                                                                    <x-ikon nama="dokumen" />
+                                                                                    Resume v1
+                                                                                </span>
+                                                                                <span wire:loading
+                                                                                    wire:target="OpenRekamMedisUgdV1('{{ $myQData->txn_no }}')"
+                                                                                    class="flex items-center gap-1">
+                                                                                    <x-loading />
+                                                                                    Memuat...
+                                                                                </span>
+                                                                            </x-outline-button>
+                                                                        @endcan
+
                                                                         {{-- Pintasan Surat Kematian (pasien P0) --}}
                                                                         @if ($skTampil)
                                                                             <x-secondary-button type="button"
@@ -1111,6 +1138,9 @@ new class extends Component {
 
         <livewire:pages::components.rekam-medis.ugd.cetak-rekam-medis.cetak-rekam-medis-open
             wire:key="u-g-d.rekam-medis.cetak-rekam-medis-open" />
+
+        <livewire:pages::components.rekam-medis.ugd.cetak-rekam-medis.cetak-rekam-medis-ugd-v1
+            wire:key="u-g-d.rekam-medis.cetak-rekam-medis-ugd-v1" />
 
         <livewire:pages::components.rekam-medis.ri.cetak-rekam-medis.cetak-rekam-medis-open
             wire:key="r-i.rekam-medis.cetak-rekam-medis-open" />

@@ -20,6 +20,7 @@ return [
         'ugd.emr.lihatUploadPenunjang' => ['label' => 'Lihat upload hasil penunjang', 'roles' => ['Admin', 'Dokter', 'Perawat']],
         // Tombol di tampilan Rekam Medis (riwayat kunjungan pasien).
         'ugd.emr.bukaRiwayatRekamMedis' => ['label' => 'Rekam Medis: buka detail kunjungan UGD & surat kematian', 'roles' => ['Admin', 'Casemix', 'Dokter', 'Mr', 'Perawat']],
+        'ugd.emr.lihatRekamMedisV1' => ['label' => 'Rekam Medis: lihat RM UGD versi lama (V1)', 'roles' => ['Admin', 'Casemix', 'Manager Medis', 'Manager Umum', 'Mr', 'Perawat']],
         'ugd.emr.bukaModulDokumen' => ['label' => 'EMR: buka Modul Dokumen', 'roles' => ['Admin', 'Casemix', 'Dokter', 'Mr', 'Perawat']],
         'ugd.emr.bukaRekamMedisNasional' => ['label' => 'EMR: rekam Medis Nasional (SSRME)', 'roles' => ['Admin', 'Dokter', 'Perawat']],
         'ugd.sbar.hapus' => ['label' => 'SBAR: hapus entri', 'roles' => AksiRole::UGD_SBAR_HAPUS],

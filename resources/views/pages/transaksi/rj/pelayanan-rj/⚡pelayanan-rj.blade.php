@@ -1253,6 +1253,8 @@ new class extends Component {
                 wire:key="pelayanan-rj.rekam-medis.cetak-rekam-medis-rj-fisio" />
             <livewire:pages::components.rekam-medis.ugd.cetak-rekam-medis.cetak-rekam-medis-open
                 wire:key="pelayanan-rj.rekam-medis.cetak-rekam-medis-ugd-open" />
+            <livewire:pages::components.rekam-medis.ugd.cetak-rekam-medis.cetak-rekam-medis-ugd-v1
+                wire:key="pelayanan-rj.rekam-medis.cetak-rekam-medis-ugd-v1" />
             <livewire:pages::components.rekam-medis.ri.cetak-rekam-medis.cetak-rekam-medis-open
                 wire:key="pelayanan-rj.rekam-medis.cetak-rekam-medis-ri-open" />
             <livewire:pages::components.rekam-medis.ugd.dokumen-view.surat-kematian-riwayat-ugd
