@@ -353,6 +353,11 @@ class AksiRole
     public const RI_SBAR_COPY_SEMUA = ['Admin'];
     /** Review/TTD SBAR walau bukan DPJP Utama pasien. */
     public const RI_SBAR_REVIEW_SEMUA = ['Admin'];
+    /** CPPT UGD — pola sama dgn CPPT RI; "DPJP" di UGD = dokter kunjungan. */
+    public const UGD_CPPT_HAPUS = ['Admin', 'Manager Umum', 'Manager Medis'];
+    public const UGD_CPPT_UBAH_SEMUA = ['Admin'];
+    public const UGD_CPPT_COPY_SEMUA = ['Admin'];
+    public const UGD_CPPT_REVIEW_SEMUA = ['Admin'];
     /** SBAR UGD (T6) — pola sama dgn SBAR RI; "DPJP" di UGD = dokter kunjungan. */
     public const UGD_SBAR_HAPUS = ['Admin', 'Manager Umum', 'Manager Medis', 'Supervisor Penunjang', 'Supervisor Tu', 'Mr', 'Casemix'];
     public const UGD_SBAR_UBAH_SEMUA = ['Admin'];

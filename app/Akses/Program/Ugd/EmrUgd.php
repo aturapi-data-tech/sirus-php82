@@ -9,7 +9,7 @@ use App\Support\AksiRole;
 
 return [
     'nama' => 'EMR UGD',
-    // SBAR UGD: aturan pemilik entri & dokter kunjungan tetap di kode; di sini pengecualiannya.
+    // CPPT & SBAR UGD: aturan pemilik entri & dokter kunjungan tetap di kode; di sini pengecualiannya.
     'aksiKhusus' => [
         'ugd.emr.bukaScreening' => ['label' => 'EMR: buka Screening', 'roles' => ['Admin', 'Dokter', 'Perawat']],
         'ugd.emr.bukaAdministrasi' => ['label' => 'EMR: buka Administrasi', 'roles' => ['Admin', 'Casemix', 'Perawat']],
@@ -23,6 +23,10 @@ return [
         'ugd.emr.lihatRekamMedisV1' => ['label' => 'Rekam Medis: lihat RM UGD versi lama (V1)', 'roles' => ['Admin', 'Casemix', 'Manager Medis', 'Manager Umum', 'Mr', 'Perawat']],
         'ugd.emr.bukaModulDokumen' => ['label' => 'EMR: buka Modul Dokumen', 'roles' => ['Admin', 'Casemix', 'Dokter', 'Mr', 'Perawat']],
         'ugd.emr.bukaRekamMedisNasional' => ['label' => 'EMR: rekam Medis Nasional (SSRME)', 'roles' => ['Admin', 'Dokter', 'Perawat']],
+        'ugd.cppt.hapus' => ['label' => 'CPPT: hapus entri', 'roles' => AksiRole::UGD_CPPT_HAPUS],
+        'ugd.cppt.ubahSemua' => ['label' => 'CPPT: edit entri petugas lain', 'roles' => AksiRole::UGD_CPPT_UBAH_SEMUA],
+        'ugd.cppt.copySemua' => ['label' => 'CPPT: copy dari profesi lain', 'roles' => AksiRole::UGD_CPPT_COPY_SEMUA],
+        'ugd.cppt.reviewSemua' => ['label' => 'CPPT: review walau bukan dokter UGD', 'roles' => AksiRole::UGD_CPPT_REVIEW_SEMUA],
         'ugd.sbar.hapus' => ['label' => 'SBAR: hapus entri', 'roles' => AksiRole::UGD_SBAR_HAPUS],
         'ugd.sbar.ubahSemua' => ['label' => 'SBAR: edit entri petugas lain', 'roles' => AksiRole::UGD_SBAR_UBAH_SEMUA],
         'ugd.sbar.copySemua' => ['label' => 'SBAR: copy dari profesi lain', 'roles' => AksiRole::UGD_SBAR_COPY_SEMUA],
