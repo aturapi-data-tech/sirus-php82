@@ -32,6 +32,7 @@ return [
         'ugd.sbar.ubahSemua' => ['label' => 'SBAR: edit entri petugas lain', 'roles' => AksiRole::UGD_SBAR_UBAH_SEMUA],
         'ugd.sbar.copySemua' => ['label' => 'SBAR: copy dari profesi lain', 'roles' => AksiRole::UGD_SBAR_COPY_SEMUA],
         'ugd.sbar.reviewSemua' => ['label' => 'SBAR: review walau bukan dokter UGD', 'roles' => AksiRole::UGD_SBAR_REVIEW_SEMUA],
+        'ugd.sbar.cetak' => ['label' => 'SBAR: cetak entri', 'roles' => AksiRole::UGD_SBAR_CETAK],
         'ugd.emr.logAktivitas' => ['label' => 'Lihat log aktivitas EMR', 'roles' => AksiRole::EMR_LOG_AKTIVITAS, 'menggantikan' => 'emr.logAktivitas'],
         'ugd.emr.codingFhir' => ['label' => 'Coding SATUSEHAT', 'roles' => AksiRole::EMR_CODING_FHIR, 'menggantikan' => 'emr.codingFhir'],
         'ugd.emr.cetakEresep' => ['label' => 'Cetak e-resep dari EMR', 'roles' => AksiRole::EMR_CETAK_ERESEP, 'menggantikan' => 'emr.cetakEresep'],

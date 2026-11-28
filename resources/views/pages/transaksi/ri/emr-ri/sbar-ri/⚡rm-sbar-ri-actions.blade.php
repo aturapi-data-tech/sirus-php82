@@ -452,6 +452,11 @@ new class extends Component {
     /* ── Cetak PDF satu entri SBAR ── */
     public function printSbar(string $sbarId): mixed
     {
+        if (!auth()->user()->can('ri.sbar.cetak')) {
+            $this->dispatch('toast', type: 'error', message: 'Anda tidak berhak mencetak SBAR.');
+            return null;
+        }
+
         $sbar = collect($this->daftarSbar ?? [])->first(fn($r) => ($r['sbarId'] ?? null) === $sbarId);
         if (empty($sbar)) {
             $this->dispatch('toast', type: 'error', message: 'SBAR tidak ditemukan.');
@@ -766,9 +771,9 @@ new class extends Component {
                                         </div>
                                     @endif
 
-                                    @unless (auth()->user()->hasRole('Dokter'))
+                                    @can('ri.sbar.cetak')
                                     <x-cetak-button wire:click="printSbar('{{ $sbar['sbarId'] }}')" title="Cetak SBAR" />
-                                    @endunless
+                                    @endcan
 
                                 @if (!$isFormLocked)
                                     @php

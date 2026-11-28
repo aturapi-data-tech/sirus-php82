@@ -36,6 +36,7 @@ return [
         'ri.sbar.ubahSemua' => ['label' => 'SBAR: edit entri petugas lain', 'roles' => AksiRole::RI_SBAR_UBAH_SEMUA],
         'ri.sbar.copySemua' => ['label' => 'SBAR: copy dari profesi lain', 'roles' => AksiRole::RI_SBAR_COPY_SEMUA],
         'ri.sbar.reviewSemua' => ['label' => 'SBAR: review walau bukan DPJP', 'roles' => AksiRole::RI_SBAR_REVIEW_SEMUA],
+        'ri.sbar.cetak' => ['label' => 'SBAR: cetak entri', 'roles' => AksiRole::RI_SBAR_CETAK],
         'ri.emr.logAktivitas' => ['label' => 'Lihat log aktivitas EMR', 'roles' => AksiRole::EMR_LOG_AKTIVITAS, 'menggantikan' => 'emr.logAktivitas'],
         'ri.emr.codingFhir' => ['label' => 'Coding SATUSEHAT', 'roles' => AksiRole::EMR_CODING_FHIR, 'menggantikan' => 'emr.codingFhir'],
         'ri.emr.rekonsiliasiObat' => ['label' => 'Rekonsiliasi obat (titik-3)', 'roles' => AksiRole::REKONSILIASI_OBAT, 'menggantikan' => 'rekonsiliasi.obat'],

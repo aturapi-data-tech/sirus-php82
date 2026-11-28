@@ -358,6 +358,8 @@ class AksiRole
     public const RI_SBAR_COPY_SEMUA = ['Admin'];
     /** Review/TTD SBAR walau bukan DPJP Utama pasien. */
     public const RI_SBAR_REVIEW_SEMUA = ['Admin'];
+    /** Cetak PDF satu entri SBAR — centang awal sama dgn RI_CPPT_CETAK (aturan lama: semua kecuali Dokter). */
+    public const RI_SBAR_CETAK = self::RI_CPPT_CETAK;
     /** CPPT UGD — pola sama dgn CPPT RI; "DPJP" di UGD = dokter kunjungan. */
     public const UGD_CPPT_HAPUS = ['Admin', 'Manager Umum', 'Manager Medis'];
     public const UGD_CPPT_UBAH_SEMUA = ['Admin'];
@@ -369,6 +371,7 @@ class AksiRole
     public const UGD_SBAR_UBAH_SEMUA = ['Admin'];
     public const UGD_SBAR_COPY_SEMUA = ['Admin'];
     public const UGD_SBAR_REVIEW_SEMUA = ['Admin'];
+    public const UGD_SBAR_CETAK = self::UGD_CPPT_CETAK;
 
     /**
      * KATALOG AKSI KHUSUS — nama Gate => [label, roles awal, program, kelompok, area].
