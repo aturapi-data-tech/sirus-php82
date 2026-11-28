@@ -119,6 +119,12 @@
                                         class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-teal-100 text-teal-700 text-sm font-bold dark:bg-teal-900/40 dark:text-teal-300">T</span>
                                     Pemberian Obat &amp; Cairan
                                 </x-tab>
+                                <x-tab variant="underline" active-expr="activeTab === 'cppt'"
+                                    x-on:click="activeTab = 'cppt'" class="inline-flex items-center gap-2">
+                                    <span
+                                        class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 text-blue-700 text-sm font-bold dark:bg-blue-900/40 dark:text-blue-300">C</span>
+                                    CPPT
+                                </x-tab>
                                 <x-tab variant="underline" active-expr="activeTab === 'sbar'"
                                     x-on:click="activeTab = 'sbar'" class="inline-flex items-center gap-2">
                                     <span
@@ -144,6 +150,11 @@
                             <div x-show="activeTab === 'terapi'" x-transition.opacity.duration.200ms>
                                 <livewire:pages::transaksi.ugd.emr-ugd.obat-dan-cairan.rm-obat-dan-cairan-ugd-actions
                                     :rjNo="$rjNo" wire:key="obat-dan-cairan-ugd-{{ $rjNo }}" />
+                            </div>
+
+                            <div x-show="activeTab === 'cppt'" x-transition.opacity.duration.200ms>
+                                <livewire:pages::transaksi.ugd.emr-ugd.cppt.rm-cppt-ugd-actions :rjNo="$rjNo"
+                                    wire:key="cppt-ugd-{{ $rjNo }}" />
                             </div>
 
                             <div x-show="activeTab === 'sbar'" x-transition.opacity.duration.200ms>

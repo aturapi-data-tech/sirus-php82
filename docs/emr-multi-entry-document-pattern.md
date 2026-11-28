@@ -119,5 +119,12 @@ karena jalur UGD memang lain:
 | Dirty tracking | `refresh-after-ri.saved` ber-`tab:` (per-section) | dirty global modal; komponen **tidak** memancarkan `refresh-after-ugd.saved` (biar draft tab lain tak ikut ter-reset), hanya mendengarnya untuk memuat ulang bila state ter-wipe |
 | Cetak | `pages.components.rekam-medis.ri.cetak-sbar.cetak-sbar-ri-print` (Ruang/Kelas) | `pages.components.rekam-medis.ugd.cetak-sbar.cetak-sbar-ugd-print` (Unit UGD/IGD + dokter, Tgl. Masuk UGD) |
 
+**CPPT UGD** (`resources/views/pages/transaksi/ugd/emr-ugd/cppt/⚡rm-cppt-ugd-actions.blade.php`, node root `cppt[]`,
+event `open/save-rm-cppt-ugd`, gate `ugd.cppt.*`, cetak `ugd.cetak-cppt.cetak-cppt-ugd-print` kode RM-04.01) di-port
+dengan tabel yang sama. Tambahan beda dari CPPT RI: **tanpa tab MPP** (Case Manager hanya RI), **tanpa sinkron Asuhan
+Keperawatan** (askep UGD sengaja tak dilempar ke CPPT), **tanpa sinkron Plan dari E-Resep**; prefill Assessment
+untuk Dokter/Admin dari `diagnosisFreeText` → keterangan `diagnosis[]` kunjungan UGD. CPPT & SBAR UGD sama-sama
+tampil di Resume Medis UGD (preview + cetak).
+
 Kalau mem-port dokumen multi-entri lain ke UGD/RJ, ikuti tabel ini: yang wajib diganti cuma trait + event +
 sumber DPJP + mekanisme tombol simpan.

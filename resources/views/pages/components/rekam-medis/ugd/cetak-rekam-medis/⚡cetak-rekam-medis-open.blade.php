@@ -817,6 +817,63 @@ new class extends Component {
                         </div>
                     </x-border-form>
 
+                {{-- CPPT — gaya & label disamakan dengan tab CPPT EMR UGD --}}
+                @php
+                    $daftarCppt = $this->urutkanKronologis((array) ($dataDaftarTxn['cppt'] ?? []), 'tglCPPT');
+                    $gayaCppt = [
+                        'subjective' => ['lbl' => 'S', 'name' => 'Subjective', 'wrap' => 'border-l-4 border-blue-500 bg-blue-50/40 dark:bg-blue-900/10', 'text' => 'text-blue-700 dark:text-blue-400'],
+                        'objective' => ['lbl' => 'O', 'name' => 'Objective', 'wrap' => 'border-l-4 border-emerald-500 bg-emerald-50/40 dark:bg-emerald-900/10', 'text' => 'text-success dark:text-success'],
+                        'assessment' => ['lbl' => 'A', 'name' => 'Assessment', 'wrap' => 'border-l-4 border-amber-500 bg-amber-50/40 dark:bg-amber-900/10', 'text' => 'text-amber-700 dark:text-amber-400'],
+                        'plan' => ['lbl' => 'P', 'name' => 'Plan', 'wrap' => 'border-l-4 border-rose-500 bg-rose-50/40 dark:bg-rose-900/10', 'text' => 'text-error dark:text-rose-400'],
+                    ];
+                @endphp
+                <x-border-form title="CPPT — Catatan Perkembangan Pasien Terintegrasi ({{ count($daftarCppt) }} catatan)" class="mb-4">
+                    @if (empty($daftarCppt))
+                        <p class="text-base italic text-muted-soft">Belum ada catatan CPPT.</p>
+                    @else
+                        <div class="space-y-3">
+                            @foreach ($daftarCppt as $catatanCppt)
+                                <div class="p-3 border rounded-xl border-hairline bg-canvas dark:border-gray-700 dark:bg-gray-900">
+                                    <div class="flex flex-wrap items-center justify-between gap-2 pb-2 mb-2 border-b border-hairline-soft dark:border-gray-700/60">
+                                        <span class="font-semibold text-ink dark:text-gray-100">{{ $catatanCppt['tglCPPT'] ?? '-' }}</span>
+                                        <span class="text-muted">
+                                            {{ $catatanCppt['petugasCPPT'] ?? '-' }}
+                                            @if (filled($catatanCppt['profession'] ?? null))
+                                                <span class="px-2 py-0.5 ml-1 rounded-full bg-surface-soft dark:bg-gray-800">{{ $catatanCppt['profession'] }}</span>
+                                            @endif
+                                            @if (filled(data_get($catatanCppt, 'reviewDpjp.drName')))
+                                                <span class="px-2 py-0.5 ml-1 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">Review {{ data_get($catatanCppt, 'reviewDpjp.drName') }}</span>
+                                            @endif
+                                        </span>
+                                    </div>
+                                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                        @foreach ($gayaCppt as $kunciCppt => $gaya)
+                                            <div class="{{ $gaya['wrap'] }} pl-3 py-1 rounded-r-md">
+                                                <span class="font-bold {{ $gaya['text'] }}">{{ $gaya['lbl'] }}</span>
+                                                <span class="text-muted"> — {{ $gaya['name'] }}</span>
+                                                <p class="mt-0.5 whitespace-pre-wrap leading-relaxed text-body dark:text-gray-300">
+                                                    {{ trim((string) data_get($catatanCppt, 'soap.' . $kunciCppt)) ?: '-' }}</p>
+                                            </div>
+                                        @endforeach
+                                        @if (filled($catatanCppt['instruction'] ?? null))
+                                            <div>
+                                                <span class="font-semibold text-body dark:text-gray-300">Instruksi:</span>
+                                                <p class="mt-0.5 whitespace-pre-wrap text-body dark:text-gray-300">{{ $catatanCppt['instruction'] }}</p>
+                                            </div>
+                                        @endif
+                                        @if (filled($catatanCppt['review'] ?? null))
+                                            <div>
+                                                <span class="font-semibold text-body dark:text-gray-300">Review:</span>
+                                                <p class="mt-0.5 whitespace-pre-wrap text-body dark:text-gray-300">{{ $catatanCppt['review'] }}</p>
+                                            </div>
+                                        @endif
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    @endif
+                </x-border-form>
+
                 {{-- SBAR — gaya & label disamakan dengan viewer RI (asesmen-ri-tab) --}}
                 @php
                     $daftarSbar = $this->urutkanKronologis((array) ($dataDaftarTxn['sbar'] ?? []), 'tglSBAR');

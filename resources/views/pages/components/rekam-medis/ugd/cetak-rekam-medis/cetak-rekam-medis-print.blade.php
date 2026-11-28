@@ -427,6 +427,52 @@
             <td class="border border-black px-1.5 py-0.5 align-top" colspan="2">{!! nl2br(e($askepText ?: '-')) !!}</td>
         </tr>
 
+        {{-- CPPT — terbaru di atas, label S-O-A-P sama dengan tab & cetak CPPT UGD --}}
+        @php
+            $daftarCppt = collect((array) ($dataDaftarTxn['cppt'] ?? []))
+                ->sortByDesc(function ($entriCppt) {
+                    try {
+                        return \Carbon\Carbon::createFromFormat('d/m/Y H:i:s', trim((string) data_get($entriCppt, 'tglCPPT')))->getTimestamp();
+                    } catch (\Throwable) {
+                        return 0;
+                    }
+                })
+                ->values();
+            $labelCppt = [
+                'subjective' => 'S',
+                'objective' => 'O',
+                'assessment' => 'A',
+                'plan' => 'P',
+            ];
+        @endphp
+        <tr>
+            <td class="border border-black px-1.5 py-0.5 font-bold align-top">CPPT</td>
+            <td class="border border-black px-1.5 py-0.5 align-top" colspan="2">
+                @forelse ($daftarCppt as $catatanCppt)
+                    <div class="{{ $loop->last ? '' : 'pb-1 mb-1 border-b border-gray-400' }}">
+                        <span class="font-bold">{{ $catatanCppt['tglCPPT'] ?? '-' }}</span>
+                        &mdash; {{ $catatanCppt['petugasCPPT'] ?? '-' }}
+                        @if (filled($catatanCppt['profession'] ?? null))
+                            ({{ $catatanCppt['profession'] }})
+                        @endif
+                        @if (filled(data_get($catatanCppt, 'reviewDpjp.drName')))
+                            &mdash; review {{ data_get($catatanCppt, 'reviewDpjp.drName') }}
+                        @endif
+                        <br>
+                        @foreach ($labelCppt as $kunciCppt => $hurufCppt)
+                            <span class="font-bold">{{ $hurufCppt }} :</span>
+                            {!! nl2br(e(trim((string) data_get($catatanCppt, 'soap.' . $kunciCppt)) ?: '-')) !!}<br>
+                        @endforeach
+                        @if (filled($catatanCppt['instruction'] ?? null))
+                            <span class="font-bold">Instruksi :</span> {!! nl2br(e(trim((string) $catatanCppt['instruction']))) !!}<br>
+                        @endif
+                    </div>
+                @empty
+                    -
+                @endforelse
+            </td>
+        </tr>
+
         {{-- SBAR — terbaru di atas, label S-O-A-P sama dengan viewer & cetak SBAR UGD --}}
         @php
             $daftarSbar = collect((array) ($dataDaftarTxn['sbar'] ?? []))

@@ -37,6 +37,12 @@ class SinkronAksesOtomatis
 
     private const JEDA_GAGAL = 600;
 
+    /**
+     * true selama sinkron otomatis memegang kunci dan menjalankan akses:sinkron di proses ini — perintahnya
+     * tidak boleh mengambil kunci lagi (flock kedua di proses yang sama akan menunggu dirinya sendiri).
+     */
+    public static bool $sedangMenyinkron = false;
+
     public static function pastikan(): void
     {
         $tanda = self::tandaSekarang();
@@ -51,7 +57,7 @@ class SinkronAksesOtomatis
             return;
         }
 
-        $kunci = @fopen(self::berkasTanda() . '.lock', 'c');
+        $kunci = self::bukaKunci();
         if ($kunci === false || !flock($kunci, LOCK_EX | LOCK_NB)) {
             return; // request lain sedang menyinkron
         }
@@ -62,7 +68,12 @@ class SinkronAksesOtomatis
                 return;
             }
 
-            $kode = Artisan::call('akses:sinkron');
+            self::$sedangMenyinkron = true;
+            try {
+                $kode = Artisan::call('akses:sinkron');
+            } finally {
+                self::$sedangMenyinkron = false;
+            }
             $keluaran = trim(Artisan::output());
 
             if ($kode === 0) {
@@ -80,6 +91,17 @@ class SinkronAksesOtomatis
             flock($kunci, LOCK_UN);
             fclose($kunci);
         }
+    }
+
+    /**
+     * Berkas kunci yang dipakai bersama sinkron otomatis (web) dan perintah akses:sinkron manual, supaya
+     * keduanya tidak pernah jalan bersamaan. Di shell setara dengan `flock storage/framework/akses-sinkron.tanda.lock`.
+     *
+     * @return resource|false
+     */
+    public static function bukaKunci()
+    {
+        return @fopen(self::berkasTanda() . '.lock', 'c');
     }
 
     /** Dipanggil juga oleh perintah akses:sinkron manual, supaya otomatis tidak mengulang. */
