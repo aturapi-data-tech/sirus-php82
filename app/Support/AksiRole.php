@@ -345,6 +345,11 @@ class AksiRole
     public const RI_CPPT_COPY_SEMUA = ['Admin'];
     /** Review/TTD CPPT walau bukan DPJP Utama pasien. */
     public const RI_CPPT_REVIEW_SEMUA = ['Admin'];
+    /**
+     * Cetak PDF satu entri CPPT. Centang awal = aturan lama `@unless hasRole('Dokter')`:
+     * semua role yang membuka CPPT kecuali Dokter.
+     */
+    public const RI_CPPT_CETAK = ['Admin', 'Perawat', 'Apoteker', 'Gizi', 'Laboratorium', 'Radiologi', 'Casemix', 'Mr', 'Tu', 'Supervisor Tu', 'Supervisor Penunjang', 'Manager Umum', 'Manager Medis'];
     /** Hapus entri SBAR. */
     public const RI_SBAR_HAPUS = ['Admin', 'Manager Umum', 'Manager Medis', 'Supervisor Penunjang', 'Supervisor Tu', 'Mr', 'Casemix'];
     /** Edit entri SBAR milik petugas lain. */
@@ -358,6 +363,7 @@ class AksiRole
     public const UGD_CPPT_UBAH_SEMUA = ['Admin'];
     public const UGD_CPPT_COPY_SEMUA = ['Admin'];
     public const UGD_CPPT_REVIEW_SEMUA = ['Admin'];
+    public const UGD_CPPT_CETAK = ['Admin', 'Perawat', 'Apoteker', 'Gizi', 'Laboratorium', 'Radiologi', 'Casemix', 'Mr', 'Tu', 'Supervisor Tu', 'Supervisor Penunjang', 'Manager Umum', 'Manager Medis'];
     /** SBAR UGD (T6) — pola sama dgn SBAR RI; "DPJP" di UGD = dokter kunjungan. */
     public const UGD_SBAR_HAPUS = ['Admin', 'Manager Umum', 'Manager Medis', 'Supervisor Penunjang', 'Supervisor Tu', 'Mr', 'Casemix'];
     public const UGD_SBAR_UBAH_SEMUA = ['Admin'];

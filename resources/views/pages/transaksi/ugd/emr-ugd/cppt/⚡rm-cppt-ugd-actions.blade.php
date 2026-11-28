@@ -475,6 +475,11 @@ new class extends Component {
     /* ── Cetak PDF satu entri CPPT ── */
     public function printCppt(string $cpptId): mixed
     {
+        if (!auth()->user()->can('ugd.cppt.cetak')) {
+            $this->dispatch('toast', type: 'error', message: 'Anda tidak berhak mencetak CPPT.');
+            return null;
+        }
+
         $cppt = collect($this->daftarCppt)->first(fn($r) => ($r['cpptId'] ?? null) === $cpptId);
         if (empty($cppt)) {
             $this->dispatch('toast', type: 'error', message: 'CPPT tidak ditemukan.');
@@ -823,9 +828,9 @@ new class extends Component {
                                         </div>
                                     @endif
 
-                                    @unless (auth()->user()->hasRole('Dokter'))
+                                    @can('ugd.cppt.cetak')
                                         <x-cetak-button wire:click="printCppt('{{ $cppt['cpptId'] ?? '' }}')" title="Cetak CPPT" />
-                                    @endunless
+                                    @endcan
 
                                     @if (!$isFormLocked)
                                         @php

@@ -27,6 +27,7 @@ return [
         'ugd.cppt.ubahSemua' => ['label' => 'CPPT: edit entri petugas lain', 'roles' => AksiRole::UGD_CPPT_UBAH_SEMUA],
         'ugd.cppt.copySemua' => ['label' => 'CPPT: copy dari profesi lain', 'roles' => AksiRole::UGD_CPPT_COPY_SEMUA],
         'ugd.cppt.reviewSemua' => ['label' => 'CPPT: review walau bukan dokter UGD', 'roles' => AksiRole::UGD_CPPT_REVIEW_SEMUA],
+        'ugd.cppt.cetak' => ['label' => 'CPPT: cetak entri', 'roles' => AksiRole::UGD_CPPT_CETAK],
         'ugd.sbar.hapus' => ['label' => 'SBAR: hapus entri', 'roles' => AksiRole::UGD_SBAR_HAPUS],
         'ugd.sbar.ubahSemua' => ['label' => 'SBAR: edit entri petugas lain', 'roles' => AksiRole::UGD_SBAR_UBAH_SEMUA],
         'ugd.sbar.copySemua' => ['label' => 'SBAR: copy dari profesi lain', 'roles' => AksiRole::UGD_SBAR_COPY_SEMUA],

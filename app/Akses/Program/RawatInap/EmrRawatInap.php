@@ -31,6 +31,7 @@ return [
         'ri.cppt.ubahSemua' => ['label' => 'CPPT: edit entri petugas lain', 'roles' => AksiRole::RI_CPPT_UBAH_SEMUA],
         'ri.cppt.copySemua' => ['label' => 'CPPT: copy dari profesi lain', 'roles' => AksiRole::RI_CPPT_COPY_SEMUA],
         'ri.cppt.reviewSemua' => ['label' => 'CPPT: review walau bukan DPJP', 'roles' => AksiRole::RI_CPPT_REVIEW_SEMUA],
+        'ri.cppt.cetak' => ['label' => 'CPPT: cetak entri', 'roles' => AksiRole::RI_CPPT_CETAK],
         'ri.sbar.hapus' => ['label' => 'SBAR: hapus entri', 'roles' => AksiRole::RI_SBAR_HAPUS],
         'ri.sbar.ubahSemua' => ['label' => 'SBAR: edit entri petugas lain', 'roles' => AksiRole::RI_SBAR_UBAH_SEMUA],
         'ri.sbar.copySemua' => ['label' => 'SBAR: copy dari profesi lain', 'roles' => AksiRole::RI_SBAR_COPY_SEMUA],
